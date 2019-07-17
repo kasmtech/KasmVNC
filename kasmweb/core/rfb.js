@@ -57,6 +57,7 @@ export default class RFB extends EventTargetMixin {
         this._shared = 'shared' in options ? !!options.shared : true;
         this._repeaterID = options.repeaterID || '';
         this._showDotCursor = options.showDotCursor || false;
+        this._wsProtocols = options.wsProtocols || ['binary'];
 
         // Internal state
         this._rfb_connection_state = '';
@@ -472,7 +473,7 @@ export default class RFB extends EventTargetMixin {
 
         try {
             // WebSocket.onopen transitions to the RFB init states
-            this._sock.open(this._url, ['binary']);
+            this._sock.open(this._url, this._wsProtocols);
             this.sentEventsCounter+=1;
         } catch (e) {
             if (e.name === 'SyntaxError') {
