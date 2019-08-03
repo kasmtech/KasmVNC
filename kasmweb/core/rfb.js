@@ -1084,6 +1084,23 @@ export default class RFB extends EventTargetMixin {
         return true;
     }
 
+    _negotiate_tight_unix_auth() {
+        if (this._rfb_credentials.username === undefined ||
+            this._rfb_credentials.password === undefined) {
+            this.dispatchEvent(new CustomEvent(
+                "credentialsrequired",
+                { detail: { types: ["username", "password"] } }));
+            return false;
+        }
+
+        this._sock.send([0, 0, 0, this._rfb_credentials.username.length]);
+        this._sock.send([0, 0, 0, this._rfb_credentials.password.length]);
+        this._sock.send_string(this._rfb_credentials.username);
+        this._sock.send_string(this._rfb_credentials.password);
+        this._rfb_init_state = "SecurityResult";
+        return true;
+    }
+
     _negotiate_tight_tunnels(numTunnels) {
         const clientSupportedTunnelTypes = {
             0: { vendor: 'TGHT', signature: 'NOTUNNEL' }
@@ -1151,7 +1168,8 @@ export default class RFB extends EventTargetMixin {
 
         const clientSupportedTypes = {
             'STDVNOAUTH__': 1,
-            'STDVVNCAUTH_': 2
+            'STDVVNCAUTH_': 2,
+            'TGHTULGNAUTH': 129
         };
 
         const serverSupportedTypes = [];
@@ -1175,6 +1193,9 @@ export default class RFB extends EventTargetMixin {
                         return true;
                     case 'STDVVNCAUTH_': // VNC auth
                         this._rfb_auth_scheme = 2;
+                        return this._init_msg();
+                    case 'TGHTULGNAUTH': // UNIX auth
+                        this._rfb_auth_scheme = 129;
                         return this._init_msg();
                     default:
                         return this._fail("Unsupported tiny auth scheme " +
@@ -1204,6 +1225,9 @@ export default class RFB extends EventTargetMixin {
 
             case 16:  // TightVNC Security Type
                 return this._negotiate_tight_auth();
+
+            case 129:  // TightVNC UNIX Security Type
+                return this._negotiate_tight_unix_auth();
 
             default:
                 return this._fail("Unsupported auth scheme (scheme: " +
