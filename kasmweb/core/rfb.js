@@ -1895,6 +1895,7 @@ export default class RFB extends EventTargetMixin {
     }
 
     _refreshCursor() {
+        if (this._rfb_connection_state !== 'connected') { return; }
         const image = this._shouldShowDotCursor() ? RFB.cursors.dot : this._cursorImage;
         this._cursor.change(image.rgbaPixels,
                             image.hotx, image.hoty,
