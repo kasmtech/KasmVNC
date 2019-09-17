@@ -51,6 +51,8 @@ export const encodings = {
     pseudoEncodingVideoScalingLevel9: -1987,
     pseudoEncodingVideoOutTimeLevel1: -1986,
     pseudoEncodingVideoOutTimeLevel100: -1887,
+
+    pseudoEncodingVMwareCursor: 0x574d5664,
 };
 
 export function encodingName(num) {
