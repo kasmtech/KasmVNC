@@ -1878,7 +1878,7 @@ const UI = {
     },
 
     sendTab() {
-        UI.rfb.sendKey(KeyTable.XK_Tab);
+        UI.rfb.sendKey(KeyTable.XK_Tab, "Tab");
     },
 
     toggleCtrl() {
