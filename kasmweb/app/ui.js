@@ -517,8 +517,6 @@ const UI = {
     showStatus(text, status_type, time) {
         const statusElem = document.getElementById('noVNC_status');
 
-        clearTimeout(UI.statusTimeout);
-
         if (typeof status_type === 'undefined') {
             status_type = 'normal';
         }
@@ -539,6 +537,8 @@ const UI = {
             (visible_status_type === 'warn' && status_type === 'normal')) {
             return;
         }
+
+        clearTimeout(UI.statusTimeout);
 
         switch (status_type) {
             case 'error':
