@@ -360,8 +360,14 @@ export default class Display {
     }
 
     imageRect(x, y, w, h, mime, arr) {
+        /* The internal logic cannot handle empty images, so bail early */
+        if ((width === 0) || (height === 0)) {
+            return;
+        }
+
         const img = new Image();
         img.src = "data: " + mime + ";base64," + Base64.encode(arr);
+
         this._renderQ_push({
             'type': 'img',
             'img': img,
@@ -621,7 +627,8 @@ export default class Display {
                     this.blitRgbxImage(a.x, a.y, a.width, a.height, a.data, 0, true);
                     break;
                 case 'img':
-                    if (a.img.complete) {
+                    /* IE tends to set "complete" prematurely, so check dimensions */
+                    if (a.img.complete && (a.img.width !== 0) && (a.img.height !== 0)) {
                         this.drawImage(a.img, a.x, a.y, a.w, a.h);
                     } else {
                         a.img._noVNC_display = this;
