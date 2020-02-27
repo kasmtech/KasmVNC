@@ -156,7 +156,7 @@ void ZlibOutStream::deflate(int flush)
 #endif
 
     rc = ::deflate(zs, flush);
-    if (rc != Z_OK) {
+    if (rc < 0) {
       // Silly zlib returns an error if you try to flush something twice
       if ((rc == Z_BUF_ERROR) && (flush != Z_NO_FLUSH))
         break;
@@ -190,7 +190,7 @@ void ZlibOutStream::checkCompressionLevel()
     deflate(Z_SYNC_FLUSH);
 
     rc = deflateParams (zs, newLevel, Z_DEFAULT_STRATEGY);
-    if (rc != Z_OK) {
+    if (rc < 0) {
       // The implicit flush can result in this error, caused by the
       // explicit flush we did above. It should be safe to ignore though
       // as the first flush should have left things in a stable state...
