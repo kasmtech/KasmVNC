@@ -602,6 +602,7 @@ const UI = {
         UI.closeAllPanels();
         document.getElementById('noVNC_control_bar')
             .classList.remove("noVNC_open");
+        UI.rfb.focus();
     },
 
     toggleControlbar() {
