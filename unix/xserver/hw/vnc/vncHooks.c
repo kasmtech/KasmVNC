@@ -550,7 +550,7 @@ static void vncHooksCopyWindow(WindowPtr pWin, DDXPointRec ptOldOrg,
   screen_box.x2 = pScreen->width;
   screen_box.y2 = pScreen->height;
 
-  RegionInit(&screen_rgn, &screen_box, 1);
+  RegionInitBoxes(&screen_rgn, &screen_box, 1);
 
   dx = pWin->drawable.x - ptOldOrg.x;
   dy = pWin->drawable.y - ptOldOrg.y;
@@ -590,7 +590,7 @@ static void vncHooksClearToBackground(WindowPtr pWin, int x, int y, int w,
   box.x2 = w ? (box.x1 + w) : (pWin->drawable.x + pWin->drawable.width);
   box.y2 = h ? (box.y1 + h) : (pWin->drawable.y + pWin->drawable.height);
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, &pWin->clipList);
 
   (*pScreen->ClearToBackground) (pWin, x, y, w, h, generateExposures);
@@ -791,13 +791,13 @@ static void vncHooksComposite(CARD8 op, PicturePtr pSrc, PicturePtr pMask,
     box.y1 = max(pDst->pDrawable->y + yDst, 0);
     box.x2 = box.x1 + width;
     box.y2 = box.y1 + height;
-    RegionInit(&changed, &box, 0);
+    RegionInitBoxes(&changed, &box, 1);
 
     box.x1 = 0;
     box.y1 = 0;
     box.x2 = pScreen->width;
     box.y2 = pScreen->height;
-    RegionInit(&fbreg, &box, 0);
+    RegionInitBoxes(&fbreg, &box, 1);
 
     RegionIntersect(&changed, &changed, &fbreg);
 
@@ -887,7 +887,7 @@ static void vncHooksGlyphs(CARD8 op, PicturePtr pSrc, PicturePtr pDst,
     fbbox.y1 = 0;
     fbbox.x2 = pScreen->width;
     fbbox.y2 = pScreen->height;
-    RegionInit(&fbreg, &fbbox, 0);
+    RegionInitBoxes(&fbreg, &fbbox, 1);
 
     RegionIntersect(changed, changed, &fbreg);
 
@@ -970,13 +970,13 @@ static void vncHooksTrapezoids(CARD8 op, PicturePtr pSrc, PicturePtr pDst,
     box.y1 += pDst->pDrawable->y;
     box.x2 += pDst->pDrawable->x;
     box.y2 += pDst->pDrawable->y;
-    RegionInit(&changed, &box, 0);
+    RegionInitBoxes(&changed, &box, 1);
 
     box.x1 = 0;
     box.y1 = 0;
     box.x2 = pScreen->width;
     box.y2 = pScreen->height;
-    RegionInit(&fbreg, &box, 0);
+    RegionInitBoxes(&fbreg, &box, 1);
 
     RegionIntersect(&changed, &changed, &fbreg);
 
@@ -1035,13 +1035,13 @@ static void vncHooksTriangles(CARD8 op, PicturePtr pSrc, PicturePtr pDst,
     box.y1 += pDst->pDrawable->y;
     box.x2 += pDst->pDrawable->x;
     box.y2 += pDst->pDrawable->y;
-    RegionInit(&changed, &box, 0);
+    RegionInitBoxes(&changed, &box, 1);
 
     box.x1 = 0;
     box.y1 = 0;
     box.x2 = pScreen->width;
     box.y2 = pScreen->height;
-    RegionInit(&fbreg, &box, 0);
+    RegionInitBoxes(&fbreg, &box, 1);
 
     RegionIntersect(&changed, &changed, &fbreg);
 
@@ -1095,13 +1095,13 @@ static void vncHooksTriStrip(CARD8 op, PicturePtr pSrc, PicturePtr pDst,
     box.y1 += pDst->pDrawable->y;
     box.x2 += pDst->pDrawable->x;
     box.y2 += pDst->pDrawable->y;
-    RegionInit(&changed, &box, 0);
+    RegionInitBoxes(&changed, &box, 1);
 
     box.x1 = 0;
     box.y1 = 0;
     box.x2 = pScreen->width;
     box.y2 = pScreen->height;
-    RegionInit(&fbreg, &box, 0);
+    RegionInitBoxes(&fbreg, &box, 1);
 
     RegionIntersect(&changed, &changed, &fbreg);
 
@@ -1153,13 +1153,13 @@ static void vncHooksTriFan(CARD8 op, PicturePtr pSrc, PicturePtr pDst,
     box.y1 += pDst->pDrawable->y;
     box.x2 += pDst->pDrawable->x;
     box.y2 += pDst->pDrawable->y;
-    RegionInit(&changed, &box, 0);
+    RegionInitBoxes(&changed, &box, 1);
 
     box.x1 = 0;
     box.y1 = 0;
     box.x2 = pScreen->width;
     box.y2 = pScreen->height;
-    RegionInit(&fbreg, &box, 0);
+    RegionInitBoxes(&fbreg, &box, 1);
 
     RegionIntersect(&changed, &changed, &fbreg);
 
@@ -1418,7 +1418,7 @@ static void vncHooksPutImage(DrawablePtr pDrawable, GCPtr pGC, int depth,
   box.x2 = box.x1 + w;
   box.y2 = box.y1 + h;
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, pGC->pCompositeClip);
 
   (*pGC->ops->PutImage) (pDrawable, pGC, depth, x, y, w, h, leftPad, format,
@@ -1456,7 +1456,7 @@ static RegionPtr vncHooksCopyArea(DrawablePtr pSrc, DrawablePtr pDst,
     box.x2 = box.x1 + w;
     box.y2 = box.y1 + h;
 
-    RegionInit(&dst, &box, 0);
+    RegionInitBoxes(&dst, &box, 1);
   }
 
   RegionIntersect(&dst, &dst, pGC->pCompositeClip);
@@ -1470,7 +1470,7 @@ static RegionPtr vncHooksCopyArea(DrawablePtr pSrc, DrawablePtr pDst,
     box.x2 = box.x1 + w;
     box.y2 = box.y1 + h;
 
-    RegionInit(&src, &box, 0);
+    RegionInitBoxes(&src, &box, 1);
 
     if ((pSrc->type == DRAWABLE_WINDOW) &&
         RegionNotEmpty(&((WindowPtr)pSrc)->clipList)) {
@@ -1526,7 +1526,7 @@ static RegionPtr vncHooksCopyPlane(DrawablePtr pSrc, DrawablePtr pDst,
   box.x2 = box.x1 + w;
   box.y2 = box.y1 + h;
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, pGC->pCompositeClip);
 
   ret = (*pGC->ops->CopyPlane) (pSrc, pDst, pGC, srcx, srcy, w, h,
@@ -1590,7 +1590,7 @@ static void vncHooksPolyPoint(DrawablePtr pDrawable, GCPtr pGC, int mode,
   box.x2 = maxX + 1 + pDrawable->x;
   box.y2 = maxY + 1 + pDrawable->y;
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, pGC->pCompositeClip);
 
   (*pGC->ops->PolyPoint) (pDrawable, pGC, mode, npt, pts);
@@ -2029,7 +2029,7 @@ static void vncHooksFillPolygon(DrawablePtr pDrawable, GCPtr pGC, int shape,
   box.x2 = maxX + 1 + pDrawable->x;
   box.y2 = maxY + 1 + pDrawable->y;
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, pGC->pCompositeClip);
 
   (*pGC->ops->FillPolygon) (pDrawable, pGC, shape, mode, count, pts);
@@ -2221,7 +2221,7 @@ static int vncHooksPolyText8(DrawablePtr pDrawable, GCPtr pGC, int x, int y,
 
   GetTextBoundingRect(pDrawable, pGC->font, x, y, count, &box);
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, pGC->pCompositeClip);
 
   ret = (*pGC->ops->PolyText8) (pDrawable, pGC, x, y, count, chars);
@@ -2255,7 +2255,7 @@ static int vncHooksPolyText16(DrawablePtr pDrawable, GCPtr pGC, int x, int y,
 
   GetTextBoundingRect(pDrawable, pGC->font, x, y, count, &box);
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, pGC->pCompositeClip);
 
   ret = (*pGC->ops->PolyText16) (pDrawable, pGC, x, y, count, chars);
@@ -2288,7 +2288,7 @@ static void vncHooksImageText8(DrawablePtr pDrawable, GCPtr pGC, int x, int y,
 
   GetTextBoundingRect(pDrawable, pGC->font, x, y, count, &box);
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, pGC->pCompositeClip);
 
   (*pGC->ops->ImageText8) (pDrawable, pGC, x, y, count, chars);
@@ -2319,7 +2319,7 @@ static void vncHooksImageText16(DrawablePtr pDrawable, GCPtr pGC, int x, int y,
 
   GetTextBoundingRect(pDrawable, pGC->font, x, y, count, &box);
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, pGC->pCompositeClip);
 
   (*pGC->ops->ImageText16) (pDrawable, pGC, x, y, count, chars);
@@ -2351,7 +2351,7 @@ static void vncHooksImageGlyphBlt(DrawablePtr pDrawable, GCPtr pGC, int x,
 
   GetTextBoundingRect(pDrawable, pGC->font, x, y, nglyph, &box);
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, pGC->pCompositeClip);
 
   (*pGC->ops->ImageGlyphBlt) (pDrawable, pGC, x, y, nglyph, ppci, pglyphBase);
@@ -2383,7 +2383,7 @@ static void vncHooksPolyGlyphBlt(DrawablePtr pDrawable, GCPtr pGC, int x,
 
   GetTextBoundingRect(pDrawable, pGC->font, x, y, nglyph, &box);
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, pGC->pCompositeClip);
 
   (*pGC->ops->PolyGlyphBlt) (pDrawable, pGC, x, y, nglyph, ppci, pglyphBase);
@@ -2413,7 +2413,7 @@ static void vncHooksPushPixels(GCPtr pGC, PixmapPtr pBitMap,
   box.x2 = box.x1 + w;
   box.y2 = box.y1 + h;
 
-  RegionInit(&reg, &box, 0);
+  RegionInitBoxes(&reg, &box, 1);
   RegionIntersect(&reg, &reg, pGC->pCompositeClip);
 
   (*pGC->ops->PushPixels) (pGC, pBitMap, pDrawable, w, h, x, y);
