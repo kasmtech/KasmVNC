@@ -1003,8 +1003,8 @@ xf86SetRootClip (ScreenPtr pScreen, Bool enable)
 	    {
 		RegionPtr	borderVisible;
 
-		borderVisible = REGION_CREATE(pScreen, NullBox, 1);
-		REGION_SUBTRACT(pScreen, borderVisible,
+		borderVisible = RegionCreate(NullBox, 1);
+		RegionSubtract(borderVisible,
 				&pWin->borderClip, &pWin->winSize);
 		pWin->valdata->before.borderVisible = borderVisible;
 	    }
@@ -1013,7 +1013,7 @@ xf86SetRootClip (ScreenPtr pScreen, Bool enable)
     }
     
     /*
-     * Use REGION_BREAK to avoid optimizations in ValidateTree
+     * Use RegionBreak to avoid optimizations in ValidateTree
      * that assume the root borderClip can't change well, normally
      * it doesn't...)
      */
@@ -1023,18 +1023,18 @@ xf86SetRootClip (ScreenPtr pScreen, Bool enable)
 	box.y1 = 0;
 	box.x2 = pScreen->width;
 	box.y2 = pScreen->height;
-	REGION_INIT (pScreen, &pWin->winSize, &box, 1);
-	REGION_INIT (pScreen, &pWin->borderSize, &box, 1);
+	RegionInit(&pWin->winSize, &box, 1);
+	RegionInit(&pWin->borderSize, &box, 1);
 	if (WasViewable)
-	    REGION_RESET(pScreen, &pWin->borderClip, &box);
+	    RegionReset(&pWin->borderClip, &box);
 	pWin->drawable.width = pScreen->width;
 	pWin->drawable.height = pScreen->height;
-        REGION_BREAK (pWin->drawable.pScreen, &pWin->clipList);
+        RegionBreak(&pWin->clipList);
     }
     else
     {
-	REGION_EMPTY(pScreen, &pWin->borderClip);
-	REGION_BREAK (pWin->drawable.pScreen, &pWin->clipList);
+	RegionEmpty(&pWin->borderClip);
+	RegionBreak(&pWin->clipList);
     }
     
     ResizeChildrenWinSize (pWin, 0, 0, 0, 0);
