@@ -95,18 +95,18 @@ void ZlibOutStream::flush()
   ptr = start;
 }
 
-size_t ZlibOutStream::overrun(size_t itemSize, size_t nItems)
+void ZlibOutStream::overrun(size_t needed)
 {
 #ifdef ZLIBOUT_DEBUG
   fprintf(stderr,"zos overrun\n");
 #endif
 
-  if (itemSize > bufSize)
-    throw Exception("ZlibOutStream overrun: max itemSize exceeded");
+  if (needed > bufSize)
+    throw Exception("ZlibOutStream overrun: buffer size exceeded");
 
   checkCompressionLevel();
 
-  while (avail() < itemSize) {
+  while (avail() < needed) {
     zs->next_in = start;
     zs->avail_in = ptr - start;
 
@@ -126,13 +126,6 @@ size_t ZlibOutStream::overrun(size_t itemSize, size_t nItems)
       ptr -= zs->next_in - start;
     }
   }
-
-  size_t nAvail;
-  nAvail = avail() / itemSize;
-  if (nAvail < nItems)
-    return nAvail;
-
-  return nItems;
 }
 
 void ZlibOutStream::deflate(int flush)

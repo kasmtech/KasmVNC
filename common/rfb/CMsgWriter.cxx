@@ -57,7 +57,7 @@ void CMsgWriter::writeSetPixelFormat(const PixelFormat& pf)
 void CMsgWriter::writeSetEncodings(int nEncodings, rdr::U32* encodings)
 {
   startMsg(msgTypeSetEncodings);
-  os->skip(1);
+  os->pad(1);
   os->writeU16(nEncodings);
   for (int i = 0; i < nEncodings; i++)
     os->writeU32(encodings[i]);
