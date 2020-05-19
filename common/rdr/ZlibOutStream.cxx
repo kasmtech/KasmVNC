@@ -106,7 +106,7 @@ size_t ZlibOutStream::overrun(size_t itemSize, size_t nItems)
 
   checkCompressionLevel();
 
-  while ((size_t)(end - ptr) < itemSize) {
+  while (avail() < itemSize) {
     zs->next_in = start;
     zs->avail_in = ptr - start;
 
@@ -128,7 +128,7 @@ size_t ZlibOutStream::overrun(size_t itemSize, size_t nItems)
   }
 
   size_t nAvail;
-  nAvail = (end - ptr) / itemSize;
+  nAvail = avail() / itemSize;
   if (nAvail < nItems)
     return nAvail;
 
@@ -148,7 +148,7 @@ void ZlibOutStream::deflate(int flush)
   do {
     underlying->check(1);
     zs->next_out = underlying->getptr();
-    zs->avail_out = underlying->getend() - underlying->getptr();
+    zs->avail_out = underlying->avail();
 
 #ifdef ZLIBOUT_DEBUG
     fprintf(stderr,"zos: calling deflate, avail_in %d, avail_out %d\n",

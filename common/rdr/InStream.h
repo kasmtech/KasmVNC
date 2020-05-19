@@ -35,6 +35,14 @@ namespace rdr {
 
     virtual ~InStream() {}
 
+    // avail() returns the number of bytes that are currenctly directly
+    // available from the stream.
+
+    inline size_t avail()
+    {
+      return end - ptr;
+    }
+
     // check() ensures there is buffer data for at least one item of size
     // itemSize bytes.  Returns the number of items in the buffer (up to a
     // maximum of nItems).  If wait is false, then instead of blocking to wait
@@ -48,11 +56,11 @@ namespace rdr {
       if (itemSize == 0 || nItems == 0)
         return 0;
 
-      if (itemSize > (size_t)(end - ptr))
+      if (itemSize > avail())
         return overrun(itemSize, nItems, wait);
 
       // itemSize cannot be zero at this point
-      nAvail = (end - ptr) / itemSize;
+      nAvail = avail() / itemSize;
       if (nAvail < nItems)
         return nAvail;
 
