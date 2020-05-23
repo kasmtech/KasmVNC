@@ -155,10 +155,10 @@ void vncExtensionInit(void)
   vncExtGeneration = vncGetServerGeneration();
 
   if (vncGetScreenCount() > MAXSCREENS)
-    vncFatalError("vncExtensionInit: too many screens");
+    vncFatalError("vncExtensionInit: too many screens\n");
 
   if (sizeof(ShortRect) != sizeof(struct UpdateRect))
-    vncFatalError("vncExtensionInit: Incompatible ShortRect size");
+    vncFatalError("vncExtensionInit: Incompatible ShortRect size\n");
 
   vncAddExtension();
 
@@ -264,7 +264,7 @@ void vncExtensionInit(void)
       vncHooksInit(scr);
     }
   } catch (rdr::Exception& e) {
-    vncFatalError("vncExtInit: %s",e.str());
+    vncFatalError("vncExtInit: %s\n",e.str());
   }
 
   vncRegisterBlockHandlers();
@@ -278,7 +278,7 @@ void vncExtensionClose(void)
       desktop[scr] = NULL;
     }
   } catch (rdr::Exception& e) {
-    vncFatalError("vncExtInit: %s",e.str());
+    vncFatalError("vncExtInit: %s\n",e.str());
   }
 }
 
@@ -447,7 +447,7 @@ void vncRefreshScreenLayout(int scrIdx)
   try {
     desktop[scrIdx]->refreshScreenLayout();
   } catch (rdr::Exception& e) {
-    vncFatalError("%s", e.str());
+    vncFatalError("vncRefreshScreenLayout: %s\n", e.str());
   }
 }
 
