@@ -62,11 +62,11 @@ configure_file(release/maketarball.in release/maketarball)
 
 set(TARBALL_DEPENDS vncpasswd vncconfig)
 
-add_custom_target(tarball sh release/maketarball
+add_custom_target(tarball bash release/maketarball
   DEPENDS ${TARBALL_DEPENDS}
   SOURCES release/maketarball)
 
-add_custom_target(servertarball sh release/maketarball server
+add_custom_target(servertarball bash release/maketarball server
   DEPENDS ${TARBALL_DEPENDS}
   SOURCES release/maketarball)
 
