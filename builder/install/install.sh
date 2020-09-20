@@ -35,7 +35,7 @@ function build_webp(){
 
 function install_kasmvnc(){
 	# install kasmvnc
-	wget -qO- https://kasmweb-build-artifacts.s3.amazonaws.com/kasmvnc/c0ab0111ae47a39720f26a7dd7ac54a3681540f8/kasmvnc_1.9.c0ab0111ae47a39720f26a7dd7ac54a3681540f8.tar.gz | sudo tar xz --strip 1 -C /
+	wget -qO- https://github.com/kasmtech/KasmVNC/releases/download/v0.9.0-beta/KasmVNC_0.9.0-beta_Ubuntu_18.04.tar.gz | sudo tar xz --strip 1 -C /
 	#install cert
 	sudo mkdir /usr/local/share/kasmvnc/certs
 	sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /usr/local/share/kasmvnc/certs/self.pem -out /usr/local/share/kasmvnc/certs/self.pem -subj "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
