@@ -1,0 +1,12 @@
+*.pyc
+*.o
+tests/data_*.js
+utils/rebind.so
+utils/websockify
+/node_modules
+/build
+/lib
+recordings
+*.swp
+*~
+noVNC-*.tgz

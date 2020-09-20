@@ -1,0 +1,65 @@
+#!/bin/bash
+
+set -u
+set -e
+trap onexit INT
+trap onexit TERM
+trap onexit EXIT
+
+TMPDIR=
+
+onexit()
+{
+	if [ ! "$TMPDIR" = "" ]; then
+		rm -rf $TMPDIR
+	fi
+}
+
+PACKAGE_NAME=@CMAKE_PROJECT_NAME@
+VERSION=@VERSION@
+BUILD=@BUILD@
+SRCDIR=@CMAKE_SOURCE_DIR@
+OS=@CMAKE_SYSTEM_NAME@
+CPU=@CMAKE_SYSTEM_PROCESSOR@
+PREFIX=@CMAKE_INSTALL_PREFIX@
+CFLAGS="@CMAKE_C_FLAGS@"
+if [[ $CFLAGS = *-m32* ]]; then
+	CPU=i686
+fi
+PACKAGE_FILE=$PACKAGE_NAME-$OS-$CPU-$VERSION.tar.gz
+SERVER=0
+
+if [ $# -gt 0 ]; then
+	if [ "$1" = "server" ]; then
+		SERVER=1
+	fi
+fi
+
+umask 022
+TMPDIR=`mktemp -d /tmp/$PACKAGE_NAME-build.XXXXXX`
+rm -f $PACKAGE_FILE
+OUTDIR=$TMPDIR/inst/$PREFIX
+
+mkdir -p $OUTDIR/bin
+mkdir -p $OUTDIR/man/man1
+
+make DESTDIR=$TMPDIR/inst install
+if [ $SERVER = 1 ]; then
+	install -m 755 ./xorg.build/bin/Xvnc $OUTDIR/bin/
+	install -m 644 ./xorg.build/man/man1/Xvnc.1 $OUTDIR/man/man1/Xvnc.1
+	install -m 644 ./xorg.build/man/man1/Xserver.1 $OUTDIR/man/man1/Xserver.1
+	mkdir -p $OUTDIR/lib/dri/
+	install -m 755 ./xorg.build/lib/dri/swrast_dri.so $OUTDIR/lib/dri/
+	mkdir -p $OUTDIR/share/kasmvnc
+	cp -r $SRCDIR/kasmweb $OUTDIR/share/kasmvnc/www
+fi
+
+#pushd $TMPDIR/inst
+CWD=$(pwd)
+cd $TMPDIR/inst
+tar cfz ../$PACKAGE_FILE .
+#popd
+cd $CWD
+cp $TMPDIR/$PACKAGE_FILE .
+
+exit

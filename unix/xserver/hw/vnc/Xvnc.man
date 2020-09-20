@@ -1,0 +1,524 @@
+.TH Xvnc 1 "" "KasmVNC" "Virtual Network Computing"
+.SH NAME
+Xvnc \- the X VNC server 
+.SH SYNOPSIS
+.B Xvnc
+.RI [ options ] 
+.RI : display#
+.SH DESCRIPTION
+.B Xvnc
+is the X VNC (Virtual Network Computing) server.  It is based on a standard X
+server, but it has a "virtual" screen rather than a physical one.  X
+applications display themselves on it as if it were a normal X display, but
+they can only be accessed via a VNC viewer - see \fBvncviewer\fP(1).
+
+So Xvnc is really two servers in one. To the applications it is an X server,
+and to the remote VNC users it is a VNC server. By convention we have arranged
+that the VNC server display number will be the same as the X server display
+number, which means you can use eg. snoopy:2 to refer to display 2 on machine
+"snoopy" in both the X world and the VNC world.
+
+The best way of starting \fBXvnc\fP is via the \fBvncserver\fP script.  This
+sets up the environment appropriately and runs some X applications to get you
+going.  See the manual page for \fBvncserver\fP(1) for more information.
+
+.SH OPTIONS
+.B Xvnc
+takes lots of options - running \fBXvnc -help\fP gives a list.  Many of these
+are standard X server options, which are described in the \fBXserver\fP(1)
+manual page.  In addition to options which can only be set via the
+command-line, there are also "parameters" which can be set both via the
+command-line and through the \fBvncconfig\fP(1) program.
+
+.TP
+.B \-geometry \fIwidth\fPx\fIheight\fP
+Specify the size of the desktop to be created. Default is 1024x768.
+.
+.TP
+.B \-depth \fIdepth\fP
+Specify the pixel depth in bits of the desktop to be created. Default is 24,
+other possible values are 8, 15, and 16 - anything else is likely to cause
+strange behaviour by applications.
+.
+.TP
+.B \-pixelformat \fIformat\fP
+Specify pixel format for server to use (BGRnnn or RGBnnn).  The default for
+depth 8 is BGR233 (meaning the most significant two bits represent blue, the
+next three green, and the least significant three represent red), the default
+for depth 16 is RGB565 and for depth 24 is RGB888.
+.
+.TP
+.B \-interface \fIIP address\fP
+Listen on interface. By default Xvnc listens on all available interfaces.
+.
+.TP
+.B \-inetd 
+This significantly changes Xvnc's behaviour so that it can be launched from
+inetd.  See the section below on usage with inetd.
+.
+.TP
+.B \-help
+List all the options and parameters
+
+.SH PARAMETERS
+VNC parameters can be set both via the command-line and through the
+\fBvncconfig\fP(1) program, and with a VNC-enabled Xorg server via Options
+entries in the xorg.conf file.
+
+Parameters can be turned on with -\fIparam\fP or off with
+-\fIparam\fP=0.  Parameters which take a value can be specified as
+-\fIparam\fP \fIvalue\fP.  Other valid forms are \fIparam\fP\fB=\fP\fIvalue\fP
+-\fIparam\fP=\fIvalue\fP --\fIparam\fP=\fIvalue\fP.  Parameter names are
+case-insensitive.
+
+.TP
+.B \-desktop \fIdesktop-name\fP
+Each desktop has a name which may be displayed by the viewer. It defaults to
+"x11".
+.
+.TP
+.B \-rfbport \fIport\fP
+Specifies the TCP port on which Xvnc listens for connections from viewers (the
+protocol used in VNC is called RFB - "remote framebuffer").  The default is
+5900 plus the display number.
+.
+.TP
+.B \-UseIPv4
+Use IPv4 for incoming and outgoing connections. Default is on.
+.
+.TP
+.B \-UseIPv6
+Use IPv6 for incoming and outgoing connections. Default is on.
+.
+.TP
+.B \-rfbunixpath \fIpath\fP
+Specifies the path of a Unix domain socket on which Xvnc listens for
+connections from viewers, instead of listening on a TCP port.
+.
+.TP
+.B \-rfbunixmode \fImode\fP
+Specifies the mode of the Unix domain socket.  The default is 0600.
+.
+.TP
+.B \-rfbwait \fItime\fP, \-ClientWaitTimeMillis \fItime\fP
+Time in milliseconds to wait for a viewer which is blocking the server. This is
+necessary because the server is single-threaded and sometimes blocks until the
+viewer has finished sending or receiving a message - note that this does not
+mean an update will be aborted after this time.  Default is 20000 (20 seconds).
+.
+.TP
+.B \-httpd \fIdirectory\fP
+Run a mini-HTTP server which serves files from the given directory.  Normally
+the directory will contain the kasmweb client. It will use the websocket port.
+.
+.TP
+.B \-rfbauth \fIpasswd-file\fP, \-PasswordFile \fIpasswd-file\fP
+Password file for VNC authentication.  There is no default, you should
+specify the password file explicitly.  Password file should be created with
+the \fBvncpasswd\fP(1) utility.  The file is accessed each time a connection
+comes in, so it can be changed on the fly.
+.
+.TP
+.B \-AcceptCutText
+Accept clipboard updates from clients. Default is on.
+.
+.TP
+.B \-MaxCutText \fIbytes\fP
+The maximum size of a clipboard update that will be accepted from a client.
+Default is \fB262144\fP.
+.
+.TP
+.B \-SendCutText
+Send clipboard changes to clients. Default is on.
+.
+.TP
+.B \-SendPrimary
+Send the primary selection and cut buffer to the server as well as the
+clipboard selection. Default is on.
+.
+.TP
+.B \-AcceptPointerEvents
+Accept pointer press and release events from clients. Default is on.
+.
+.TP
+.B \-AcceptKeyEvents
+Accept key press and release events from clients. Default is on.
+.
+.TP
+.B \-AcceptSetDesktopSize
+Accept requests to resize the size of the desktop. Default is on.
+.
+.TP
+.B \-DisconnectClients
+Disconnect existing clients if an incoming connection is non-shared. Default is
+on. If \fBDisconnectClients\fP is false, then a new non-shared connection will
+be refused while there is a client active.  When combined with
+\fBNeverShared\fP this means only one client is allowed at a time.
+.
+.TP
+.B \-NeverShared
+Never treat incoming connections as shared, regardless of the client-specified
+setting. Default is off.
+.
+.TP
+.B \-AlwaysShared
+Always treat incoming connections as shared, regardless of the client-specified
+setting. Default is off.
+.
+.TP
+.B \-Protocol3.3
+Always use protocol version 3.3 for backwards compatibility with badly-behaved
+clients. Default is off.
+.
+.TP
+.B \-FrameRate \fIfps\fP
+The maximum number of updates per second sent to each client. If the screen
+updates any faster then those changes will be aggregated and sent in a single
+update to the client. Note that this only controls the maximum rate and a
+client may get a lower rate when resources are limited. Default is \fB60\fP.
+.
+.TP
+.B \-DynamicQualityMin \fImin\fP
+The minimum quality to with dynamic JPEG quality scaling. The accepted values
+are 0-9 where 0 is low and 9 is high, with the same meaning as the client-side
+-quality parameter. Default is \fB7\fP.
+.
+.TP
+.B \-DynamicQualityMax \fImax\fP
+The maximum quality to use with dynamic JPEG quality scaling. Setting this to
+zero disables dynamic JPEG quality scaling. The accepted values are 0-9 where 0
+is low and 9 is high, with the same meaning as the client-side -quality parameter.
+Default is \fB8\fP.
+.
+.TP
+.B \-TreatLossless \fIquality\fP
+Treat lossy quality levels above and including this as lossless, without
+sending lossless updates for them. 0-9, 10 disables this.
+Default is \fB10\fP.
+.
+.TP
+.B \-PreferBandwidth
+Prefer bandwidth over quality, and set various options for lower bandwidth use.
+The default is off, aka to prefer quality. You can override individual values
+by setting them after this switch on the command line. This switch sets the
+following:
+.br
+- dynamic JPEG quality range 2-9
+.br
+- TreatLossless 8
+.
+.TP
+.B \-RectThreads \fInum\fP
+Use this many threads to compress rects in parallel. Default \fB0\fP (automatic),
+set to \fB1\fP to disable.
+.
+.TP
+.B \-JpegVideoQuality \fInum\fP
+The JPEG quality to use when in video mode.
+Default \fB-1\fP.
+.
+.TP
+.B \-WebpVideoQuality \fInum\fP
+The WEBP quality to use when in video mode.
+Default \fB-1\fP.
+.B \-MaxVideoResolution \fI1920x1080\fP
+When in video mode, downscale the screen to max this size. Keeps aspect ratio.
+Default \fB1920x1080\fP.
+.
+.TP
+.B \-VideoTime \fIseconds\fP
+High rate of change must happen for this many seconds to switch to video mode.
+Default \fB5\fP, set \fB0\fP to always enable.
+.
+.TP
+.B \-VideoOutTime \fIseconds\fP
+The rate of change must be below the VideoArea threshold for this many seconds
+to switch out of video mode.
+Default \fB3\fP.
+.
+.TP
+.B \-VideoArea \fIpercentage\fP
+High rate of change must happen for this % of the screen to switch to video mode.
+Default \fB45\fP.
+.
+.TP
+.B \-PrintVideoArea
+Print the detected video area % value.
+Default off.
+.
+.TP
+.B \-VideoScaling \fItype\fP
+Scaling method to use when in downscaled video mode. 0 = nearest, 1 = bilinear,
+2 = progressive bilinear.
+Default \fB2\fP.
+.
+.TP
+.B \-CompareFB \fImode\fP
+Perform pixel comparison on framebuffer to reduce unnecessary updates. Can
+be either \fB0\fP (off), \fB1\fP (always) or \fB2\fP (auto). Default is
+\fB2\fP.
+.
+.TP
+.B \-ZlibLevel \fIlevel\fP
+Zlib compression level for ZRLE encoding (it does not affect Tight encoding).
+Acceptable values are between 0 and 9.  Default is to use the standard
+compression level provided by the \fBzlib\fP(3) compression library.
+.
+.TP
+.B \-ImprovedHextile
+Use improved compression algorithm for Hextile encoding which achieves better
+compression ratios by the cost of using slightly more CPU time.  Default is
+on.
+.
+.TP
+.B \-IgnoreClientSettingsKasm
+Ignore the additional client settings exposed in Kasm. Default off.
+Kasm exposes a few settings to the client the standard VNC does not.
+This param lets the server ignore those.
+.
+.TP
+.B \-DLP_ClipSendMax \fIbytes\fP
+Limit clipboard bytes to send to clients in one transaction. Default 10,000.
+0 disables the limit, use \fBSendCutText\fP to disable clipboard sending entirely.
+.
+.TP
+.B \-DLP_ClipAcceptMax \fIbytes\fP
+Limit clipboard bytes to receive from clients in one transaction. Default 10,000.
+0 disables the limit, use \fBAcceptCutText\fP to disable clipboard receiving entirely.
+.
+.TP
+.B \-DLP_ClipDelay \fIms\fP
+This many milliseconds must pass between clipboard actions. Default 1000.
+.
+.TP
+.B \-DLP_KeyRateLimit \fIkeys-per-second\fP
+Reject keyboard presses over this many per second. Default 0 (disabled).
+.
+.TP
+.B \-DLP_Log \fIoff/info/verbose\fP
+Log clipboard and keyboard actions. Info logs just clipboard direction and size,
+verbose adds the contents for both.
+.
+.TP
+.B \-noWebsocket
+Disable websockets and expose a traditional VNC port (5901, etc.).
+.
+.TP
+.B \-websocketPort \fIport\fP
+Listen for websocket connections on this port, default 6800.
+.
+.TP
+.B \-cert \fIpath\fP
+SSL pem cert to use for websocket connections, default empty/not used.
+.
+.TP
+.B \-sslOnly
+Require SSL for websocket connections. Default off, non-SSL allowed.
+.
+.TP
+.B \-basicAuth \fIuser:pass\fP
+Username and password for websocket connections. Default empty, no authentication required.
+.
+.TP
+.B \-SecurityTypes \fIsec-types\fP
+Specify which security scheme to use for incoming connections.  Valid values
+are a comma separated list of \fBNone\fP, \fBVncAuth\fP, \fBPlain\fP,
+\fBTLSNone\fP, \fBTLSVnc\fP, \fBTLSPlain\fP, \fBX509None\fP, \fBX509Vnc\fP
+and \fBX509Plain\fP. Default is \fBVncAuth,TLSVnc\fP.
+.
+.TP
+.B \-Password \fIpassword\fP
+Obfuscated binary encoding of the password which clients must supply to
+access the server.  Using this parameter is insecure, use \fBPasswordFile\fP
+parameter instead.
+.
+.TP
+.B \-PlainUsers \fIuser-list\fP
+A comma separated list of user names that are allowed to authenticate via
+any of the "Plain" security types (Plain, TLSPlain, etc.). Specify \fB*\fP
+to allow any user to authenticate using this security type. Default is to
+deny all users.
+.
+.TP
+.B \-pam_service \fIname\fP, \-PAMService \fIname\fP
+PAM service name to use when authentication users using any of the "Plain"
+security types. Default is \fBvnc\fP.
+.
+.TP
+.B \-X509Cert \fIpath\fP
+Path to a X509 certificate in PEM format to be used for all X509 based
+security types (X509None, X509Vnc, etc.).
+.
+.TP
+.B \-X509Key \fIpath\fP
+Private key counter part to the certificate given in \fBX509Cert\fP. Must
+also be in PEM format.
+.
+.TP
+.B \-GnuTLSPriority \fIpriority\fP
+GnuTLS priority string that controls the TLS session’s handshake algorithms.
+See the GnuTLS manual for possible values. Default is \fBNORMAL\fP.
+.
+.TP
+.B \-BlacklistThreshold \fIcount\fP
+The number of unauthenticated connection attempts allowed from any individual
+host before that host is black-listed.  Default is 5.
+.
+.TP
+.B \-BlacklistTimeout \fIseconds\fP
+The initial timeout applied when a host is first black-listed.  The host
+cannot re-attempt a connection until the timeout expires.  Default is 10.
+.
+.TP
+.B \-IdleTimeout \fIseconds\fP
+The number of seconds after which an idle VNC connection will be dropped.
+Default is 0, which means that idle connections will never be dropped.
+.
+.TP
+.B \-MaxDisconnectionTime \fIseconds\fP
+Terminate when no client has been connected for \fIN\fP seconds.  Default is
+0.
+.
+.TP
+.B \-MaxConnectionTime \fIseconds\fP
+Terminate when a client has been connected for \fIN\fP seconds.  Default is
+0.
+.
+.TP
+.B \-MaxIdleTime \fIseconds\fP
+Terminate after \fIN\fP seconds of user inactivity.  Default is 0.
+.
+.TP
+.B \-QueryConnect
+Prompts the user of the desktop to explicitly accept or reject incoming
+connections. Default is off.
+
+The \fBvncconfig\fP(1) program must be running on the desktop in order for
+QueryConnect to be supported.
+.
+.TP
+.B \-QueryConnectTimeout \fIseconds\fP
+Number of seconds to show the Accept Connection dialog before rejecting the
+connection.  Default is \fB10\fP.
+.
+.TP
+.B \-localhost
+Only allow connections from the same machine. Useful if you use SSH and want to
+stop non-SSH connections from any other hosts.
+.
+.TP
+.B \-Log \fIlogname\fP:\fIdest\fP:\fIlevel\fP
+Configures the debug log settings.  \fIdest\fP can currently be \fBstderr\fP,
+\fBstdout\fP or \fBsyslog\fP, and \fIlevel\fP is between 0 and 100, 100 meaning
+most verbose output.  \fIlogname\fP is usually \fB*\fP meaning all, but you can
+target a specific source file if you know the name of its "LogWriter".  Default
+is \fB*:stderr:30\fP.
+.
+.TP
+.B \-RemapKeys \fImapping
+Sets up a keyboard mapping.
+.I mapping
+is a comma-separated string of character mappings, each of the form
+.IR char -> char ,
+or
+.IR char <> char ,
+where
+.I char
+is a hexadecimal keysym. For example, to exchange the " and @ symbols you would specify the following:
+
+.RS 10
+RemapKeys=0x22<>0x40
+.RE
+.
+.TP
+.B \-AvoidShiftNumLock
+Key affected by NumLock often require a fake Shift to be inserted in order
+for the correct symbol to be generated. Turning on this option avoids these
+extra fake Shift events but may result in a slightly different symbol
+(e.g. a Return instead of a keypad Enter).
+.
+.TP
+.B \-RawKeyboard
+Send keyboard events straight through and avoid mapping them to the current
+keyboard layout. This effectively makes the keyboard behave according to the
+layout configured on the server instead of the layout configured on the
+client. Default is off.
+.
+.TP
+.B \-AllowOverride
+Comma separated list of parameters that can be modified using VNC extension.
+Parameters can be modified for example using \fBvncconfig\fP(1) program from
+inside a running session.
+
+Allowing override of parameters such as \fBPAMService\fP or \fBPasswordFile\fP
+can negatively impact security if Xvnc runs under different user than the
+programs allowed to override the parameters.
+
+When \fBNoClipboard\fP parameter is set, allowing override of \fBSendCutText\fP
+and \fBAcceptCutText\fP has no effect.
+
+Default is \fBdesktop,AcceptPointerEvents,SendCutText,AcceptCutText,SendPrimary,SetPrimary\fP.
+
+.SH USAGE WITH INETD
+By configuring the \fBinetd\fP(1) service appropriately, Xvnc can be launched
+on demand when a connection comes in, rather than having to be started
+manually.  When given the \fB-inetd\fP option, instead of listening for TCP
+connections on a given port it uses its standard input and standard output.
+There are two modes controlled by the wait/nowait entry in the inetd.conf file.
+
+In the nowait mode, Xvnc uses its standard input and output directly as the
+connection to a viewer.  It never has a listening socket, so cannot accept
+further connections from viewers (it can however connect out to listening
+viewers by use of the vncconfig program).  Further viewer connections to the
+same TCP port result in inetd spawning off a new Xvnc to deal with each
+connection.  When the connection to the viewer dies, the Xvnc and any
+associated X clients die.  This behaviour is most useful when combined with the
+XDMCP options -query and -once.  An typical example in inetd.conf might be (all
+on one line):
+
+5950   stream   tcp nowait nobody  /usr/local/bin/Xvnc Xvnc -inetd -query
+localhost -once securitytypes=none
+
+In this example a viewer connection to :50 will result in a new Xvnc for that
+connection which should display the standard XDM login screen on that machine.
+Because the user needs to login via XDM, it is usually OK to accept connections
+without a VNC password in this case.
+
+In the wait mode, when the first connection comes in, inetd gives the listening
+socket to Xvnc.  This means that for a given TCP port, there is only ever one
+Xvnc at a time.  Further viewer connections to the same port are accepted by
+the same Xvnc in the normal way.  Even when the original connection is broken,
+the Xvnc will continue to run.  If this is used with the XDMCP options -query
+and -once, the Xvnc and associated X clients will die when the user logs out of
+the X session in the normal way.  It is important to use a VNC password in this
+case.  A typical entry in inetd.conf might be:
+
+5951   stream   tcp wait   james     /usr/local/bin/Xvnc Xvnc -inetd -query localhost -once passwordFile=/home/james/.vnc/passwd
+
+In fact typically, you would have one entry for each user who uses VNC
+regularly, each of whom has their own dedicated TCP port which they use.  In
+this example, when user "james" connects to :51, he enters his VNC password,
+then gets the XDM login screen where he logs in in the normal way.  However,
+unlike the previous example, if he disconnects, the session remains persistent,
+and when he reconnects he will get the same session back again.  When he logs
+out of the X session, the Xvnc will die, but of course a new one will be
+created automatically the next time he connects.
+
+.SH SEE ALSO
+.BR vncconfig (1),
+.BR vncpasswd (1),
+.BR vncserver (1),
+.BR vncviewer (1),
+.BR Xserver (1),
+.BR inetd (1)
+.br
+http://kasmweb.com
+
+.SH AUTHOR
+Tristan Richardson, RealVNC Ltd. and others.
+
+VNC was originally developed by the RealVNC team while at Olivetti
+Research Ltd / AT&T Laboratories Cambridge.  TightVNC additions were
+implemented by Constantin Kaplinsky. Many other people have since
+participated in development, testing and support. This manual is part
+of the KasmVNC software suite.
