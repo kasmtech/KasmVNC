@@ -37,10 +37,10 @@ Future Goals:
 ### Installation
 We are currently developing releasable packages for major operating sytems. The install script available with releases will install dependencies, compile webp, and pull down and install the pre-compiled KasmVNC tarball. Currently, only Ubuntu 18.04 LTS is pre-compiled.
 
-This installer assumes you already have a desktop environment installed, but have never configured a VNC server.
+This installer assumes you already have a desktop environment installed, but have never configured a VNC server. Use the install script found in this project under builder/install/install.sh, currently Ubuntu 18.04LTS is the only operating system with pre-compiled binaries.
 
 ```sh
-# download install script from releases
+# use install script from builder/install/install.sh
 sudo ./install.sh
 
 # change owner of pre-installed cert to your user
