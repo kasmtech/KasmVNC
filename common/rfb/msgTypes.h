@@ -28,6 +28,9 @@ namespace rfb {
 
   const int msgTypeEndOfContinuousUpdates = 150;
 
+  // kasm
+  const int msgTypeStats = 178;
+
   const int msgTypeServerFence = 248;
 
   // client to server
@@ -41,6 +44,9 @@ namespace rfb {
   const int msgTypeClientCutText = 6;
 
   const int msgTypeEnableContinuousUpdates = 150;
+
+  // kasm
+  const int msgTypeRequestStats = 178;
 
   const int msgTypeClientFence = 248;
 

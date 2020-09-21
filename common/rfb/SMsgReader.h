@@ -55,6 +55,7 @@ namespace rfb {
     void readKeyEvent();
     void readPointerEvent();
     void readClientCutText();
+    void readRequestStats();
 
     void readQEMUMessage();
     void readQEMUKeyEvent();

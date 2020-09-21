@@ -1495,6 +1495,19 @@ export default class RFB extends EventTargetMixin {
         return true;
     }
 
+    _handle_server_stats_msg() {
+        this._sock.rQskipBytes(3);  // Padding
+        const length = this._sock.rQshift32();
+        if (this._sock.rQwait("KASM bottleneck stats", length, 8)) { return false; }
+
+        const text = this._sock.rQshiftStr(length);
+
+        console.log("Received KASM bottleneck stats:");
+        console.log(text);
+
+        return true;
+    }
+
     _handle_server_fence_msg() {
         if (this._sock.rQwait("ServerFence header", 8, 1)) { return false; }
         this._sock.rQskipBytes(3); // Padding
@@ -1604,6 +1617,9 @@ export default class RFB extends EventTargetMixin {
                     // if we add support for turning off continuous updates
                 }
                 return true;
+
+            case 178: // KASM bottleneck stats
+                return this._handle_server_stats_msg();
 
             case 248: // ServerFence
                 return this._handle_server_fence_msg();
@@ -2105,6 +2121,20 @@ RFB.messages = {
         }
 
         sock._sQlen += 9 + n;
+        sock.flush();
+    },
+
+    requestStats(sock) {
+        const buff = sock._sQ;
+        const offset = sock._sQlen;
+
+        buff[offset] = 178; // msg-type
+
+        buff[offset + 1] = 0; // padding
+        buff[offset + 2] = 0; // padding
+        buff[offset + 3] = 0; // padding
+
+        sock._sQlen += 4;
         sock.flush();
     },
 

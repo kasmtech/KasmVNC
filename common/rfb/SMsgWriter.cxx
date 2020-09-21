@@ -88,6 +88,15 @@ void SMsgWriter::writeServerCutText(const char* str, int len)
   endMsg();
 }
 
+void SMsgWriter::writeStats(const char* str, int len)
+{
+  startMsg(msgTypeStats);
+  os->pad(3);
+  os->writeU32(len);
+  os->writeBytes(str, len);
+  endMsg();
+}
+
 void SMsgWriter::writeFence(rdr::U32 flags, unsigned len, const char data[])
 {
   if (!cp->supportsFence)

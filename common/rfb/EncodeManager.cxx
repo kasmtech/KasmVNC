@@ -356,9 +356,10 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
 
     changed = changed_;
 
+    gettimeofday(&start, NULL);
+
     if (allowLossy && activeEncoders[encoderFullColour] == encoderTightWEBP) {
         const unsigned rate = 1024 * 1000 / rfb::Server::frameRate;
-        gettimeofday(&start, NULL);
 
         screenArea = pb->getRect().width() * pb->getRect().height();
         screenArea *= 1024;
@@ -401,8 +402,7 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
       writeSolidRects(&changed, pb);
 
     writeRects(changed, pb,
-               allowLossy && activeEncoders[encoderFullColour] == encoderTightWEBP ?
-               &start : NULL, true);
+               &start, true);
     if (!videoDetected) // In case detection happened between the calls
       writeRects(cursorRegion, renderedCursor);
 
@@ -1135,6 +1135,9 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
                                      scaledpb, scaledrects[i]);
     checkWebpFallback(start);
   }
+
+  if (start)
+    encodingTime = msSince(start);
 
   if (webpTookTooLong)
     activeEncoders[encoderFullColour] = encoderTightJPEG;

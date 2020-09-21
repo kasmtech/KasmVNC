@@ -55,6 +55,7 @@ namespace rfb {
     // writeBell() and writeServerCutText() do the obvious thing.
     void writeBell();
     void writeServerCutText(const char* str, int len);
+    void writeStats(const char* str, int len);
 
     // writeFence() sends a new fence request or response to the client.
     void writeFence(rdr::U32 flags, unsigned len, const char data[]);

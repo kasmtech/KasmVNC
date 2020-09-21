@@ -68,6 +68,10 @@ namespace rfb {
                               const RenderedCursor* renderedCursor,
                               size_t maxUpdateSize);
 
+    unsigned getEncodingTime() const {
+        return encodingTime;
+    };
+
   protected:
     void doUpdate(bool allowLossy, const Region& changed,
                   const Region& copied, const Point& copy_delta,
@@ -177,6 +181,7 @@ namespace rfb {
     unsigned webpFallbackUs;
     unsigned webpBenchResult;
     bool webpTookTooLong;
+    unsigned encodingTime;
 
     EncCache *encCache;
 
