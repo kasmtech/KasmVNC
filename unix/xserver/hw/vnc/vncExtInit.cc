@@ -193,7 +193,6 @@ void vncExtensionInit(void)
 
       if (!desktop[scr]) {
         std::list<network::SocketListener*> listeners;
-        std::list<network::SocketListener*> httpListeners;
         if (scr == 0 && vncInetdSock != -1) {
           if (network::isSocketListening(vncInetdSock))
           {
@@ -247,7 +246,6 @@ void vncExtensionInit(void)
         vncSetGlueContext(scr);
         desktop[scr] = new XserverDesktop(scr,
                                           listeners,
-                                          httpListeners,
                                           desktopNameStr.buf,
                                           pf,
                                           vncGetScreenWidth(),
