@@ -7,7 +7,7 @@
 
 # Ubuntu applies a million patches, but here we use upstream to simplify matters
 cd /tmp
-wget https://www.x.org/archive//individual/xserver/xorg-server-1.18.4.tar.bz2
+wget https://www.x.org/archive/individual/xserver/xorg-server-1.19.6.tar.bz2
 
 #git clone https://kasmweb@bitbucket.org/kasmtech/kasmvnc.git
 #cd kasmvnc
@@ -23,10 +23,10 @@ sed -i -e '/find_package(FLTK/s@^@#@' \
 cmake .
 make -j5
 
-tar -C unix/xserver -xvf /tmp/xorg-server-1.18.4.tar.bz2 --strip-components=1
+tar -C unix/xserver -xvf /tmp/xorg-server-1.19.6.tar.bz2 --strip-components=1
 
 cd unix/xserver
-patch -Np1 -i ../xserver118.patch
+patch -Np1 -i ../xserver119.patch
 autoreconf -i
 # Configuring Xorg is long and has many distro-specific paths.
 # The distro paths start after prefix and end with the font path,
@@ -37,7 +37,8 @@ autoreconf -i
 	--with-xkb-output=/var/lib/xkb \
 	--with-xkb-bin-directory=/usr/bin \
 	--with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/100dpi/:unscaled,/usr/share/fonts/X11/75dpi/:unscaled,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi,/usr/share/fonts/X11/75dpi,built-ins" \
-	--with-pic --without-dtrace --disable-static --disable-dri \
+	--with-pic --without-dtrace --disable-dri \
+        --disable-static \
 	--disable-xinerama --disable-xvfb --disable-xnest --disable-xorg \
 	--disable-dmx --disable-xwin --disable-xephyr --disable-kdrive \
 	--disable-config-hal --disable-config-udev \
