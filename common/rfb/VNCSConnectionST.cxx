@@ -1335,8 +1335,7 @@ void VNCSConnectionST::sendStats() {
 
   #define ten(x) (10 - x * 10.0f)
 
-  sprintf(buf, "CPU: %.1f/10 recent, %.1f/10 total\n"
-               "Net: %.1f/10 recent, %.1f/10 total",
+  sprintf(buf, "[ %.1f, %.1f, %.1f, %.1f ]",
                ten(cpu_recent), ten(cpu_total),
                ten(net_recent), ten(net_total));
 
