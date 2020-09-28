@@ -155,7 +155,9 @@ static void updateMaxVideoRes(uint16_t *x, uint16_t *y) {
 
 EncodeManager::EncodeManager(SConnection* conn_, EncCache *encCache_) : conn(conn_),
   dynamicQualityMin(-1), dynamicQualityOff(-1),
-  areaCur(0), videoDetected(false), videoTimer(this), encCache(encCache_)
+  areaCur(0), videoDetected(false), videoTimer(this),
+  maxEncodingTime(0), framesSinceEncPrint(0),
+  encCache(encCache_)
 {
   StatsVector::iterator iter;
 
@@ -1136,8 +1138,23 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
     checkWebpFallback(start);
   }
 
-  if (start)
+  if (start) {
     encodingTime = msSince(start);
+
+    if (vlog.getLevel() >= vlog.LEVEL_DEBUG) {
+      framesSinceEncPrint++;
+      if (maxEncodingTime < encodingTime)
+        maxEncodingTime = encodingTime;
+
+      if (framesSinceEncPrint >= rfb::Server::frameRate) {
+        vlog.info("Max encoding time during the last %u frames: %u ms (limit %u, near limit %.0f)",
+                  framesSinceEncPrint, maxEncodingTime, 1000/rfb::Server::frameRate,
+                  1000/rfb::Server::frameRate * 0.8f);
+        maxEncodingTime = 0;
+        framesSinceEncPrint = 0;
+      }
+    }
+  }
 
   if (webpTookTooLong)
     activeEncoders[encoderFullColour] = encoderTightJPEG;

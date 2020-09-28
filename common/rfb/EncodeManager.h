@@ -182,6 +182,7 @@ namespace rfb {
     unsigned webpBenchResult;
     bool webpTookTooLong;
     unsigned encodingTime;
+    unsigned maxEncodingTime, framesSinceEncPrint;
 
     EncCache *encCache;
 
