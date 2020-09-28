@@ -457,6 +457,10 @@ export default class RFB extends EventTargetMixin {
         RFB.messages.clientCutText(this._sock, text);
     }
 
+    requestBottleneckStats() {
+        RFB.messages.requestStats(this._sock);
+    }
+
     // ===== PRIVATE METHODS =====
 
     _connect() {
@@ -1504,6 +1508,9 @@ export default class RFB extends EventTargetMixin {
 
         console.log("Received KASM bottleneck stats:");
         console.log(text);
+        this.dispatchEvent(new CustomEvent(
+            "bottleneck_stats",
+            { detail: { text: text } }));
 
         return true;
     }
@@ -2127,6 +2134,8 @@ RFB.messages = {
     requestStats(sock) {
         const buff = sock._sQ;
         const offset = sock._sQlen;
+
+	if (buff == null) { return; }
 
         buff[offset] = 178; // msg-type
 
