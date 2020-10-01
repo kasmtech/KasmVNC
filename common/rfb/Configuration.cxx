@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <strings.h>
 
 #include <os/Mutex.h>
 
@@ -432,7 +433,8 @@ bool StringParameter::setParam(const char* v) {
   if (immutable) return true;
   if (!v)
     throw rfb::Exception("setParam(<null>) not allowed");
-  vlog.debug("set %s(String) to %s", getName(), v);
+  if (strcasecmp(getName(), "BasicAuth")) // don't log the auth info
+    vlog.debug("set %s(String) to %s", getName(), v);
   CharArray oldValue(value);
   value = strDup(v);
   return value != 0;
