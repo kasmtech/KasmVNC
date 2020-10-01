@@ -191,6 +191,11 @@ rfb::BoolParameter rfb::Server::printVideoArea
  "Print the detected video area % value.",
  false);
 
+rfb::StringParameter rfb::Server::kasmPasswordFile
+("KasmPasswordFile",
+ "Password file for BasicAuth, created with the kasmvncpasswd utility.",
+ "~/.kasmpasswd");
+
 static void bandwidthPreset() {
   rfb::Server::dynamicQualityMin.setParam(2);
   rfb::Server::dynamicQualityMax.setParam(9);

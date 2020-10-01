@@ -46,7 +46,7 @@ Xvnc_CPPFLAGS = $(XVNC_CPPFLAGS) -DKASMVNC -DNO_MODULE_EXTS \
 	-I$(top_srcdir)/include ${XSERVERLIBS_CFLAGS} -I$(includedir)
 
 Xvnc_LDADD = $(XVNC_LIBS) libvnccommon.la $(COMMON_LIBS) \
-	$(XSERVER_LIBS) $(XSERVER_SYS_LIBS) $(XVNC_SYS_LIBS) -lX11 -lwebp -lssl -lcrypto
+	$(XSERVER_LIBS) $(XSERVER_SYS_LIBS) $(XVNC_SYS_LIBS) -lX11 -lwebp -lssl -lcrypto -lcrypt
 
 Xvnc_LDFLAGS = $(LD_EXPORT_SYMBOLS_FLAG) -fopenmp
 

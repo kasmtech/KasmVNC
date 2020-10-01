@@ -67,6 +67,7 @@ typedef struct {
     const char *cert;
     const char *key;
     const char *basicauth;
+    const char *passwdfile;
     int ssl_only;
     const char *httpdir;
 } settings_t;

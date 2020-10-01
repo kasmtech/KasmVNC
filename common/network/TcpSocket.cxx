@@ -38,11 +38,13 @@
 #include <sys/un.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <wordexp.h>
 #include "websocket.h"
 
 #include <network/TcpSocket.h>
 #include <rfb/LogWriter.h>
 #include <rfb/Configuration.h>
+#include <rfb/ServerCore.h>
 
 #ifdef WIN32
 #include <os/winerrno.h>
@@ -484,6 +486,13 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   }
 
   listen(internalSocket);
+
+  settings.passwdfile = NULL;
+
+  wordexp_t wexp;
+  if (!wordexp(rfb::Server::kasmPasswordFile, &wexp, WRDE_NOCMD))
+    settings.passwdfile = strdup(wexp.we_wordv[0]);
+  wordfree(&wexp);
 
   settings.basicauth = basicauth;
   settings.cert = cert;

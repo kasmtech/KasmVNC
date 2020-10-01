@@ -117,6 +117,11 @@ the \fBvncpasswd\fP(1) utility.  The file is accessed each time a connection
 comes in, so it can be changed on the fly.
 .
 .TP
+.B \-KasmPasswordFile \fIpasswd-file\fP
+Password file for BasicAuth, created with the \fBkasmvncpasswd\fP utility.
+Default \fI~/.kasmpasswd\fP.
+.
+.TP
 .B \-AcceptCutText
 Accept clipboard updates from clients. Default is on.
 .
@@ -316,6 +321,7 @@ Require SSL for websocket connections. Default off, non-SSL allowed.
 .TP
 .B \-basicAuth \fIuser:pass\fP
 Username and password for websocket connections. Default empty, no authentication required.
+If the password is empty, read it from the \fB-KasmPasswordFile\fP.
 .
 .TP
 .B \-SecurityTypes \fIsec-types\fP

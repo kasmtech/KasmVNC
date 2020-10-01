@@ -878,7 +878,8 @@ ws_ctx_t *do_handshake(int sock) {
         usleep(10);
     }
 
-    if (strchr(settings.basicauth, ':')) {
+    const char *colon;
+    if ((colon = strchr(settings.basicauth, ':'))) {
         const char *hdr = strstr(handshake, "Authorization: Basic ");
         if (!hdr) {
             sprintf(response, "HTTP/1.1 401 Unauthorized\r\n"
@@ -901,7 +902,42 @@ ws_ctx_t *do_handshake(int sock) {
         tmp[len] = '\0';
         len = ws_b64_pton(tmp, response, 256);
 
-        if (len <= 0 || strcmp(settings.basicauth, response)) {
+        char authbuf[4096];
+        strncpy(authbuf, settings.basicauth, 4096);
+        authbuf[4095] = '\0';
+
+        // Do we need to read it from the file?
+        char *resppw = strchr(response, ':');
+        if (resppw && *resppw)
+            resppw++;
+        if (!colon[1] && settings.passwdfile) {
+            if (resppw && *resppw) {
+                char pwbuf[4096];
+                FILE *f = fopen(settings.passwdfile, "r");
+                if (f) {
+                    const unsigned len = fread(pwbuf, 1, 4096, f);
+                    fclose(f);
+                    pwbuf[4095] = '\0';
+                    if (len < 4096)
+                        pwbuf[len] = '\0';
+
+                    snprintf(authbuf, 4096, "%s%s", settings.basicauth, pwbuf);
+                    authbuf[4095] = '\0';
+
+                    const char *encrypted = crypt(resppw, "$5$kasm$");
+                    *resppw = '\0';
+
+                    snprintf(pwbuf, 4096, "%s%s", response, encrypted);
+                    pwbuf[4095] = '\0';
+                    strcpy(response, pwbuf);
+                }
+            } else {
+                // Client tried an empty password, just fail them
+                response[0] = '\0';
+            }
+        }
+
+        if (len <= 0 || strcmp(authbuf, response)) {
             sprintf(response, "HTTP/1.1 401 Forbidden\r\n"
                               "\r\n");
             ws_send(ws_ctx, response, strlen(response));
