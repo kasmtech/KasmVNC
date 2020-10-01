@@ -1259,6 +1259,17 @@ void VNCSConnectionST::writeDataUpdate()
     if (ms >= limit) {
         bstats[BS_CPU_SLOW].push_back(lastRealUpdate);
         bstats_total[BS_CPU_SLOW]++;
+
+        // If it was several frames' worth, add several so as to react faster
+        int i = ms / limit;
+        i--;
+        for (; i > 0; i--) {
+            bstats[BS_CPU_SLOW].push_back(lastRealUpdate);
+            bstats_total[BS_CPU_SLOW]++;
+
+            bstats[BS_FRAME].push_back(lastRealUpdate);
+            bstats_total[BS_FRAME]++;
+        }
     } else if (ms >= limit * 0.8f) {
         bstats[BS_CPU_CLOSE].push_back(lastRealUpdate);
         bstats_total[BS_CPU_CLOSE]++;
