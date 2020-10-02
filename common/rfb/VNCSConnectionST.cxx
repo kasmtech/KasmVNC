@@ -1303,10 +1303,12 @@ void VNCSConnectionST::screenLayoutChange(rdr::U16 reason)
                                      cp.screenLayout);
 }
 
+static const unsigned recentSecs = 10;
+
 static void pruneStatList(std::list<struct timeval> &list, const struct timeval &now) {
   std::list<struct timeval>::iterator it;
   for (it = list.begin(); it != list.end(); ) {
-    if ((*it).tv_sec + 60 < now.tv_sec)
+    if ((*it).tv_sec + recentSecs < now.tv_sec)
       it = list.erase(it);
     else
       it++;
