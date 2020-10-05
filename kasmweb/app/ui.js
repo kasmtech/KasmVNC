@@ -1006,7 +1006,8 @@ const UI = {
 
     //recieved bottleneck stats
     bottleneckStatsRecieve(e) {
-        document.getElementById("noVNC_connection_stats").innerHTML = e.detail.text;
+        var obj = JSON.parse(e.detail.text);
+        document.getElementById("noVNC_connection_stats").innerHTML = "CPU: " + obj[0] + "/" + obj[1] + " | Network: " + obj[2] + "/" + obj[3];
         console.log(e.detail.text);
     },
 

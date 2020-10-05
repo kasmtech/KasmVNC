@@ -45,6 +45,8 @@ $geometry = "1024x768";
 
 $vncUserDir = "$ENV{HOME}/.vnc";
 $vncUserConfig = "$vncUserDir/config";
+$vncUserName = `id -u -n`;
+$vncUserName =~ s/^\s+|\s+$//g;
 
 $vncSystemConfigDir = "/etc/kasmvnc";
 $vncSystemConfigDefaultsFile = "$vncSystemConfigDir/vncserver-config-defaults";
@@ -89,7 +91,8 @@ $defaultConfig
        "# desktop=sandbox\n".
        "# geometry=2000x1200\n".
        "# localhost\n".
-       "# alwaysshared\n");
+       "# alwaysshared\n".
+       "username=$vncUserName");
 
 chop($host = `uname -n`);
 
@@ -237,46 +240,50 @@ $passwordArgSpecified = 0;
 @vncAuthStrings = ("vncauth", "tlsvnc", "x509vnc");
 
 # ...first we check our configuration files' settings
-if ($config{'securitytypes'}) {
-  $securityTypeArgSpecified = 1;
-  foreach $arg2 (split(',', $config{'securitytypes'})) {
-    if (grep {$_ eq lc($arg2)} @vncAuthStrings) {
-      $vncAuthEnabled = 1;
-    }
-  }
-}
+#if ($config{'securitytypes'}) {
+#  $securityTypeArgSpecified = 1;
+#  foreach $arg2 (split(',', $config{'securitytypes'})) {
+#    if (grep {$_ eq lc($arg2)} @vncAuthStrings) {
+#      $vncAuthEnabled = 1;
+#    }
+#  }
+#}
 
 # ...and finally we check CLI args, which in the case of the topic at
 # hand (VNC auth or not), override anything found in configuration files
 # (even so-called "mandatory" settings).
-for ($i = 0; $i < @ARGV; ++$i) {
-    # -SecurityTypes can be followed by a space or "="
-    my @splitargs = split('=', $ARGV[$i]);
-    if (@splitargs <= 1 && $i < @ARGV - 1) {
-        push(@splitargs, $ARGV[$i + 1]);
-    }
-    if (lc(@splitargs[0]) eq "-securitytypes") {
-        if (@splitargs > 1) {
-            $securityTypeArgSpecified = 1;
-        }
-        foreach $arg2 (split(',', @splitargs[1])) {
-            if (grep {$_ eq lc($arg2)} @vncAuthStrings) {
-                $vncAuthEnabled = 1;
-            }
-        }
-    }
-    if ((lc(@splitargs[0]) eq "-password")
-     || (lc(@splitargs[0]) eq "-passwordfile"
-     || (lc(@splitargs[0]) eq "-rfbauth"))) {
-        $passwordArgSpecified = 1;
-    }
-}
+#for ($i = 0; $i < @ARGV; ++$i) {
+#    # -SecurityTypes can be followed by a space or "="
+#    my @splitargs = split('=', $ARGV[$i]);
+#    if (@splitargs <= 1 && $i < @ARGV - 1) {
+#        push(@splitargs, $ARGV[$i + 1]);
+#    }
+#    if (lc(@splitargs[0]) eq "-securitytypes") {
+#        if (@splitargs > 1) {
+#            $securityTypeArgSpecified = 1;
+#        }
+#        foreach $arg2 (split(',', @splitargs[1])) {
+#            if (grep {$_ eq lc($arg2)} @vncAuthStrings) {
+#                $vncAuthEnabled = 1;
+#            }
+#        }
+#    }
+#    if ((lc(@splitargs[0]) eq "-password")
+#     || (lc(@splitargs[0]) eq "-passwordfile"
+#     || (lc(@splitargs[0]) eq "-rfbauth"))) {
+#        $passwordArgSpecified = 1;
+#    }
+#}
 
-if ((!$securityTypeArgSpecified || $vncAuthEnabled) && !$passwordArgSpecified) {
-    ($z,$z,$mode) = stat("$vncUserDir/passwd");
-    if (!(-e "$vncUserDir/passwd") || ($mode & 077)) {
+# Disable vnc auth, kasmvnc uses https basic auth
+system("echo '' | ".$exedir."vncpasswd -f > $vncUserDir/passwd");
+
+$kasmAuthEnabled = 1;
+
+if ($kasmAuthEnabled) {
+    if (!(-e "$ENV{HOME}/.kasmpasswd")) {
         warn "\nYou will require a password to access your desktops.\n\n";
-        system($exedir."vncpasswd -q $vncUserDir/passwd");
+        system($exedir."kasmvncpasswd $ENV{HOME}/.kasmpasswd");
         if (($? >> 8) != 0) {
             exit 1;
         }
@@ -367,7 +374,8 @@ unless (kill 0, `cat $pidFile`) {
     die "\n";
 }
 
-warn "\nNew '$desktopName' desktop is $host:$displayNumber\n\n";
+warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
+warn "\nUsername: $vncUserName\n\n";
 
 # Create the user's xstartup script if necessary.
 if (! $skipxstartup) {
@@ -456,7 +464,13 @@ sub LoadConfig {
           if ($warnoverride && $config{$k}) {
             print("Warning: $configFile is overriding previously defined '$k' to be '$v'\n");
           }
-          $config{$k} = $v;
+	  # change username option to basicAuth and add colon as required by Xvnc, password will be taken from file
+	  if ($k = "username") {
+            $config{"basicauth"} = "$v:";
+	    $vncUserName = $v;
+	  } else {
+            $config{$k} = $v;
+          }
         } elsif ($_ =~ m/^\s*(\S+)/) {
           # We can't reasonably warn on override of toggles (e.g. AlwaysShared)
           # because it would get crazy to do so. We'd have to check if the
