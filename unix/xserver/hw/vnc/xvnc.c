@@ -596,7 +596,7 @@ ddxProcessArgument(int argc, char *argv[], int i)
 		    if (displayNumFree(displayNum)) break;
 		
 		if (displayNum == 100)
-		    FatalError("Xvnc error: no free display number for -inetd");
+		    FatalError("Xvnc error: no free display number for -inetd\n");
 	    }
 	    
 	    display = displayNumStr;
@@ -637,6 +637,20 @@ ddxProcessArgument(int argc, char *argv[], int i)
     if (!strcmp(argv[i], "-showconfig") || !strcmp(argv[i], "-version")) {
         vncPrintBanner();
         exit(0);
+    }
+
+    /* We need to resolve an ambiguity for booleans */
+    if (argv[i][0] == '-' && i+1 < argc &&
+        vncIsParamBool(&argv[i][1])) {
+        if ((strcasecmp(argv[i+1], "0") == 0) ||
+            (strcasecmp(argv[i+1], "1") == 0) ||
+            (strcasecmp(argv[i+1], "true") == 0) ||
+            (strcasecmp(argv[i+1], "false") == 0) ||
+            (strcasecmp(argv[i+1], "yes") == 0) ||
+            (strcasecmp(argv[i+1], "no") == 0)) {
+            vncSetParam(&argv[i][1], argv[i+1]);
+            return 2;
+        }
     }
 
     if (vncSetParamSimple(argv[i]))
@@ -1003,8 +1017,8 @@ xf86SetRootClip (ScreenPtr pScreen, Bool enable)
 	    {
 		RegionPtr	borderVisible;
 
-		borderVisible = REGION_CREATE(pScreen, NullBox, 1);
-		REGION_SUBTRACT(pScreen, borderVisible,
+		borderVisible = RegionCreate(NullBox, 1);
+		RegionSubtract(borderVisible,
 				&pWin->borderClip, &pWin->winSize);
 		pWin->valdata->before.borderVisible = borderVisible;
 	    }
@@ -1013,7 +1027,7 @@ xf86SetRootClip (ScreenPtr pScreen, Bool enable)
     }
     
     /*
-     * Use REGION_BREAK to avoid optimizations in ValidateTree
+     * Use RegionBreak to avoid optimizations in ValidateTree
      * that assume the root borderClip can't change well, normally
      * it doesn't...)
      */
@@ -1023,18 +1037,18 @@ xf86SetRootClip (ScreenPtr pScreen, Bool enable)
 	box.y1 = 0;
 	box.x2 = pScreen->width;
 	box.y2 = pScreen->height;
-	REGION_INIT (pScreen, &pWin->winSize, &box, 1);
-	REGION_INIT (pScreen, &pWin->borderSize, &box, 1);
+	RegionInit(&pWin->winSize, &box, 1);
+	RegionInit(&pWin->borderSize, &box, 1);
 	if (WasViewable)
-	    REGION_RESET(pScreen, &pWin->borderClip, &box);
+	    RegionReset(&pWin->borderClip, &box);
 	pWin->drawable.width = pScreen->width;
 	pWin->drawable.height = pScreen->height;
-        REGION_BREAK (pWin->drawable.pScreen, &pWin->clipList);
+        RegionBreak(&pWin->clipList);
     }
     else
     {
-	REGION_EMPTY(pScreen, &pWin->borderClip);
-	REGION_BREAK (pWin->drawable.pScreen, &pWin->clipList);
+	RegionEmpty(&pWin->borderClip);
+	RegionBreak(&pWin->clipList);
     }
     
     ResizeChildrenWinSize (pWin, 0, 0, 0, 0);
@@ -1577,16 +1591,6 @@ vfbScreenInit(ScreenPtr pScreen, int argc, char **argv)
     miSetPixmapDepths();
 
     switch (pvfb->fb.depth) {
-    case 8:
-	miSetVisualTypesAndMasks (8,
-				  ((1 << StaticGray) |
-				  (1 << GrayScale) |
-				  (1 << StaticColor) |
-				  (1 << PseudoColor) |
-				  (1 << TrueColor) |
-				  (1 << DirectColor)),
-				  8, PseudoColor, 0, 0, 0);
-	break;
     case 16:
 	miSetVisualTypesAndMasks (16,
 				  ((1 << TrueColor) |
@@ -1804,7 +1808,7 @@ InitOutput(ScreenInfo *scrInfo, int argc, char **argv)
     {
 	if (-1 == AddScreen(vfbScreenInit, argc, argv))
 	{
-	    FatalError("Couldn't add screen %d", i);
+	    FatalError("Couldn't add screen %d\n", i);
 	}
     }
 

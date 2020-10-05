@@ -53,13 +53,17 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
     fenceDataLen(0), fenceData(NULL), congestionTimer(this),
     losslessTimer(this), kbdLogTimer(this), server(server_), updates(false),
     updateRenderedCursor(false), removeRenderedCursor(false),
-    continuousUpdates(false), encodeManager(this, &server_->encCache), pointerEventTime(0),
+    continuousUpdates(false), encodeManager(this, &server_->encCache),
+    pointerEventTime(0),
     clientHasCursor(false),
     accessRights(AccessDefault), startTime(time(0))
 {
   setStreams(&sock->inStream(), &sock->outStream());
   peerEndpoint.buf = sock->getPeerEndpoint();
   VNCServerST::connectionsLog.write(1,"accepted: %s", peerEndpoint.buf);
+
+  memset(bstats_total, 0, sizeof(bstats_total));
+  gettimeofday(&connStart, NULL);
 
   // Configure the socket
   setSocketTimeouts();
@@ -1037,6 +1041,14 @@ bool VNCSConnectionST::isCongested()
   if (eta >= 0)
     congestionTimer.start(eta);
 
+  if (eta > 1000 / rfb::Server::frameRate) {
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
+    bstats[BS_NET_SLOW].push_back(now);
+    bstats_total[BS_NET_SLOW]++;
+  }
+
   return true;
 }
 
@@ -1083,6 +1095,11 @@ void VNCSConnectionST::writeFramebufferUpdate()
   sock->cork(false);
 
   congestion.updatePosition(sock->outStream().length());
+
+  struct timeval now;
+  gettimeofday(&now, NULL);
+  bstats[BS_FRAME].push_back(now);
+  bstats_total[BS_FRAME]++;
 }
 
 void VNCSConnectionST::writeNoDataUpdate()
@@ -1236,6 +1253,27 @@ void VNCSConnectionST::writeDataUpdate()
     copypassed.clear();
     gettimeofday(&lastRealUpdate, NULL);
     losslessTimer.start(losslessThreshold);
+
+    const unsigned ms = encodeManager.getEncodingTime();
+    const unsigned limit = 1000 / rfb::Server::frameRate;
+    if (ms >= limit) {
+        bstats[BS_CPU_SLOW].push_back(lastRealUpdate);
+        bstats_total[BS_CPU_SLOW]++;
+
+        // If it was several frames' worth, add several so as to react faster
+        int i = ms / limit;
+        i--;
+        for (; i > 0; i--) {
+            bstats[BS_CPU_SLOW].push_back(lastRealUpdate);
+            bstats_total[BS_CPU_SLOW]++;
+
+            bstats[BS_FRAME].push_back(lastRealUpdate);
+            bstats_total[BS_FRAME]++;
+        }
+    } else if (ms >= limit * 0.8f) {
+        bstats[BS_CPU_CLOSE].push_back(lastRealUpdate);
+        bstats_total[BS_CPU_CLOSE]++;
+    }
   } else {
     encodeManager.writeLosslessRefresh(req, server->getPixelBuffer(),
                                        cursor, maxUpdateSize);
@@ -1265,6 +1303,60 @@ void VNCSConnectionST::screenLayoutChange(rdr::U16 reason)
                                      cp.screenLayout);
 }
 
+static const unsigned recentSecs = 10;
+
+static void pruneStatList(std::list<struct timeval> &list, const struct timeval &now) {
+  std::list<struct timeval>::iterator it;
+  for (it = list.begin(); it != list.end(); ) {
+    if ((*it).tv_sec + recentSecs < now.tv_sec)
+      it = list.erase(it);
+    else
+      it++;
+  }
+}
+
+void VNCSConnectionST::sendStats() {
+  char buf[1024];
+  struct timeval now;
+
+  // Prune too old stats from the recent lists
+  gettimeofday(&now, NULL);
+
+  pruneStatList(bstats[BS_CPU_CLOSE], now);
+  pruneStatList(bstats[BS_CPU_SLOW], now);
+  pruneStatList(bstats[BS_NET_SLOW], now);
+  pruneStatList(bstats[BS_FRAME], now);
+
+  const unsigned minuteframes = bstats[BS_FRAME].size();
+
+  // Calculate stats
+  float cpu_recent = bstats[BS_CPU_SLOW].size() + bstats[BS_CPU_CLOSE].size() * 0.2f;
+  cpu_recent /= minuteframes;
+
+  float cpu_total = bstats_total[BS_CPU_SLOW] + bstats_total[BS_CPU_CLOSE] * 0.2f;
+  cpu_total /= bstats_total[BS_FRAME];
+
+  float net_recent = bstats[BS_NET_SLOW].size();
+  net_recent /= minuteframes;
+  if (net_recent > 1)
+    net_recent = 1;
+
+  float net_total = bstats_total[BS_NET_SLOW];
+  net_total /= bstats_total[BS_FRAME];
+  if (net_total > 1)
+    net_total = 1;
+
+  #define ten(x) (10 - x * 10.0f)
+
+  sprintf(buf, "[ %.1f, %.1f, %.1f, %.1f ]",
+               ten(cpu_recent), ten(cpu_total),
+               ten(net_recent), ten(net_total));
+
+  #undef ten
+
+  vlog.info("Sending client stats:\n%s\n", buf);
+  writer()->writeStats(buf, strlen(buf));
+}
 
 // setCursor() is called whenever the cursor has changed shape or pixel format.
 // If the client supports local cursor then it will arrange for the cursor to

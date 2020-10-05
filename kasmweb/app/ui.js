@@ -174,6 +174,7 @@ const UI = {
         UI.initSetting('prefer_local_cursor', true);
         UI.initSetting('enable_webp', true);
         UI.initSetting('toggle_control_panel', false);
+        UI.initSetting('enable_perf_stats', false);
 
         UI.setupSettingLabels();
     },
@@ -349,6 +350,8 @@ const UI = {
         document.getElementById("noVNC_settings_button")
             .addEventListener('click', UI.toggleSettingsPanel);
 
+        document.getElementById("noVNC_setting_enable_perf_stats").addEventListener('click', UI.showStats);
+
         UI.addSettingChangeHandler('encrypt');
         UI.addSettingChangeHandler('resize');
         UI.addSettingChangeHandler('resize', UI.applyResizeMode);
@@ -368,6 +371,10 @@ const UI = {
         UI.addSettingChangeHandler('logging', UI.updateLogging);
         UI.addSettingChangeHandler('reconnect');
         UI.addSettingChangeHandler('reconnect_delay');
+        UI.addSettingChangeHandler('enable_webp');
+        UI.addSettingChangeHandler('clipboard_seamless');
+        UI.addSettingChangeHandler('clipboard_up');
+        UI.addSettingChangeHandler('clipboard_down');
     },
 
     addFullscreenHandlers() {
@@ -448,6 +455,24 @@ const UI = {
         // State change closes the password dialog
         document.getElementById('noVNC_password_dlg')
             .classList.remove('noVNC_open');
+    },
+
+    showStats() {
+        UI.saveSetting('enable_perf_stats');
+
+        let enable_stats = UI.getSetting('enable_perf_stats');
+        if (enable_stats === true && UI.statsInterval == undefined) {
+            document.getElementById("noVNC_connection_stats").style.visibility = "visible";
+            UI.statsInterval = setInterval(function() {
+                if (UI.rfb !== undefined) {
+                    UI.rfb.requestBottleneckStats();
+                }
+            }  , 5000);
+        } else {
+            document.getElementById("noVNC_connection_stats").style.visibility = "hidden";
+            UI.statsInterval = null;
+        }
+        
     },
 
     showStatus(text, status_type, time) {
@@ -979,6 +1004,13 @@ const UI = {
         }
     },
 
+    //recieved bottleneck stats
+    bottleneckStatsRecieve(e) {
+        var obj = JSON.parse(e.detail.text);
+        document.getElementById("noVNC_connection_stats").innerHTML = "CPU: " + obj[0] + "/" + obj[1] + " | Network: " + obj[2] + "/" + obj[3];
+        console.log(e.detail.text);
+    },
+
     popupMessage: function(msg, secs) {
         if (!secs){
             secs = 500;
@@ -1208,6 +1240,7 @@ const UI = {
         UI.rfb.addEventListener("securityfailure", UI.securityFailed);
         UI.rfb.addEventListener("capabilities", UI.updatePowerButton);
         UI.rfb.addEventListener("clipboard", UI.clipboardReceive);
+        UI.rfb.addEventListener("bottleneck_stats", UI.bottleneckStatsRecieve);
 
         document.addEventListener('mouseenter', UI.enterVNC);
         document.addEventListener('mouseleave', UI.leaveVNC);
@@ -1346,6 +1379,7 @@ const UI = {
             msg = _("Connected (unencrypted) to ") + UI.desktopName;
         }
         UI.showStatus(msg);
+        UI.showStats();
         UI.updateVisualState('connected');
 
         // Do this last because it can only be used on rendered elements

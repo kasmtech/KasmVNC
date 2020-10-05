@@ -37,15 +37,13 @@ Specify the size of the desktop to be created. Default is 1024x768.
 .TP
 .B \-depth \fIdepth\fP
 Specify the pixel depth in bits of the desktop to be created. Default is 24,
-other possible values are 8, 15, and 16 - anything else is likely to cause
-strange behaviour by applications.
+other possible values are 16 and 32. Anything else is likely to cause strange
+behaviour by applications and may prevent the server from starting at all.
 .
 .TP
 .B \-pixelformat \fIformat\fP
-Specify pixel format for server to use (BGRnnn or RGBnnn).  The default for
-depth 8 is BGR233 (meaning the most significant two bits represent blue, the
-next three green, and the least significant three represent red), the default
-for depth 16 is RGB565 and for depth 24 is RGB888.
+Specify pixel format for server to use (BGRnnn or RGBnnn). The default for
+depth 16 is RGB565 and for depth 24 and 32 is RGB888.
 .
 .TP
 .B \-interface \fIIP address\fP
@@ -117,6 +115,11 @@ Password file for VNC authentication.  There is no default, you should
 specify the password file explicitly.  Password file should be created with
 the \fBvncpasswd\fP(1) utility.  The file is accessed each time a connection
 comes in, so it can be changed on the fly.
+.
+.TP
+.B \-KasmPasswordFile \fIpasswd-file\fP
+Password file for BasicAuth, created with the \fBkasmvncpasswd\fP utility.
+Default \fI~/.kasmpasswd\fP.
 .
 .TP
 .B \-AcceptCutText
@@ -318,6 +321,7 @@ Require SSL for websocket connections. Default off, non-SSL allowed.
 .TP
 .B \-basicAuth \fIuser:pass\fP
 Username and password for websocket connections. Default empty, no authentication required.
+If the password is empty, read it from the \fB-KasmPasswordFile\fP.
 .
 .TP
 .B \-SecurityTypes \fIsec-types\fP

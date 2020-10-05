@@ -22,7 +22,6 @@ set(RFB_SOURCES
   EncCache.cxx
   EncodeManager.cxx
   Encoder.cxx
-  HTTPServer.cxx
   HextileDecoder.cxx
   HextileEncoder.cxx
   JpegCompressor.cxx

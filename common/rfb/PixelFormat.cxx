@@ -205,6 +205,12 @@ bool PixelFormat::is888(void) const
     return false;
   if (blueMax != 255)
     return false;
+  if ((redShift & 0x7) != 0)
+    return false;
+  if ((greenShift & 0x7) != 0)
+    return false;
+  if ((blueShift & 0x7) != 0)
+    return false;
 
   return true;
 }
@@ -678,7 +684,14 @@ bool PixelFormat::isSane(void)
     return false;
 
   totalBits = bits(redMax) + bits(greenMax) + bits(blueMax);
-  if (totalBits > bpp)
+  if (totalBits > depth)
+    return false;
+
+  if ((bits(redMax) + redShift) > bpp)
+    return false;
+  if ((bits(greenMax) + greenShift) > bpp)
+    return false;
+  if ((bits(blueMax) + blueShift) > bpp)
     return false;
 
   if (((redMax << redShift) & (greenMax << greenShift)) != 0)

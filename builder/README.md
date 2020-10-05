@@ -6,7 +6,7 @@ Docker CE
     sudo docker build -t kasmvncbuilder:18.04 -f builder/dockerfile.build .
 
 # run the builder
-    sudo docker run -v /tmp:/build  kasmvncbuilder:18.04
+    sudo docker run -v /tmp:/build --rm  kasmvncbuilder:18.04
 
 # tar will be on /tmp of host
     cp /tmp/kasmvnc*.tar.gz builder/

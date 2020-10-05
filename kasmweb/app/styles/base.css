@@ -275,6 +275,20 @@ select:active {
 }
 
 /* ----------------------------------------
+ * Connection Stats
+ * ----------------------------------------
+ */
+#noVNC_connection_stats {
+  top: 0;
+  left: auto;
+  right: 0;
+  position: fixed;
+  background: #9fa5a2d4;
+  color: #00ffa2d4;
+  visibility: hidden;
+}
+
+/* ----------------------------------------
  * Control Bar
  * ----------------------------------------
  */

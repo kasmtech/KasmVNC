@@ -74,6 +74,9 @@ void SMsgReader::readMsg()
   case msgTypeClientFence:
     readFence();
     break;
+  case msgTypeRequestStats:
+    readRequestStats();
+    break;
   case msgTypeKeyEvent:
     readKeyEvent();
     break;
@@ -234,6 +237,12 @@ void SMsgReader::readClientCutText()
   ca.buf[len] = 0;
   is->readBytes(ca.buf, len);
   handler->clientCutText(ca.buf, len);
+}
+
+void SMsgReader::readRequestStats()
+{
+  is->skip(3);
+  handler->sendStats();
 }
 
 void SMsgReader::readQEMUMessage()

@@ -178,6 +178,8 @@ namespace rfb {
     virtual void supportsContinuousUpdates();
     virtual void supportsLEDState();
 
+    virtual void sendStats();
+
     // setAccessRights() allows a security package to limit the access rights
     // of a VNCSConnectioST to the server.  These access rights are applied
     // such that the actual rights granted are the minimum of the server's
@@ -234,6 +236,18 @@ namespace rfb {
     EncodeManager encodeManager;
 
     std::map<rdr::U32, rdr::U32> pressedKeys;
+
+    enum {
+        BS_CPU_CLOSE,
+        BS_CPU_SLOW,
+        BS_NET_SLOW,
+        BS_FRAME,
+
+        BS_NUM
+    };
+    std::list<struct timeval> bstats[BS_NUM]; // Bottleneck stats
+    rdr::U64 bstats_total[BS_NUM];
+    struct timeval connStart;
 
     time_t lastEventTime;
     time_t pointerEventTime;

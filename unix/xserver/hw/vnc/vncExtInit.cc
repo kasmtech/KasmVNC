@@ -155,10 +155,10 @@ void vncExtensionInit(void)
   vncExtGeneration = vncGetServerGeneration();
 
   if (vncGetScreenCount() > MAXSCREENS)
-    vncFatalError("vncExtensionInit: too many screens");
+    vncFatalError("vncExtensionInit: too many screens\n");
 
   if (sizeof(ShortRect) != sizeof(struct UpdateRect))
-    vncFatalError("vncExtensionInit: Incompatible ShortRect size");
+    vncFatalError("vncExtensionInit: Incompatible ShortRect size\n");
 
   vncAddExtension();
 
@@ -193,7 +193,6 @@ void vncExtensionInit(void)
 
       if (!desktop[scr]) {
         std::list<network::SocketListener*> listeners;
-        std::list<network::SocketListener*> httpListeners;
         if (scr == 0 && vncInetdSock != -1) {
           if (network::isSocketListening(vncInetdSock))
           {
@@ -247,7 +246,6 @@ void vncExtensionInit(void)
         vncSetGlueContext(scr);
         desktop[scr] = new XserverDesktop(scr,
                                           listeners,
-                                          httpListeners,
                                           desktopNameStr.buf,
                                           pf,
                                           vncGetScreenWidth(),
@@ -266,7 +264,7 @@ void vncExtensionInit(void)
       vncHooksInit(scr);
     }
   } catch (rdr::Exception& e) {
-    vncFatalError("vncExtInit: %s",e.str());
+    vncFatalError("vncExtInit: %s\n",e.str());
   }
 
   vncRegisterBlockHandlers();
@@ -280,7 +278,7 @@ void vncExtensionClose(void)
       desktop[scr] = NULL;
     }
   } catch (rdr::Exception& e) {
-    vncFatalError("vncExtInit: %s",e.str());
+    vncFatalError("vncExtInit: %s\n",e.str());
   }
 }
 
@@ -432,8 +430,13 @@ void vncPostScreenResize(int scrIdx, int success, int width, int height)
 {
   if (success) {
     // Let the RFB core know of the new dimensions and framebuffer
-    desktop[scrIdx]->setFramebuffer(width, height,
-                                    vncFbptr[scrIdx], vncFbstride[scrIdx]);
+    try {
+      desktop[scrIdx]->setFramebuffer(width, height,
+                                      vncFbptr[scrIdx],
+                                      vncFbstride[scrIdx]);
+    } catch (rdr::Exception& e) {
+      vncFatalError("vncPostScreenResize: %s\n", e.str());
+    }
   }
 
   desktop[scrIdx]->unblockUpdates();
@@ -449,7 +452,7 @@ void vncRefreshScreenLayout(int scrIdx)
   try {
     desktop[scrIdx]->refreshScreenLayout();
   } catch (rdr::Exception& e) {
-    vncFatalError("%s", e.str());
+    vncFatalError("vncRefreshScreenLayout: %s\n", e.str());
   }
 }
 

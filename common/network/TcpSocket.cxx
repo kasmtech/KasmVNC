@@ -38,11 +38,13 @@
 #include <sys/un.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <wordexp.h>
 #include "websocket.h"
 
 #include <network/TcpSocket.h>
 #include <rfb/LogWriter.h>
 #include <rfb/Configuration.h>
+#include <rfb/ServerCore.h>
 
 #ifdef WIN32
 #include <os/winerrno.h>
@@ -151,8 +153,7 @@ TcpSocket::TcpSocket(const char *host, int port)
   hints.ai_next = NULL;
 
   if ((result = getaddrinfo(host, NULL, &hints, &ai)) != 0) {
-    throw Exception("unable to resolve host by name: %s",
-                    gai_strerror(result));
+    throw GAIException("unable to resolve host by name", result);
   }
 
   sock = -1;
@@ -220,7 +221,7 @@ TcpSocket::TcpSocket(const char *host, int port)
     if (err == 0)
       throw Exception("No useful address for host");
     else
-      throw SocketException("unable connect to socket", err);
+      throw SocketException("unable to connect to socket", err);
   }
 
   // Take proper ownership of the socket
@@ -486,6 +487,13 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
 
   listen(internalSocket);
 
+  settings.passwdfile = NULL;
+
+  wordexp_t wexp;
+  if (!wordexp(rfb::Server::kasmPasswordFile, &wexp, WRDE_NOCMD))
+    settings.passwdfile = strdup(wexp.we_wordv[0]);
+  wordfree(&wexp);
+
   settings.basicauth = basicauth;
   settings.cert = cert;
   settings.key = "";
@@ -603,8 +611,7 @@ void network::createTcpListeners(std::list<SocketListener*> *listeners,
   snprintf (service, sizeof (service) - 1, "%d", port);
   service[sizeof (service) - 1] = '\0';
   if ((result = getaddrinfo(addr, service, &hints, &ai)) != 0)
-    throw rdr::Exception("unable to resolve listening address: %s",
-                         gai_strerror(result));
+    throw GAIException("unable to resolve listening address", result);
 
   try {
     createTcpListeners(listeners, ai);
@@ -612,6 +619,8 @@ void network::createTcpListeners(std::list<SocketListener*> *listeners,
     freeaddrinfo(ai);
     throw;
   }
+
+  freeaddrinfo(ai);
 }
 
 void network::createTcpListeners(std::list<SocketListener*> *listeners,
@@ -913,8 +922,7 @@ TcpFilter::Pattern TcpFilter::parsePattern(const char* p) {
     }
 
     if ((result = getaddrinfo (p, NULL, &hints, &ai)) != 0) {
-      throw Exception("unable to resolve host by name: %s",
-                      gai_strerror(result));
+      throw GAIException("unable to resolve host by name", result);
     }
 
     memcpy (&pattern.address.u.sa, ai->ai_addr, ai->ai_addrlen);

@@ -54,6 +54,8 @@ namespace rfb {
     virtual void enableContinuousUpdates(bool enable,
                                          int x, int y, int w, int h) = 0;
 
+    virtual void sendStats() = 0;
+
     // InputHandler interface
     // The InputHandler methods will be called for the corresponding messages.
 

@@ -31,6 +31,7 @@
 #include <rfb/SMsgWriter.h>
 #include <rfb/UpdateTracker.h>
 #include <rfb/LogWriter.h>
+#include <rfb/Exception.h>
 
 #include <rfb/RawEncoder.h>
 #include <rfb/RREEncoder.h>
@@ -154,7 +155,9 @@ static void updateMaxVideoRes(uint16_t *x, uint16_t *y) {
 
 EncodeManager::EncodeManager(SConnection* conn_, EncCache *encCache_) : conn(conn_),
   dynamicQualityMin(-1), dynamicQualityOff(-1),
-  areaCur(0), videoDetected(false), videoTimer(this), encCache(encCache_)
+  areaCur(0), videoDetected(false), videoTimer(this),
+  maxEncodingTime(0), framesSinceEncPrint(0),
+  encCache(encCache_)
 {
   StatsVector::iterator iter;
 
@@ -355,9 +358,10 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
 
     changed = changed_;
 
+    gettimeofday(&start, NULL);
+
     if (allowLossy && activeEncoders[encoderFullColour] == encoderTightWEBP) {
         const unsigned rate = 1024 * 1000 / rfb::Server::frameRate;
-        gettimeofday(&start, NULL);
 
         screenArea = pb->getRect().width() * pb->getRect().height();
         screenArea *= 1024;
@@ -400,8 +404,7 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
       writeSolidRects(&changed, pb);
 
     writeRects(changed, pb,
-               allowLossy && activeEncoders[encoderFullColour] == encoderTightWEBP ?
-               &start : NULL, true);
+               &start, true);
     if (!videoDetected) // In case detection happened between the calls
       writeRects(cursorRegion, renderedCursor);
 
@@ -1135,6 +1138,24 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
     checkWebpFallback(start);
   }
 
+  if (start) {
+    encodingTime = msSince(start);
+
+    if (vlog.getLevel() >= vlog.LEVEL_DEBUG) {
+      framesSinceEncPrint++;
+      if (maxEncodingTime < encodingTime)
+        maxEncodingTime = encodingTime;
+
+      if (framesSinceEncPrint >= rfb::Server::frameRate) {
+        vlog.info("Max encoding time during the last %u frames: %u ms (limit %u, near limit %.0f)",
+                  framesSinceEncPrint, maxEncodingTime, 1000/rfb::Server::frameRate,
+                  1000/rfb::Server::frameRate * 0.8f);
+        maxEncodingTime = 0;
+        framesSinceEncPrint = 0;
+      }
+    }
+  }
+
   if (webpTookTooLong)
     activeEncoders[encoderFullColour] = encoderTightJPEG;
 
@@ -1492,6 +1513,11 @@ void EncodeManager::OffsetPixelBuffer::update(const PixelFormat& pf,
   // Forced cast. We never write anything though, so it should be safe.
   data = (rdr::U8*)data_;
   stride = stride_;
+}
+
+rdr::U8* EncodeManager::OffsetPixelBuffer::getBufferRW(const Rect& r, int* stride)
+{
+  throw rfb::Exception("Invalid write attempt to OffsetPixelBuffer");
 }
 
 // Preprocessor generated, optimised methods

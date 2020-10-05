@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <strings.h>
 
 #include <os/Mutex.h>
 
@@ -432,7 +433,8 @@ bool StringParameter::setParam(const char* v) {
   if (immutable) return true;
   if (!v)
     throw rfb::Exception("setParam(<null>) not allowed");
-  vlog.debug("set %s(String) to %s", getName(), v);
+  if (strcasecmp(getName(), "BasicAuth")) // don't log the auth info
+    vlog.debug("set %s(String) to %s", getName(), v);
   CharArray oldValue(value);
   value = strDup(v);
   return value != 0;
@@ -454,7 +456,7 @@ StringParameter::operator const char *() const {
 // -=- BinaryParameter
 
 BinaryParameter::BinaryParameter(const char* name_, const char* desc_,
-				 const void* v, int l, ConfigurationObject co)
+				 const void* v, size_t l, ConfigurationObject co)
 : VoidParameter(name_, desc_, co), value(0), length(0), def_value((char*)v), def_length(l) {
   if (l) {
     value = new char[l];
@@ -474,7 +476,7 @@ bool BinaryParameter::setParam(const char* v) {
   return rdr::HexInStream::hexStrToBin(v, &value, &length);
 }
 
-void BinaryParameter::setParam(const void* v, int len) {
+void BinaryParameter::setParam(const void* v, size_t len) {
   LOCK_CONFIG;
   if (immutable) return; 
   vlog.debug("set %s(Binary)", getName());
@@ -495,7 +497,7 @@ char* BinaryParameter::getValueStr() const {
   return rdr::HexOutStream::binToHexStr(value, length);
 }
 
-void BinaryParameter::getData(void** data_, int* length_) const {
+void BinaryParameter::getData(void** data_, size_t* length_) const {
   LOCK_CONFIG;
   if (length_) *length_ = length;
   if (data_) {

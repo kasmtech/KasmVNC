@@ -26,11 +26,9 @@
 
 
 
-
 Future Goals:
 
   - Support uploads and downloads
-  - Json configuration file
   - Pre-build Packages for all major Linux distributions
   - CI pipelines to create releases
 
@@ -40,28 +38,32 @@ We are currently developing releasable packages for major operating sytems. The 
 This installer assumes you already have a desktop environment installed, but have never configured a VNC server. Use the install script found in this project under builder/install/install.sh, currently Ubuntu 18.04LTS is the only operating system with pre-compiled binaries.
 
 ```sh
-# use install script from builder/install/install.sh
-sudo ./install.sh
+# install dependencies
+sudo apt-get -y install libjpeg-dev
 
-# change owner of pre-installed cert to your user
+# install KasmVNC
+wget https://github.com/kasmtech/KasmVNC/releases/download/v0.9.1-beta/KasmVNC_0.9.1-beta_Ubuntu_18.04.tar.gz | sudo tar xz --strip 1 -C /
+
+# Generate an SSL Cert and change owner
+sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /usr/local/share/kasmvnc/certs/self.pem -out /usr/local/share/kasmvnc/certs/self.pem -subj "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
 sudo chown $USER /usr/local/share/kasmvnc/certs/self.pem
 
-# create required files
-touch ~/.Xresources
-# start kasmvnc to generate the required files and then kill it
-# it will prompt to set the vnc password
+# start kasmvnc and set password for remote access
 vncserver :1 -interface 0.0.0.0
+# stop kasmvnc to make config changes
 vncserver -kill :1
-
-# overwrite the VNC password to nothing. KasmVNC uses HTTPS basic authentication
-echo '' | vncpasswd -f > $HOME/.vnc/passwd
 
 # modify vncstartup to launch your environment of choice, in this example LXDE
 echo '/usr/bin/lxsession -s LXDE &' >> ~/.vnc/xstartup
 
+# The KasmVNC username is automatically set to your system username, you can mofify it if you wish
+vi ~/.vnc/config
+
 # launch KasmVNC
-vncserver $DISPLAY -depth 24 -geometry 1280x1050 -basicAuth kasm_user:password -websocketPort 8443 -cert /usr/local/share/kasmvnc/certs/self.pem -sslOnly -FrameRate=24 -interface 0.0.0.0
+vncserver $DISPLAY -depth 24 -geometry 1280x1050 -websocketPort 8443 -cert /usr/local/share/kasmvnc/certs/self.pem -sslOnly -FrameRate=24 -interface 0.0.0.0
 ```
+
+Now navigate to your system at https://[ip-address]:8443/vnc.html
 
 The options for vncserver in the example above:
 
@@ -69,7 +71,6 @@ The options for vncserver in the example above:
 | -------- | ----------- |
 | depth | Color depth, for jpeg/webp should be 24bit |
 | geometry | Screensize, this will automatically be adjusted when the client connects. |
-| basicAuth | Username and password seperated by a semi-colon. |
 | websocketPort | The port to use for the web socket. Use a high port to avoid having to run as root. |
 | cert | SSL cert to use for HTTPS |
 | sslOnly | Disable HTTP |

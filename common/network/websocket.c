@@ -878,9 +878,11 @@ ws_ctx_t *do_handshake(int sock) {
         usleep(10);
     }
 
-    if (strchr(settings.basicauth, ':')) {
+    const char *colon;
+    if ((colon = strchr(settings.basicauth, ':'))) {
         const char *hdr = strstr(handshake, "Authorization: Basic ");
         if (!hdr) {
+            handler_emsg("BasicAuth required, but client didn't send any. 401 Unauth\n");
             sprintf(response, "HTTP/1.1 401 Unauthorized\r\n"
                               "WWW-Authenticate: Basic realm=\"Websockify\"\r\n"
                               "\r\n");
@@ -892,6 +894,7 @@ ws_ctx_t *do_handshake(int sock) {
         hdr += sizeof("Authorization: Basic ") - 1;
         const char *end = strchr(hdr, '\r');
         if (!end || end - hdr > 256) {
+            handler_emsg("Client sent invalid BasicAuth, dropping connection\n");
             free_ws_ctx(ws_ctx);
             return NULL;
         }
@@ -901,13 +904,55 @@ ws_ctx_t *do_handshake(int sock) {
         tmp[len] = '\0';
         len = ws_b64_pton(tmp, response, 256);
 
-        if (len <= 0 || strcmp(settings.basicauth, response)) {
+        char authbuf[4096];
+        strncpy(authbuf, settings.basicauth, 4096);
+        authbuf[4095] = '\0';
+
+        // Do we need to read it from the file?
+        char *resppw = strchr(response, ':');
+        if (resppw && *resppw)
+            resppw++;
+        if (!colon[1] && settings.passwdfile) {
+            if (resppw && *resppw) {
+                char pwbuf[4096];
+                FILE *f = fopen(settings.passwdfile, "r");
+                if (f) {
+                    handler_emsg("BasicAuth reading password from %s\n", settings.passwdfile);
+                    const unsigned len = fread(pwbuf, 1, 4096, f);
+                    fclose(f);
+                    pwbuf[4095] = '\0';
+                    if (len < 4096)
+                        pwbuf[len] = '\0';
+
+                    snprintf(authbuf, 4096, "%s%s", settings.basicauth, pwbuf);
+                    authbuf[4095] = '\0';
+
+                    const char *encrypted = crypt(resppw, "$5$kasm$");
+                    *resppw = '\0';
+
+                    snprintf(pwbuf, 4096, "%s%s", response, encrypted);
+                    pwbuf[4095] = '\0';
+                    strcpy(response, pwbuf);
+                } else {
+                    fprintf(stderr, " websocket %d: Error: BasicAuth configured to read password from file %s, but the file doesn't exist\n",
+                            wsthread_handler_id,
+                            settings.passwdfile);
+                }
+            } else {
+                // Client tried an empty password, just fail them
+                response[0] = '\0';
+            }
+        }
+
+        if (len <= 0 || strcmp(authbuf, response)) {
+            handler_emsg("BasicAuth user/pw did not match\n");
             sprintf(response, "HTTP/1.1 401 Forbidden\r\n"
                               "\r\n");
             ws_send(ws_ctx, response, strlen(response));
             free_ws_ctx(ws_ctx);
             return NULL;
         }
+        handler_emsg("BasicAuth matched\n");
     }
 
     //handler_msg("handshake: %s\n", handshake);
