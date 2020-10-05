@@ -50,6 +50,7 @@ sudo chown $USER /usr/local/share/kasmvnc/certs/self.pem
 
 # start kasmvnc and set password for remote access
 vncserver :1 -interface 0.0.0.0
+# stop kasmvnc to make config changes
 vncserver -kill :1
 
 # modify vncstartup to launch your environment of choice, in this example LXDE
