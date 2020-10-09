@@ -29,10 +29,16 @@
 #include <unistd.h>
 #include <wordexp.h>
 
+#include "kasmpasswd.h"
+
 static void usage(const char *prog)
 {
-  fprintf(stderr, "Usage: %s [file]\n", prog);
-  fprintf(stderr, "       %s -f\n", prog);
+  fprintf(stderr, "Usage: %s -u username [-wno] [file]\n"
+                  "-w	Write permission\n"
+                  "-o	Owner\n"
+                  "-n	Don't change password, change permissions only\n"
+                  "\n"
+                  "The file is updated atomically.\n", prog);
   exit(1);
 }
 
@@ -68,18 +74,6 @@ static char* getpassword(const char* prompt, char *buf) {
 static char pw1[4096];
 static char pw2[4096];
 
-// Reads passwords from stdin and prints encrypted passwords to stdout.
-static int encrypt_pipe() {
-  char *result = getpassword(NULL, pw1);
-  if (!result)
-    return 1;
-
-  printf("%s", encryptpw(result));
-  fflush(stdout);
-
-  return 0;
-}
-
 static const char *readpassword() {
   while (1) {
     if (!getpassword("Password:", pw1)) {
@@ -110,19 +104,42 @@ static const char *readpassword() {
 
 int main(int argc, char** argv)
 {
-  char* fname = 0;
+  const char *fname = NULL;
+  const char *user = NULL;
+  const char args[] = "u:wno";
+  int opt;
 
-  for (int i = 1; i < argc; i++) {
-    if (strncmp(argv[i], "-f", 2) == 0) {
-      return encrypt_pipe();
-    } else if (argv[i][0] == '-') {
-      usage(argv[0]);
-    } else if (!fname) {
-      fname = argv[i];
-    } else {
-      usage(argv[0]);
+  unsigned char nopass = 0, writer = 0, owner = 0;
+
+  while ((opt = getopt(argc, argv, args)) != -1) {
+    switch (opt) {
+      case 'u':
+        user = optarg;
+        if (strlen(user) + 1 > sizeof(((struct kasmpasswd_entry_t *)0)->user)) {
+          fprintf(stderr, "Username %s too long\n", user);
+          exit(1);
+        }
+      break;
+      case 'n':
+        nopass = 1;
+      break;
+      case 'w':
+        writer = 1;
+      break;
+      case 'o':
+        owner = 1;
+      break;
+      default:
+        usage(argv[0]);
+      break;
     }
   }
+
+  if (!user)
+    usage(argv[0]);
+
+  if (optind < argc)
+    fname = argv[optind];
 
   if (!fname) {
     wordexp_t wexp;
@@ -133,23 +150,42 @@ int main(int argc, char** argv)
   if (!fname)
     usage(argv[0]);
 
-  while (1) {
+  // Action
+  struct kasmpasswd_t *set = readkasmpasswd(fname);
+  unsigned i;
+
+  if (nopass) {
+    for (i = 0; i < set->num; i++) {
+      if (!strcmp(set->entries[i].user, user)) {
+        set->entries[i].write = writer;
+        set->entries[i].owner = owner;
+
+        writekasmpasswd(fname, set);
+        return 0;
+      }
+    }
+    fprintf(stderr, "No user named %s found\n", user);
+    return 1;
+  } else {
     const char *encrypted = readpassword();
-
-    FILE* fp = fopen(fname, "w");
-    if (!fp) {
-      fprintf(stderr, "Couldn't open %s for writing\n", fname);
-      exit(1);
-    }
-    chmod(fname, S_IRUSR|S_IWUSR);
-
-    if (fwrite(encrypted, strlen(encrypted), 1, fp) != 1) {
-      fprintf(stderr,"Writing to %s failed\n",fname);
-      exit(1);
+    for (i = 0; i < set->num; i++) {
+      if (!strcmp(set->entries[i].user, user))
+        break;
     }
 
-    fclose(fp);
+    // No existing user by that name?
+    if (i >= set->num) {
+      i = set->num++;
+      set->entries = realloc(set->entries, set->num * sizeof(struct kasmpasswd_entry_t));
+    }
 
-    return 0;
+    strcpy(set->entries[i].user, user);
+    strcpy(set->entries[i].password, encrypted);
+    set->entries[i].write = writer;
+    set->entries[i].owner = owner;
+
+    writekasmpasswd(fname, set);
   }
+
+  return 0;
 }
