@@ -19,3 +19,5 @@ sudo docker run -it -p 8443:8443 --rm -e "VNC_USER=matt" -e "VNC_PW=password123"
 The environmental variables VNC_USER and VNC_PW set the username and password respectively. The VNC_PW is unset during container startup. 
 
 Now navigate to https://<ip-address>:8443/vnc.html
+
+![Kasm Technologies](https://kasm-static-content.s3.amazonaws.com/doom-screenshot.jpg "Doom rendered in browser")
