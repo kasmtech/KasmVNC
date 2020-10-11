@@ -21,3 +21,7 @@ The environmental variables VNC_USER and VNC_PW set the username and password re
 Now navigate to https://<ip-address>:8443/vnc.html
 
 ![Kasm Technologies](https://kasm-static-content.s3.amazonaws.com/doom-screenshot.jpg "Doom rendered in browser")
+
+### License
+
+See the Chocolate Doom project for details on license specifics of Doom. (https://github.com/chocolate-doom/chocolate-doom)
