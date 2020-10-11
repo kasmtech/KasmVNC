@@ -42,7 +42,7 @@ This installer assumes you already have a desktop environment installed, but hav
 sudo apt-get -y install libjpeg-dev
 
 # install KasmVNC
-wget https://github.com/kasmtech/KasmVNC/releases/download/v0.9.1-beta/KasmVNC_0.9.1-beta_Ubuntu_18.04.tar.gz | sudo tar xz --strip 1 -C /
+wget -qO- https://github.com/kasmtech/KasmVNC/releases/download/v0.9.1-beta/KasmVNC_0.9.1-beta_Ubuntu_18.04.tar.gz | sudo tar xz --strip 1 -C /
 
 # Generate an SSL Cert and change owner
 sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /usr/local/share/kasmvnc/certs/self.pem -out /usr/local/share/kasmvnc/certs/self.pem -subj "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
