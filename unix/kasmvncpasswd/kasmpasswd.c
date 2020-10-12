@@ -99,6 +99,9 @@ void writekasmpasswd(const char path[], const struct kasmpasswd_t *set) {
 
 	unsigned i;
 	for (i = 0; i < set->num; i++) {
+		if (!set->entries[i].user[0])
+			continue;
+
 		fprintf(f, "%s:%s:%s\n",
 			set->entries[i].user,
 			set->entries[i].password,

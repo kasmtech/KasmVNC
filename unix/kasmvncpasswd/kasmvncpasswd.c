@@ -33,10 +33,11 @@
 
 static void usage(const char *prog)
 {
-  fprintf(stderr, "Usage: %s -u username [-wno] [file]\n"
+  fprintf(stderr, "Usage: %s -u username [-wnod] [file]\n"
                   "-w	Write permission\n"
                   "-o	Owner\n"
                   "-n	Don't change password, change permissions only\n"
+                  "-d	Delete this user\n"
                   "\n"
                   "The file is updated atomically.\n", prog);
   exit(1);
@@ -106,10 +107,10 @@ int main(int argc, char** argv)
 {
   const char *fname = NULL;
   const char *user = NULL;
-  const char args[] = "u:wno";
+  const char args[] = "u:wnod";
   int opt;
 
-  unsigned char nopass = 0, writer = 0, owner = 0;
+  unsigned char nopass = 0, writer = 0, owner = 0, deleting = 0;
 
   while ((opt = getopt(argc, argv, args)) != -1) {
     switch (opt) {
@@ -129,11 +130,17 @@ int main(int argc, char** argv)
       case 'o':
         owner = 1;
       break;
+      case 'd':
+        deleting = 1;
+      break;
       default:
         usage(argv[0]);
       break;
     }
   }
+
+  if (deleting && (nopass || writer || owner))
+    usage(argv[0]);
 
   if (!user)
     usage(argv[0]);
@@ -159,6 +166,18 @@ int main(int argc, char** argv)
       if (!strcmp(set->entries[i].user, user)) {
         set->entries[i].write = writer;
         set->entries[i].owner = owner;
+
+        writekasmpasswd(fname, set);
+        return 0;
+      }
+    }
+    fprintf(stderr, "No user named %s found\n", user);
+    return 1;
+
+  } else if (deleting) {
+    for (i = 0; i < set->num; i++) {
+      if (!strcmp(set->entries[i].user, user)) {
+        set->entries[i].user[0] = '\0';
 
         writekasmpasswd(fname, set);
         return 0;
