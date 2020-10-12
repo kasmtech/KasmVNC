@@ -29,6 +29,7 @@
 #include <openssl/md5.h> /* md5 hash */
 #include <openssl/sha.h> /* sha1 hash */
 #include "websocket.h"
+#include "kasmpasswd.h"
 
 /*
  * Global state
@@ -913,31 +914,42 @@ ws_ctx_t *do_handshake(int sock) {
         if (resppw && *resppw)
             resppw++;
         if (!colon[1] && settings.passwdfile) {
-            if (resppw && *resppw) {
+            if (resppw && *resppw && resppw - response < 32) {
                 char pwbuf[4096];
-                FILE *f = fopen(settings.passwdfile, "r");
-                if (f) {
-                    handler_emsg("BasicAuth reading password from %s\n", settings.passwdfile);
-                    const unsigned len = fread(pwbuf, 1, 4096, f);
-                    fclose(f);
-                    pwbuf[4095] = '\0';
-                    if (len < 4096)
-                        pwbuf[len] = '\0';
-
-                    snprintf(authbuf, 4096, "%s%s", settings.basicauth, pwbuf);
-                    authbuf[4095] = '\0';
-
-                    const char *encrypted = crypt(resppw, "$5$kasm$");
-                    *resppw = '\0';
-
-                    snprintf(pwbuf, 4096, "%s%s", response, encrypted);
-                    pwbuf[4095] = '\0';
-                    strcpy(response, pwbuf);
-                } else {
-                    fprintf(stderr, " websocket %d: Error: BasicAuth configured to read password from file %s, but the file doesn't exist\n",
+                struct kasmpasswd_t *set = readkasmpasswd(settings.passwdfile);
+                if (!set->num) {
+                    fprintf(stderr, " websocket %d: Error: BasicAuth configured to read password from file %s, but the file doesn't exist or has no valid users\n",
                             wsthread_handler_id,
                             settings.passwdfile);
+                } else {
+                    unsigned i;
+                    char inuser[32];
+                    unsigned char found = 0;
+                    memcpy(inuser, response, resppw - response - 1);
+                    inuser[resppw - response - 1] = '\0';
+
+                    for (i = 0; i < set->num; i++) {
+                        if (!strcmp(set->entries[i].user, inuser)) {
+                            found = 1; // TODO write to wctx
+                            snprintf(authbuf, 4096, "%s:%s", set->entries[i].user,
+                                     set->entries[i].password);
+                            authbuf[4095] = '\0';
+                            break;
+                        }
+                    }
+
+                    if (!found)
+                        handler_emsg("BasicAuth user %s not found\n", inuser);
                 }
+                free(set->entries);
+                free(set);
+
+                const char *encrypted = crypt(resppw, "$5$kasm$");
+                *resppw = '\0';
+
+                snprintf(pwbuf, 4096, "%s%s", response, encrypted);
+                pwbuf[4095] = '\0';
+                strcpy(response, pwbuf);
             } else {
                 // Client tried an empty password, just fail them
                 response[0] = '\0';
