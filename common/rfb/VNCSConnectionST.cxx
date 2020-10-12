@@ -38,12 +38,17 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <wordexp.h>
+
+#include "kasmpasswd.h"
 
 using namespace rfb;
 
 static LogWriter vlog("VNCSConnST");
 
 static Cursor emptyCursor(0, 0, Point(0, 0), NULL);
+
+extern rfb::StringParameter basicauth;
 
 VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
                                    bool reverse)
@@ -64,6 +69,25 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
 
   memset(bstats_total, 0, sizeof(bstats_total));
   gettimeofday(&connStart, NULL);
+
+  // Check their permissions, if applicable
+  kasmpasswdpath[0] = '\0';
+  wordexp_t wexp;
+  if (!wordexp(rfb::Server::kasmPasswordFile, &wexp, WRDE_NOCMD))
+    strncpy(kasmpasswdpath, wexp.we_wordv[0], 4096);
+  kasmpasswdpath[4095] = '\0';
+  wordfree(&wexp);
+
+  user[0] = '\0';
+  const char *at = strchr(peerEndpoint.buf, '@');
+  if (at && at - peerEndpoint.buf > 1 && at - peerEndpoint.buf < 32) {
+    memcpy(user, peerEndpoint.buf, at - peerEndpoint.buf);
+    user[at - peerEndpoint.buf] = '\0';
+  }
+
+  bool write, owner;
+  if (!getPerms(write, owner) || !write)
+    accessRights = (accessRights & ~(AccessPtrEvents | AccessKeyEvents));
 
   // Configure the socket
   setSocketTimeouts();
@@ -997,6 +1021,29 @@ bool VNCSConnectionST::isShiftPressed()
     }
 
   return false;
+}
+
+bool VNCSConnectionST::getPerms(bool &write, bool &owner) const
+{
+  bool found = false;
+  const char *colon = strchr(basicauth, ':');
+  if (colon && !colon[1] && user[0]) {
+    struct kasmpasswd_t *set = readkasmpasswd(kasmpasswdpath);
+    unsigned i;
+    for (i = 0; i < set->num; i++) {
+      if (!strcmp(set->entries[i].user, user)) {
+        write = set->entries[i].write;
+        owner = set->entries[i].owner;
+        found = true;
+        break;
+      }
+    }
+
+    free(set->entries);
+    free(set);
+  }
+
+  return found;
 }
 
 void VNCSConnectionST::writeRTTPing()

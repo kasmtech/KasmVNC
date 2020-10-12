@@ -1,4 +1,5 @@
-include_directories(${CMAKE_SOURCE_DIR}/common ${JPEG_INCLUDE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/common ${JPEG_INCLUDE_DIR}
+                    ${CMAKE_SOURCE_DIR}/unix/kasmvncpasswd)
 
 set(RFB_SOURCES
   Blacklist.cxx

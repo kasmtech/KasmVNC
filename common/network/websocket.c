@@ -107,7 +107,7 @@ ssize_t ws_send(ws_ctx_t *ctx, const void *buf, size_t len) {
 
 ws_ctx_t *alloc_ws_ctx() {
     ws_ctx_t *ctx;
-    if (! (ctx = malloc(sizeof(ws_ctx_t))) )
+    if (! (ctx = calloc(sizeof(ws_ctx_t), 1)) )
         { fatal("malloc()"); }
 
     if (! (ctx->cin_buf = malloc(BUFSIZE)) )
@@ -930,7 +930,8 @@ ws_ctx_t *do_handshake(int sock) {
 
                     for (i = 0; i < set->num; i++) {
                         if (!strcmp(set->entries[i].user, inuser)) {
-                            found = 1; // TODO write to wctx
+                            found = 1;
+                            strcpy(ws_ctx->user, inuser);
                             snprintf(authbuf, 4096, "%s:%s", set->entries[i].user,
                                      set->entries[i].password);
                             authbuf[4095] = '\0';
@@ -1024,7 +1025,6 @@ void *subthread(void *ptr) {
 
     const int csock = pass->csock;
     wsthread_handler_id = pass->id;
-    free((void *) pass);
 
     ws_ctx_t *ws_ctx;
 
@@ -1034,11 +1034,14 @@ void *subthread(void *ptr) {
         goto out;   // Child process exits
     }
 
+    memcpy(ws_ctx->ip, pass->ip, sizeof(pass->ip));
+
     proxy_handler(ws_ctx);
     if (pipe_error) {
         handler_emsg("Closing due to SIGPIPE\n");
     }
 out:
+    free((void *) pass);
 
     if (ws_ctx) {
         ws_socket_free(ws_ctx);
@@ -1074,12 +1077,13 @@ void *start_server(void *unused) {
             error("ERROR on accept");
             continue;
         }
+        struct wspass_t *pass = calloc(1, sizeof(struct wspass_t));
+        inet_ntop(cli_addr.sin_family, &cli_addr.sin_addr, pass->ip, sizeof(pass->ip));
         fprintf(stderr, " websocket %d: got client connection from %s\n",
                     settings.handler_id,
-                    inet_ntoa(cli_addr.sin_addr));
+                    pass->ip);
 
         pthread_t tid;
-        struct wspass_t *pass = calloc(1, sizeof(struct wspass_t));
         pass->id = settings.handler_id;
         pass->csock = csock;
         pthread_create(&tid, NULL, subthread, pass);
