@@ -102,6 +102,10 @@ namespace rfb {
     // or because the current cursor position has not been set by this client.
     bool needRenderedCursor();
 
+    void recheckPerms() {
+        needsPermCheck = true;
+    }
+
     network::Socket* getSock() { return sock; }
     void add_changed(const Region& region) { updates.add_changed(region); }
     void add_changed_all() { updates.add_changed(server->pb->getRect()); }
@@ -190,6 +194,7 @@ namespace rfb {
         bool write, owner;
         if (!getPerms(write, owner) || !write)
             accessRights = (accessRights & ~(AccessPtrEvents | AccessKeyEvents));
+        needsPermCheck = false;
     }
 
     // Timer callbacks
@@ -259,6 +264,7 @@ namespace rfb {
 
     char user[32];
     char kasmpasswdpath[4096];
+    bool needsPermCheck;
 
     time_t lastEventTime;
     time_t pointerEventTime;

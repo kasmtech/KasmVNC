@@ -249,6 +249,8 @@ namespace rfb {
     bool disableclients;
 
     Timer frameTimer;
+
+    int inotifyfd;
   };
 
 };

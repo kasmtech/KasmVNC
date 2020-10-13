@@ -59,7 +59,7 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
     losslessTimer(this), kbdLogTimer(this), server(server_), updates(false),
     updateRenderedCursor(false), removeRenderedCursor(false),
     continuousUpdates(false), encodeManager(this, &server_->encCache),
-    pointerEventTime(0),
+    needsPermCheck(false), pointerEventTime(0),
     clientHasCursor(false),
     accessRights(AccessDefault), startTime(time(0))
 {
@@ -1125,6 +1125,22 @@ void VNCSConnectionST::writeFramebufferUpdate()
   // bit if things are congested.
   if (isCongested())
     return;
+
+  // Check for permission changes?
+  if (needsPermCheck) {
+    needsPermCheck = false;
+
+    bool write, owner, ret;
+    ret = getPerms(write, owner);
+    if (!ret) {
+      close("User was deleted");
+      return;
+    } else if (!write) {
+      accessRights = (accessRights & ~(AccessPtrEvents | AccessKeyEvents));
+    } else {
+      accessRights |= AccessPtrEvents | AccessKeyEvents;
+    }
+  }
 
   // Updates often consists of many small writes, and in continuous
   // mode, we will also have small fence messages around the update. We
