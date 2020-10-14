@@ -161,11 +161,13 @@ ws_ctx_t *ws_socket_ssl(ws_ctx_t *ctx, int socket, char * certfile, char * keyfi
 
     }
 
-    ctx->ssl_ctx = SSL_CTX_new(TLSv1_server_method());
+    ctx->ssl_ctx = SSL_CTX_new(SSLv23_server_method());
     if (ctx->ssl_ctx == NULL) {
         ERR_print_errors_fp(stderr);
         fatal("Failed to configure SSL context");
     }
+
+    SSL_CTX_set_options(ctx->ssl_ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
 
     if (SSL_CTX_use_PrivateKey_file(ctx->ssl_ctx, use_keyfile,
                                     SSL_FILETYPE_PEM) <= 0) {
