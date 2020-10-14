@@ -1027,6 +1027,11 @@ bool VNCSConnectionST::getPerms(bool &write, bool &owner) const
 {
   bool found = false;
   const char *colon = strchr(basicauth, ':');
+  if (!colon || colon[1]) {
+    // We're running without basicauth, or with both user:pass on the command line
+    write = true;
+    return true;
+  }
   if (colon && !colon[1] && user[0]) {
     struct kasmpasswd_t *set = readkasmpasswd(kasmpasswdpath);
     unsigned i;
