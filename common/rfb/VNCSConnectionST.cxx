@@ -87,7 +87,7 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
 
   bool write, owner;
   if (!getPerms(write, owner) || !write)
-    accessRights = (accessRights & ~(AccessPtrEvents | AccessKeyEvents));
+    accessRights = (accessRights & ~(AccessPtrEvents | AccessKeyEvents | AccessSetDesktopSize));
 
   // Configure the socket
   setSocketTimeouts();
@@ -1141,9 +1141,9 @@ void VNCSConnectionST::writeFramebufferUpdate()
       close("User was deleted");
       return;
     } else if (!write) {
-      accessRights = (accessRights & ~(AccessPtrEvents | AccessKeyEvents));
+      accessRights = (accessRights & ~(AccessPtrEvents | AccessKeyEvents | AccessSetDesktopSize));
     } else {
-      accessRights |= AccessPtrEvents | AccessKeyEvents;
+      accessRights |= AccessPtrEvents | AccessKeyEvents | AccessSetDesktopSize;
     }
   }
 
