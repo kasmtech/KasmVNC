@@ -24,6 +24,7 @@ using namespace rfb;
 
 SMsgHandler::SMsgHandler()
 {
+  cp.setSHandler(this);
 }
 
 SMsgHandler::~SMsgHandler()

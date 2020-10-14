@@ -56,6 +56,8 @@ namespace rfb {
 
     virtual void sendStats() = 0;
 
+    virtual bool canChangeKasmSettings() const = 0;
+
     // InputHandler interface
     // The InputHandler methods will be called for the corresponding messages.
 

@@ -183,6 +183,10 @@ namespace rfb {
     virtual void supportsLEDState();
 
     virtual void sendStats();
+    virtual bool canChangeKasmSettings() const {
+        return (accessRights & (AccessPtrEvents | AccessKeyEvents)) ==
+               (AccessPtrEvents | AccessKeyEvents);
+    }
 
     // setAccessRights() allows a security package to limit the access rights
     // of a VNCSConnectioST to the server.  These access rights are applied
