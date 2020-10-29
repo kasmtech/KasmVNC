@@ -71,9 +71,19 @@
             loader.src = "vendor/browser-es-module-loader/dist/browser-es-module-loader.js";
             document.head.appendChild(loader);
         });
-        window.addEventListener("load", function() {
-            document.getElementById("noVNC_connect_button").click();
-        });
+
+        let isInsideKasmVDI = false;
+        try {
+            isInsideKasmVDI = (window.self !== window.top);
+        } catch (e) {
+            isInsideKasmVDI = true;
+        }
+
+        if (!isInsideKasmVDI) {
+            window.addEventListener("load", function() {
+                document.getElementById("noVNC_connect_button").click();
+            });
+        }
     </script>
     <!-- actual script modules -->
     <script type="module" crossorigin='use-credentials' src="app/ui.js"></script>
