@@ -69,6 +69,8 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
   setSocketTimeouts();
   lastEventTime = time(0);
   gettimeofday(&lastRealUpdate, NULL);
+  gettimeofday(&lastClipboardOp, NULL);
+  gettimeofday(&lastKeyEvent, NULL);
 
   server->clients.push_front(this);
 }
