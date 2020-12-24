@@ -7,7 +7,10 @@
 
 # Ubuntu applies a million patches, but here we use upstream to simplify matters
 cd /tmp
-wget https://www.x.org/archive/individual/xserver/xorg-server-1.19.6.tar.bz2
+# default to the version of x in Ubuntu 18.04, otherwise caller will need to specify
+XORG_VER=${XORG_VER:-"1.19.6"}
+XORG_PATCH=$(echo "$XORG_VER" | grep -Po '^\d.\d+' | sed 's#\.##')
+wget https://www.x.org/archive/individual/xserver/xorg-server-${XORG_VER}.tar.bz2
 
 #git clone https://kasmweb@bitbucket.org/kasmtech/kasmvnc.git
 #cd kasmvnc
@@ -23,10 +26,10 @@ sed -i -e '/find_package(FLTK/s@^@#@' \
 cmake .
 make -j5
 
-tar -C unix/xserver -xvf /tmp/xorg-server-1.19.6.tar.bz2 --strip-components=1
+tar -C unix/xserver -xvf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=1
 
 cd unix/xserver
-patch -Np1 -i ../xserver119.patch
+patch -Np1 -i ../xserver${XORG_PATCH}.patch
 autoreconf -i
 # Configuring Xorg is long and has many distro-specific paths.
 # The distro paths start after prefix and end with the font path,
@@ -64,4 +67,4 @@ mv release/maketarball3 release/maketarball
 
 make servertarball
 
-cp kasmvnc*.tar.gz /build/
+cp kasmvnc*.tar.gz /build/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_VER}.tar.gz
