@@ -17,6 +17,10 @@ export DH_OPTIONS=-v
 build:
 	cp debian/Makefile .
 
+clean:
+	rm -f Makefile
+	dh $@
+
 %:
 	@echo "target: $@"
 	dh $@
