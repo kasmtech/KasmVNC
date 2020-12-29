@@ -12,7 +12,7 @@ install:
 	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
 	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
 	cp -r $(SRC)/share/doc/kasmvnc*/* $(DESTDIR)/usr/share/doc/kasmvncserver/
-	cp -r $(SRC)/share/kasmvnc $(DESTDIR)/usr/share
+	rsync -r --exclude '.git*' $(SRC)/share/kasmvnc $(DESTDIR)/usr/share
 	cp $(SRC)/man/man1/Xvnc.1 $(DESTDIR)/usr/share/man/man1/Xkasmvnc.1
 	cp $(SRC)/share/man/man1/vncserver.1 $(DST_MAN)/kasmvncserver.1
 	cp $(SRC)/share/man/man1/vncpasswd.1 $(DST_MAN)/kasmvncpasswd.1
