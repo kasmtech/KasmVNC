@@ -1,10 +1,19 @@
-SRC_BIN := ../release/usr/local/bin
+SRC := ../release/usr/local
+SRC_BIN := $(SRC)/bin
+DST_MAN := $(DESTDIR)/usr/share/man/man1
 
 install:
 	echo "installing files"
-	mkdir -p $(DESTDIR)/usr/bin $(DESTDIR)/usr/share
+	mkdir -p $(DESTDIR)/usr/bin $(DESTDIR)/usr/share/man/man1 \
+	  $(DESTDIR)/usr/share/doc/kasmvncserver
 	cp $(SRC_BIN)/Xvnc $(DESTDIR)/usr/bin/XkasmVnc
 	cp $(SRC_BIN)/vncserver $(DESTDIR)/usr/bin/kasmvncserver
 	cp $(SRC_BIN)/vncconfig $(DESTDIR)/usr/bin/kasmvncconfig
 	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
-	cp -r ../release/usr/local/share $(DESTDIR)/usr
+	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
+	cp -r $(SRC)/share/doc/kasmvnc*/* $(DESTDIR)/usr/share/doc/kasmvncserver/
+	cp -r $(SRC)/share/kasmvnc $(DESTDIR)/usr/share
+	cp $(SRC)/man/man1/Xvnc.1 $(DESTDIR)/usr/share/man/man1/Xkasmvnc.1
+	cp $(SRC)/share/man/man1/vncserver.1 $(DST_MAN)/kasmvncserver.1
+	cp $(SRC)/share/man/man1/vncpasswd.1 $(DST_MAN)/kasmvncpasswd.1
+	cp $(SRC)/share/man/man1/vncconfig.1 $(DST_MAN)/kasmvncconfig.1
