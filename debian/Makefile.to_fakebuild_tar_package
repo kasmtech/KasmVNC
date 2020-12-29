@@ -1,5 +1,10 @@
+SRC_BIN := ../release/usr/local/bin
+
 install:
 	echo "installing files"
 	mkdir -p $(DESTDIR)/usr/bin $(DESTDIR)/usr/share
-	cp -r ../release/usr/local/bin $(DESTDIR)/usr
+	cp $(SRC_BIN)/Xvnc $(DESTDIR)/usr/bin/XkasmVnc
+	cp $(SRC_BIN)/vncserver $(DESTDIR)/usr/bin/kasmvncserver
+	cp $(SRC_BIN)/vncconfig $(DESTDIR)/usr/bin/kasmvncconfig
+	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
 	cp -r ../release/usr/local/share $(DESTDIR)/usr
