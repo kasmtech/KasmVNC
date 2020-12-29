@@ -1,4 +1,4 @@
-kasmvnc (0.9.1-beta-1) unstable; urgency=medium
+kasmvnc (0.9.1~beta-1) unstable; urgency=medium
 
   * Initial release of the Debian package.
 
