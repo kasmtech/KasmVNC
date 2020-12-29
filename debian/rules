@@ -14,8 +14,10 @@ export DH_OPTIONS=-v
 # package maintainers to append LDFLAGS
 #export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
+MAKEFILE_TO_FAKEBUILD_TAR_PACKAGE := debian/Makefile.to_fakebuild_tar_package
+
 build:
-	cp debian/Makefile .
+	cp $(MAKEFILE_TO_FAKEBUILD_TAR_PACKAGE) Makefile
 
 clean:
 	rm -f Makefile

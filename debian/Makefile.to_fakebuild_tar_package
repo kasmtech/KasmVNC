@@ -1,0 +1,5 @@
+install:
+	echo "installing files"
+	mkdir -p $(DESTDIR)/usr/bin $(DESTDIR)/usr/share
+	cp -r ../release/usr/local/bin $(DESTDIR)/usr
+	cp -r ../release/usr/local/share $(DESTDIR)/usr
