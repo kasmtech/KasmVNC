@@ -18,6 +18,17 @@ set -e
 
 
 case "$1" in
+    remove)
+      bindir=/usr/bin
+      mandir=/usr/share/man
+      commands="kasmvncserver kasmvncpasswd kasmvncconfig Xkasmvnc"
+
+      for kasm_command in $commands; do
+        generic_command=`echo "$kasm_command" | sed -e 's/kasm//'`;
+        update-alternatives --remove "$generic_command" "$bindir/$kasm_command"
+      done
+    ;;
+
     remove|upgrade|deconfigure)
     ;;
 

@@ -20,6 +20,17 @@ set -e
 
 case "$1" in
     configure)
+      bindir=/usr/bin
+      mandir=/usr/share/man
+      commands="kasmvncserver kasmvncpasswd kasmvncconfig Xkasmvnc"
+
+      for kasm_command in $commands; do
+        generic_command=`echo "$kasm_command" | sed -e 's/kasm//'`;
+        update-alternatives --install "$bindir/$generic_command" \
+          "$generic_command" "$bindir/$kasm_command" 90 \
+          --slave "$mandir/man1/$generic_command.1.gz" "$generic_command.1.gz" \
+            "$mandir/man1/$kasm_command.1.gz"
+      done
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
