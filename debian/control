@@ -10,6 +10,7 @@ Homepage: https://github.com/kasmtech/KasmVNC
 
 Package: kasmvncserver
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, python, xserver-xorg
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, python, xauth
+Provides: vnc-server
 Description: virtual network computing server with web interface
  Lorem ipsum
