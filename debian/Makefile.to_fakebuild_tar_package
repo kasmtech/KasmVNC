@@ -6,7 +6,7 @@ install:
 	echo "installing files"
 	mkdir -p $(DESTDIR)/usr/bin $(DESTDIR)/usr/share/man/man1 \
 	  $(DESTDIR)/usr/share/doc/kasmvncserver
-	cp $(SRC_BIN)/Xvnc $(DESTDIR)/usr/bin/XkasmVnc
+	cp $(SRC_BIN)/Xvnc $(DESTDIR)/usr/bin/Xkasmvnc
 	cp $(SRC_BIN)/vncserver $(DESTDIR)/usr/bin/kasmvncserver
 	cp $(SRC_BIN)/vncconfig $(DESTDIR)/usr/bin/kasmvncconfig
 	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
