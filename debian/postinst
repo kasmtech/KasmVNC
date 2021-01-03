@@ -17,6 +17,16 @@ set -e
 # for details, see https://www.debian.org/doc/debian-policy/ or
 # the debian-policy package
 
+make_self_signed_certificate() {
+  local cert_file=/etc/ssl/private/kasmvnc.pem
+  [ -f "$cert_file" ] && return 0
+
+  openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout "$cert_file" \
+  -out "$cert_file" -subj \
+  "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
+  chgrp ssl-cert "$cert_file"
+  chmod g+r "$cert_file"
+}
 
 case "$1" in
     configure)
@@ -31,6 +41,8 @@ case "$1" in
           --slave "$mandir/man1/$generic_command.1.gz" "$generic_command.1.gz" \
             "$mandir/man1/$kasm_command.1.gz"
       done
+
+      make_self_signed_certificate
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
