@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+docker pull ubuntu:18.04
+docker build -t kasmvncbuilder:18.04 -f builder/dockerfile.ubuntu1804.build .
+mkdir -p builder/build
+docker run -v ${PWD}/builder/build:/build --rm kasmvncbuilder:18.04
