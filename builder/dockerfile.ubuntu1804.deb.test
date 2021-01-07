@@ -39,9 +39,6 @@ COPY startup/ $STARTUPDIR
 
 ### START CUSTOM STUFF ####
 
-# COPY build/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_VER}.tar.gz /tmp/
-# RUN tar -xzvf /tmp/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_VER}.tar.gz --strip 1 -C /
-
 COPY build/*.deb /tmp
 RUN dpkg -i /tmp/*.deb; apt -yf install
 
