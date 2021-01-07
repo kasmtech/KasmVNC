@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+# Auto-install build-deps again
+# echo YYY | mk-build-deps --install debian/control
+
+dpkg-buildpackage -us -uc -b
+lintian ../*.deb

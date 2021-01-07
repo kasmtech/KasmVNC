@@ -2,5 +2,10 @@
 
 set -e
 
-dpkg-buildpackage -us -uc -b
-lintian ../*.deb
+cd "$(dirname "$0")/.."
+
+docker build -t debbuilder_ubuntu:18.04 -f \
+  builder/dockerfile.ubuntu1804.deb.build .
+
+deb_output_dir=$(cd .. && echo $PWD)
+docker run --rm -v "$deb_output_dir":/src debbuilder_ubuntu:18.04 /bin/bash -c '/src/*/builder/build-deb-inside-docker'
