@@ -12,6 +12,13 @@ cleanup () {
 }
 trap cleanup SIGINT SIGTERM
 
+detect_www_dir() {
+  local package_www_dir="/usr/share/kasmvnc/www"
+  if [[ -d "$package_www_dir" ]]; then
+    package_www_dir_option="-httpd $package_www_dir"
+  fi
+}
+
 ## resolve_vnc_connection
 VNC_IP=$(hostname -i)
 
@@ -44,8 +51,11 @@ vncserver -kill $DISPLAY &> $HOME/.vnc/vnc_startup.log \
     || rm -rfv /tmp/.X*-lock /tmp/.X11-unix &> $HOME/.vnc/vnc_startup.log \
     || echo "no locks present"
 
+
+detect_www_dir
+
 echo -e "start vncserver with param: VNC_COL_DEPTH=$VNC_COL_DEPTH, VNC_RESOLUTION=$VNC_RESOLUTION\n..."
-vncserver $DISPLAY -depth $VNC_COL_DEPTH -geometry $VNC_RESOLUTION -FrameRate=$MAX_FRAME_RATE -websocketPort $VNC_PORT -cert $HOME/.vnc/self.pem -sslOnly -interface 0.0.0.0 $VNCOPTIONS #&> $STARTUPDIR/no_vnc_startup.log
+vncserver $DISPLAY -depth $VNC_COL_DEPTH -geometry $VNC_RESOLUTION -FrameRate=$MAX_FRAME_RATE -websocketPort $VNC_PORT -cert $HOME/.vnc/self.pem -sslOnly -interface 0.0.0.0 $VNCOPTIONS $package_www_dir_option #&> $STARTUPDIR/no_vnc_startup.log
 
 PID_SUN=$!
 
