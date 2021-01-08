@@ -1,0 +1,7 @@
+FROM node:15-buster
+
+COPY kasmweb/ /src/
+
+WORKDIR /src
+
+RUN npm install
