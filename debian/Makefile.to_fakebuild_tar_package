@@ -16,6 +16,7 @@ install: unpack_tarball
 	cp -r $(SRC)/share/doc/kasmvnc*/* $(DESTDIR)/usr/share/doc/kasmvncserver/
 	rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
 	  --exclude genkeysymdef.js --exclude use_require.js \
+	  --exclude .eslintrc \
 	  $(SRC)/share/kasmvnc $(DESTDIR)/usr/share
 	cp $(SRC)/man/man1/Xvnc.1 $(DESTDIR)/usr/share/man/man1/Xkasmvnc.1
 	cp $(SRC)/share/man/man1/vncserver.1 $(DST_MAN)/kasmvncserver.1
