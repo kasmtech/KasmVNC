@@ -4,7 +4,12 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-docker pull ubuntu:18.04
-docker build -t kasmvncbuilder:18.04 -f builder/dockerfile.ubuntu1804.build .
+sudo docker pull ubuntu:18.04
+sudo docker build -t kasmvncbuilder:18.04 -f builder/dockerfile.ubuntu1804.build .
 mkdir -p builder/build
-docker run -v ${PWD}/builder/build:/build --rm kasmvncbuilder:18.04
+sudo docker run -v /tmp:/build --rm kasmvncbuilder:18.04
+
+L_GID=$(id -g)
+L_UID=$(id -u)
+sudo chown $L_UID:$L_GID /tmp/kasmvnc.ubuntu_18.04.tar.gz
+mv /tmp/kasmvnc.ubuntu_18.04.tar.gz $PWD/builder/build/
