@@ -1,6 +1,13 @@
 REQIUREMENTS
 Docker CE
 
+# Build the www webpack
+```
+sudo docker build -t kasmweb/www -f builder/dockerfile.www.build .
+sudo docker run -it --rm -v $PWD/builder/www:/build kasmweb/www:latest
+```
+
+
 # build the docker image
     cd /src_code_root
     sudo docker build -t kasmvncbuilder:18.04 -f builder/dockerfile.build .
