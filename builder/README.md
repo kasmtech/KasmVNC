@@ -1,10 +1,14 @@
 ## REQIUREMENTS
 Docker CE
 
-Each supported operating system has two dockerfiles, one for building and one for testing. This example is for building and testing Ubuntu 18.04 LTS
+# Build the www webpack
+```
+sudo docker build -t kasmweb/www -f builder/dockerfile.www.build .
+sudo docker run -it --rm -v $PWD/builder/www:/build kasmweb/www:latest
+```
 
-### Build the docker image
-```sh
+# build the docker image
+```
     cd /src_code_root
     sudo docker build -t kasmvncbuilder:18.04 -f builder/dockerfile.ubuntu1804.build .
 ```
@@ -21,7 +25,7 @@ Each supported operating system has two dockerfiles, one for building and one fo
     cd builder
     sudo docker build -t kasmvnctester:18.04 -f dockerfile.ubuntu1804.test .
 ```
-    
+
 ### run an instance of the new destkop
 ```sh
 sudo docker run -it -p 443:8443 --rm -e "VNC_USER=username" -e "VNC_PW=password123"  kasmvnctester:18.04

@@ -1,0 +1,10 @@
+FROM node:12-buster
+
+COPY kasmweb/ /src/www/
+COPY builder/build_www.sh /src/
+
+WORKDIR /src/www
+
+RUN npm install
+
+ENTRYPOINT [ "/src/build_www.sh" ]
