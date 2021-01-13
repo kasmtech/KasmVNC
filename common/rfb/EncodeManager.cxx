@@ -1181,37 +1181,12 @@ uint8_t EncodeManager::getEncoderType(const Rect& rect, const PixelBuffer *pb,
                                       const PixelBuffer *scaledpb, const Rect& scaledrect) const
 {
   struct RectInfo info;
-  unsigned int divisor, maxColours;
+  unsigned int maxColours = 256;
   PixelBuffer *ppb;
   Encoder *encoder;
 
   bool useRLE;
   EncoderType type;
-
-  // FIXME: This is roughly the algorithm previously used by the Tight
-  //        encoder. It seems a bit backwards though, that higher
-  //        compression setting means spending less effort in building
-  //        a palette. It might be that they figured the increase in
-  //        zlib setting compensated for the loss.
-  if (conn->cp.compressLevel == -1)
-    divisor = 2 * 8;
-  else
-    divisor = conn->cp.compressLevel * 8;
-  if (divisor < 4)
-    divisor = 4;
-
-  maxColours = rect.area()/divisor;
-
-  // Special exception inherited from the Tight encoder
-  if (activeEncoders[encoderFullColour] == encoderTightJPEG) {
-    if ((conn->cp.compressLevel != -1) && (conn->cp.compressLevel < 2))
-      maxColours = 24;
-    else
-      maxColours = 96;
-  }
-
-  if (maxColours < 2)
-    maxColours = 2;
 
   encoder = encoders[activeEncoders[encoderIndexedRLE]];
   if (maxColours > encoder->maxPaletteSize)
