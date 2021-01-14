@@ -3,20 +3,20 @@
 set -e
 
 build_www_dir() {
-  sudo docker build -t kasmweb/www -f builder/dockerfile.www.build .
-  sudo docker run -it --rm -v $PWD/builder/www:/build kasmweb/www:latest
+  docker build -t kasmweb/www -f builder/dockerfile.www.build .
+  docker run -it --rm -v $PWD/builder/www:/build kasmweb/www:latest
 }
 
 cd "$(dirname "$0")/.."
 
 build_www_dir
 
-sudo docker pull ubuntu:18.04
-sudo docker build -t kasmvncbuilder:18.04 -f builder/dockerfile.ubuntu1804.build .
+docker pull ubuntu:18.04
+docker build -t kasmvncbuilder:18.04 -f builder/dockerfile.ubuntu1804.build .
 mkdir -p builder/build
-sudo docker run -v /tmp:/build --rm kasmvncbuilder:18.04
+docker run -v /tmp:/build --rm kasmvncbuilder:18.04
 
 L_GID=$(id -g)
 L_UID=$(id -u)
-sudo chown $L_UID:$L_GID /tmp/kasmvnc.ubuntu_18.04.tar.gz
+chown $L_UID:$L_GID /tmp/kasmvnc.ubuntu_18.04.tar.gz
 mv /tmp/kasmvnc.ubuntu_18.04.tar.gz $PWD/builder/build/
