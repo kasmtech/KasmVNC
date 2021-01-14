@@ -19,6 +19,20 @@ detect_www_dir() {
   fi
 }
 
+detect_cert_location() {
+  local tarball_cert="$HOME/.vnc/self.pem"
+  local package_cert="/etc/kasmvnc/server.pem"
+  local use_cert=
+
+  if [[ -f "$package_cert" ]]; then
+    use_cert="$package_cert"
+  else
+    use_cert="$tarball_cert"
+  fi
+
+  cert_option="-cert $use_cert"
+}
+
 ## resolve_vnc_connection
 VNC_IP=$(hostname -i)
 
@@ -53,9 +67,10 @@ vncserver -kill $DISPLAY &> $HOME/.vnc/vnc_startup.log \
 
 
 detect_www_dir
+detect_cert_location
 
 echo -e "start vncserver with param: VNC_COL_DEPTH=$VNC_COL_DEPTH, VNC_RESOLUTION=$VNC_RESOLUTION\n..."
-vncserver $DISPLAY -depth $VNC_COL_DEPTH -geometry $VNC_RESOLUTION -FrameRate=$MAX_FRAME_RATE -websocketPort $VNC_PORT -cert $HOME/.vnc/self.pem -sslOnly -interface 0.0.0.0 $VNCOPTIONS $package_www_dir_option #&> $STARTUPDIR/no_vnc_startup.log
+vncserver $DISPLAY -depth $VNC_COL_DEPTH -geometry $VNC_RESOLUTION -FrameRate=$MAX_FRAME_RATE -websocketPort $VNC_PORT $cert_option -sslOnly -interface 0.0.0.0 $VNCOPTIONS $package_www_dir_option #&> $STARTUPDIR/no_vnc_startup.log
 
 PID_SUN=$!
 

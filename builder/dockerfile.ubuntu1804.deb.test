@@ -31,6 +31,7 @@ WORKDIR $HOME
 
 RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm libnss-wrapper gettext libjpeg-dev wget
 RUN apt-get purge -y pm-utils xscreensaver*
+RUN apt-get update && apt-get install -y vim less
 
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
@@ -45,7 +46,7 @@ RUN dpkg -i /tmp/*.deb; apt -yf install
 ### END CUSTOM STUFF ###
 
 RUN chown -R 1000:0 $HOME
-USER 1000
+USER 1000:kasmvnc
 WORKDIR $HOME
 
 ENTRYPOINT [ "/dockerstartup/vnc_startup.sh" ]
