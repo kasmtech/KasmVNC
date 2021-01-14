@@ -2,7 +2,14 @@
 
 set -e
 
+build_www_dir() {
+  sudo docker build -t kasmweb/www -f builder/dockerfile.www.build .
+  sudo docker run -it --rm -v $PWD/builder/www:/build kasmweb/www:latest
+}
+
 cd "$(dirname "$0")/.."
+
+build_www_dir
 
 sudo docker pull ubuntu:18.04
 sudo docker build -t kasmvncbuilder:18.04 -f builder/dockerfile.ubuntu1804.build .
