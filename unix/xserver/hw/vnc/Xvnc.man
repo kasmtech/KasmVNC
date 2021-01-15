@@ -315,6 +315,12 @@ Listen for websocket connections on this port, default 6800.
 SSL pem cert to use for websocket connections, default empty/not used.
 .
 .TP
+.B \-key \fIpath\fP
+SSL pem key to use for websocket connections, default empty/not used.
+Only use this if you have the cert and key in separate files. If they
+are in the same file, use \fB-cert\fP.
+.
+.TP
 .B \-sslOnly
 Require SSL for websocket connections. Default off, non-SSL allowed.
 .

@@ -423,7 +423,7 @@ extern settings_t settings;
 
 WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
                          socklen_t listenaddrlen,
-                         bool sslonly, const char *cert,
+                         bool sslonly, const char *cert, const char *certkey,
                          const char *basicauth,
                          const char *httpdir)
 {
@@ -496,7 +496,7 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
 
   settings.basicauth = basicauth;
   settings.cert = cert;
-  settings.key = "";
+  settings.key = certkey;
   settings.ssl_only = sslonly;
   settings.verbose = vlog.getLevel() >= vlog.LEVEL_DEBUG;
   settings.httpdir = NULL;
@@ -673,7 +673,7 @@ void network::createTcpListeners(std::list<SocketListener*> *listeners,
 
 void network::createWebsocketListeners(std::list<SocketListener*> *listeners,
                                  const struct addrinfo *ai,
-                                 bool sslonly, const char *cert,
+                                 bool sslonly, const char *cert, const char *certkey,
                                  const char *basicauth,
                                  const char *httpdir)
 {
@@ -701,7 +701,7 @@ void network::createWebsocketListeners(std::list<SocketListener*> *listeners,
     try {
       new_listeners.push_back(new WebsocketListener(current->ai_addr,
                                               current->ai_addrlen,
-                                              sslonly, cert, basicauth,
+                                              sslonly, cert, certkey, basicauth,
                                               httpdir));
     } catch (SocketException& e) {
       // Ignore this if it is due to lack of address family support on
@@ -729,6 +729,7 @@ void network::createWebsocketListeners(std::list<SocketListener*> *listeners,
                                  const char *addr,
                                  bool sslonly,
                                  const char *cert,
+                                 const char *certkey,
                                  const char *basicauth,
                                  const char *httpdir)
 {
@@ -757,7 +758,7 @@ void network::createWebsocketListeners(std::list<SocketListener*> *listeners,
     ai[1].ai_addrlen = sizeof(sa[1].u.sin6);
     ai[1].ai_next = NULL;
 
-    createWebsocketListeners(listeners, ai, sslonly, cert, basicauth, httpdir);
+    createWebsocketListeners(listeners, ai, sslonly, cert, certkey, basicauth, httpdir);
   } else {
     struct addrinfo *ai, hints;
     char service[16];
@@ -780,7 +781,7 @@ void network::createWebsocketListeners(std::list<SocketListener*> *listeners,
                            gai_strerror(result));
 
     try {
-      createWebsocketListeners(listeners, ai, sslonly, cert, basicauth, httpdir);
+      createWebsocketListeners(listeners, ai, sslonly, cert, certkey, basicauth, httpdir);
     } catch(...) {
       freeaddrinfo(ai);
       throw;
