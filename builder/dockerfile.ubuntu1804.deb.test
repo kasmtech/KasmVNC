@@ -41,7 +41,7 @@ COPY startup/ $STARTUPDIR
 ### START CUSTOM STUFF ####
 
 COPY build/*.deb /tmp
-RUN dpkg -i /tmp/*.deb; apt -yf install
+RUN dpkg -i /tmp/*.deb; apt-get -yf install
 
 ### END CUSTOM STUFF ###
 
