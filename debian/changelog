@@ -1,0 +1,5 @@
+kasmvnc (0.9.1~beta-1) unstable; urgency=medium
+
+  * Initial release of the Debian package.
+
+ -- Dmitry Maksyoma <ledestin@gmail.com>  Fri, 25 Dec 2020 21:29:24 +1300

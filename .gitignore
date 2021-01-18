@@ -11,3 +11,6 @@ CMakeCache.txt
 Makefile
 Makefile.in
 config.h
+
+builder/build/
+builder/www/

@@ -5,6 +5,20 @@
  *
  * See README.md for usage and integration instructions.
  */
+window._noVNC_has_module_support = true;
+window.addEventListener("load", function() {
+    if (window._noVNC_has_module_support) return;
+    var loader = document.createElement("script");
+    loader.src = "vendor/browser-es-module-loader/dist/browser-es-module-loader.js";
+    document.head.appendChild(loader);
+});
+window.addEventListener("load", function() {
+    var connect_btn_el = document.getElementById("noVNC_connect_button");
+    if (typeof(connect_btn_el) != 'undefined' && connect_btn_el != null)
+    {
+        connect_btn_el.click();
+    }
+});
 
 import * as Log from '../core/util/logging.js';
 import _, { l10n } from './localization.js';

@@ -276,7 +276,7 @@ $passwordArgSpecified = 0;
 #}
 
 # Disable vnc auth, kasmvnc uses https basic auth
-system("echo '' | ".$exedir."vncpasswd -f > $vncUserDir/passwd");
+system("echo 'WrLNwLrcrxM=' | base64 -d > $vncUserDir/passwd");
 
 $kasmAuthEnabled = 1;
 

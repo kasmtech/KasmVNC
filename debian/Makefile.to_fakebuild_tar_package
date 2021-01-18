@@ -1,0 +1,30 @@
+TARBALL := builder/build/kasmvnc.ubuntu_18.04.tar.gz
+TAR_DATA := $(shell mktemp -d)
+SRC := $(TAR_DATA)/usr/local
+SRC_BIN := $(SRC)/bin
+DST_MAN := $(DESTDIR)/usr/share/man/man1
+
+install: unpack_tarball
+	echo "TAR_DATA: $(TAR_DATA)"
+	echo "installing files"
+	mkdir -p $(DESTDIR)/usr/bin $(DESTDIR)/usr/share/man/man1 \
+	  $(DESTDIR)/usr/share/doc/kasmvncserver
+	cp $(SRC_BIN)/Xvnc $(DESTDIR)/usr/bin/Xkasmvnc
+	cp $(SRC_BIN)/vncserver $(DESTDIR)/usr/bin/kasmvncserver
+	cp $(SRC_BIN)/vncconfig $(DESTDIR)/usr/bin/kasmvncconfig
+	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
+	cp -r $(SRC)/share/doc/kasmvnc*/* $(DESTDIR)/usr/share/doc/kasmvncserver/
+	rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
+	  --exclude genkeysymdef.js --exclude use_require.js \
+	  --exclude .eslintrc \
+	  $(SRC)/share/kasmvnc $(DESTDIR)/usr/share
+	cp $(SRC)/man/man1/Xvnc.1 $(DESTDIR)/usr/share/man/man1/Xkasmvnc.1
+	cp $(SRC)/share/man/man1/vncserver.1 $(DST_MAN)/kasmvncserver.1
+	cp $(SRC)/share/man/man1/vncpasswd.1 $(DST_MAN)/kasmvncpasswd.1
+	cp $(SRC)/share/man/man1/vncconfig.1 $(DST_MAN)/kasmvncconfig.1
+
+unpack_tarball:
+	tar -xzf "$(TARBALL)" -C "$(TAR_DATA)"
+
+clean:
+	rm -rf $(TAR_DATA)

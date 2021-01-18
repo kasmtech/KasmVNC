@@ -51,7 +51,7 @@ if [ $SERVER = 1 ]; then
 	mkdir -p $OUTDIR/lib/dri/
 	install -m 755 ./xorg.build/lib/dri/swrast_dri.so $OUTDIR/lib/dri/
 	mkdir -p $OUTDIR/share/kasmvnc
-	cp -r $SRCDIR/kasmweb $OUTDIR/share/kasmvnc/www
+	cp -r $SRCDIR/builder/www $OUTDIR/share/kasmvnc/www
 fi
 
 #pushd $TMPDIR/inst
