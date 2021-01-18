@@ -8,8 +8,11 @@ stages:
 build:
   stage: build
   script:
-    - builder/build-tarball
-    - builder/build-deb
+    - ls -l
+    - pwd
+    - apk add bash
+    - bash builder/build-tarball
+    - bash builder/build-deb
     - mkdir output
     - cp builder/build/kasmvncserver_*.deb output/
     - cp builder/build/kasmvnc.*.tar.gz output/
