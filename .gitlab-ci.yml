@@ -1,0 +1,19 @@
+image: docker
+services:
+  - docker:dind
+
+stages:
+  - build
+  
+build:
+  image: ubuntu:xenial
+  stage: build
+  script:
+    - builder/build-tarball
+    - builder/build-deb
+    - mkdir output
+    - cp builder/build/kasmvncserver_*.deb output/
+    - cp builder/build/kasmvnc.*.tar.gz output/
+  artifacts:
+    paths:
+      - output/
