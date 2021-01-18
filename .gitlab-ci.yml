@@ -9,6 +9,8 @@ build:
   image: ubuntu:xenial
   stage: build
   script:
+    - ls -l
+    - pwd
     - builder/build-tarball
     - builder/build-deb
     - mkdir output
