@@ -4,7 +4,7 @@ set -e
 
 build_www_dir() {
   docker build -t kasmweb/www -f builder/dockerfile.www.build .
-  docker run -it --rm -v $PWD/builder/www:/build kasmweb/www:latest
+  docker run --rm -v $PWD/builder/www:/build kasmweb/www:latest
 }
 
 cd "$(dirname "$0")/.."
