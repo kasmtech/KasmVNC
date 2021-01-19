@@ -1,4 +1,6 @@
-TARBALL := builder/build/kasmvnc.ubuntu_18.04.tar.gz
+TARGET_OS := $(shell lsb_release -is | tr '[:upper:]' '[:lower:]')
+TARGET_OS_VER := $(shell lsb_release -rs)
+TARBALL := builder/build/kasmvnc.$(TARGET_OS)_$(TARGET_OS_VER).tar.gz
 TAR_DATA := $(shell mktemp -d)
 SRC := $(TAR_DATA)/usr/local
 SRC_BIN := $(SRC)/bin

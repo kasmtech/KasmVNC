@@ -3,11 +3,12 @@
 set -e
 
 cd "$(dirname "$0")/.."
+. builder/os_ver_cli.sh
 
-docker build -t debbuilder_ubuntu:18.04 -f \
-  builder/dockerfile.ubuntu1804.deb.build .
+docker build -t debbuilder_${os}:${os_ver} -f \
+  builder/dockerfile.${os}${os_ver_dockerfile}.deb.build .
 
 deb_output_dir=$(cd .. && echo $PWD)
 L_UID=$(id -u) #Ubuntu already has UID env var, but this should work on all Linix systems
 L_GID=$(id -g)
-docker run --rm -v "$deb_output_dir":/src --user $L_UID:$L_GID debbuilder_ubuntu:18.04 /bin/bash -c '/src/*/builder/build-deb-inside-docker'
+docker run --rm -v "$deb_output_dir":/src --user $L_UID:$L_GID debbuilder_${os}:${os_ver} /bin/bash -c '/src/*/builder/build-deb-inside-docker'
