@@ -40,7 +40,8 @@ COPY startup/ $STARTUPDIR
 
 ### START CUSTOM STUFF ####
 
-COPY build/*.deb /tmp
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/*.deb /tmp
 RUN dpkg -i /tmp/*.deb; apt-get -yf install
 
 ### END CUSTOM STUFF ###

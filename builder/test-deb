@@ -5,6 +5,7 @@ set -e
 cd "$(dirname "$0")"
 . ./os_ver_cli.sh
 
-docker build -t kasmvnctester-deb:$os_ver \
+docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os}_${os_ver}" \
+  -t kasmvnctester-deb:$os_ver \
   -f dockerfile.${os}${os_ver_dockerfile}.deb.test .
 #docker run -it -p 443:8443 --rm -e "VNC_USER=username" -e "VNC_PW=password123" kasmvnctester-deb:18.04
