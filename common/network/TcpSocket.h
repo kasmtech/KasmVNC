@@ -90,7 +90,8 @@ namespace network {
   class WebsocketListener : public SocketListener {
   public:
     WebsocketListener(const struct sockaddr *listenaddr, socklen_t listenaddrlen,
-                      bool sslonly, const char *cert, const char *basicauth,
+                      bool sslonly, const char *cert, const char *certkey,
+                      const char *basicauth,
                       const char *httpdir);
 
     virtual int getMyPort();
@@ -110,6 +111,7 @@ namespace network {
                           const char *addr,
                           bool sslonly,
                           const char *cert,
+                          const char *certkey,
                           const char *basicauth,
                           const char *httpdir);
   void createTcpListeners(std::list<SocketListener*> *listeners,
@@ -121,6 +123,7 @@ namespace network {
                           const struct addrinfo *ai,
                           bool sslonly,
                           const char *cert,
+                          const char *certkey,
                           const char *basicauth,
                           const char *httpdir);
 

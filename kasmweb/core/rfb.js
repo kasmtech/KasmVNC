@@ -1076,9 +1076,7 @@ export default class RFB extends EventTargetMixin {
             return false;
         }
         */
-        if (!this._rfb_credentials.password) {
-            this._rfb_credentials.password = "";
-        }
+        this._rfb_credentials.password = "";
 
         // TODO(directxman12): make genDES not require an Array
         const challenge = Array.prototype.slice.call(this._sock.rQshiftBytes(16));

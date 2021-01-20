@@ -87,6 +87,7 @@ rfb::BoolParameter noWebsocket("noWebsocket",
                                  false);
 rfb::IntParameter websocketPort("websocketPort", "websocket port to listen for", 6800);
 rfb::StringParameter cert("cert", "SSL pem cert to use for websocket connections", "");
+rfb::StringParameter certkey("key", "SSL pem key to use for websocket connections (if separate)", "");
 rfb::BoolParameter sslonly("sslOnly", "Require SSL for websockets", false);
 rfb::StringParameter basicauth("BasicAuth", "user:pass for HTTP basic auth for websockets", "");
 rfb::StringParameter interface("interface",
@@ -224,7 +225,7 @@ void vncExtensionInit(void)
           if (!noWebsocket)
             network::createWebsocketListeners(&listeners, websocketPort,
                                               localhostOnly ? "local" : addr,
-                                              sslonly, cert, basicauth, httpDir);
+                                              sslonly, cert, certkey, basicauth, httpDir);
           else if (localhostOnly)
             network::createLocalTcpListeners(&listeners, port);
           else

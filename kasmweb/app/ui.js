@@ -13,7 +13,11 @@ window.addEventListener("load", function() {
     document.head.appendChild(loader);
 });
 window.addEventListener("load", function() {
-    document.getElementById("noVNC_connect_button").click();
+    var connect_btn_el = document.getElementById("noVNC_connect_button");
+    if (typeof(connect_btn_el) != 'undefined' && connect_btn_el != null)
+    {
+        connect_btn_el.click();
+    }
 });
 
 import * as Log from '../core/util/logging.js';

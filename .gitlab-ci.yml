@@ -1,0 +1,21 @@
+image: docker
+services:
+  - docker:dind
+
+stages:
+  - build
+  
+build:
+  stage: build
+  script:
+    - ls -l
+    - pwd
+    - apk add bash
+    - bash builder/build-tarball
+    - bash builder/build-deb
+    - mkdir output
+    - cp builder/build/kasmvncserver_*.deb output/
+    - cp builder/build/kasmvnc.*.tar.gz output/
+  artifacts:
+    paths:
+      - output/
