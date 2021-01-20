@@ -6,4 +6,4 @@ cd "$(dirname "$0")/.."
 
 dpkg-buildpackage -us -uc -b
 cp ../*.deb builder/build
-lintian ../*.deb
+lintian ../*.deb || true
