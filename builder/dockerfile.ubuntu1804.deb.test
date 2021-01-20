@@ -47,7 +47,7 @@ RUN dpkg -i /tmp/*.deb; apt-get -yf install
 ### END CUSTOM STUFF ###
 
 RUN chown -R 1000:0 $HOME
-USER 1000:kasmvnc
+USER 1000:ssl-cert
 WORKDIR $HOME
 
 ENTRYPOINT [ "/dockerstartup/vnc_startup.sh" ]
