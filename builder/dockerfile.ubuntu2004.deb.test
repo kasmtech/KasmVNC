@@ -41,7 +41,7 @@ COPY startup/ $STARTUPDIR
 ### START CUSTOM STUFF ####
 
 ARG KASMVNC_PACKAGE_DIR
-COPY $KASMVNC_PACKAGE_DIR/*.deb /tmp
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp
 RUN dpkg -i /tmp/*.deb; apt-get -yf install
 
 ### END CUSTOM STUFF ###
