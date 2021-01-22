@@ -14,7 +14,7 @@ build_www_dir
 
 docker pull "$os_image"
 docker build -t kasmvncbuilder:$os_ver \
--f builder/dockerfile.ubuntu${os_ver_dockerfile}.build .
+-f builder/dockerfile.${os}${os_ver_dockerfile}.build .
 mkdir -p builder/build
 docker run -v /tmp:/build --rm kasmvncbuilder:$os_ver
 
