@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+
+cd "$(dirname "$0")"
+os="debian"
+os_ver="10"
+os_ver_dockerfile="10"
+
+docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os}_${os_ver}" \
+  -t kasmvnctester_barebones_${os}:$os_ver \
+  -f dockerfile.${os}${os_ver_dockerfile}.barebones.deb.test .
+echo
+echo "You will be asked to set password. User name is docker."
+docker run -it -p 443:8443 --rm kasmvnctester_barebones_${os}:$os_ver
