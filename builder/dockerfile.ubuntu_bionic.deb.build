@@ -1,6 +1,4 @@
-FROM ubuntu:20.04
-
-ENV DEBIAN_FRONTEND noninteractive
+FROM ubuntu:bionic
 
 RUN apt-get update && \
       apt-get -y install vim build-essential devscripts equivs

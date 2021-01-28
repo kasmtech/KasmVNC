@@ -13,13 +13,13 @@ cd "$(dirname "$0")/.."
 build_www_dir
 
 docker pull "$os_image"
-docker build -t kasmvncbuilder:$os_ver \
--f builder/dockerfile.${os}${os_ver_dockerfile}.build .
+docker build -t kasmvncbuilder:$os_codename \
+-f builder/dockerfile.${os}_${os_codename}.build .
 mkdir -p builder/build
-docker run -v /tmp:/build --rm kasmvncbuilder:$os_ver
+docker run -v /tmp:/build --rm kasmvncbuilder:$os_codename
 
 L_GID=$(id -g)
 L_UID=$(id -u)
-tarball_name="kasmvnc.${os}_${os_ver}.tar.gz"
+tarball_name="kasmvnc.${os}_${os_codename}.tar.gz"
 chown $L_UID:$L_GID /tmp/$tarball_name
 mv /tmp/$tarball_name $PWD/builder/build/

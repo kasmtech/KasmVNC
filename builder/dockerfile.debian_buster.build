@@ -1,16 +1,16 @@
-FROM ubuntu:20.04
+FROM debian:buster
 
-ENV KASMVNC_BUILD_OS ubuntu
-ENV KASMVNC_BUILD_OS_VER 20.04
-ENV XORG_VER 1.20.8
+ENV KASMVNC_BUILD_OS debian
+ENV KASMVNC_BUILD_OS_CODENAME buster
+ENV XORG_VER 1.20.10
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list
+RUN grep '^deb'  /etc/apt/sources.list | sed 's#^deb#deb-src#' >> /etc/apt/sources.list
 
 RUN apt-get update && \
       apt-get -y install sudo
 
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
 RUN apt-get update && apt-get -y install cmake git libjpeg-dev libgnutls28-dev vim wget tightvncserver
 RUN apt-get update && apt-get -y install libjpeg-dev libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev

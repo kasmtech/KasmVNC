@@ -67,4 +67,4 @@ mv release/maketarball3 release/maketarball
 
 make servertarball
 
-cp kasmvnc*.tar.gz /build/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_VER}.tar.gz
+cp kasmvnc*.tar.gz /build/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_CODENAME}.tar.gz

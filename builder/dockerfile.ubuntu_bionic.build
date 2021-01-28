@@ -1,16 +1,13 @@
-FROM debian:buster
+FROM ubuntu:18.04
 
-ENV KASMVNC_BUILD_OS debian
-ENV KASMVNC_BUILD_OS_VER 10
-ENV XORG_VER 1.20.10
-ENV DEBIAN_FRONTEND noninteractive
+ENV KASMVNC_BUILD_OS ubuntu
+ENV KASMVNC_BUILD_OS_CODENAME bionic
 
-RUN grep '^deb'  /etc/apt/sources.list | sed 's#^deb#deb-src#' >> /etc/apt/sources.list
+RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list
 
 RUN apt-get update && \
       apt-get -y install sudo
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
 RUN apt-get update && apt-get -y install cmake git libjpeg-dev libgnutls28-dev vim wget tightvncserver
 RUN apt-get update && apt-get -y install libjpeg-dev libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev
@@ -21,6 +18,12 @@ RUN cd /tmp && tar -xzvf /tmp/libwebp-*
 RUN cd /tmp/libwebp-1.0.2 && \
     ./configure --enable-static --disable-shared && \
     make && make install
+
+# Fix for older required libs
+#RUN cd /tmp && wget http://launchpadlibrarian.net/347526424/libxfont1-dev_1.5.2-4ubuntu2_amd64.deb && \
+#    wget http://launchpadlibrarian.net/347526425/libxfont1_1.5.2-4ubuntu2_amd64.deb && \
+#    dpkg -i libxfont1_1.5.2-4ubuntu2_amd64.deb && \
+#    dpkg -i libxfont1-dev_1.5.2-4ubuntu2_amd64.deb
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
 

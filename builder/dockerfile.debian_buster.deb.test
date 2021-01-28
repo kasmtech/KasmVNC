@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM debian:buster-slim
 
 ENV DISPLAY=:1 \
     VNC_PORT=8443 \
@@ -20,8 +20,8 @@ ENV DISPLAY=:1 \
     OMP_WAIT_POLICY=PASSIVE \
     SHELL=/bin/bash \
     SINGLE_APPLICATION=0 \
-    KASMVNC_BUILD_OS=ubuntu \
-    KASMVNC_BUILD_OS_VER=18.04
+    KASMVNC_BUILD_OS=debian \
+    KASMVNC_BUILD_OS_CODENAME=buster
 
 EXPOSE $VNC_PORT
 
@@ -29,8 +29,9 @@ WORKDIR $HOME
 
 ### REQUIRED STUFF ###
 
-RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm libnss-wrapper gettext libjpeg-dev wget
+RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm libnss-wrapper gettext wget
 RUN apt-get purge -y pm-utils xscreensaver*
+RUN apt-get update && apt-get install -y vim less
 
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
@@ -39,13 +40,14 @@ COPY startup/ $STARTUPDIR
 
 ### START CUSTOM STUFF ####
 
-COPY build/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_VER}.tar.gz /tmp/
-RUN tar -xzvf /tmp/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_VER}.tar.gz --strip 1 -C /
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp
+RUN dpkg -i /tmp/*.deb; apt-get -yf install
 
 ### END CUSTOM STUFF ###
 
 RUN chown -R 1000:0 $HOME
-USER 1000
+USER 1000:ssl-cert
 WORKDIR $HOME
 
 ENTRYPOINT [ "/dockerstartup/vnc_startup.sh" ]

@@ -5,8 +5,8 @@ set -e
 cd "$(dirname "$0")/.."
 
 os=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-os_ver=$(lsb_release -rs)
-os_dir="builder/build/${os}_${os_ver}"
+os_codename=$(lsb_release -cs)
+os_dir="builder/build/${os_codename}"
 
 dpkg-buildpackage -us -uc -b
 mkdir -p "$os_dir"
