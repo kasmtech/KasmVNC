@@ -12,9 +12,8 @@ cd "$(dirname "$0")/.."
 
 build_www_dir
 
-docker pull "$os_image"
 docker build -t kasmvncbuilder:$os_codename \
--f builder/dockerfile.${os}_${os_codename}.build .
+  -f builder/dockerfile.${os}_${os_codename}.build .
 mkdir -p builder/build
 docker run -v /tmp:/build --rm kasmvncbuilder:$os_codename
 
