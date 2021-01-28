@@ -23,7 +23,7 @@ sed -i -e '/find_package(FLTK/s@^@#@' \
 	-e '/add_subdirectory(tests/s@^@#@' \
 	CMakeLists.txt
 
-cmake .
+cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo .
 make -j5
 
 tar -C unix/xserver -xvf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=1
