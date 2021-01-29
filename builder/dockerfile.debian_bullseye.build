@@ -1,0 +1,31 @@
+FROM debian:bullseye-slim
+
+ENV KASMVNC_BUILD_OS debian
+ENV KASMVNC_BUILD_OS_CODENAME bullseye
+ENV XORG_VER 1.20.10
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN grep '^deb'  /etc/apt/sources.list | sed 's#^deb#deb-src#' >> /etc/apt/sources.list
+
+RUN apt-get update && \
+      apt-get -y install sudo
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
+RUN apt-get update && apt-get -y install cmake git libjpeg-dev libgnutls28-dev vim wget tightvncserver
+RUN apt-get update && apt-get -y install libjpeg-dev libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev
+
+# Additions for webp
+RUN cd /tmp && wget https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.0.2.tar.gz
+RUN cd /tmp && tar -xzvf /tmp/libwebp-*
+RUN cd /tmp/libwebp-1.0.2 && \
+    ./configure --enable-static --disable-shared && \
+    make && make install
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
+
+COPY . /src
+RUN chown -R docker:docker /src
+
+USER docker
+ENTRYPOINT ["/src/builder/build.sh"]
