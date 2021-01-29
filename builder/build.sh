@@ -1,5 +1,12 @@
 #!/bin/sh -e
 
+detect_quilt() {
+  if which quilt 1>/dev/null; then
+    QUILT_PRESENT=1
+    export QUILT_PATCHES=debian/patches
+  fi
+}
+
 # For build-dep to work, the apt sources need to have the source server
 #sudo apt-get build-dep xorg-server
 
@@ -65,6 +72,10 @@ sed  $'s#pushd $TMPDIR/inst#CWD=$(pwd)\\\ncd $TMPDIR/inst#' release/maketarball 
 sed  $'s#popd#cd $CWD#' release/maketarball2 > release/maketarball3
 mv release/maketarball3 release/maketarball
 
+detect_quilt
+if [ -n "$QUILT_PRESENT" ]; then
+  quilt push -a
+fi
 make servertarball
 
 cp kasmvnc*.tar.gz /build/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_CODENAME}.tar.gz
