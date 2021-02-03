@@ -4,8 +4,10 @@ set -e
 
 build_www_dir() {
   docker build -t kasmweb/www -f builder/dockerfile.www.build .
-  docker run -it --rm -v $PWD/builder/www:/build kasmweb/www:latest
+  docker run --rm -v $PWD/builder/www:/build kasmweb/www:latest
 }
+
+shared_with_docker_dir=${GITLAB_SHARED_DIND_DIR:-/tmp}
 
 cd "$(dirname "$0")/.."
 
@@ -14,9 +16,9 @@ build_www_dir
 docker pull ubuntu:18.04
 docker build -t kasmvncbuilder:18.04 -f builder/dockerfile.ubuntu1804.build .
 mkdir -p builder/build
-docker run -v /tmp:/build --rm kasmvncbuilder:18.04
+docker run -v $shared_with_docker_dir:/build --rm kasmvncbuilder:18.04
 
 L_GID=$(id -g)
 L_UID=$(id -u)
-chown $L_UID:$L_GID /tmp/kasmvnc.ubuntu_18.04.tar.gz
-mv /tmp/kasmvnc.ubuntu_18.04.tar.gz $PWD/builder/build/
+chown $L_UID:$L_GID $shared_with_docker_dir/kasmvnc.ubuntu_18.04.tar.gz
+mv $shared_with_docker_dir/kasmvnc.ubuntu_18.04.tar.gz $PWD/builder/build/
