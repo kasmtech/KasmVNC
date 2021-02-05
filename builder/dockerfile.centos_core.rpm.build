@@ -1,0 +1,10 @@
+FROM centos:centos7
+
+RUN yum install -y rpm* gpg* rng-tools
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+COPY . /src
+RUN chown -R docker:docker /src
+
+USER docker

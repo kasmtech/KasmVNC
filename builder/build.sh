@@ -66,11 +66,12 @@ touch man/man1/Xserver.1
 touch man/man1/Xvnc.1
 mkdir lib
 cd lib
-ln -s /usr/lib/x86_64-linux-gnu/dri dri
+if [ -d /usr/lib/x86_64-linux-gnu/dri ]; then
+  ln -s /usr/lib/x86_64-linux-gnu/dri dri
+else
+  ln -s /usr/lib64/dri dri
+fi
 cd /src
-sed  $'s#pushd $TMPDIR/inst#CWD=$(pwd)\\\ncd $TMPDIR/inst#' release/maketarball > release/maketarball2
-sed  $'s#popd#cd $CWD#' release/maketarball2 > release/maketarball3
-mv release/maketarball3 release/maketarball
 
 detect_quilt
 if [ -n "$QUILT_PRESENT" ]; then

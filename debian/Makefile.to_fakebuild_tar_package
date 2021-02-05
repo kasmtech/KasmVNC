@@ -1,6 +1,12 @@
 TARGET_OS := $(shell lsb_release -is | tr '[:upper:]' '[:lower:]')
-TARGET_OS_CODENAME := $(shell lsb_release -cs)
-TARBALL := builder/build/kasmvnc.$(TARGET_OS)_$(TARGET_OS_CODENAME).tar.gz
+TARGET_OS_CODENAME := $(shell lsb_release -cs | tr '[:upper:]' '[:lower:]')
+TARBALL_DIR :=
+ifeq ($(TARGET_OS), centos)
+	TARBALL_DIR := $$RPM_SOURCE_DIR
+else
+	TARBALL_DIR := builder/build
+endif
+TARBALL := $(TARBALL_DIR)/kasmvnc.$(TARGET_OS)_$(TARGET_OS_CODENAME).tar.gz
 TAR_DATA := $(shell mktemp -d)
 SRC := $(TAR_DATA)/usr/local
 SRC_BIN := $(SRC)/bin

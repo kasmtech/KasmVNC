@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+
+cd "$(dirname "$0")"
+. ./os_ver_cli.sh
+
+echo kasmvnctester_${os}:$os_codename
+docker build --build-arg \
+  KASMVNC_PACKAGE_DIR="build" \
+  -t kasmvnctester_${os}:$os_codename \
+  -f dockerfile.${os}_${os_codename}.rpm.test .
+echo docker run -it -p 443:8443 --rm -e "VNC_USER=foo" -e "VNC_PW=bar" \
+  kasmvnctester_${os}:$os_codename
