@@ -416,6 +416,10 @@ const UI = {
         document.documentElement.classList.remove("noVNC_reconnecting");
 
         const transition_elem = document.getElementById("noVNC_transition_text");
+	if (WebUtil.isInsideKasmVDI())         
+	{
+	    parent.postMessage({ action: 'connection_state', value: state}, '*' );
+        }
         switch (state) {
             case 'init':
                 break;
@@ -1253,8 +1257,10 @@ const UI = {
         UI.rfb.addEventListener("credentialsrequired", UI.credentials);
         UI.rfb.addEventListener("securityfailure", UI.securityFailed);
         UI.rfb.addEventListener("capabilities", UI.updatePowerButton);
-        UI.rfb.addEventListener("clipboard", UI.clipboardReceive);
-        UI.rfb.addEventListener("bottleneck_stats", UI.bottleneckStatsRecieve);
+        if (UI.rfb.clipboardDown){
+            UI.rfb.addEventListener("clipboard", UI.clipboardReceive);
+	}
+	UI.rfb.addEventListener("bottleneck_stats", UI.bottleneckStatsRecieve);
 
         document.addEventListener('mouseenter', UI.enterVNC);
         document.addEventListener('mouseleave', UI.leaveVNC);
@@ -1459,7 +1465,9 @@ const UI = {
         if (event.data && event.data.action) {
             switch (event.data.action) {
                 case 'clipboardsnd':
-                    UI.rfb.clipboardPasteFrom(event.data.value);
+                    if (UI.rfb.clipboardUp) {
+                        UI.rfb.clipboardPasteFrom(event.data.value);
+                    }
                     break;
                 case 'setvideoquality':
                     UI.rfb.videoQuality = event.data.value;
