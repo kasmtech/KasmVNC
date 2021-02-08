@@ -36,6 +36,7 @@ ConnParams::ConnParams()
     width(0), height(0), useCopyRect(false),
     supportsLocalCursor(false), supportsLocalXCursor(false),
     supportsLocalCursorWithAlpha(false),
+    supportsCursorPosition(false),
     supportsDesktopResize(false), supportsExtendedDesktopSize(false),
     supportsDesktopRename(false), supportsLastRect(false),
     supportsLEDState(false), supportsQEMUKeyEvent(false),
@@ -43,7 +44,7 @@ ConnParams::ConnParams()
     supportsSetDesktopSize(false), supportsFence(false),
     supportsContinuousUpdates(false),
     compressLevel(2), qualityLevel(-1), fineQualityLevel(-1),
-    subsampling(subsampleUndefined), name_(0), verStrPos(0),
+    subsampling(subsampleUndefined), name_(0), cursorPos_(0, 0), verStrPos(0),
     ledState_(ledUnknown), shandler(NULL)
 {
   memset(kasmPassed, 0, KASM_NUM_SETTINGS);
@@ -101,6 +102,11 @@ void ConnParams::setCursor(const Cursor& other)
   cursor_ = new Cursor(other);
 }
 
+void ConnParams::setCursorPos(const Point& pos)
+{
+    cursorPos_ = pos;
+}
+
 bool ConnParams::supportsEncoding(rdr::S32 encoding) const
 {
   return encodings_.count(encoding) != 0;
@@ -146,6 +152,9 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
       break;
     case pseudoEncodingExtendedDesktopSize:
       supportsExtendedDesktopSize = true;
+      break;
+    case pseudoEncodingVMwareCursorPosition:
+      supportsCursorPosition = true;
       break;
     case pseudoEncodingDesktopName:
       supportsDesktopRename = true;

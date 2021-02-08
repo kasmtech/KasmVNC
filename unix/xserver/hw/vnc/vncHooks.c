@@ -65,6 +65,9 @@ typedef struct _vncHooksScreenRec {
   RestoreAreasProcPtr          RestoreAreas;
 #endif
   DisplayCursorProcPtr         DisplayCursor;
+#if XORG >= 119
+  CursorWarpedToProcPtr        CursorWarpedTo;
+#endif
   ScreenBlockHandlerProcPtr    BlockHandler;
 #ifdef RENDER
   CompositeProcPtr             Composite;
@@ -137,6 +140,12 @@ static RegionPtr vncHooksRestoreAreas(WindowPtr pWin, RegionPtr prgnExposed);
 #endif
 static Bool vncHooksDisplayCursor(DeviceIntPtr pDev,
                                   ScreenPtr pScreen, CursorPtr cursor);
+#if XORG >= 119
+static void vncHooksCursorWarpedTo(DeviceIntPtr pDev,
+                                   ScreenPtr pScreen_, ClientPtr pClient,
+                                   WindowPtr pWindow, SpritePtr pSprite,
+                                   int x, int y);
+#endif
 #if XORG <= 112
 static void vncHooksBlockHandler(int i, pointer blockData, pointer pTimeout,
                                  pointer pReadmask);
@@ -316,6 +325,9 @@ int vncHooksInit(int scrIdx)
   wrap(vncHooksScreen, pScreen, RestoreAreas, vncHooksRestoreAreas);
 #endif
   wrap(vncHooksScreen, pScreen, DisplayCursor, vncHooksDisplayCursor);
+#if XORG >= 119
+  wrap(vncHooksScreen, pScreen, CursorWarpedTo, vncHooksCursorWarpedTo);
+#endif
   wrap(vncHooksScreen, pScreen, BlockHandler, vncHooksBlockHandler);
 #ifdef RENDER
   ps = GetPictureScreenIfSet(pScreen);
@@ -724,6 +736,20 @@ out:
 
   return ret;
 }
+
+// CursorWarpedTo - notify that the cursor was warped
+
+#if XORG >= 119
+static void vncHooksCursorWarpedTo(DeviceIntPtr pDev,
+                                   ScreenPtr pScreen_, ClientPtr pClient,
+                                   WindowPtr pWindow, SpritePtr pSprite,
+                                   int x, int y)
+{
+  SCREEN_PROLOGUE(pScreen_, CursorWarpedTo);
+  vncSetCursorPos(pScreen->myNum, x, y);
+  SCREEN_EPILOGUE(CursorWarpedTo);
+}
+#endif
 
 // BlockHandler - ignore any changes during the block handler - it's likely
 // these are just drawing the cursor.

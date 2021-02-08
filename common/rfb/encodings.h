@@ -85,6 +85,9 @@ namespace rfb {
   const int pseudoEncodingVideoOutTimeLevel1 = -1986;
   const int pseudoEncodingVideoOutTimeLevel100 = -1887;
 
+  // VMware-specific
+  const int pseudoEncodingVMwareCursorPosition = 0x574d5666;
+
   int encodingNum(const char* name);
   const char* encodingName(int num);
 }

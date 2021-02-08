@@ -39,6 +39,7 @@ SMsgWriter::SMsgWriter(ConnParams* cp_, rdr::OutStream* os_)
     needSetDesktopSize(false), needExtendedDesktopSize(false),
     needSetDesktopName(false), needSetCursor(false),
     needSetXCursor(false), needSetCursorWithAlpha(false),
+    needCursorPos(false),
     needLEDState(false), needQEMUKeyEvent(false)
 {
 }
@@ -204,6 +205,14 @@ bool SMsgWriter::writeSetCursorWithAlpha()
   return true;
 }
 
+void SMsgWriter::writeCursorPos()
+{
+  if (!cp->supportsEncoding(pseudoEncodingVMwareCursorPosition))
+    throw Exception("Client does not support cursor position");
+
+  needCursorPos = true;
+}
+
 bool SMsgWriter::writeLEDState()
 {
   if (!cp->supportsLEDState)
@@ -231,6 +240,8 @@ bool SMsgWriter::needFakeUpdate()
   if (needSetDesktopName)
     return true;
   if (needSetCursor || needSetXCursor || needSetCursorWithAlpha)
+    return true;
+  if (needCursorPos)
     return true;
   if (needLEDState)
     return true;
@@ -283,6 +294,8 @@ void SMsgWriter::writeFramebufferUpdateStart(int nRects)
     if (needSetXCursor)
       nRects++;
     if (needSetCursorWithAlpha)
+      nRects++;
+    if (needCursorPos)
       nRects++;
     if (needLEDState)
       nRects++;
@@ -397,6 +410,18 @@ void SMsgWriter::writePseudoRects()
                                 cursor.hotspot().x, cursor.hotspot().y,
                                 cursor.getBuffer());
     needSetCursorWithAlpha = false;
+  }
+
+  if (needCursorPos) {
+    const Point& cursorPos = cp->cursorPos();
+
+    if (cp->supportsEncoding(pseudoEncodingVMwareCursorPosition)) {
+      writeSetVMwareCursorPositionRect(cursorPos.x, cursorPos.y);
+    } else {
+      throw Exception("Client does not support cursor position");
+    }
+
+    needCursorPos = false;
   }
 
   if (needSetDesktopName) {
@@ -575,6 +600,20 @@ void SMsgWriter::writeSetCursorWithAlphaRect(int width, int height,
     os->writeU8(data[3]);
     data += 4;
   }
+}
+
+void SMsgWriter::writeSetVMwareCursorPositionRect(int hotspotX, int hotspotY)
+{
+  if (!cp->supportsEncoding(pseudoEncodingVMwareCursorPosition))
+    throw Exception("Client does not support cursor position");
+  if (++nRectsInUpdate > nRectsInHeader && nRectsInHeader)
+    throw Exception("SMsgWriter::writeSetVMwareCursorRect: nRects out of sync");
+
+  os->writeS16(hotspotX);
+  os->writeS16(hotspotY);
+  os->writeU16(0);
+  os->writeU16(0);
+  os->writeU32(pseudoEncodingVMwareCursorPosition);
 }
 
 void SMsgWriter::writeLEDStateRect(rdr::U8 state)

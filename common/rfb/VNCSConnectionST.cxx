@@ -517,6 +517,15 @@ void VNCSConnectionST::renderedCursorChange()
   }
 }
 
+// cursorPositionChange() is called whenever the cursor has changed position by
+// the server.  If the client supports being informed about these changes then
+// it will arrange for the new cursor position to be sent to the client.
+
+void VNCSConnectionST::cursorPositionChange()
+{
+  setCursorPos();
+}
+
 // needRenderedCursor() returns true if this client needs the server-side
 // rendered cursor.  This may be because it does not support local cursor or
 // because the current cursor position has not been set by this client.
@@ -1479,6 +1488,21 @@ void VNCSConnectionST::setCursor()
         return;
       }
     }
+  }
+}
+
+// setCursorPos() is called whenever the cursor has changed position by the
+// server.  If the client supports being informed about these changes then it
+// will arrange for the new cursor position to be sent to the client.
+
+void VNCSConnectionST::setCursorPos()
+{
+  if (state() != RFBSTATE_NORMAL)
+    return;
+
+  if (cp.supportsCursorPosition) {
+    cp.setCursorPos(server->cursorPos);
+    writer()->writeCursorPos();
   }
 }
 
