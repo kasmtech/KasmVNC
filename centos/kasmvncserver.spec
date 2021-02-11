@@ -6,6 +6,7 @@ Summary:        Lorem ipsum
 License: GPLv2+
 URL: https://github.com/kasmtech/KasmVNC
 
+BuildRequires: rsync
 Requires: xorg-x11-xauth, xorg-x11-xkb-utils, xkeyboard-config, xorg-x11-server-utils, openssl
 
 %description
@@ -16,7 +17,7 @@ Lorem ipsum
 
 %install
 rm -rf $RPM_BUILD_ROOT
-DESTDIR=$RPM_BUILD_ROOT make -f /src/KasmVNC/debian/Makefile.to_fakebuild_tar_package install
+DESTDIR=$RPM_BUILD_ROOT make -f /src/debian/Makefile.to_fakebuild_tar_package install
 
 %files
 /usr/bin/*

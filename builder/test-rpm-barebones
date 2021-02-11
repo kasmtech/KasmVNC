@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 os="centos"
 os_codename="core"
 
-docker build --build-arg KASMVNC_PACKAGE_DIR="build" \
+docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os}_${os_codename}" \
   -t kasmvnctester_barebones_${os}:$os_codename \
   -f dockerfile.${os}_${os_codename}.barebones.rpm.test .
 echo
