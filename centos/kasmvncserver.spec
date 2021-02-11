@@ -7,6 +7,8 @@ License: GPLv2+
 URL: https://github.com/kasmtech/KasmVNC
 Source0: kasmvnc.centos_core.tar.gz
 
+Requires: xorg-x11-xauth, xorg-x11-xkb-utils, xkeyboard-config, xorg-x11-server-utils, openssl
+
 %description
 
 Lorem ipsum
