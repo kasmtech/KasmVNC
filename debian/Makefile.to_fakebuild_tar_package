@@ -1,6 +1,5 @@
 TARGET_OS := $(shell lsb_release -is | tr '[:upper:]' '[:lower:]')
 TARGET_OS_CODENAME := $(shell lsb_release -cs | tr '[:upper:]' '[:lower:]')
-TARBALL_DIR :=
 ifeq ($(TARGET_OS), centos)
 	TARBALL_DIR := $$RPM_SOURCE_DIR
 else
