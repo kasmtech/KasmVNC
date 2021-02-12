@@ -10,12 +10,11 @@ RUN yum localinstall -y /tmp/*.rpm
 
 RUN useradd -m foo
 
-USER foo
+USER foo:kasmvnc
 
 RUN mkdir -p ~/.config/openbox && echo xterm > ~/.config/openbox/autostart && chmod +x ~/.config/openbox/autostart
 RUN mkdir ~/.vnc && echo '/usr/bin/openbox-session &' >> ~/.vnc/xstartup && \
   chmod +x ~/.vnc/xstartup
-RUN openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout $HOME/.vnc/self.pem -out $HOME/.vnc/self.pem -subj "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
 RUN echo bar | kasmvncpasswd -f > $HOME/.kasmpasswd && chmod 0600 $HOME/.kasmpasswd
 
-ENTRYPOINT bash -c "vncserver :1 -interface 0.0.0.0 && vncserver -kill :1 && vncserver :1 -depth 24 -geometry 1280x1050 -websocketPort 8443 -cert $HOME/.vnc/self.pem -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www && tail -f $HOME/.vnc/*.log "
+ENTRYPOINT bash -c "vncserver :1 -interface 0.0.0.0 && vncserver -kill :1 && vncserver :1 -depth 24 -geometry 1280x1050 -websocketPort 8443 -cert /etc/pki/tls/private/kasmvnc.pem -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www && tail -f $HOME/.vnc/*.log "

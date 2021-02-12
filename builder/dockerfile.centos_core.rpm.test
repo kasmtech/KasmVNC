@@ -52,7 +52,7 @@ RUN yum localinstall -y /tmp/*.rpm
 ### END CUSTOM STUFF ###
 
 RUN chown -R 1000:0 $HOME
-USER 1000
+USER 1000:kasmvnc
 WORKDIR $HOME
 
 RUN mkdir ~/.vnc && echo '/usr/bin/xfce4-session &' >> ~/.vnc/xstartup && \

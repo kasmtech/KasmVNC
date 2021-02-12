@@ -40,7 +40,29 @@ DESTDIR=$RPM_BUILD_ROOT make -f /src/debian/Makefile.to_fakebuild_tar_package in
       --slave "$mandir/man1/$generic_command.1.gz" "$generic_command.1.gz" \
         "$mandir/man1/$kasm_command.1.gz"
   done
-;;
+
+  kasmvnc_group="kasmvnc"
+
+  create_kasmvnc_group() {
+    if ! getent group "$kasmvnc_group" >/dev/null; then
+	    groupadd --system "$kasmvnc_group"
+    fi
+  }
+
+  make_self_signed_certificate() {
+    local cert_file=/etc/pki/tls/private/kasmvnc.pem
+    [ -f "$cert_file" ] && return 0
+
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+      -keyout "$cert_file" \
+      -out "$cert_file" -subj \
+      "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
+    chgrp "$kasmvnc_group" "$cert_file"
+    chmod 640 "$cert_file"
+  }
+
+  create_kasmvnc_group
+  make_self_signed_certificate
 
 %postun
   bindir=/usr/bin
@@ -51,3 +73,5 @@ DESTDIR=$RPM_BUILD_ROOT make -f /src/debian/Makefile.to_fakebuild_tar_package in
     generic_command=`echo "$kasm_command" | sed -e 's/kasm//'`;
     update-alternatives --remove "$generic_command" "$bindir/$kasm_command"
   done
+
+  rm -f /etc/pki/tls/private/kasmvnc.pem

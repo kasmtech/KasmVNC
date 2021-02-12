@@ -9,7 +9,5 @@ os_codename="core"
 docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os}_${os_codename}" \
   -t kasmvnctester_barebones_${os}:$os_codename \
   -f dockerfile.${os}_${os_codename}.barebones.rpm.test .
-echo
-echo "You will be asked to set password. User name is docker."
 docker run -it -p 443:8443 --rm -e "VNC_USER=foo" -e "VNC_PW=bar" \
   kasmvnctester_barebones_${os}:$os_codename
