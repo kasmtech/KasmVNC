@@ -7,7 +7,8 @@ License: GPLv2+
 URL: https://github.com/kasmtech/KasmVNC
 
 BuildRequires: rsync
-Requires: xorg-x11-xauth, xorg-x11-xkb-utils, xkeyboard-config, xorg-x11-server-utils, openssl
+Requires: xorg-x11-xauth, xorg-x11-xkb-utils, xkeyboard-config, xorg-x11-server-utils, openssl, perl
+Conflicts: tigervnc-server
 
 %description
 
@@ -21,12 +22,15 @@ DESTDIR=$RPM_BUILD_ROOT make -f /src/debian/Makefile.to_fakebuild_tar_package in
 
 %files
 /usr/bin/*
-/usr/share/man/man1
+/usr/share/man/man1/*
 /usr/share/kasmvnc/www
 
-%doc /usr/share/doc/kasmvncserver
+%license /usr/share/doc/kasmvncserver/LICENCE.TXT
+%doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Fri Feb 12 2021 KasmTech <info@kasmweb.com> - 0.9.1~beta-1
+- Initial release of the rpm package.
 
 %post
   bindir=/usr/bin
