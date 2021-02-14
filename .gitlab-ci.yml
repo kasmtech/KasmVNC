@@ -2,15 +2,19 @@ image: docker
 services:
   - docker:dind
 
+variables:
+  GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
+
 stages:
   - build
-  
+
 build:
   stage: build
   script:
     - ls -l
     - pwd
     - apk add bash
+    - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
     - bash builder/build-tarball
     - bash builder/build-deb
     - mkdir output

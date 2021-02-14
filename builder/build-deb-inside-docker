@@ -11,4 +11,4 @@ os_dir="builder/build/${os_codename}"
 dpkg-buildpackage -us -uc -b
 mkdir -p "$os_dir"
 cp ../*.deb "$os_dir"
-lintian ../*.deb
+lintian ../*.deb || true
