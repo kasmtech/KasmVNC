@@ -18,8 +18,7 @@ build:
     - bash builder/build-tarball
     - bash builder/build-deb
     - mkdir output
-    - cp builder/build/kasmvncserver_*.deb output/
-    - cp builder/build/kasmvnc.*.tar.gz output/
+    - cp -r builder/build/* output/
   artifacts:
     paths:
       - output/
