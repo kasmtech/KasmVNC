@@ -3,8 +3,13 @@
 set -e
 
 build_www_dir() {
-  docker build -t kasmweb/www -f builder/dockerfile.www.build .
-  docker run --rm -v $PWD/builder/www:/build kasmweb/www:latest
+  local webpacked_www=$PWD/builder/www
+  local src_www=kasmweb
+
+  if [ "$src_www" -nt "$webpacked_www" ]; then
+    docker build -t kasmweb/www -f builder/dockerfile.www.build .
+    docker run --rm -v $PWD/builder/www:/build kasmweb/www:latest
+  fi
 }
 
 shared_with_docker_dir=${GITLAB_SHARED_DIND_DIR:-/tmp}
