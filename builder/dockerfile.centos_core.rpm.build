@@ -1,0 +1,12 @@
+FROM centos:centos7
+
+RUN yum install -y rpm* gpg* rng-tools rpmlint
+RUN yum install -y tree vim less
+RUN yum install -y redhat-lsb-core
+
+COPY centos/*.spec /tmp
+RUN yum-builddep -y /tmp/*.spec
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+USER docker

@@ -21,16 +21,17 @@ detect_www_dir() {
 
 detect_cert_location() {
   local tarball_cert="$HOME/.vnc/self.pem"
-  local package_cert="/etc/kasmvnc/server.pem"
-  local use_cert=
+  local deb_cert="/etc/ssl/certs/ssl-cert-snakeoil.pem"
+  local deb_key="/etc/ssl/private/ssl-cert-snakeoil.key"
+  local rpm_cert="/etc/pki/tls/private/kasmvnc.pem"
 
-  if [[ -f "$package_cert" ]]; then
-    use_cert="$package_cert"
+  if [[ -f "$deb_cert" ]]; then
+    cert_option="-cert $deb_cert -key $deb_key"
+  elif [[ -f "$rpm_cert" ]]; then
+    cert_option="-cert $rpm_cert"
   else
-    use_cert="$tarball_cert"
+    cert_option="-cert $tarball_cert"
   fi
-
-  cert_option="-cert $use_cert"
 }
 
 ## resolve_vnc_connection

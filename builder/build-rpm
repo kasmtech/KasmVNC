@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+. builder/os_ver_cli.sh
+
+docker build -t kasmvnc_rpmbuilder_${os}:${os_codename} -f \
+  builder/dockerfile.${os}_${os_codename}.rpm.build .
+
+source_dir=$(echo $PWD)
+L_UID=$(id -u) #Ubuntu already has UID env var, but this should work on all Linix systems
+L_GID=$(id -g)
+docker run --rm -v "$source_dir":/src --user $L_UID:$L_GID \
+  kasmvnc_rpmbuilder_${os}:${os_codename} /bin/bash -c \
+  '/src/builder/build-rpm-inside-docker'

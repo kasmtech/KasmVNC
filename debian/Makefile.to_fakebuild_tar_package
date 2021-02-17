@@ -1,4 +1,11 @@
-TARBALL := builder/build/kasmvnc.ubuntu_18.04.tar.gz
+TARGET_OS := $(shell lsb_release -is | tr '[:upper:]' '[:lower:]')
+TARGET_OS_CODENAME := $(shell lsb_release -cs | tr '[:upper:]' '[:lower:]')
+ifeq ($(TARGET_OS), centos)
+	TARBALL_DIR := $$RPM_SOURCE_DIR
+else
+	TARBALL_DIR := builder/build
+endif
+TARBALL := $(TARBALL_DIR)/kasmvnc.$(TARGET_OS)_$(TARGET_OS_CODENAME).tar.gz
 TAR_DATA := $(shell mktemp -d)
 SRC := $(TAR_DATA)/usr/local
 SRC_BIN := $(SRC)/bin
@@ -15,8 +22,7 @@ install: unpack_tarball
 	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
 	cp -r $(SRC)/share/doc/kasmvnc*/* $(DESTDIR)/usr/share/doc/kasmvncserver/
 	rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
-	  --exclude genkeysymdef.js --exclude use_require.js \
-	  --exclude .eslintrc \
+	  --exclude www/utils/ --exclude .eslintrc \
 	  $(SRC)/share/kasmvnc $(DESTDIR)/usr/share
 	cp $(SRC)/man/man1/Xvnc.1 $(DESTDIR)/usr/share/man/man1/Xkasmvnc.1
 	cp $(SRC)/share/man/man1/vncserver.1 $(DST_MAN)/kasmvncserver.1

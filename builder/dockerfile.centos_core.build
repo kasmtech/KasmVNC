@@ -1,0 +1,29 @@
+FROM centos:centos7
+
+ENV KASMVNC_BUILD_OS centos
+ENV KASMVNC_BUILD_OS_CODENAME core
+
+RUN yum install -y build-dep xorg-server libxfont-dev sudo
+RUN yum install -y gcc cmake git libjpeg-dev libgnutls28-dev vim wget tightvncserver
+RUN yum install -y libjpeg-dev libpng-dev libtiff-dev libgif-dev libavcodec-dev openssl-devel
+RUN yum install -y make
+RUN yum group install -y "Development Tools"
+RUN yum install -y xorg-x11-server-devel zlib-devel libjpeg-turbo-devel
+RUN yum install -y libxkbfile-devel libXfont2-devel xorg-x11-font-utils \
+  xorg-x11-xtrans-devel xorg-x11-xkb-utils-devel
+RUN yum install -y mesa-dri-drivers
+
+# Additions for webp
+RUN cd /tmp && wget https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.0.2.tar.gz
+RUN cd /tmp && tar -xzvf /tmp/libwebp-*
+RUN cd /tmp/libwebp-1.0.2 && \
+    ./configure --enable-static --disable-shared && \
+    make && make install
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+COPY . /src
+RUN chown -R docker:docker /src
+
+USER docker
+ENTRYPOINT ["/src/builder/build.sh"]

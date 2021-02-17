@@ -20,9 +20,6 @@ set -e
 
 
 case "$1" in
-    purge)
-      rm -r /etc/kasmvnc
-    ;;
     purge|remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
     ;;
 
