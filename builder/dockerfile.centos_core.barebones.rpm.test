@@ -1,7 +1,6 @@
 FROM centos:centos7
 
-RUN yum install -y epel-release && yum install -y openbox xterm
-RUN yum erase -y pm-utils xscreensaver*
+RUN yum install -y xterm
 RUN yum install -y vim less
 
 ARG KASMVNC_PACKAGE_DIR
@@ -12,8 +11,7 @@ RUN useradd -m foo
 
 USER foo:kasmvnc
 
-RUN mkdir -p ~/.config/openbox && echo xterm > ~/.config/openbox/autostart && chmod +x ~/.config/openbox/autostart
-RUN mkdir ~/.vnc && echo '/usr/bin/openbox-session &' >> ~/.vnc/xstartup && \
+RUN mkdir ~/.vnc && echo '/usr/bin/xterm &' >> ~/.vnc/xstartup && \
   chmod +x ~/.vnc/xstartup
 RUN echo bar | kasmvncpasswd -f > $HOME/.kasmpasswd && chmod 0600 $HOME/.kasmpasswd
 
