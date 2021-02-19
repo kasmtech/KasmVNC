@@ -63,7 +63,7 @@ ln -s /src/unix/xserver/hw/vnc/Xvnc Xvnc
 cd ..
 mkdir -p man/man1
 touch man/man1/Xserver.1
-touch man/man1/Xvnc.1
+cp /src/unix/xserver/hw/vnc/Xvnc.man man/man1/Xvnc.1
 mkdir lib
 cd lib
 if [ -d /usr/lib/x86_64-linux-gnu/dri ]; then
