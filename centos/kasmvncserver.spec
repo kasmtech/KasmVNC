@@ -24,7 +24,7 @@ cd $RPM_BUILD_ROOT/usr/bin && mv Xkasmvnc Xvnc && \
   ln -s kasmvncpasswd vncpasswd
 cd $RPM_BUILD_ROOT/usr/share/man/man1 && mv Xkasmvnc.1 Xvnc.1 && \
   mv kasmvncserver.1 vncserver.1 && mv kasmvncconfig.1 vncconfig.1 && \
-  mv kasmvncpasswd.1 vncpasswd.1
+  cp kasmvncpasswd.1 vncpasswd.1
 
 %files
 /usr/bin/*
@@ -39,7 +39,7 @@ cd $RPM_BUILD_ROOT/usr/share/man/man1 && mv Xkasmvnc.1 Xvnc.1 && \
 - Initial release of the rpm package.
 
 %post
-  kasmvnc_group="kasmvnc"
+  kasmvnc_group="kasmvnc-cert"
 
   create_kasmvnc_group() {
     if ! getent group "$kasmvnc_group" >/dev/null; then
