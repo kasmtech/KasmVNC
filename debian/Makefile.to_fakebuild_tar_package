@@ -1,6 +1,6 @@
 TARGET_OS := $(shell lsb_release -is | tr '[:upper:]' '[:lower:]')
 TARGET_OS_CODENAME := $(shell lsb_release -cs | tr '[:upper:]' '[:lower:]')
-ifeq ($(TARGET_OS), centos)
+ifeq ($(TARGET_OS), $(filter $(TARGET_OS), centos fedora))
 	TARBALL_DIR := $$RPM_SOURCE_DIR
 else
 	TARBALL_DIR := builder/build
