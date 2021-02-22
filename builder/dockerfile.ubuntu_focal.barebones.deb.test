@@ -1,0 +1,16 @@
+FROM ubuntu:focal
+
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp
+RUN apt-get update && dpkg -i /tmp/*.deb; apt-get -yf install
+RUN apt-get update && apt-get -y install xterm lsb-release
+
+RUN useradd -m foo && addgroup foo ssl-cert
+
+USER foo
+
+RUN mkdir ~/.vnc && echo '/usr/bin/xterm &' >> ~/.vnc/xstartup && \
+  chmod +x ~/.vnc/xstartup
+RUN echo bar | kasmvncpasswd -f > $HOME/.kasmpasswd && chmod 0600 $HOME/.kasmpasswd
+
+ENTRYPOINT bash -c "vncserver :1 -interface 0.0.0.0 && vncserver -kill :1 && vncserver :1 -depth 24 -geometry 1280x1050 -websocketPort 8443 -cert /etc/ssl/certs/ssl-cert-snakeoil.pem -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www && tail -f $HOME/.vnc/*.log "

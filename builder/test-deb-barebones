@@ -3,8 +3,8 @@
 set -e
 
 cd "$(dirname "$0")"
-os="debian"
-os_codename="buster"
+os="${1:-debian}"
+os_codename="${2:-buster}"
 
 docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os_codename}" \
   -t kasmvnctester_barebones_${os}:$os_codename \
