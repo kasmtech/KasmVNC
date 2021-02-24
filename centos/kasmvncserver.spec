@@ -35,7 +35,34 @@ Simplicity - KasmVNC aims at being simple to deploy and configure.
 
 %install
 rm -rf $RPM_BUILD_ROOT
-DESTDIR=$RPM_BUILD_ROOT make -f /src/debian/Makefile.to_fakebuild_tar_package install
+
+TARGET_OS=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+TARGET_OS_CODENAME=$(lsb_release -cs | tr '[:upper:]' '[:lower:]')
+TARBALL=$RPM_SOURCE_DIR/kasmvnc.${TARGET_OS}_${TARGET_OS_CODENAME}.tar.gz
+TAR_DATA=$(mktemp -d)
+tar -xzf "$TARBALL" -C "$TAR_DATA"
+
+SRC=$TAR_DATA/usr/local
+SRC_BIN=$SRC/bin
+DESTDIR=$RPM_BUILD_ROOT
+DST_MAN=$DESTDIR/usr/share/man/man1
+
+mkdir -p $DESTDIR/usr/bin $DESTDIR/usr/share/man/man1 \
+  $DESTDIR/usr/share/doc/kasmvncserver
+cp $SRC_BIN/Xvnc $DESTDIR/usr/bin;
+cp $SRC_BIN/vncserver $DESTDIR/usr/bin;
+cp $SRC_BIN/vncconfig $DESTDIR/usr/bin;
+cp $SRC_BIN/kasmvncpasswd $DESTDIR/usr/bin;
+cd $DESTDIR/usr/bin && ln -s kasmvncpasswd vncpasswd;
+cp -r $SRC/share/doc/kasmvnc*/* $DESTDIR/usr/share/doc/kasmvncserver/
+rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
+  --exclude www/utils/ --exclude .eslintrc \
+  $SRC/share/kasmvnc $DESTDIR/usr/share
+cp $SRC/man/man1/Xvnc.1 $DESTDIR/usr/share/man/man1/;
+cp $SRC/share/man/man1/vncserver.1 $DST_MAN;
+cp $SRC/share/man/man1/vncconfig.1 $DST_MAN;
+cp $SRC/share/man/man1/vncpasswd.1 $DST_MAN;
+cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 
 %files
 /usr/bin/*

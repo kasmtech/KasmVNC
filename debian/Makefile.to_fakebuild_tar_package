@@ -18,36 +18,18 @@ install: unpack_tarball
 	echo "installing files"
 	mkdir -p $(DESTDIR)/usr/bin $(DESTDIR)/usr/share/man/man1 \
 	  $(DESTDIR)/usr/share/doc/kasmvncserver
-	if [ $(PACKAGE_TYPE) = deb ]; then \
-	  cp $(SRC_BIN)/Xvnc $(DESTDIR)/usr/bin/Xkasmvnc; \
-	  cp $(SRC_BIN)/vncserver $(DESTDIR)/usr/bin/kasmvncserver; \
-	  cp $(SRC_BIN)/vncconfig $(DESTDIR)/usr/bin/kasmvncconfig; \
-	  cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/; \
-	fi
-	if [ $(PACKAGE_TYPE) = rpm ]; then \
-	  cp $(SRC_BIN)/Xvnc $(DESTDIR)/usr/bin; \
-	  cp $(SRC_BIN)/vncserver $(DESTDIR)/usr/bin; \
-	  cp $(SRC_BIN)/vncconfig $(DESTDIR)/usr/bin; \
-	  cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin; \
-	  cd $(DESTDIR)/usr/bin && ln -s kasmvncpasswd vncpasswd; \
-	fi
+	cp $(SRC_BIN)/Xvnc $(DESTDIR)/usr/bin/Xkasmvnc
+	cp $(SRC_BIN)/vncserver $(DESTDIR)/usr/bin/kasmvncserver
+	cp $(SRC_BIN)/vncconfig $(DESTDIR)/usr/bin/kasmvncconfig
+	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
 	cp -r $(SRC)/share/doc/kasmvnc*/* $(DESTDIR)/usr/share/doc/kasmvncserver/
 	rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
 	  --exclude www/utils/ --exclude .eslintrc \
 	  $(SRC)/share/kasmvnc $(DESTDIR)/usr/share
-	if [ $(PACKAGE_TYPE) = deb ]; then \
-	  cp $(SRC)/man/man1/Xvnc.1 $(DESTDIR)/usr/share/man/man1/Xkasmvnc.1; \
-	  cp $(SRC)/share/man/man1/vncserver.1 $(DST_MAN)/kasmvncserver.1; \
-	  cp $(SRC)/share/man/man1/vncpasswd.1 $(DST_MAN)/kasmvncpasswd.1; \
-	  cp $(SRC)/share/man/man1/vncconfig.1 $(DST_MAN)/kasmvncconfig.1; \
-	fi
-	if [ $(PACKAGE_TYPE) = rpm ]; then \
-	  cp $(SRC)/man/man1/Xvnc.1 $(DESTDIR)/usr/share/man/man1/; \
-	  cp $(SRC)/share/man/man1/vncserver.1 $(DST_MAN); \
-	  cp $(SRC)/share/man/man1/vncconfig.1 $(DST_MAN); \
-	  cp $(SRC)/share/man/man1/vncpasswd.1 $(DST_MAN); \
-	  cd $(DST_MAN) && ln -s vncpasswd.1 kasmvncpasswd.1; \
-	fi
+	  cp $(SRC)/man/man1/Xvnc.1 $(DESTDIR)/usr/share/man/man1/Xkasmvnc.1
+	  cp $(SRC)/share/man/man1/vncserver.1 $(DST_MAN)/kasmvncserver.1
+	  cp $(SRC)/share/man/man1/vncpasswd.1 $(DST_MAN)/kasmvncpasswd.1
+	  cp $(SRC)/share/man/man1/vncconfig.1 $(DST_MAN)/kasmvncconfig.1
 
 unpack_tarball:
 	tar -xzf "$(TARBALL)" -C "$(TAR_DATA)"
