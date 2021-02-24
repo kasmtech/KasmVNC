@@ -36,12 +36,6 @@ Simplicity - KasmVNC aims at being simple to deploy and configure.
 %install
 rm -rf $RPM_BUILD_ROOT
 DESTDIR=$RPM_BUILD_ROOT make -f /src/debian/Makefile.to_fakebuild_tar_package install
-cd $RPM_BUILD_ROOT/usr/bin && mv Xkasmvnc Xvnc && \
-  mv kasmvncserver vncserver && mv kasmvncconfig vncconfig && \
-  ln -s kasmvncpasswd vncpasswd
-cd $RPM_BUILD_ROOT/usr/share/man/man1 && mv Xkasmvnc.1 Xvnc.1 && \
-  mv kasmvncserver.1 vncserver.1 && mv kasmvncconfig.1 vncconfig.1 && \
-  cp kasmvncpasswd.1 vncpasswd.1
 
 %files
 /usr/bin/*
