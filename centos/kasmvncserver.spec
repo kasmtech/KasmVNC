@@ -1,7 +1,7 @@
 Name:           kasmvncserver
 Version:        0.9.1~beta
 Release:        1%{?dist}
-Summary:        Lorem ipsum
+Summary:        VNC server accessible from a web browser
 
 License: GPLv2+
 URL: https://github.com/kasmtech/KasmVNC
@@ -11,8 +11,25 @@ Requires: xorg-x11-xauth, xorg-x11-xkb-utils, xkeyboard-config, xorg-x11-server-
 Conflicts: tigervnc-server, tigervnc-server-minimal
 
 %description
+VNC stands for Virtual Network Computing. It is, in essence, a remote
+display system which allows you to view a computing `desktop' environment
+not only on the machine where it is running, but from anywhere on the
+Internet and from a wide variety of machine architectures.
 
-Lorem ipsum
+KasmVNC has different goals than TigerVNC:
+
+Web-based - KasmVNC is designed to provide a web accessible remote desktop.
+It comes with a web server and web-socket server built in. There is no need to
+install other components. Simply run and navigate to your desktop's URL on the
+port you specify. While you can still tun on the legacy VNC port, it is
+disabled by default.
+
+Security - KasmVNC defaults to HTTPS and allows for HTTP Basic Auth. VNC
+Password authentication is limited by specification to 8 characters and is not
+sufficient for use on an internet accessible remote desktop. Our goal is to
+create a by default secure, web based experience.
+
+Simplicity - KasmVNC aims at being simple to deploy and configure.
 
 %prep
 
