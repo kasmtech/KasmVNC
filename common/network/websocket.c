@@ -11,6 +11,7 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <crypt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -929,7 +930,10 @@ ws_ctx_t *do_handshake(int sock) {
                     snprintf(authbuf, 4096, "%s%s", settings.basicauth, pwbuf);
                     authbuf[4095] = '\0';
 
-                    const char *encrypted = crypt(resppw, "$5$kasm$");
+                    struct crypt_data cdata;
+                    cdata.initialized = 0;
+
+                    const char *encrypted = crypt_r(resppw, "$5$kasm$", &cdata);
                     *resppw = '\0';
 
                     snprintf(pwbuf, 4096, "%s%s", response, encrypted);
