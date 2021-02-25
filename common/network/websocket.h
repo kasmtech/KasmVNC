@@ -53,11 +53,15 @@ typedef struct {
     char      *cout_buf;
     char      *tin_buf;
     char      *tout_buf;
+
+    char      user[32];
+    char      ip[64];
 } ws_ctx_t;
 
 struct wspass_t {
     int csock;
     unsigned id;
+    char ip[64];
 };
 
 typedef struct {

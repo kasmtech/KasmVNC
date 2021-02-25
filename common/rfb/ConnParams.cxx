@@ -26,6 +26,7 @@
 #include <rfb/ledStates.h>
 #include <rfb/ConnParams.h>
 #include <rfb/ServerCore.h>
+#include <rfb/SMsgHandler.h>
 #include <rfb/util.h>
 
 using namespace rfb;
@@ -43,7 +44,7 @@ ConnParams::ConnParams()
     supportsContinuousUpdates(false),
     compressLevel(2), qualityLevel(-1), fineQualityLevel(-1),
     subsampling(subsampleUndefined), name_(0), verStrPos(0),
-    ledState_(ledUnknown)
+    ledState_(ledUnknown), shandler(NULL)
 {
   memset(kasmPassed, 0, KASM_NUM_SETTINGS);
   setName("");
@@ -124,6 +125,8 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
   encodings_.clear();
   encodings_.insert(encodingRaw);
 
+  bool canChangeSettings = !shandler || shandler->canChangeKasmSettings();
+
   for (int i = nEncodings-1; i >= 0; i--) {
     switch (encodings[i]) {
     case encodingCopyRect:
@@ -184,11 +187,11 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
       subsampling = subsample16X;
       break;
     case pseudoEncodingPreferBandwidth:
-      if (!rfb::Server::ignoreClientSettingsKasm)
+      if (!rfb::Server::ignoreClientSettingsKasm && canChangeSettings)
         Server::preferBandwidth.setParam();
       break;
     case pseudoEncodingMaxVideoResolution:
-      if (!rfb::Server::ignoreClientSettingsKasm)
+      if (!rfb::Server::ignoreClientSettingsKasm && canChangeSettings)
         kasmPassed[KASM_MAX_VIDEO_RESOLUTION] = true;
       break;
     }
@@ -205,7 +208,7 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
         encodings[i] <= pseudoEncodingFineQualityLevel100)
       fineQualityLevel = encodings[i] - pseudoEncodingFineQualityLevel0;
 
-    if (!rfb::Server::ignoreClientSettingsKasm) {
+    if (!rfb::Server::ignoreClientSettingsKasm && canChangeSettings) {
       if (encodings[i] >= pseudoEncodingJpegVideoQualityLevel0 &&
           encodings[i] <= pseudoEncodingJpegVideoQualityLevel9)
           Server::jpegVideoQuality.setParam(encodings[i] - pseudoEncodingJpegVideoQualityLevel0);

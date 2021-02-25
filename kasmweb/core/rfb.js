@@ -1068,14 +1068,7 @@ export default class RFB extends EventTargetMixin {
     _negotiate_std_vnc_auth() {
         if (this._sock.rQwait("auth challenge", 16)) { return false; }
 
-        /* Empty passwords are allowed in VNC and since we use HTTPS basic auth, wich is superior, lets allow the bypass of the vnc password
-        if (!this._rfb_credentials.password) {
-            this.dispatchEvent(new CustomEvent(
-                "credentialsrequired",
-                { detail: { types: ["password"] } }));
-            return false;
-        }
-        */
+        // KasmVNC uses basic Auth, clear the VNC password, which is not used
         this._rfb_credentials.password = "";
 
         // TODO(directxman12): make genDES not require an Array
@@ -1353,7 +1346,7 @@ export default class RFB extends EventTargetMixin {
         */
         if (!this.enableWebP)
             return false;
-        // It's not possible to check for webp synchronously, and hacking promises 
+        // It's not possible to check for webp synchronously, and hacking promises
         // into everything would be too time-consuming. So test for FF and Chrome.
         var uagent = navigator.userAgent.toLowerCase();
         var match = uagent.match(/firefox\/([0-9]+)\./);
