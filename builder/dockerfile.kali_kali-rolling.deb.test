@@ -29,7 +29,7 @@ WORKDIR $HOME
 
 ### REQUIRED STUFF ###
 
-RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm libnss-wrapper gettext wget
+RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal dbus-x11 xterm libnss-wrapper gettext wget
 RUN apt-get purge -y pm-utils xscreensaver*
 RUN apt-get update && apt-get install -y vim less
 
