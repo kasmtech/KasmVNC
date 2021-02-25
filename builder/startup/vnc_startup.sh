@@ -40,7 +40,7 @@ VNC_IP=$(hostname -i)
 # first entry is control, second is view (if only one is valid for both)
 mkdir -p "$HOME/.vnc"
 PASSWD_PATH="$HOME/.vnc/passwd"
-echo "$VNC_PW" | kasmvncpasswd -f > $HOME/.kasmpasswd
+kasmvncpasswd -w -u $VNC_USER $HOME/.kasmpasswd
 chmod 0600 $HOME/.kasmpasswd
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout $HOME/.vnc/self.pem -out $HOME/.vnc/self.pem -subj "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
 
