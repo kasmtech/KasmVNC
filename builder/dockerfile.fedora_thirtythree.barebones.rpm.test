@@ -1,11 +1,11 @@
-FROM centos:centos7
+FROM fedora:33
 
-RUN yum install -y xterm
-RUN yum install -y vim less
+RUN dnf install -y xterm
+RUN dnf install -y vim less
 
 ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp
-RUN yum localinstall -y /tmp/*.rpm
+RUN dnf localinstall -y /tmp/*.rpm
 
 RUN useradd -m foo
 

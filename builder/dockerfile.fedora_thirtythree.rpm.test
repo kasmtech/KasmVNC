@@ -1,4 +1,4 @@
-FROM centos:centos7
+FROM fedora:33
 
 ENV DISPLAY=:1 \
     VNC_PORT=8443 \
@@ -20,8 +20,8 @@ ENV DISPLAY=:1 \
     OMP_WAIT_POLICY=PASSIVE \
     SHELL=/bin/bash \
     SINGLE_APPLICATION=0 \
-    KASMVNC_BUILD_OS=centos \
-    KASMVNC_BUILD_OS_CODENAME=core
+    KASMVNC_BUILD_OS=fedora \
+    KASMVNC_BUILD_OS_CODENAME=thirtythree
 
 EXPOSE $VNC_PORT
 
@@ -29,14 +29,16 @@ WORKDIR $HOME
 
 ### REQUIRED STUFF ###
 
-RUN yum install -y openssl xterm gettext wget
-RUN yum install -y centos-release-scl-rh && yum install -y nss_wrapper
-RUN yum install -y xorg-x11-server xorg-x11-xauth xorg-x11-xkb-utils \
+RUN dnf install -y openssl xterm gettext wget
+RUN dnf install -y nss_wrapper
+RUN dnf install -y xorg-x11-xauth xorg-x11-xkb-utils \
   xkeyboard-config xorg-x11-server-utils
-RUN yum install -y epel-release && yum groupinstall xfce -y
-RUN yum erase -y pm-utils xscreensaver*
-RUN yum install -y redhat-lsb-core
-RUN yum install -y vim less
+# xorg-x11-server-Xorg
+# RUN dnf install -y @xfce-desktop-environment
+RUN dnf group install -y lxde-desktop
+RUN dnf erase -y pm-utils xscreensaver*
+RUN dnf install -y redhat-lsb-core
+RUN dnf install -y vim less
 
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
@@ -47,7 +49,8 @@ COPY startup/ $STARTUPDIR
 
 ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp
-RUN yum localinstall -y /tmp/*.rpm
+# RUN dnf remove -y tigervnc-server-minimal
+RUN dnf localinstall -y --allowerasing /tmp/*.rpm
 
 ### END CUSTOM STUFF ###
 
@@ -55,7 +58,7 @@ RUN chown -R 1000:0 $HOME
 USER 1000:kasmvnc-cert
 WORKDIR $HOME
 
-RUN mkdir ~/.vnc && echo '/usr/bin/xfce4-session &' >> ~/.vnc/xstartup && \
+RUN mkdir ~/.vnc && echo '/usr/bin/lxsession -s LXDE &' >> ~/.vnc/xstartup && \
   chmod +x ~/.vnc/xstartup
 
 ENTRYPOINT [ "/dockerstartup/vnc_startup.sh" ]

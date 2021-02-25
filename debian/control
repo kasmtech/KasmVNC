@@ -14,5 +14,23 @@ Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, ssl-cert, xauth,
   x11-xkb-utils, xkb-data, procps
 Provides: vnc-server
-Description: virtual network computing server with web interface
- Lorem ipsum
+Description: VNC server accessible from a web browser
+ VNC stands for Virtual Network Computing. It is, in essence, a remote
+ display system which allows you to view a computing `desktop' environment
+ not only on the machine where it is running, but from anywhere on the
+ Internet and from a wide variety of machine architectures.
+ .
+ KasmVNC has different goals than TigerVNC:
+ .
+ Web-based - KasmVNC is designed to provide a web accessible remote desktop.
+ It comes with a web server and websocket server built in. There is no need to
+ install other components. Simply run and navigate to your desktop's URL on the
+ port you specify. While you can still tun on the legacy VNC port, it is
+ disabled by default.
+ .
+ Security - KasmVNC defaults to HTTPS and allows for HTTP Basic Auth. VNC
+ Password authentication is limited by specification to 8 characters and is not
+ suffecient for use on an internet accessible remote desktop. Our goal is to
+ create a by default secure, web based experience.
+ .
+ Simplicity - KasmVNC aims at being simple to deploy and configure.

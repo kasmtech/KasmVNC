@@ -1,10 +1,9 @@
-FROM debian:buster-slim
+FROM ubuntu:focal
 
 ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp
 RUN apt-get update && dpkg -i /tmp/*.deb; apt-get -yf install
-RUN apt-get update && apt-get -y install xterm
-# RUN apt-get update && apt-get -y install x11-xserver-utils xterm twm
+RUN apt-get update && apt-get -y install xterm lsb-release
 
 RUN useradd -m foo && addgroup foo ssl-cert
 

@@ -3,8 +3,8 @@
 set -e
 
 cd "$(dirname "$0")"
-os="centos"
-os_codename="core"
+os="${1:-centos}"
+os_codename="${2:-core}"
 
 docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os}_${os_codename}" \
   -t kasmvnctester_barebones_${os}:$os_codename \

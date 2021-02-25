@@ -1,0 +1,38 @@
+FROM fedora:33
+
+ENV KASMVNC_BUILD_OS fedora
+ENV KASMVNC_BUILD_OS_CODENAME thirtythree
+ENV XORG_VER 1.20.10
+
+# RUN dnf install -y build-dep xorg-server libxfont-dev sudo
+RUN dnf install -y gcc cmake git gnutls-devel vim wget
+#tightvncserver
+RUN dnf install -y libjpeg-turbo-devel libpng-devel libtiff-devel giflib-devel openssl-devel
+
+#libavcodec-dev
+RUN dnf -y install https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
+RUN dnf -y install https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+RUN dnf -y install ffmpeg-devel
+
+RUN dnf install -y make
+RUN dnf group install -y "Development Tools"
+RUN dnf install -y xorg-x11-server-devel zlib-devel libjpeg-turbo-devel
+RUN dnf install -y libxkbfile-devel libXfont2-devel xorg-x11-font-utils \
+  xorg-x11-xtrans-devel xorg-x11-xkb-utils-devel
+RUN dnf install -y mesa-dri-drivers
+RUN dnf install -y bzip2 redhat-lsb-core
+
+# Additions for webp
+RUN cd /tmp && wget https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.0.2.tar.gz
+RUN cd /tmp && tar -xzvf /tmp/libwebp-*
+RUN cd /tmp/libwebp-1.0.2 && \
+    ./configure --enable-static --disable-shared && \
+    make && make install
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+COPY . /src
+RUN chown -R docker:docker /src
+
+USER docker
+ENTRYPOINT ["/src/builder/build.sh"]
