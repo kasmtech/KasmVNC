@@ -172,7 +172,6 @@ const UI = {
         UI.initSetting('port', port);
         UI.initSetting('encrypt', (window.location.protocol === "https:"));
         UI.initSetting('view_clip', false);
-        UI.initSetting('resize', 'remote');
         UI.initSetting('shared', true);
         UI.initSetting('view_only', false);
         UI.initSetting('show_dot', false);
@@ -181,15 +180,26 @@ const UI = {
         UI.initSetting('reconnect', false);
         UI.initSetting('reconnect_delay', 5000);
         UI.initSetting('idle_disconnect', 20);
-        UI.initSetting('video_quality', 3);
-        UI.initSetting('clipboard_up', true);
-        UI.initSetting('clipboard_down', true);
-        UI.initSetting('clipboard_seamless', true);
         UI.initSetting('prefer_local_cursor', true);
-        UI.initSetting('enable_webp', true);
         UI.initSetting('toggle_control_panel', false);
         UI.initSetting('enable_perf_stats', false);
-
+	 
+        if (WebUtil.isInsideKasmVDI()) {
+            UI.initSetting('video_quality', 1);
+            UI.initSetting('clipboard_up', false);
+            UI.initSetting('clipboard_down', false);
+            UI.initSetting('clipboard_seamless', false);
+            UI.initSetting('enable_webp', false);
+            UI.initSetting('resize', 'off');
+	} else {
+            UI.initSetting('video_quality', 3);
+            UI.initSetting('clipboard_up', true);
+            UI.initSetting('clipboard_down', true);
+            UI.initSetting('clipboard_seamless', true);
+            UI.initSetting('enable_webp', true);
+            UI.initSetting('resize', 'remote');
+	}
+	
         UI.setupSettingLabels();
     },
     // Adds a link to the label elements on the corresponding input elements
@@ -1257,9 +1267,7 @@ const UI = {
         UI.rfb.addEventListener("credentialsrequired", UI.credentials);
         UI.rfb.addEventListener("securityfailure", UI.securityFailed);
         UI.rfb.addEventListener("capabilities", UI.updatePowerButton);
-        if (UI.rfb.clipboardDown){
-            UI.rfb.addEventListener("clipboard", UI.clipboardReceive);
-	}
+        UI.rfb.addEventListener("clipboard", UI.clipboardReceive);
 	UI.rfb.addEventListener("bottleneck_stats", UI.bottleneckStatsRecieve);
 
         document.addEventListener('mouseenter', UI.enterVNC);
@@ -1301,7 +1309,9 @@ const UI = {
                 window.attachEvent('onload', WindowLoad);
                 window.attachEvent('message', UI.receiveMessage);
             }
-            UI.rfb.addEventListener("clipboard", UI.clipboardRx);
+            if (UI.rfb.clipboardDown){            
+                UI.rfb.addEventListener("clipboard", UI.clipboardRx);
+	    }
             UI.rfb.addEventListener("disconnect", UI.disconnectedRx);
             document.getElementById('noVNC_control_bar_anchor').setAttribute('style', 'display: none');
             document.getElementById('noVNC_connect_dlg').innerHTML = '';
