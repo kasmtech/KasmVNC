@@ -948,7 +948,10 @@ ws_ctx_t *do_handshake(int sock) {
                 free(set->entries);
                 free(set);
 
-                const char *encrypted = crypt(resppw, "$5$kasm$");
+                struct crypt_data cdata;
+                cdata.initialized = 0;
+
+                const char *encrypted = crypt_r(resppw, "$5$kasm$", &cdata);
                 *resppw = '\0';
 
                 snprintf(pwbuf, 4096, "%s%s", response, encrypted);
