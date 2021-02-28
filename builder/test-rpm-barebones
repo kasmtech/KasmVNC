@@ -9,5 +9,5 @@ os_codename="${2:-core}"
 docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os}_${os_codename}" \
   -t kasmvnctester_barebones_${os}:$os_codename \
   -f dockerfile.${os}_${os_codename}.barebones.rpm.test .
-docker run -it -p 443:8443 --rm -e "VNC_USER=foo" -e "VNC_PW=bar" \
+docker run -it -p 443:8443 --rm -e "VNC_USER=foo" -e "VNC_PW=foobar" \
   kasmvnctester_barebones_${os}:$os_codename
