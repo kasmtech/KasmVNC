@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+
+os="$1"
+codename="$2"
+
+if [[ -z "$os" ]] || [[ -z "$codename" ]]; then
+  echo "Usage: $0 <os> <codename>" >&2
+  exit 1
+fi
+
+cd "$(dirname "$0")"
+
+./build-tarball "$os" "$codename" && ./build-deb "$os" "$codename" && \
+  ./test-deb "$os" "$codename"
