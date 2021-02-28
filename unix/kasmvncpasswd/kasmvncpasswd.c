@@ -39,13 +39,20 @@ static void usage(const char *prog)
                   "-n	Don't change password, change permissions only\n"
                   "-d	Delete this user\n"
                   "\n"
-                  "The file is updated atomically.\n", prog);
+                  "The file is updated atomically.\n\n"
+                  "To pass the password via a pipe, use\n"
+                  "echo -e \"password\\npassword\\n\" | %s [-args]\n",
+                  prog, prog);
   exit(1);
 }
 
 
 static void enableEcho(unsigned char enable) {
   struct termios attrs;
+
+  if (!isatty(fileno(stdin)))
+    return;
+
   tcgetattr(fileno(stdin), &attrs);
   if (enable)
     attrs.c_lflag |= ECHO;
@@ -60,7 +67,7 @@ static const char *encryptpw(const char *in) {
 }
 
 static char* getpassword(const char* prompt, char *buf) {
-  if (prompt) fputs(prompt, stdout);
+  if (prompt && isatty(fileno(stdin))) fputs(prompt, stdout);
   enableEcho(0);
   char* result = fgets(buf, 4096, stdin);
   enableEcho(1);
@@ -95,6 +102,10 @@ static const char *readpassword() {
       exit(1);
     }
     if (strcmp(pw1, pw2) != 0) {
+      if (!isatty(fileno(stdin))) {
+        fprintf(stderr,"Passwords don't match\n");
+        exit(1);
+      }
       fprintf(stderr,"Passwords don't match - try again\n");
       continue;
     }
