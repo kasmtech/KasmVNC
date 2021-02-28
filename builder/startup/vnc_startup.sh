@@ -34,13 +34,31 @@ detect_cert_location() {
   fi
 }
 
+add_vnc_user() {
+  local username="$1"
+  local password="$2"
+  local permission_option="$3"
+
+  echo "Adding user $username"
+  echo -e "$password\n$password" | kasmvncpasswd $permission_option \
+    -u "$username" $HOME/.kasmpasswd
+}
+
 ## resolve_vnc_connection
 VNC_IP=$(hostname -i)
 
 # first entry is control, second is view (if only one is valid for both)
 mkdir -p "$HOME/.vnc"
 PASSWD_PATH="$HOME/.vnc/passwd"
-kasmvncpasswd -w -u $VNC_USER $HOME/.kasmpasswd
+# echo -e "$VNC_PW\n$VNC_PW" | kasmvncpasswd -w -u $VNC_USER $HOME/.kasmpasswd
+add_vnc_user "$VNC_USER" "$VNC_PW" "-w"
+add_vnc_user "$VNC_USER-ro" "$VNC_PW"
+add_vnc_user "$VNC_USER-owner" "$VNC_PW" "-o"
+add_vnc_user "$VNC_USER-to-delete" "$VNC_PW"
+
+kasmvncpasswd -n -u "$VNC_USER-owner" -w $HOME/.kasmpasswd
+kasmvncpasswd -d -u "$VNC_USER-to-delete" $HOME/.kasmpasswd
+
 chmod 0600 $HOME/.kasmpasswd
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout $HOME/.vnc/self.pem -out $HOME/.vnc/self.pem -subj "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
 
