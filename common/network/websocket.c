@@ -30,6 +30,7 @@
 #include <openssl/md5.h> /* md5 hash */
 #include <openssl/sha.h> /* sha1 hash */
 #include "websocket.h"
+#include "kasmpasswd.h"
 
 /*
  * Global state
@@ -59,28 +60,28 @@ void fatal(char *msg)
     exit(1);
 }
 
-/* resolve host with also IP address parsing */ 
-int resolve_host(struct in_addr *sin_addr, const char *hostname) 
-{ 
-    if (!inet_aton(hostname, sin_addr)) { 
-        struct addrinfo *ai, *cur; 
-        struct addrinfo hints; 
-        memset(&hints, 0, sizeof(hints)); 
-        hints.ai_family = AF_INET; 
-        if (getaddrinfo(hostname, NULL, &hints, &ai)) 
-            return -1; 
-        for (cur = ai; cur; cur = cur->ai_next) { 
-            if (cur->ai_family == AF_INET) { 
-                *sin_addr = ((struct sockaddr_in *)cur->ai_addr)->sin_addr; 
-                freeaddrinfo(ai); 
-                return 0; 
-            } 
-        } 
-        freeaddrinfo(ai); 
-        return -1; 
-    } 
-    return 0; 
-} 
+/* resolve host with also IP address parsing */
+int resolve_host(struct in_addr *sin_addr, const char *hostname)
+{
+    if (!inet_aton(hostname, sin_addr)) {
+        struct addrinfo *ai, *cur;
+        struct addrinfo hints;
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_INET;
+        if (getaddrinfo(hostname, NULL, &hints, &ai))
+            return -1;
+        for (cur = ai; cur; cur = cur->ai_next) {
+            if (cur->ai_family == AF_INET) {
+                *sin_addr = ((struct sockaddr_in *)cur->ai_addr)->sin_addr;
+                freeaddrinfo(ai);
+                return 0;
+            }
+        }
+        freeaddrinfo(ai);
+        return -1;
+    }
+    return 0;
+}
 
 
 /*
@@ -107,7 +108,7 @@ ssize_t ws_send(ws_ctx_t *ctx, const void *buf, size_t len) {
 
 ws_ctx_t *alloc_ws_ctx() {
     ws_ctx_t *ctx;
-    if (! (ctx = malloc(sizeof(ws_ctx_t))) )
+    if (! (ctx = calloc(sizeof(ws_ctx_t), 1)) )
         { fatal("malloc()"); }
 
     if (! (ctx->cin_buf = malloc(BUFSIZE)) )
@@ -308,7 +309,7 @@ int decode_hixie(char *src, size_t srclength,
     *left = srclength;
 
     if (srclength == 2 &&
-        (src[0] == '\xff') && 
+        (src[0] == '\xff') &&
         (src[1] == '\x00')) {
         // client sent orderly close frame
         *opcode = 0x8; // Close frame
@@ -326,7 +327,7 @@ int decode_hixie(char *src, size_t srclength,
             return len;
         }
         retlen += len;
-        start = end + 2; // Skip '\xff' end and '\x00' start 
+        start = end + 2; // Skip '\xff' end and '\x00' start
         framecount++;
     } while (end < (src+srclength-1));
     if (framecount > 1) {
@@ -399,7 +400,7 @@ int decode_hybi(unsigned char *src, size_t srclength,
     int i = 0, len, framecount = 0;
     size_t remaining = 0;
     unsigned int target_offset = 0, hdr_length = 0, payload_length = 0;
-    
+
     *left = srclength;
     frame = src;
 
@@ -499,7 +500,7 @@ int decode_hybi(unsigned char *src, size_t srclength,
         snprintf(cntstr, 3, "%d", framecount);
         traffic(cntstr);
     }
-    
+
     *left = remaining;
     return target_offset;
 }
@@ -543,7 +544,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     end = strstr(start, "\r\n");
     strncpy(headers->origin, start, end-start);
     headers->origin[end-start] = '\0';
-   
+
     start = strstr(handshake, "\r\nSec-WebSocket-Version: ");
     if (start) {
         // HyBi/RFC 6455
@@ -560,14 +561,14 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         end = strstr(start, "\r\n");
         strncpy(headers->key1, start, end-start);
         headers->key1[end-start] = '\0';
-   
+
         start = strstr(handshake, "\r\nConnection: ");
         if (!start) { return 0; }
         start += 14;
         end = strstr(start, "\r\n");
         strncpy(headers->connection, start, end-start);
         headers->connection[end-start] = '\0';
-   
+
         start = strstr(handshake, "\r\nSec-WebSocket-Protocol: ");
         if (!start) { return 0; }
         start += 26;
@@ -592,7 +593,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
             end = strstr(start, "\r\n");
             strncpy(headers->key1, start, end-start);
             headers->key1[end-start] = '\0';
-        
+
             start = strstr(handshake, "\r\nSec-WebSocket-Key2: ");
             if (!start) { return 0; }
             start += 22;
@@ -916,34 +917,46 @@ ws_ctx_t *do_handshake(int sock) {
         if (resppw && *resppw)
             resppw++;
         if (!colon[1] && settings.passwdfile) {
-            if (resppw && *resppw) {
+            if (resppw && *resppw && resppw - response < 32) {
                 char pwbuf[4096];
-                FILE *f = fopen(settings.passwdfile, "r");
-                if (f) {
-                    handler_emsg("BasicAuth reading password from %s\n", settings.passwdfile);
-                    const unsigned len = fread(pwbuf, 1, 4096, f);
-                    fclose(f);
-                    pwbuf[4095] = '\0';
-                    if (len < 4096)
-                        pwbuf[len] = '\0';
-
-                    snprintf(authbuf, 4096, "%s%s", settings.basicauth, pwbuf);
-                    authbuf[4095] = '\0';
-
-                    struct crypt_data cdata;
-                    cdata.initialized = 0;
-
-                    const char *encrypted = crypt_r(resppw, "$5$kasm$", &cdata);
-                    *resppw = '\0';
-
-                    snprintf(pwbuf, 4096, "%s%s", response, encrypted);
-                    pwbuf[4095] = '\0';
-                    strcpy(response, pwbuf);
-                } else {
-                    fprintf(stderr, " websocket %d: Error: BasicAuth configured to read password from file %s, but the file doesn't exist\n",
+                struct kasmpasswd_t *set = readkasmpasswd(settings.passwdfile);
+                if (!set->num) {
+                    fprintf(stderr, " websocket %d: Error: BasicAuth configured to read password from file %s, but the file doesn't exist or has no valid users\n",
                             wsthread_handler_id,
                             settings.passwdfile);
+                } else {
+                    unsigned i;
+                    char inuser[32];
+                    unsigned char found = 0;
+                    memcpy(inuser, response, resppw - response - 1);
+                    inuser[resppw - response - 1] = '\0';
+
+                    for (i = 0; i < set->num; i++) {
+                        if (!strcmp(set->entries[i].user, inuser)) {
+                            found = 1;
+                            strcpy(ws_ctx->user, inuser);
+                            snprintf(authbuf, 4096, "%s:%s", set->entries[i].user,
+                                     set->entries[i].password);
+                            authbuf[4095] = '\0';
+                            break;
+                        }
+                    }
+
+                    if (!found)
+                        handler_emsg("BasicAuth user %s not found\n", inuser);
                 }
+                free(set->entries);
+                free(set);
+
+                struct crypt_data cdata;
+                cdata.initialized = 0;
+
+                const char *encrypted = crypt_r(resppw, "$5$kasm$", &cdata);
+                *resppw = '\0';
+
+                snprintf(pwbuf, 4096, "%s%s", response, encrypted);
+                pwbuf[4095] = '\0';
+                strcpy(response, pwbuf);
             } else {
                 // Client tried an empty password, just fail them
                 response[0] = '\0';
@@ -1001,7 +1014,7 @@ ws_ctx_t *do_handshake(int sock) {
         snprintf(response, sizeof(response), SERVER_HANDSHAKE_HIXIE, pre, headers->origin,
                  pre, scheme, headers->host, headers->path, pre, "base64", trailer);
     }
-    
+
     //handler_msg("response: %s\n", response);
     ws_send(ws_ctx, response, strlen(response));
 
@@ -1018,7 +1031,6 @@ void *subthread(void *ptr) {
 
     const int csock = pass->csock;
     wsthread_handler_id = pass->id;
-    free((void *) pass);
 
     ws_ctx_t *ws_ctx;
 
@@ -1028,11 +1040,14 @@ void *subthread(void *ptr) {
         goto out;   // Child process exits
     }
 
+    memcpy(ws_ctx->ip, pass->ip, sizeof(pass->ip));
+
     proxy_handler(ws_ctx);
     if (pipe_error) {
         handler_emsg("Closing due to SIGPIPE\n");
     }
 out:
+    free((void *) pass);
 
     if (ws_ctx) {
         ws_socket_free(ws_ctx);
@@ -1068,12 +1083,13 @@ void *start_server(void *unused) {
             error("ERROR on accept");
             continue;
         }
+        struct wspass_t *pass = calloc(1, sizeof(struct wspass_t));
+        inet_ntop(cli_addr.sin_family, &cli_addr.sin_addr, pass->ip, sizeof(pass->ip));
         fprintf(stderr, " websocket %d: got client connection from %s\n",
                     settings.handler_id,
-                    inet_ntoa(cli_addr.sin_addr));
+                    pass->ip);
 
         pthread_t tid;
-        struct wspass_t *pass = calloc(1, sizeof(struct wspass_t));
         pass->id = settings.handler_id;
         pass->csock = csock;
         pthread_create(&tid, NULL, subthread, pass);

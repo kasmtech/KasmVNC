@@ -102,6 +102,10 @@ namespace rfb {
     // or because the current cursor position has not been set by this client.
     bool needRenderedCursor();
 
+    void recheckPerms() {
+        needsPermCheck = true;
+    }
+
     network::Socket* getSock() { return sock; }
     void add_changed(const Region& region) { updates.add_changed(region); }
     void add_changed_all() { updates.add_changed(server->pb->getRect()); }
@@ -179,12 +183,23 @@ namespace rfb {
     virtual void supportsLEDState();
 
     virtual void sendStats();
+    virtual bool canChangeKasmSettings() const {
+        return (accessRights & (AccessPtrEvents | AccessKeyEvents)) ==
+               (AccessPtrEvents | AccessKeyEvents);
+    }
 
     // setAccessRights() allows a security package to limit the access rights
     // of a VNCSConnectioST to the server.  These access rights are applied
     // such that the actual rights granted are the minimum of the server's
     // default access settings and the connection's access settings.
-    virtual void setAccessRights(AccessRights ar) {accessRights=ar;}
+    virtual void setAccessRights(AccessRights ar) {
+        accessRights = ar;
+
+        bool write, owner;
+        if (!getPerms(write, owner) || !write)
+            accessRights = (accessRights & ~(AccessPtrEvents | AccessKeyEvents));
+        needsPermCheck = false;
+    }
 
     // Timer callbacks
     virtual bool handleTimeout(Timer* t);
@@ -192,6 +207,8 @@ namespace rfb {
     // Internal methods
 
     bool isShiftPressed();
+
+    bool getPerms(bool &write, bool &owner) const;
 
     // Congestion control
     void writeRTTPing();
@@ -248,6 +265,10 @@ namespace rfb {
     std::list<struct timeval> bstats[BS_NUM]; // Bottleneck stats
     rdr::U64 bstats_total[BS_NUM];
     struct timeval connStart;
+
+    char user[32];
+    char kasmpasswdpath[4096];
+    bool needsPermCheck;
 
     time_t lastEventTime;
     time_t pointerEventTime;

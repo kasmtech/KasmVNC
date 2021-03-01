@@ -227,7 +227,13 @@ void proxy_handler(ws_ctx_t *ws_ctx) {
     strcpy(addr.sun_path, ".KasmVNCSock");
     addr.sun_path[0] = '\0';
 
+    struct sockaddr_un myaddr;
+    myaddr.sun_family = AF_UNIX;
+    sprintf(myaddr.sun_path, ".%s@%s", ws_ctx->user, ws_ctx->ip);
+    myaddr.sun_path[0] = '\0';
+
     int tsock = socket(AF_UNIX, SOCK_STREAM, 0);
+    bind(tsock, (struct sockaddr *) &myaddr, sizeof(struct sockaddr_un));
 
     handler_msg("connecting to VNC target\n");
 

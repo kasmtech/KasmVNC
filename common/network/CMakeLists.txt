@@ -1,10 +1,11 @@
-include_directories(${CMAKE_SOURCE_DIR}/common)
+include_directories(${CMAKE_SOURCE_DIR}/common ${CMAKE_SOURCE_DIR}/unix/kasmvncpasswd)
 
 set(NETWORK_SOURCES
   Socket.cxx
   TcpSocket.cxx
   websocket.c
-  websockify.c)
+  websockify.c
+  ${CMAKE_SOURCE_DIR}/unix/kasmvncpasswd/kasmpasswd.c)
 
 if(NOT WIN32)
   set(NETWORK_SOURCES ${NETWORK_SOURCES} UnixSocket.cxx)

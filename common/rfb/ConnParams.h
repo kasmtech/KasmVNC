@@ -42,6 +42,8 @@ namespace rfb {
   const int subsample8X = 4;
   const int subsample16X = 5;
 
+  class SMsgHandler;
+
   class ConnParams {
   public:
     ConnParams();
@@ -73,6 +75,8 @@ namespace rfb {
 
     const PixelFormat& pf() const { return pf_; }
     void setPF(const PixelFormat& pf);
+
+    void setSHandler(SMsgHandler *s) { shandler = s; }
 
     const char* name() const { return name_; }
     void setName(const char* name);
@@ -136,6 +140,7 @@ namespace rfb {
     char verStr[13];
     int verStrPos;
     unsigned int ledState_;
+    SMsgHandler *shandler;
   };
 }
 #endif

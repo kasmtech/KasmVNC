@@ -124,11 +124,20 @@ WebSocket::WebSocket(int sock) : Socket(sock)
 }
 
 char* WebSocket::getPeerAddress() {
-  return rfb::strDup("websocket");
+  struct sockaddr_un addr;
+  socklen_t len = sizeof(struct sockaddr_un);
+  if (getpeername(getFd(), (struct sockaddr *) &addr, &len) != 0) {
+    vlog.error("unable to get peer name for socket");
+    return rfb::strDup("websocket");
+  }
+  return rfb::strDup(addr.sun_path + 1);
 }
 
 char* WebSocket::getPeerEndpoint() {
-  return rfb::strDup("websocket");
+  char buf[1024];
+  sprintf(buf, "%s::websocket", getPeerAddress());
+
+  return rfb::strDup(buf);
 }
 
 // -=- TcpSocket

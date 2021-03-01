@@ -151,7 +151,7 @@ void SMsgReader::readSetMaxVideoResolution()
   width = is->readU16();
   height = is->readU16();
 
-  if (!rfb::Server::ignoreClientSettingsKasm) {
+  if (!rfb::Server::ignoreClientSettingsKasm && handler->canChangeKasmSettings()) {
     sprintf(tmp, "%ux%u", width, height);
     rfb::Server::maxVideoResolution.setParam(tmp);
   }

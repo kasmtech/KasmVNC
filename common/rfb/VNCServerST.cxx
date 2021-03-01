@@ -63,6 +63,11 @@
 
 #include <rdr/types.h>
 
+#include <fcntl.h>
+#include <sys/inotify.h>
+#include <unistd.h>
+#include <wordexp.h>
+
 using namespace rfb;
 
 static LogWriter slog("VNCServerST");
@@ -72,6 +77,9 @@ EncCache VNCServerST::encCache;
 //
 // -=- VNCServerST Implementation
 //
+
+static char kasmpasswdpath[4096];
+extern rfb::StringParameter basicauth;
 
 // -=- Constructors/Destructor
 
@@ -87,6 +95,26 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
 {
   lastUserInputTime = lastDisconnectTime = time(0);
   slog.debug("creating single-threaded server %s", name.buf);
+
+  kasmpasswdpath[0] = '\0';
+  wordexp_t wexp;
+  if (!wordexp(rfb::Server::kasmPasswordFile, &wexp, WRDE_NOCMD))
+    strncpy(kasmpasswdpath, wexp.we_wordv[0], 4096);
+  kasmpasswdpath[4095] = '\0';
+  wordfree(&wexp);
+
+  if (kasmpasswdpath[0] && access(kasmpasswdpath, R_OK) == 0) {
+    // Set up a watch on the password file
+    inotifyfd = inotify_init();
+    if (inotifyfd < 0)
+      slog.error("Failed to init inotify");
+
+    int flags = fcntl(inotifyfd, F_GETFL, 0);
+    fcntl(inotifyfd, F_SETFL, flags | O_NONBLOCK);
+
+    if (inotify_add_watch(inotifyfd, kasmpasswdpath, IN_CLOSE_WRITE | IN_DELETE_SELF) < 0)
+      slog.error("Failed to set watch");
+  }
 }
 
 VNCServerST::~VNCServerST()
@@ -659,8 +687,34 @@ void VNCServerST::writeUpdate()
   encCache.clear();
   encCache.enabled = clients.size() > 1;
 
+  // Check if the password file was updated
+  bool permcheck = false;
+  if (inotifyfd >= 0) {
+    char buf[256];
+    int ret = read(inotifyfd, buf, 256);
+    int pos = 0;
+    while (ret > 0) {
+      const struct inotify_event * const ev = (struct inotify_event *) &buf[pos];
+
+      if (ev->mask & IN_IGNORED) {
+        // file was deleted, set new watch
+        if (inotify_add_watch(inotifyfd, kasmpasswdpath, IN_CLOSE_WRITE | IN_DELETE_SELF) < 0)
+          slog.error("Failed to set watch");
+      }
+
+      permcheck = true;
+
+      ret -= sizeof(struct inotify_event) - ev->len;
+      pos += sizeof(struct inotify_event) - ev->len;
+    }
+  }
+
   for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
     ci_next = ci; ci_next++;
+
+    if (permcheck)
+      (*ci)->recheckPerms();
+
     (*ci)->add_copied(ui.copied, ui.copy_delta);
     (*ci)->add_copypassed(ui.copypassed);
     (*ci)->add_changed(ui.changed);
