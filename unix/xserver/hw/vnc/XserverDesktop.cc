@@ -86,6 +86,8 @@ XserverDesktop::XserverDesktop(int screenIndex_,
        i != listeners.end();
        i++) {
     vncSetNotifyFd((*i)->getFd(), screenIndex, true, false);
+    if ((*i)->getMessager())
+      server->setAPIMessager((*i)->getMessager());
   }
 }
 

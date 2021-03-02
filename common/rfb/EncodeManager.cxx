@@ -966,7 +966,7 @@ static PixelBuffer *bilinearScale(const PixelBuffer *pb, const uint16_t w, const
   return newpb;
 }
 
-static PixelBuffer *progressiveBilinearScale(const PixelBuffer *pb,
+PixelBuffer *progressiveBilinearScale(const PixelBuffer *pb,
                                  const uint16_t tgtw, const uint16_t tgth,
                                  const float tgtdiff)
 {

@@ -51,6 +51,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include <network/GetAPI.h>
+
 #include <rfb/ComparingUpdateTracker.h>
 #include <rfb/KeyRemapper.h>
 #include <rfb/ListConnInfo.h>
@@ -91,7 +93,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
     renderedCursorInvalid(false),
     queryConnectionHandler(0), keyRemapper(&KeyRemapper::defInstance),
     lastConnectionTime(0), disableclients(false),
-    frameTimer(this)
+    frameTimer(this), apimessager(NULL)
 {
   lastUserInputTime = lastDisconnectTime = time(0);
   slog.debug("creating single-threaded server %s", name.buf);
@@ -708,6 +710,9 @@ void VNCServerST::writeUpdate()
       pos += sizeof(struct inotify_event) - ev->len;
     }
   }
+
+  if (apimessager)
+    apimessager->mainUpdateScreen(pb);
 
   for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
     ci_next = ci; ci_next++;

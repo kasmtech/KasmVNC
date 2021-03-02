@@ -42,6 +42,7 @@
 #include <wordexp.h>
 #include "websocket.h"
 
+#include <network/GetAPI.h>
 #include <network/TcpSocket.h>
 #include <rfb/LogWriter.h>
 #include <rfb/Configuration.h>
@@ -431,6 +432,14 @@ int TcpListener::getMyPort() {
 
 extern settings_t settings;
 
+static uint8_t *screenshotCb(void *messager, uint16_t w, uint16_t h, const uint8_t q,
+                             const uint8_t dedup,
+                             uint32_t *len, uint8_t *staging)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netGetScreenshot(w, h, q, dedup, *len, staging);
+}
+
 WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
                          socklen_t listenaddrlen,
                          bool sslonly, const char *cert, const char *certkey,
@@ -514,6 +523,9 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
     settings.httpdir = realpath(httpdir, NULL);
 
   settings.listen_sock = sock;
+
+  settings.messager = messager = new GetAPIMessager;
+  settings.screenshotCb = screenshotCb;
 
   pthread_t tid;
   pthread_create(&tid, NULL, start_server, NULL);

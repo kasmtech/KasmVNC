@@ -100,8 +100,12 @@ namespace network {
 
     int internalSocket;
 
+    virtual GetAPIMessager *getMessager() { return messager; }
+
   protected:
     virtual Socket* createSocket(int fd);
+  private:
+    GetAPIMessager *messager;
   };
 
   void createLocalTcpListeners(std::list<SocketListener*> *listeners,

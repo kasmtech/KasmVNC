@@ -9,6 +9,7 @@
  */
 #define _GNU_SOURCE
 
+#include <ctype.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <crypt.h>
@@ -83,6 +84,32 @@ int resolve_host(struct in_addr *sin_addr, const char *hostname)
     return 0;
 }
 
+static const char *parse_get(const char * const in, const char * const opt, unsigned *len) {
+	const char *start = in;
+	const char *end = strchrnul(start, '&');
+	const unsigned optlen = strlen(opt);
+	*len = 0;
+
+	while (1) {
+		if (!strncmp(start, opt, optlen)) {
+			const char *arg = strchr(start, '=');
+			if (!arg)
+				return "";
+			arg++;
+			*len = end - arg;
+			return arg;
+		}
+
+		if (!*end)
+			break;
+
+		end++;
+		start = end;
+		end = strchrnul(start, '&');
+	}
+
+	return "";
+}
 
 /*
  * SSL Wrapper Code
@@ -814,6 +841,116 @@ nope:
     ws_send(ws_ctx, buf, strlen(buf));
 }
 
+static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
+    char buf[4096], path[4096], fullpath[4096], args[4096] = "";
+    uint8_t ret = 0; // 0 = continue checking
+
+    if (strncmp(in, "GET ", 4)) {
+        wserr("non-GET request, rejecting\n");
+        return 0;
+    }
+    in += 4;
+    const char *end = strchr(in, ' ');
+    unsigned len = end - in;
+
+    if (len < 1 || len > 1024 || strstr(in, "../")) {
+        wserr("Request too long (%u) or attempted dir traversal attack, rejecting\n", len);
+        return 0;
+    }
+
+    end = memchr(in, '?', len);
+    if (end) {
+        len = end - in;
+        end++;
+
+        const char *argend = strchr(end, ' ');
+        strncpy(args, end, argend - end);
+        args[argend - end] = '\0';
+    }
+
+    memcpy(path, in, len);
+    path[len] = '\0';
+
+    wserr("Requested owner api '%s' with args '%s'\n", path, args);
+
+    #define entry(x) if (!strcmp(path, x))
+
+    const char *param;
+
+    entry("/api/get_screenshot") {
+        uint8_t q = 7, dedup = 0;
+        uint16_t w = 4096, h = 4096;
+
+        param = parse_get(args, "width", &len);
+        if (len && isdigit(param[0]))
+            w = atoi(param);
+
+        param = parse_get(args, "height", &len);
+        if (len && isdigit(param[0]))
+            h = atoi(param);
+
+        param = parse_get(args, "quality", &len);
+        if (len && isdigit(param[0]))
+            q = atoi(param);
+
+        param = parse_get(args, "deduplicate", &len);
+        if (len && isalpha(param[0])) {
+            if (!strncmp(param, "true", len))
+                dedup = 1;
+        }
+
+        uint8_t *staging = malloc(1024 * 1024 * 8);
+
+        settings.screenshotCb(settings.messager, w, h, q, dedup, &len, staging);
+
+        if (len == 16) {
+            sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                     "Server: KasmVNC/4.0\r\n"
+                     "Connection: close\r\n"
+                     "Content-type: text/plain\r\n"
+                     "Content-length: %u\r\n"
+                     "\r\n", len);
+            ws_send(ws_ctx, buf, strlen(buf));
+            ws_send(ws_ctx, staging, len);
+
+            wserr("Screenshot hadn't changed and dedup was requested, sent hash\n");
+            ret = 1;
+        } else if (len) {
+            sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                     "Server: KasmVNC/4.0\r\n"
+                     "Connection: close\r\n"
+                     "Content-type: image/jpeg\r\n"
+                     "Content-length: %u\r\n"
+                     "\r\n", len);
+            ws_send(ws_ctx, buf, strlen(buf));
+            ws_send(ws_ctx, staging, len);
+
+            wserr("Sent screenshot %u bytes\n", len);
+            ret = 1;
+        }
+
+        free(staging);
+
+        if (!len) {
+            wserr("Invalid params to screenshot\n");
+            goto nope;
+        }
+    }
+
+    #undef entry
+
+    return ret;
+nope:
+    sprintf(buf, "HTTP/1.1 400 Bad Request\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "\r\n"
+                 "400 Bad Request");
+    ws_send(ws_ctx, buf, strlen(buf));
+    return 1;
+}
+
 ws_ctx_t *do_handshake(int sock) {
     char handshake[4096], response[4096], sha1[29], trailer[17];
     char *scheme, *pre;
@@ -883,6 +1020,7 @@ ws_ctx_t *do_handshake(int sock) {
     }
 
     const char *colon;
+    unsigned char owner = 0;
     if ((colon = strchr(settings.basicauth, ':'))) {
         const char *hdr = strstr(handshake, "Authorization: Basic ");
         if (!hdr) {
@@ -938,6 +1076,9 @@ ws_ctx_t *do_handshake(int sock) {
                             snprintf(authbuf, 4096, "%s:%s", set->entries[i].user,
                                      set->entries[i].password);
                             authbuf[4095] = '\0';
+
+                            if (set->entries[i].owner)
+                                owner = 1;
                             break;
                         }
                     }
@@ -978,9 +1119,14 @@ ws_ctx_t *do_handshake(int sock) {
     if (!parse_handshake(ws_ctx, handshake)) {
         handler_emsg("Invalid WS request, maybe a HTTP one\n");
 
+        if (strstr(handshake, "/api/") && owner)
+            if (ownerapi(ws_ctx, handshake))
+                goto done;
+
         if (settings.httpdir && settings.httpdir[0])
             servefile(ws_ctx, handshake);
 
+done:
         free_ws_ctx(ws_ctx);
         return NULL;
     }

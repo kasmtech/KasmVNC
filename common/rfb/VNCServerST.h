@@ -43,6 +43,7 @@ namespace rfb {
   class ListConnInfo;
   class PixelBuffer;
   class KeyRemapper;
+  class network::GetAPIMessager;
 
   class VNCServerST : public VNCServer,
                       public Timer::Callback,
@@ -186,6 +187,8 @@ namespace rfb {
     bool getDisable() { return disableclients;};
     void setDisable(bool disable) { disableclients = disable;};
 
+    void setAPIMessager(network::GetAPIMessager *msgr) { apimessager = msgr; }
+
   protected:
 
     friend class VNCSConnectionST;
@@ -251,6 +254,8 @@ namespace rfb {
     Timer frameTimer;
 
     int inotifyfd;
+
+    network::GetAPIMessager *apimessager;
   };
 
 };

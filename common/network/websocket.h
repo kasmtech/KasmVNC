@@ -1,4 +1,5 @@
 #include <openssl/ssl.h>
+#include <stdint.h>
 
 #define BUFSIZE 65536
 #define DBUFSIZE (BUFSIZE * 3) / 4 - 20
@@ -74,6 +75,11 @@ typedef struct {
     const char *passwdfile;
     int ssl_only;
     const char *httpdir;
+
+    void *messager;
+    uint8_t *(*screenshotCb)(void *messager, uint16_t w, uint16_t h, const uint8_t q,
+                             const uint8_t dedup,
+                             uint32_t *len, uint8_t *staging);
 } settings_t;
 
 #ifdef __cplusplus
