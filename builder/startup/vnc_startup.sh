@@ -50,7 +50,6 @@ VNC_IP=$(hostname -i)
 # first entry is control, second is view (if only one is valid for both)
 mkdir -p "$HOME/.vnc"
 PASSWD_PATH="$HOME/.vnc/passwd"
-# echo -e "$VNC_PW\n$VNC_PW" | kasmvncpasswd -w -u $VNC_USER $HOME/.kasmpasswd
 add_vnc_user "$VNC_USER" "$VNC_PW" "-w"
 add_vnc_user "$VNC_USER-ro" "$VNC_PW"
 add_vnc_user "$VNC_USER-owner" "$VNC_PW" "-o"
