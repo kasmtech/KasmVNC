@@ -25,6 +25,7 @@
 #include <rfb/JpegCompressor.h>
 #include <rfb/xxhash.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 using namespace network;
 using namespace rfb;
