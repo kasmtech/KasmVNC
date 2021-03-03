@@ -53,10 +53,12 @@ static const struct TightJPEGConfiguration conf[10] = {
   { 100, subsampleNone }  // 9
 };
 
-GetAPIMessager::GetAPIMessager(): screenW(0), screenH(0), screenHash(0),
+GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_),
+					screenW(0), screenH(0), screenHash(0),
 					cachedW(0), cachedH(0), cachedQ(0) {
 
 	pthread_mutex_init(&screenMutex, NULL);
+	pthread_mutex_init(&userMutex, NULL);
 }
 
 // from main thread
@@ -180,4 +182,103 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 	pthread_mutex_unlock(&screenMutex);
 
 	return ret;
+}
+
+#define USERNAME_LEN sizeof(((struct kasmpasswd_entry_t *)0)->user)
+#define PASSWORD_LEN sizeof(((struct kasmpasswd_entry_t *)0)->password)
+
+uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[], const bool write) {
+	if (strlen(name) >= USERNAME_LEN) {
+		vlog.error("Username too long");
+		return 0;
+	}
+
+	if (strlen(pw) >= PASSWORD_LEN) {
+		vlog.error("Password too long");
+		return 0;
+	}
+
+	if (!passwdfile)
+		return 0;
+
+	action_data act;
+
+	memcpy(act.data.user, name, USERNAME_LEN);
+	act.data.user[USERNAME_LEN - 1] = '\0';
+	memcpy(act.data.password, pw, PASSWORD_LEN);
+	act.data.password[PASSWORD_LEN - 1] = '\0';
+	act.data.owner = 0;
+	act.data.write = write;
+
+	if (pthread_mutex_lock(&userMutex))
+		return 0;
+
+        // This needs to be handled locally for proper interactivity
+        // (consider adding users when nobody is connected).
+        // The mutex and atomic rename keep things in sync.
+
+        struct kasmpasswd_t *set = readkasmpasswd(passwdfile);
+        unsigned s;
+        for (s = 0; s < set->num; s++) {
+          if (!strcmp(set->entries[s].user, act.data.user)) {
+            vlog.error("Can't create user %s, already exists", act.data.user);
+            goto out;
+          }
+        }
+
+        s = set->num++;
+        set->entries = (struct kasmpasswd_entry_t *) realloc(set->entries,
+                                                                 set->num * sizeof(struct kasmpasswd_entry_t));
+        set->entries[s] = act.data;
+
+        writekasmpasswd(passwdfile, set);
+        vlog.info("User %s created", act.data.user);
+out:
+	pthread_mutex_unlock(&userMutex);
+
+	return 1;
+}
+
+uint8_t GetAPIMessager::netRemoveUser(const char name[]) {
+	if (strlen(name) >= USERNAME_LEN) {
+		vlog.error("Username too long");
+		return 0;
+	}
+
+	action_data act;
+	act.action = USER_REMOVE;
+
+	memcpy(act.data.user, name, USERNAME_LEN);
+	act.data.user[USERNAME_LEN - 1] = '\0';
+
+	if (pthread_mutex_lock(&userMutex))
+		return 0;
+
+	actionQueue.push_back(act);
+
+	pthread_mutex_unlock(&userMutex);
+
+	return 1;
+}
+
+uint8_t GetAPIMessager::netGiveControlTo(const char name[]) {
+	if (strlen(name) >= USERNAME_LEN) {
+		vlog.error("Username too long");
+		return 0;
+	}
+
+	action_data act;
+	act.action = USER_GIVE_CONTROL;
+
+	memcpy(act.data.user, name, USERNAME_LEN);
+	act.data.user[USERNAME_LEN - 1] = '\0';
+
+	if (pthread_mutex_lock(&userMutex))
+		return 0;
+
+	actionQueue.push_back(act);
+
+	pthread_mutex_unlock(&userMutex);
+
+	return 1;
 }

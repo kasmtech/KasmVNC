@@ -111,6 +111,29 @@ static const char *parse_get(const char * const in, const char * const opt, unsi
 	return "";
 }
 
+static void percent_decode(const char *src, char *dst) {
+	while (1) {
+		if (!*src)
+			break;
+		if (*src != '%') {
+			*dst++ = *src++;
+		} else {
+			src++;
+			if (!src[0] || !src[1])
+				break;
+			char hex[3];
+			hex[0] = src[0];
+			hex[1] = src[1];
+			hex[2] = '\0';
+
+			src += 2;
+			*dst++ = strtol(hex, NULL, 16);
+		}
+	}
+
+	*dst = '\0';
+}
+
 /*
  * SSL Wrapper Code
  */
@@ -842,7 +865,7 @@ nope:
 }
 
 static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
-    char buf[4096], path[4096], fullpath[4096], args[4096] = "";
+    char buf[4096], path[4096], args[4096] = "";
     uint8_t ret = 0; // 0 = continue checking
 
     if (strncmp(in, "GET ", 4)) {
@@ -871,7 +894,11 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
     memcpy(path, in, len);
     path[len] = '\0';
 
-    wserr("Requested owner api '%s' with args '%s'\n", path, args);
+    if (strstr(args, "password=")) {
+        wserr("Requested owner api '%s' with args (skipped, includes password)\n", path);
+    } else {
+        wserr("Requested owner api '%s' with args '%s'\n", path, args);
+    }
 
     #define entry(x) if (!strcmp(path, x))
 
@@ -935,6 +962,112 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
             wserr("Invalid params to screenshot\n");
             goto nope;
         }
+    } else entry("/api/create_user") {
+        char decname[1024] = "", decpw[1024] = "";
+        uint8_t write = 0;
+
+        param = parse_get(args, "name", &len);
+        if (len) {
+            memcpy(buf, param, len);
+            buf[len] = '\0';
+            percent_decode(buf, decname);
+        }
+
+        param = parse_get(args, "password", &len);
+        if (len) {
+            memcpy(buf, param, len);
+            buf[len] = '\0';
+            percent_decode(buf, decpw);
+
+            struct crypt_data cdata;
+            cdata.initialized = 0;
+
+            const char *encrypted = crypt_r(decpw, "$5$kasm$", &cdata);
+            strcpy(decpw, encrypted);
+        }
+
+        param = parse_get(args, "write", &len);
+        if (len && isalpha(param[0])) {
+            if (!strncmp(param, "true", len))
+                write = 1;
+        }
+
+        if (!decname[0] || !decpw[0])
+            goto nope;
+
+        if (!settings.adduserCb(settings.messager, decname, decpw, write)) {
+            wserr("Invalid params to create_user\n");
+            goto nope;
+        }
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: 6\r\n"
+                 "\r\n"
+                 "200 OK");
+        ws_send(ws_ctx, buf, strlen(buf));
+
+        ret = 1;
+    } else entry("/api/remove_user") {
+        char decname[1024] = "";
+
+        param = parse_get(args, "name", &len);
+        if (len) {
+            memcpy(buf, param, len);
+            buf[len] = '\0';
+            percent_decode(buf, decname);
+        }
+
+        if (!decname[0])
+            goto nope;
+
+        if (!settings.removeCb(settings.messager, decname)) {
+            wserr("Invalid params to remove_user\n");
+            goto nope;
+        }
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: 6\r\n"
+                 "\r\n"
+                 "200 OK");
+        ws_send(ws_ctx, buf, strlen(buf));
+
+        wserr("Passed remove_user request to main thread\n");
+        ret = 1;
+    } else entry("/api/give_control") {
+        char decname[1024] = "";
+
+        param = parse_get(args, "name", &len);
+        if (len) {
+            memcpy(buf, param, len);
+            buf[len] = '\0';
+            percent_decode(buf, decname);
+        }
+
+        if (!decname[0])
+            goto nope;
+
+        if (!settings.givecontrolCb(settings.messager, decname)) {
+            wserr("Invalid params to give_control\n");
+            goto nope;
+        }
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: 6\r\n"
+                 "\r\n"
+                 "200 OK");
+        ws_send(ws_ctx, buf, strlen(buf));
+
+        wserr("Passed give_control request to main thread\n");
+        ret = 1;
     }
 
     #undef entry

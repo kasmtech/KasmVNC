@@ -19,6 +19,7 @@
 #ifndef __NETWORK_GET_API_H__
 #define __NETWORK_GET_API_H__
 
+#include <kasmpasswd.h>
 #include <pthread.h>
 #include <rfb/PixelBuffer.h>
 #include <rfb/PixelFormat.h>
@@ -29,7 +30,7 @@ namespace network {
 
   class GetAPIMessager {
   public:
-    GetAPIMessager();
+    GetAPIMessager(const char *passwdfile_);
 
     // from main thread
     void mainUpdateScreen(rfb::PixelBuffer *pb);
@@ -38,7 +39,27 @@ namespace network {
     uint8_t *netGetScreenshot(uint16_t w, uint16_t h,
                               const uint8_t q, const bool dedup,
                               uint32_t &len, uint8_t *staging);
+    uint8_t netAddUser(const char name[], const char pw[], const bool write);
+    uint8_t netRemoveUser(const char name[]);
+    uint8_t netGiveControlTo(const char name[]);
+
+    enum USER_ACTION {
+      //USER_ADD, - handled locally for interactivity
+      USER_REMOVE,
+      USER_GIVE_CONTROL,
+    };
+
+    struct action_data {
+      enum USER_ACTION action;
+      kasmpasswd_entry_t data;
+    };
+
+    pthread_mutex_t userMutex;
+    std::vector<action_data> actionQueue;
+
   private:
+    const char *passwdfile;
+
     pthread_mutex_t screenMutex;
     rfb::ManagedPixelBuffer screenPb;
     uint16_t screenW, screenH;

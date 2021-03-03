@@ -641,6 +641,71 @@ int VNCServerST::msToNextUpdate()
     return frameTimer.getRemainingMs();
 }
 
+static void checkAPIMessages(network::GetAPIMessager *apimessager)
+{
+  if (pthread_mutex_lock(&apimessager->userMutex))
+    return;
+
+  const unsigned num = apimessager->actionQueue.size();
+  unsigned i;
+  for (i = 0; i < num; i++) {
+    slog.info("Main thread processing user API request %u/%u", i + 1, num);
+
+    const network::GetAPIMessager::action_data &act = apimessager->actionQueue[i];
+    struct kasmpasswd_t *set = NULL;
+    unsigned s;
+    bool found;
+
+    switch (act.action) {
+      case network::GetAPIMessager::USER_REMOVE:
+        set = readkasmpasswd(kasmpasswdpath);
+        found = false;
+        for (s = 0; s < set->num; s++) {
+          if (!strcmp(set->entries[s].user, act.data.user)) {
+            set->entries[s].user[0] = '\0';
+            found = true;
+            break;
+          }
+        }
+
+        if (found) {
+          writekasmpasswd(kasmpasswdpath, set);
+          slog.info("User %s removed", act.data.user);
+        } else {
+          slog.error("Tried to remove nonexistent user %s", act.data.user);
+        }
+      break;
+      case network::GetAPIMessager::USER_GIVE_CONTROL:
+        set = readkasmpasswd(kasmpasswdpath);
+        found = false;
+        for (s = 0; s < set->num; s++) {
+          if (!strcmp(set->entries[s].user, act.data.user)) {
+            set->entries[s].write = 1;
+            found = true;
+          } else {
+            set->entries[s].write = 0;
+          }
+        }
+
+        if (found) {
+          writekasmpasswd(kasmpasswdpath, set);
+          slog.info("User %s given control", act.data.user);
+        } else {
+          slog.error("Tried to give control to nonexistent user %s", act.data.user);
+        }
+      break;
+    }
+
+    if (set) {
+      free(set->entries);
+      free(set);
+    }
+  }
+
+  apimessager->actionQueue.clear();
+  pthread_mutex_unlock(&apimessager->userMutex);
+}
+
 // writeUpdate() is called on a regular interval in order to see what
 // updates are pending and propagates them to the update tracker for
 // each client. It uses the ComparingUpdateTracker's compare() method
@@ -711,8 +776,11 @@ void VNCServerST::writeUpdate()
     }
   }
 
-  if (apimessager)
+  if (apimessager) {
     apimessager->mainUpdateScreen(pb);
+
+    checkAPIMessages(apimessager);
+  }
 
   for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
     ci_next = ci; ci_next++;

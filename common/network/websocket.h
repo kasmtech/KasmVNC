@@ -80,6 +80,10 @@ typedef struct {
     uint8_t *(*screenshotCb)(void *messager, uint16_t w, uint16_t h, const uint8_t q,
                              const uint8_t dedup,
                              uint32_t *len, uint8_t *staging);
+    uint8_t (*adduserCb)(void *messager, const char name[], const char pw[],
+                          const uint8_t write);
+    uint8_t (*removeCb)(void *messager, const char name[]);
+    uint8_t (*givecontrolCb)(void *messager, const char name[]);
 } settings_t;
 
 #ifdef __cplusplus

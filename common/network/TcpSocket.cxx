@@ -440,6 +440,25 @@ static uint8_t *screenshotCb(void *messager, uint16_t w, uint16_t h, const uint8
   return msgr->netGetScreenshot(w, h, q, dedup, *len, staging);
 }
 
+static uint8_t adduserCb(void *messager, const char name[], const char pw[],
+                          const uint8_t write)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netAddUser(name, pw, write);
+}
+
+static uint8_t removeCb(void *messager, const char name[])
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netRemoveUser(name);
+}
+
+static uint8_t givecontrolCb(void *messager, const char name[])
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netGiveControlTo(name);
+}
+
 WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
                          socklen_t listenaddrlen,
                          bool sslonly, const char *cert, const char *certkey,
@@ -524,8 +543,11 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
 
   settings.listen_sock = sock;
 
-  settings.messager = messager = new GetAPIMessager;
+  settings.messager = messager = new GetAPIMessager(settings.passwdfile);
   settings.screenshotCb = screenshotCb;
+  settings.adduserCb = adduserCb;
+  settings.removeCb = removeCb;
+  settings.givecontrolCb = givecontrolCb;
 
   pthread_t tid;
   pthread_create(&tid, NULL, start_server, NULL);
