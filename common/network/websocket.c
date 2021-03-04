@@ -1252,9 +1252,23 @@ ws_ctx_t *do_handshake(int sock) {
     if (!parse_handshake(ws_ctx, handshake)) {
         handler_emsg("Invalid WS request, maybe a HTTP one\n");
 
-        if (strstr(handshake, "/api/") && owner)
-            if (ownerapi(ws_ctx, handshake))
+        if (strstr(handshake, "/api/")) {
+            handler_emsg("HTTP request under /api/\n");
+
+            if (owner) {
+                if (ownerapi(ws_ctx, handshake))
+                    goto done;
+            } else {
+                sprintf(response, "HTTP/1.1 401 Unauthorized\r\n"
+                        "Server: KasmVNC/4.0\r\n"
+                        "Connection: close\r\n"
+                        "Content-type: text/plain\r\n"
+                        "\r\n"
+                        "401 Unauthorized");
+                ws_send(ws_ctx, response, strlen(response));
                 goto done;
+            }
+        }
 
         if (settings.httpdir && settings.httpdir[0])
             servefile(ws_ctx, handshake);
