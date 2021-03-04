@@ -108,6 +108,9 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 	if (h > screenH)
 		h = screenH;
 
+	if (!screenW || !screenH)
+		vlog.error("Screenshot requested but no screenshot exists (screen hasn't been viewed)");
+
 	if (!w || !h || q > 9 || !staging)
 		return NULL;
 
