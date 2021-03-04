@@ -55,7 +55,7 @@ add_vnc_user "$VNC_USER-ro" "$VNC_PW"
 add_vnc_user "$VNC_USER-owner" "$VNC_PW" "-o"
 add_vnc_user "$VNC_USER-to-delete" "$VNC_PW"
 
-kasmvncpasswd -n -u "$VNC_USER-owner" -w $HOME/.kasmpasswd
+kasmvncpasswd -n -u "$VNC_USER-owner" -w -o $HOME/.kasmpasswd
 kasmvncpasswd -d -u "$VNC_USER-to-delete" $HOME/.kasmpasswd
 
 chmod 0600 $HOME/.kasmpasswd
