@@ -1,6 +1,6 @@
 .TH vncpasswd 1 "" "KasmVNC" "Virtual Network Computing"
 .SH NAME
-vncpasswd \- change the VNC password
+vncpasswd \- setup VNC users and passwords
 .SH SYNOPSIS
 \fBvncpasswd\fR -u [\fIusername\fR] [\fI-wnod\fR] [\fIpasswd-file\fR]
 .SH DESCRIPTION
