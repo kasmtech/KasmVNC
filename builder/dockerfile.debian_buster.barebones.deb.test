@@ -14,4 +14,6 @@ USER foo:ssl-cert
 RUN mkdir ~/.vnc && echo '/usr/bin/xterm &' >> ~/.vnc/xstartup && \
   chmod +x ~/.vnc/xstartup
 
-ENTRYPOINT bash -c "echo -e \"$VNC_PW\n$VNC_PW\n\" | kasmvncpasswd -w -u $VNC_USER $HOME/.kasmpasswd && kasmvncserver-easy-start && tail -f $HOME/.vnc/*.log "
+ENTRYPOINT bash -c "echo -e \"$VNC_PW\n$VNC_PW\n\" | \
+  kasmvncpasswd -w -u $VNC_USER $HOME/.kasmpasswd && \
+  kasmvncserver-easy-start && tail -f $HOME/.vnc/*.log"
