@@ -5,7 +5,7 @@ COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp
 RUN apt-get update && dpkg -i /tmp/*.deb; apt-get -yf install
 RUN apt-get update && apt-get -y install xterm
 
-COPY startup/deb/kasmvncserver-start /usr/local/bin
+COPY startup/deb/kasmvncserver-easy-start /usr/local/bin
 
 RUN useradd -m foo
 
@@ -14,4 +14,4 @@ USER foo:ssl-cert
 RUN mkdir ~/.vnc && echo '/usr/bin/xterm &' >> ~/.vnc/xstartup && \
   chmod +x ~/.vnc/xstartup
 
-ENTRYPOINT bash -c "echo -e \"$VNC_PW\n$VNC_PW\n\" | kasmvncpasswd -w -u $VNC_USER $HOME/.kasmpasswd && kasmvncserver-start && tail -f $HOME/.vnc/*.log "
+ENTRYPOINT bash -c "echo -e \"$VNC_PW\n$VNC_PW\n\" | kasmvncpasswd -w -u $VNC_USER $HOME/.kasmpasswd && kasmvncserver-easy-start && tail -f $HOME/.vnc/*.log "
