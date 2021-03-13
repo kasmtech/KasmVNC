@@ -5,12 +5,16 @@ vncpasswd \- change the VNC password
 \fBvncpasswd\fR -u [\fIusername\fR] [\fI-wnod\fR] [\fIpasswd-file\fR]
 .SH DESCRIPTION
 .B vncpasswd
-allows you to set the password used to access VNC desktops.  Its default
-behavior is to prompt for a VNC password and then store an obfuscated version
-of this password to \fIpasswd-file\fR (or to $HOME/.kasmpasswd if no password
-file is specified.)  The \fBvncserver\fP script will ask you to add a user
-the first time you start a VNC desktop. HTTP Basic Authentication will be used
-to ask for username and password, when you connect.
+allows you to add users and passwords used to access VNC desktops. Multiple
+users can be added, each with its own permissions. You can set view-only, use of
+mouse and keyboard allowed (-w), user managment permissions (-o). See OPTIONS
+below for details.
+
+Its default behavior is to prompt for a VNC password and then store an
+obfuscated version of this password to \fIpasswd-file\fR (or to
+$HOME/.kasmpasswd if no password file is specified.)  The \fBvncserver\fP script
+will ask you to add a user the first time you start a VNC desktop. HTTP Basic
+Authentication will be used to ask for username and password, when you connect.
 
 The password must be at least six characters long (unless the \fB\-f\fR
 command-line option is used-- see below), and only the first eight
