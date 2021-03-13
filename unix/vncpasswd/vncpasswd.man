@@ -16,14 +16,13 @@ $HOME/.kasmpasswd if no password file is specified.)  The \fBvncserver\fP script
 will ask you to add a user the first time you start a VNC desktop. HTTP Basic
 Authentication will be used to ask for username and password, when you connect.
 
-The password must be at least six characters long (unless the \fB\-f\fR
-command-line option is used-- see below), and only the first eight
-characters are significant.  Note that the stored password is \fBnot\fP
-encrypted securely - anyone who has access to this file can trivially find out
-the plain-text password, so \fBvncpasswd\fP always sets appropriate permissions
-(read and write only by the owner.)  However, when accessing a VNC desktop, a
-challenge-response mechanism is used over the wire making it hard for anyone to
-crack the password simply by snooping on the network.
+The password must be at least six characters long (maximum of 128 characters).
+Note that the stored password is \fBnot\fP encrypted securely - anyone who has
+access to this file can trivially find out the plain-text password, so
+\fBvncpasswd\fP always sets appropriate permissions (read and write only by the
+owner.)  However, when accessing a VNC desktop, a challenge-response mechanism
+is used over the wire making it hard for anyone to crack the password simply by
+snooping on the network.
 
 .SH OPTIONS
 
