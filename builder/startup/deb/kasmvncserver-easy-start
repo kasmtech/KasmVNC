@@ -2,6 +2,10 @@
 
 set -e
 
+display=:10
+interface=0.0.0.0
+cert_group=ssl-cert
+
 if [[ "$1" = "--help" ]]; then
   cat >&2 <<-USAGE
 Usage: `basename $0` [options]
@@ -20,10 +24,6 @@ action=start
 if [[ "$1" = "-kill" ]]; then
   action=kill
 fi
-
-display=:10
-interface=0.0.0.0
-cert_group=ssl-cert
 
 if groups | grep -qvw ssl-cert; then
   cat <<-EOF
