@@ -2,7 +2,26 @@
 
 set -e
 
-display=:1
+if [[ "$1" = "--help" ]]; then
+  cat >&2 <<-USAGE
+Usage: `basename $0` [options]
+  -d     Debug output
+  -kill  Kill vncserver
+  --help show this help
+USAGE
+  exit
+fi
+
+if [[ "$1" = "-d" ]]; then
+  log_option="-log *:stderr:100"
+fi
+
+action=start
+if [[ "$1" = "-kill" ]]; then
+  action=kill
+fi
+
+display=:10
 interface=0.0.0.0
 cert_group=ssl-cert
 
@@ -14,9 +33,14 @@ EOF
   exit 1
 fi
 
+if [[ "$action" = "kill" ]]; then
+  vncserver -kill $display
+  exit
+fi
+
 vncserver $display -interface $interface
 vncserver -kill $display
 vncserver $display -depth 24 -geometry 1280x1050 -websocketPort 8443 \
   -cert /etc/ssl/certs/ssl-cert-snakeoil.pem \
   -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 \
-  -interface $interface -httpd /usr/share/kasmvnc/www
+  -interface $interface -httpd /usr/share/kasmvnc/www $log_option
