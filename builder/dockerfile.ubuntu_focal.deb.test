@@ -45,6 +45,9 @@ ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp
 RUN dpkg -i /tmp/*.deb; apt-get -yf install
 
+RUN mkdir ~/.vnc && echo '/usr/bin/xfce4-session &' >> ~/.vnc/xstartup && \
+  chmod +x ~/.vnc/xstartup
+
 ### END CUSTOM STUFF ###
 
 RUN chown -R 1000:0 $HOME
