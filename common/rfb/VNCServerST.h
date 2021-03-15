@@ -235,6 +235,7 @@ namespace rfb {
     void stopFrameClock();
     int msToNextUpdate();
     void writeUpdate();
+    void blackOut();
     Region getPendingRegion();
     const RenderedCursor* getRenderedCursor();
 
@@ -256,6 +257,13 @@ namespace rfb {
     int inotifyfd;
 
     network::GetAPIMessager *apimessager;
+
+    struct {
+        bool enabled;
+        int x1, y1, x2, y2;
+        bool percents;
+        rdr::U16 pcx1, pcy1, pcx2, pcy2;
+    } DLPRegion;
   };
 
 };

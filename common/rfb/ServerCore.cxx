@@ -163,6 +163,10 @@ rfb::StringParameter rfb::Server::DLP_ClipLog
 ("DLP_Log",
  "Log clipboard/kbd actions. Accepts off, info or verbose",
  "off");
+rfb::StringParameter rfb::Server::DLP_Region
+("DLP_Region",
+ "Black out anything outside this region",
+ "");
 
 rfb::StringParameter rfb::Server::maxVideoResolution
 ("MaxVideoResolution",

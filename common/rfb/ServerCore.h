@@ -49,6 +49,7 @@ namespace rfb {
     static IntParameter DLP_ClipDelay;
     static IntParameter DLP_KeyRateLimit;
     static StringParameter DLP_ClipLog;
+    static StringParameter DLP_Region;
     static IntParameter jpegVideoQuality;
     static IntParameter webpVideoQuality;
     static StringParameter maxVideoResolution;

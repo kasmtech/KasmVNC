@@ -85,6 +85,42 @@ extern rfb::StringParameter basicauth;
 
 // -=- Constructors/Destructor
 
+static void mixedPercentages() {
+  slog.error("Mixing percentages and absolute values in DLP_Region is not allowed");
+  exit(1);
+}
+
+static void parseRegionPart(const bool percents, rdr::U16 &pcdest, int &dest,
+                            char **inptr) {
+  char *nextptr, *ptr;
+  ptr = *inptr;
+  int val = strtol(ptr, &nextptr, 10);
+  if (!*ptr || ptr == nextptr) {
+    slog.error("Invalid value for DLP_Region");
+    exit(1);
+  }
+  ptr = nextptr;
+  if (*ptr == '%') {
+    if (!percents)
+      mixedPercentages();
+    pcdest = val;
+
+    if (val < 0 || val > 100) {
+      slog.error("Percent must be 0-100");
+      exit(1);
+    }
+
+    ptr++;
+  } else if (percents) {
+    mixedPercentages();
+  }
+  dest = val;
+
+  for (; *ptr && *ptr == ','; ptr++);
+
+  *inptr = ptr;
+}
+
 VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
   : blHosts(&blacklist), desktop(desktop_), desktopStarted(false),
     blockCounter(0), pb(0), ledState(ledUnknown),
@@ -97,6 +133,64 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
 {
   lastUserInputTime = lastDisconnectTime = time(0);
   slog.debug("creating single-threaded server %s", name.buf);
+
+  DLPRegion.enabled = DLPRegion.percents = false;
+
+  if (Server::DLP_Region[0]) {
+    unsigned len = strlen(Server::DLP_Region);
+    unsigned i;
+    unsigned commas = 0;
+    int val;
+    char *ptr, *nextptr;
+
+    for (i = 0; i < len; i++) {
+      if (Server::DLP_Region[i] == ',')
+        commas++;
+    }
+
+    if (commas != 3) {
+      slog.error("DLP_Region must contain four values");
+      exit(1);
+    }
+
+    ptr = (char *) (const char *) Server::DLP_Region;
+
+    val = strtol(ptr, &nextptr, 10);
+    if (!*ptr || ptr == nextptr) {
+      slog.error("Invalid value for DLP_Region");
+      exit(1);
+    }
+    ptr = nextptr;
+    if (*ptr == '%') {
+      DLPRegion.percents = true;
+      DLPRegion.pcx1 = val;
+      ptr++;
+    }
+    DLPRegion.x1 = val;
+
+    for (; *ptr && *ptr == ','; ptr++);
+
+    parseRegionPart(DLPRegion.percents, DLPRegion.pcy1, DLPRegion.y1,
+                    &ptr);
+    parseRegionPart(DLPRegion.percents, DLPRegion.pcx2, DLPRegion.x2,
+                    &ptr);
+    parseRegionPart(DLPRegion.percents, DLPRegion.pcy2, DLPRegion.y2,
+                    &ptr);
+
+    // Validity checks
+    if (!DLPRegion.percents) {
+      if (DLPRegion.x1 > 0 && DLPRegion.x2 > 0 && DLPRegion.x2 <= DLPRegion.x1) {
+        slog.error("DLP_Region x2 must be > x1");
+        exit(1);
+      }
+      if (DLPRegion.y1 > 0 && DLPRegion.y2 > 0 && DLPRegion.y2 <= DLPRegion.y1) {
+        slog.error("DLP_Region y2 must be > y1");
+        exit(1);
+      }
+    }
+
+    DLPRegion.enabled = 1;
+  }
 
   kasmpasswdpath[0] = '\0';
   wordexp_t wexp;
@@ -706,6 +800,62 @@ static void checkAPIMessages(network::GetAPIMessager *apimessager)
   pthread_mutex_unlock(&apimessager->userMutex);
 }
 
+void VNCServerST::blackOut()
+{
+  // Compute the region, since the resolution may have changed
+  rdr::U16 x1, y1, x2, y2;
+
+  if (DLPRegion.percents) {
+    x1 = DLPRegion.pcx1 ? DLPRegion.pcx1 * pb->getRect().width() / 100 : 0;
+    y1 = DLPRegion.pcy1 ? DLPRegion.pcy1 * pb->getRect().height() / 100 : 0;
+    x2 = DLPRegion.pcx2 ? (100 - DLPRegion.pcx2) * pb->getRect().width() / 100 : pb->getRect().width();
+    y2 = DLPRegion.pcy2 ? (100 - DLPRegion.pcy2) * pb->getRect().height() / 100 : pb->getRect().height();
+  } else {
+    x1 = abs(DLPRegion.x1);
+    y1 = abs(DLPRegion.y1);
+    x2 = pb->getRect().width();
+    y2 = pb->getRect().height();
+
+    if (DLPRegion.x2 < 0)
+      x2 += DLPRegion.x2;
+    else if (DLPRegion.x2 > 0)
+      x2 = DLPRegion.x2;
+
+    if (DLPRegion.y2 < 0)
+      y2 += DLPRegion.y2;
+    else if (DLPRegion.y2 > 0)
+      y2 = DLPRegion.y2;
+  }
+
+  if (y2 > pb->getRect().height())
+    y2 = pb->getRect().height() - 1;
+  if (x2 > pb->getRect().width())
+    x2 = pb->getRect().width() - 1;
+
+  //slog.info("DLP_Region vals %u,%u %u,%u", x1, y1, x2, y2);
+
+  ManagedPixelBuffer *mpb = (ManagedPixelBuffer *) pb;
+  int stride;
+  rdr::U8 *data = mpb->getBufferRW(mpb->getRect(), &stride);
+  stride *= 4;
+
+  rdr::U16 y;
+  const rdr::U16 w = pb->getRect().width();
+  const rdr::U16 h = pb->getRect().height();
+  for (y = 0; y < h; y++) {
+    if (y < y1 || y > y2) {
+      memset(data, 0, stride);
+    } else {
+      if (x1)
+        memset(data, 0, x1 * 4);
+      if (x2)
+        memset(&data[x2 * 4], 0, (w - x2) * 4);
+    }
+
+    data += stride;
+  }
+}
+
 // writeUpdate() is called on a regular interval in order to see what
 // updates are pending and propagates them to the update tracker for
 // each client. It uses the ComparingUpdateTracker's compare() method
@@ -722,6 +872,9 @@ void VNCServerST::writeUpdate()
 
   assert(blockCounter == 0);
   assert(desktopStarted);
+
+  if (DLPRegion.enabled)
+    blackOut();
 
   comparer->getUpdateInfo(&ui, pb->getRect());
   toCheck = ui.changed.union_(ui.copied);
