@@ -15,8 +15,15 @@ build:
     - pwd
     - apk add bash
     - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
-    - bash builder/build-tarball
-    - bash builder/build-deb
+    - echo "Build Ubuntu 18 on all branches"
+    - bash builder/build-distro ubuntu bionic
+    - if echo "$CI_COMMIT_BRANCH" | grep -Eq '(release|testing)'; then
+        echo "Build all distros";
+        bash builder/build-distro ubuntu focal;
+        bash builder/build-distro debian buster;
+        bash builder/build-distro debian bullseye;
+        bash builder/build-distro kali kali-rolling;
+      fi
     - mkdir output
     - cp -r builder/build/* output/
   artifacts:
