@@ -26,6 +26,7 @@ build:
       fi
     - mkdir output
     - cp -r builder/build/* output/
+    - rm output/*.tar.gz
   artifacts:
     paths:
       - output/
