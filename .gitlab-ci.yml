@@ -14,10 +14,17 @@ stages:
   - apk add bash
   - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
 
-build:
+.prepare_artfacts: &prepare_artfacts
+  - mkdir output
+  - cp -r builder/build/* output/
+  - rm output/*.tar.gz
+
+build_deb:
   stage: build
   before_script:
     - *prepare_build
+  after_script:
+    - *prepare_artfacts
   script:
     - echo "Always build Ubuntu 18"
     - bash builder/build-distro ubuntu bionic
@@ -28,9 +35,6 @@ build:
         bash builder/build-distro debian bullseye;
         bash builder/build-distro kali kali-rolling;
       fi
-    - mkdir output
-    - cp -r builder/build/* output/
-    - rm output/*.tar.gz
   artifacts:
     paths:
       - output/
