@@ -4,9 +4,11 @@ services:
 
 variables:
   GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
+  GIT_FETCH_EXTRA_FLAGS: --tags
 
 stages:
   - build
+  - upload
 
 .prepare_build: &prepare_build
   - ls -l
@@ -19,22 +21,90 @@ stages:
   - cp -r builder/build/* output/
   - rm output/*.tar.gz
 
-build_deb:
+build_ubuntu_bionic:
   stage: build
   before_script:
     - *prepare_build
   after_script:
     - *prepare_artfacts
   script:
-    - echo "Always build Ubuntu 18"
-    - bash builder/build-distro ubuntu bionic
-    - if echo "$CI_COMMIT_BRANCH" | grep -Eq '(release|testing)'; then
-        echo "Build all distros";
-        bash builder/build-distro ubuntu focal;
-        bash builder/build-distro debian buster;
-        bash builder/build-distro debian bullseye;
-        bash builder/build-distro kali kali-rolling;
-      fi
+    - bash builder/build-package ubuntu bionic
   artifacts:
     paths:
       - output/
+
+build_ubuntu_focal:
+  stage: build
+  before_script:
+    - *prepare_build
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package ubuntu focal;
+  artifacts:
+    paths:
+      - output/
+
+build_debian_buster:
+  stage: build
+  before_script:
+    - *prepare_build
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package debian buster;
+  artifacts:
+    paths:
+      - output/
+
+build_debian_bullseye:
+  stage: build
+  before_script:
+    - *prepare_build
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package debian bullseye;
+  artifacts:
+    paths:
+      - output/
+
+build_kali_rolling:
+  stage: build
+  before_script:
+    - *prepare_build
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package kali kali-rolling;
+  artifacts:
+    paths:
+      - output/
+
+build_centos7:
+  stage: build
+  before_script:
+    - *prepare_build
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package centos core
+  artifacts:
+    paths:
+      - output/
+
+upload:
+  stage: upload
+  image: ubuntu:focal
+  before_script:
+    - . .ci/upload.sh
+  script:
+    - export S3_BUILD_DIRECTORY="kasmvnc/${CI_COMMIT_SHA}"
+    - prepare_to_run_scripts_and_s3_uploads
+    - export RELEASE_VERSION=$(.ci/next_release_version "$CI_COMMIT_REF_NAME")
+    - for package in `find output/ -type f -name 'kasmvncserver_*.deb' -or -name '*.rpm'`; do
+        prepare_upload_filename "$package";
+        echo;
+        echo "File to upload $upload_filename";
+        upload_to_s3 "$package" "$upload_filename";
+      done

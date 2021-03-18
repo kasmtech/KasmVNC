@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -e
+
+version_from_tags() {
+  git tag | sort -r | head -1 | sed -e 's/^v//' -e 's/\-.\+//' | awk -F. -v OFS=. 'NF==1{print ++$NF}; NF>1{if(length($NF+1)>length($NF))$(NF-1)++; $NF=sprintf("%0*d", length($NF), ($NF+1)%(10^length($NF))); print}'
+}
+
+branch_name="$1"
+if [ -z "$branch_name" ]; then
+  echo >&2 "Usage: `basename $0` <branch_name>"
+  exit 1
+fi
+
+if echo "$branch_name" | grep -Pq '^release/([\d.]+)$'; then
+  RELEASE_BRANCH=1
+fi
+
+if [ -n "$RELEASE_BRANCH" ]; then
+  RELEASE_VERSION=$(echo "$branch_name" | sed 's!release/!!');
+else
+  RELEASE_VERSION="$(version_from_tags)"
+fi
+
+echo "$RELEASE_VERSION"
