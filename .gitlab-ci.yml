@@ -8,14 +8,18 @@ variables:
 stages:
   - build
 
+.prepare_build: &prepare_build
+  - ls -l
+  - pwd
+  - apk add bash
+  - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
+
 build:
   stage: build
+  before_script:
+    - *prepare_build
   script:
-    - ls -l
-    - pwd
-    - apk add bash
-    - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
-    - echo "Build Ubuntu 18 on all branches"
+    - echo "Always build Ubuntu 18"
     - bash builder/build-distro ubuntu bionic
     - if echo "$CI_COMMIT_BRANCH" | grep -Eq '(release|testing)'; then
         echo "Build all distros";
