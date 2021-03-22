@@ -830,6 +830,7 @@ void VNCServerST::translateDLPRegion(rdr::U16 &x1, rdr::U16 &y1, rdr::U16 &x2, r
     x2 = pb->getRect().width() - 1;
 
   //slog.info("DLP_Region vals %u,%u %u,%u", x1, y1, x2, y2);
+}
 
 void VNCServerST::blackOut()
 {
