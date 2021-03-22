@@ -846,7 +846,6 @@ void VNCServerST::blackOut()
   int stride;
   const rdr::U8 *src = pb->getBuffer(pb->getRect(), &stride);
   rdr::U8 *data = blackedpb->getBufferRW(pb->getRect(), &stride);
-  rdr::U8 *data = mpb->getBufferRW(mpb->getRect(), &stride);
   stride *= 4;
 
   memcpy(data, src, stride * pb->getRect().height());
