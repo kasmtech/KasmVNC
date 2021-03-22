@@ -286,6 +286,14 @@ and x2,y2 the lower-left. In addition to absolute pixel values, percentages
 are allowed, zero means "default", and a negative number means "border".
 .
 .TP
+.B \-DLP_RegionAllowClick \fIbool\fP
+Allow clicks inside the blacked-out region.
+.
+.TP
+.B \-DLP_RegionAllowRelease \fIbool\fP
+Allow click releases inside the blacked-out region.
+.
+.TP
 .B \-DLP_ClipSendMax \fIbytes\fP
 Limit clipboard bytes to send to clients in one transaction. Default 10,000.
 0 disables the limit, use \fBSendCutText\fP to disable clipboard sending entirely.

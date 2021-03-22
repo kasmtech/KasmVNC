@@ -123,7 +123,7 @@ static void parseRegionPart(const bool percents, rdr::U16 &pcdest, int &dest,
 
 VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
   : blHosts(&blacklist), desktop(desktop_), desktopStarted(false),
-    blockCounter(0), pb(0), ledState(ledUnknown),
+    blockCounter(0), pb(0), blackedpb(0), ledState(ledUnknown),
     name(strDup(name_)), pointerClient(0), comparer(0),
     cursor(new Cursor(0, 0, Point(), NULL)),
     renderedCursorInvalid(false),
@@ -800,11 +800,8 @@ static void checkAPIMessages(network::GetAPIMessager *apimessager)
   pthread_mutex_unlock(&apimessager->userMutex);
 }
 
-void VNCServerST::blackOut()
+void VNCServerST::translateDLPRegion(rdr::U16 &x1, rdr::U16 &y1, rdr::U16 &x2, rdr::U16 &y2) const
 {
-  // Compute the region, since the resolution may have changed
-  rdr::U16 x1, y1, x2, y2;
-
   if (DLPRegion.percents) {
     x1 = DLPRegion.pcx1 ? DLPRegion.pcx1 * pb->getRect().width() / 100 : 0;
     y1 = DLPRegion.pcy1 ? DLPRegion.pcy1 * pb->getRect().height() / 100 : 0;
@@ -834,10 +831,24 @@ void VNCServerST::blackOut()
 
   //slog.info("DLP_Region vals %u,%u %u,%u", x1, y1, x2, y2);
 
-  ManagedPixelBuffer *mpb = (ManagedPixelBuffer *) pb;
+void VNCServerST::blackOut()
+{
+  // Compute the region, since the resolution may have changed
+  rdr::U16 x1, y1, x2, y2;
+
+  translateDLPRegion(x1, y1, x2, y2);
+
+  if (blackedpb)
+    delete blackedpb;
+  blackedpb = new ManagedPixelBuffer(pb->getPF(), pb->getRect().width(), pb->getRect().height());
+
   int stride;
+  const rdr::U8 *src = pb->getBuffer(pb->getRect(), &stride);
+  rdr::U8 *data = blackedpb->getBufferRW(pb->getRect(), &stride);
   rdr::U8 *data = mpb->getBufferRW(mpb->getRect(), &stride);
   stride *= 4;
+
+  memcpy(data, src, stride * pb->getRect().height());
 
   rdr::U16 y;
   const rdr::U16 w = pb->getRect().width();
@@ -873,8 +884,10 @@ void VNCServerST::writeUpdate()
   assert(blockCounter == 0);
   assert(desktopStarted);
 
-  if (DLPRegion.enabled)
+  if (DLPRegion.enabled) {
+    comparer->enable_copyrect(false);
     blackOut();
+  }
 
   comparer->getUpdateInfo(&ui, pb->getRect());
   toCheck = ui.changed.union_(ui.copied);

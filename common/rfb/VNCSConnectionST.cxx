@@ -637,7 +637,7 @@ void VNCSConnectionST::setPixelFormat(const PixelFormat& pf)
   setCursor();
 }
 
-void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask)
+void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease)
 {
   pointerEventTime = lastEventTime = time(0);
   server->lastUserInputTime = lastEventTime;
@@ -649,7 +649,23 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask)
       server->pointerClient = this;
     else
       server->pointerClient = 0;
-    server->desktop->pointerEvent(pointerEventPos, buttonMask);
+
+    bool skipclick = false, skiprelease = false;
+    if (server->DLPRegion.enabled) {
+      rdr::U16 x1, y1, x2, y2;
+      server->translateDLPRegion(x1, y1, x2, y2);
+
+      if (pos.x < x1 || pos.x >= x2 ||
+          pos.y < y1 || pos.y >= y2) {
+
+          if (!Server::DLP_RegionAllowClick)
+            skipclick = true;
+          if (!Server::DLP_RegionAllowRelease)
+            skiprelease = true;
+      }
+    }
+
+    server->desktop->pointerEvent(pointerEventPos, buttonMask, skipclick, skiprelease);
   }
 }
 

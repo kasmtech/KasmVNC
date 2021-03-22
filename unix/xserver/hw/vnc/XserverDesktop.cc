@@ -418,11 +418,12 @@ void XserverDesktop::approveConnection(uint32_t opaqueId, bool accept,
 // SDesktop callbacks
 
 
-void XserverDesktop::pointerEvent(const Point& pos, int buttonMask)
+void XserverDesktop::pointerEvent(const Point& pos, int buttonMask,
+                                  const bool skipClick, const bool skipRelease)
 {
   vncPointerMove(pos.x + vncGetScreenX(screenIndex),
                  pos.y + vncGetScreenY(screenIndex));
-  vncPointerButtonAction(buttonMask);
+  vncPointerButtonAction(buttonMask, skipClick, skipRelease);
 }
 
 void XserverDesktop::clientCutText(const char* str, int len)
