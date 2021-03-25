@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+
+os="$1"
+codename="$2"
+
+detect_package_format() {
+  package_format=rpm
+  if ls builder/dockerfile*"$os"* | grep -q .deb.build; then
+    package_format=deb
+  fi
+}
+
+cd "$(dirname "$0")/.."
+
+detect_package_format
+builder/build-tarball "$os" "$codename"
+builder/build-${package_format} "$os" "$codename"
