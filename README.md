@@ -33,44 +33,40 @@ Future Goals:
   - CI pipelines to create releases
 
 ### Installation
+We are currently developing releasable packages for major operating sytems. The install script available with releases will install dependencies, compile webp, and pull down and install the pre-compiled KasmVNC tarball. Currently, only Ubuntu 18.04 LTS is pre-compiled.
 
-#### Debian-based
+This installer assumes you already have a desktop environment installed, but have never configured a VNC server. Use the install script found in this project under builder/install/install.sh, currently Ubuntu 18.04LTS is the only operating system with pre-compiled binaries.
 
 ```sh
-wget -qO- https://github.com/kasmtech/KasmVNC/releases/download/v0.9.1-beta/kasmvncserver_0.9.1~beta-1_amd64.deb
+# install dependencies
+sudo apt-get -y install libjpeg-dev
 
-sudo dpkg -i kasmvncserver_0.9.1~beta-1_amd64.deb
-sudo apt-get -f install
+# install KasmVNC
+wget -qO- https://github.com/kasmtech/KasmVNC/releases/download/v0.9.1-beta/KasmVNC_0.9.1-beta_Ubuntu_18.04.tar.gz | sudo tar xz --strip 1 -C /
 
-# We provide an example script to run KasmVNC at #
-`/usr/share/doc/kasmvncserver/examples/kasmvncserver-easy-start`. It runs a VNC
-# server on display `:10` and on interface `0.0.0.0`. If you're happy with those
-# defaults you can just use it as is:
-ln -s /usr/share/doc/kasmvncserver/examples/kasmvncserver-easy-start /usr/local/bin/
+# Generate an SSL Cert and change owner
+sudo mkdir /usr/local/share/kasmvnc/certs
+sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /usr/local/share/kasmvnc/certs/self.pem -out /usr/local/share/kasmvnc/certs/self.pem -subj "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
+sudo chown $USER /usr/local/share/kasmvnc/certs/self.pem
 
-# Create ~/.vnc directory and corresponding files.
-kasmvncserver-easy-start -d && kasmvncserver-easy-start -kill
+# start kasmvnc and set password for remote access
+vncserver :1 -interface 0.0.0.0
+# stop kasmvnc to make config changes
+vncserver -kill :1
 
-# Modify vncstartup to launch your environment of choice, in this example LXDE
+# modify vncstartup to launch your environment of choice, in this example LXDE
 echo '/usr/bin/lxsession -s LXDE &' >> ~/.vnc/xstartup
 
 # The KasmVNC username is automatically set to your system username, you can mofify it if you wish
 vi ~/.vnc/config
 
-# Start KasmVNC with debug logging:
-kasmvncserver-easy-start -d
-tail -f ~/.vnc/`hostname`:10.log
+# launch KasmVNC
+vncserver $DISPLAY -depth 24 -geometry 1280x1050 -websocketPort 8443 -cert /usr/local/share/kasmvnc/certs/self.pem -sslOnly -FrameRate=24 -interface 0.0.0.0
 ```
 
-Now navigate to your system at https://[ip-address]:8443/
+Now navigate to your system at https://[ip-address]:8443/vnc.html
 
-To stop a running KasmVNC:
-
-```sh
-kasmvncserver-easy-start -kill
-```
-
-The options for vncserver:
+The options for vncserver in the example above:
 
 | Argument | Description |
 | -------- | ----------- |
