@@ -43,10 +43,10 @@ sudo dpkg -i kasmvncserver_0.9.1~beta-1_amd64.deb
 sudo apt-get -f install
 
 # We provide an example script to run KasmVNC at #
-# /usr/share/doc/kasmvncserver/examples/kasmvncserver-easy-start. It runs a VNC
-# server on display :10 and on interface 0.0.0.0. If you're happy with those
+`/usr/share/doc/kasmvncserver/examples/kasmvncserver-easy-start`. It runs a VNC
+# server on display `:10` and on interface `0.0.0.0`. If you're happy with those
 # defaults you can just use it as is:
-ln -s /usr/share/doc/kasmvncserver/examples/kasmvncserver-easy-start ~/bin/
+ln -s /usr/share/doc/kasmvncserver/examples/kasmvncserver-easy-start /usr/local/bin/
 
 # Create ~/.vnc directory and corresponding files.
 kasmvncserver-easy-start -d && kasmvncserver-easy-start -kill
