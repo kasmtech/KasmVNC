@@ -48,7 +48,7 @@ static LogWriter vlog("VNCSConnST");
 
 static Cursor emptyCursor(0, 0, Point(0, 0), NULL);
 
-extern rfb::StringParameter basicauth;
+extern rfb::BoolParameter disablebasicauth;
 
 VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
                                    bool reverse)
@@ -1044,13 +1044,12 @@ bool VNCSConnectionST::isShiftPressed()
 bool VNCSConnectionST::getPerms(bool &write, bool &owner) const
 {
   bool found = false;
-  const char *colon = strchr(basicauth, ':');
-  if (!colon || colon[1]) {
-    // We're running without basicauth, or with both user:pass on the command line
+  if (disablebasicauth) {
+    // We're running without basicauth
     write = true;
     return true;
   }
-  if (colon && !colon[1] && user[0]) {
+  if (user[0]) {
     struct kasmpasswd_t *set = readkasmpasswd(kasmpasswdpath);
     unsigned i;
     for (i = 0; i < set->num; i++) {

@@ -1152,9 +1152,8 @@ ws_ctx_t *do_handshake(int sock) {
         usleep(10);
     }
 
-    const char *colon;
     unsigned char owner = 0;
-    if ((colon = strchr(settings.basicauth, ':'))) {
+    if (!settings.disablebasicauth) {
         const char *hdr = strstr(handshake, "Authorization: Basic ");
         if (!hdr) {
             handler_emsg("BasicAuth required, but client didn't send any. 401 Unauth\n");
@@ -1179,15 +1178,13 @@ ws_ctx_t *do_handshake(int sock) {
         tmp[len] = '\0';
         len = ws_b64_pton(tmp, response, 256);
 
-        char authbuf[4096];
-        strncpy(authbuf, settings.basicauth, 4096);
-        authbuf[4095] = '\0';
+        char authbuf[4096] = "";
 
         // Do we need to read it from the file?
         char *resppw = strchr(response, ':');
         if (resppw && *resppw)
             resppw++;
-        if (!colon[1] && settings.passwdfile) {
+        if (settings.passwdfile) {
             if (resppw && *resppw && resppw - response < 32) {
                 char pwbuf[4096];
                 struct kasmpasswd_t *set = readkasmpasswd(settings.passwdfile);

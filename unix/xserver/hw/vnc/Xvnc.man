@@ -339,9 +339,9 @@ are in the same file, use \fB-cert\fP.
 Require SSL for websocket connections. Default off, non-SSL allowed.
 .
 .TP
-.B \-basicAuth \fIuser:pass\fP
-Username and password for websocket connections. Default empty, no authentication required.
-If the password is empty, read it from the \fB-KasmPasswordFile\fP.
+.B \-disableBasicAuth
+Disable basic auth for websocket connections. Default enabled, details read from
+the \fB-KasmPasswordFile\fP.
 .
 .TP
 .B \-SecurityTypes \fIsec-types\fP

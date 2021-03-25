@@ -81,7 +81,6 @@ EncCache VNCServerST::encCache;
 //
 
 static char kasmpasswdpath[4096];
-extern rfb::StringParameter basicauth;
 
 // -=- Constructors/Destructor
 

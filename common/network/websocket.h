@@ -71,7 +71,7 @@ typedef struct {
     unsigned int handler_id;
     const char *cert;
     const char *key;
-    const char *basicauth;
+    uint8_t disablebasicauth;
     const char *passwdfile;
     int ssl_only;
     const char *httpdir;
