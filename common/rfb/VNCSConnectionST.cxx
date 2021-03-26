@@ -48,7 +48,7 @@ static LogWriter vlog("VNCSConnST");
 
 static Cursor emptyCursor(0, 0, Point(0, 0), NULL);
 
-extern rfb::StringParameter basicauth;
+extern rfb::BoolParameter disablebasicauth;
 
 VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
                                    bool reverse)
@@ -637,7 +637,7 @@ void VNCSConnectionST::setPixelFormat(const PixelFormat& pf)
   setCursor();
 }
 
-void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask)
+void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease)
 {
   pointerEventTime = lastEventTime = time(0);
   server->lastUserInputTime = lastEventTime;
@@ -649,7 +649,23 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask)
       server->pointerClient = this;
     else
       server->pointerClient = 0;
-    server->desktop->pointerEvent(pointerEventPos, buttonMask);
+
+    bool skipclick = false, skiprelease = false;
+    if (server->DLPRegion.enabled) {
+      rdr::U16 x1, y1, x2, y2;
+      server->translateDLPRegion(x1, y1, x2, y2);
+
+      if (pos.x < x1 || pos.x >= x2 ||
+          pos.y < y1 || pos.y >= y2) {
+
+          if (!Server::DLP_RegionAllowClick)
+            skipclick = true;
+          if (!Server::DLP_RegionAllowRelease)
+            skiprelease = true;
+      }
+    }
+
+    server->desktop->pointerEvent(pointerEventPos, buttonMask, skipclick, skiprelease);
   }
 }
 
@@ -1028,13 +1044,12 @@ bool VNCSConnectionST::isShiftPressed()
 bool VNCSConnectionST::getPerms(bool &write, bool &owner) const
 {
   bool found = false;
-  const char *colon = strchr(basicauth, ':');
-  if (!colon || colon[1]) {
-    // We're running without basicauth, or with both user:pass on the command line
+  if (disablebasicauth) {
+    // We're running without basicauth
     write = true;
     return true;
   }
-  if (colon && !colon[1] && user[0]) {
+  if (user[0]) {
     struct kasmpasswd_t *set = readkasmpasswd(kasmpasswdpath);
     unsigned i;
     for (i = 0; i < set->num; i++) {

@@ -43,6 +43,7 @@ namespace rfb {
   class ListConnInfo;
   class PixelBuffer;
   class KeyRemapper;
+  class network::GetAPIMessager;
 
   class VNCServerST : public VNCServer,
                       public Timer::Callback,
@@ -94,7 +95,7 @@ namespace rfb {
     virtual void setPixelBuffer(PixelBuffer* pb, const ScreenSet& layout);
     virtual void setPixelBuffer(PixelBuffer* pb);
     virtual void setScreenLayout(const ScreenSet& layout);
-    virtual PixelBuffer* getPixelBuffer() const { return pb; }
+    virtual PixelBuffer* getPixelBuffer() const { if (DLPRegion.enabled && blackedpb) return blackedpb; else return pb; }
     virtual void serverCutText(const char* str, int len);
     virtual void add_changed(const Region &region);
     virtual void add_copied(const Region &dest, const Point &delta);
@@ -186,6 +187,8 @@ namespace rfb {
     bool getDisable() { return disableclients;};
     void setDisable(bool disable) { disableclients = disable;};
 
+    void setAPIMessager(network::GetAPIMessager *msgr) { apimessager = msgr; }
+
   protected:
 
     friend class VNCSConnectionST;
@@ -206,6 +209,7 @@ namespace rfb {
     bool desktopStarted;
     int blockCounter;
     PixelBuffer* pb;
+    ManagedPixelBuffer *blackedpb;
     ScreenSet screenLayout;
     unsigned int ledState;
 
@@ -232,6 +236,7 @@ namespace rfb {
     void stopFrameClock();
     int msToNextUpdate();
     void writeUpdate();
+    void blackOut();
     Region getPendingRegion();
     const RenderedCursor* getRenderedCursor();
 
@@ -251,6 +256,17 @@ namespace rfb {
     Timer frameTimer;
 
     int inotifyfd;
+
+    network::GetAPIMessager *apimessager;
+
+    struct {
+        bool enabled;
+        int x1, y1, x2, y2;
+        bool percents;
+        rdr::U16 pcx1, pcy1, pcx2, pcy2;
+    } DLPRegion;
+
+    void translateDLPRegion(rdr::U16 &x1, rdr::U16 &y1, rdr::U16 &x2, rdr::U16 &y2) const;
   };
 
 };

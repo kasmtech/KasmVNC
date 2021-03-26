@@ -74,6 +74,8 @@ namespace network {
     virtual ~ConnectionFilter() {}
   };
 
+  class GetAPIMessager;
+
   class SocketListener {
   public:
     SocketListener(int fd);
@@ -92,6 +94,8 @@ namespace network {
     // setFilter() applies the specified filter to all new connections
     void setFilter(ConnectionFilter* f) {filter = f;}
     int getFd() {return fd;}
+
+    virtual GetAPIMessager *getMessager() { return NULL; }
 
   protected:
     SocketListener();

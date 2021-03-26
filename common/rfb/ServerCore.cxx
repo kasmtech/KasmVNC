@@ -163,6 +163,19 @@ rfb::StringParameter rfb::Server::DLP_ClipLog
 ("DLP_Log",
  "Log clipboard/kbd actions. Accepts off, info or verbose",
  "off");
+rfb::StringParameter rfb::Server::DLP_Region
+("DLP_Region",
+ "Black out anything outside this region",
+ "");
+
+rfb::BoolParameter rfb::Server::DLP_RegionAllowClick
+("DLP_RegionAllowClick",
+ "Allow clicks inside the blacked-out region",
+ false);
+rfb::BoolParameter rfb::Server::DLP_RegionAllowRelease
+("DLP_RegionAllowRelease",
+ "Allow click releases inside the blacked-out region",
+ true);
 
 rfb::StringParameter rfb::Server::maxVideoResolution
 ("MaxVideoResolution",

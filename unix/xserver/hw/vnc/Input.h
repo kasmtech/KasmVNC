@@ -32,7 +32,8 @@ extern "C" {
 
 void vncInitInputDevice(void);
 
-void vncPointerButtonAction(int buttonMask);
+void vncPointerButtonAction(int buttonMask, const unsigned char skipclick,
+                            const unsigned char skiprelease);
 void vncPointerMove(int x, int y);
 void vncGetPointerPos(int *x, int *y);
 

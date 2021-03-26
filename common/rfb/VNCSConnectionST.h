@@ -168,7 +168,7 @@ namespace rfb {
     virtual void queryConnection(const char* userName);
     virtual void clientInit(bool shared);
     virtual void setPixelFormat(const PixelFormat& pf);
-    virtual void pointerEvent(const Point& pos, int buttonMask);
+    virtual void pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease);
     virtual void keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down);
     virtual void clientCutText(const char* str, int len);
     virtual void framebufferUpdateRequest(const Rect& r, bool incremental);

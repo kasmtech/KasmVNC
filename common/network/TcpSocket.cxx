@@ -42,6 +42,7 @@
 #include <wordexp.h>
 #include "websocket.h"
 
+#include <network/GetAPI.h>
 #include <network/TcpSocket.h>
 #include <rfb/LogWriter.h>
 #include <rfb/Configuration.h>
@@ -431,10 +432,37 @@ int TcpListener::getMyPort() {
 
 extern settings_t settings;
 
+static uint8_t *screenshotCb(void *messager, uint16_t w, uint16_t h, const uint8_t q,
+                             const uint8_t dedup,
+                             uint32_t *len, uint8_t *staging)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netGetScreenshot(w, h, q, dedup, *len, staging);
+}
+
+static uint8_t adduserCb(void *messager, const char name[], const char pw[],
+                          const uint8_t write)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netAddUser(name, pw, write);
+}
+
+static uint8_t removeCb(void *messager, const char name[])
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netRemoveUser(name);
+}
+
+static uint8_t givecontrolCb(void *messager, const char name[])
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netGiveControlTo(name);
+}
+
 WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
                          socklen_t listenaddrlen,
                          bool sslonly, const char *cert, const char *certkey,
-                         const char *basicauth,
+                         bool disablebasicauth,
                          const char *httpdir)
 {
   int one = 1;
@@ -504,7 +532,7 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
     settings.passwdfile = strdup(wexp.we_wordv[0]);
   wordfree(&wexp);
 
-  settings.basicauth = basicauth;
+  settings.disablebasicauth = disablebasicauth;
   settings.cert = cert;
   settings.key = certkey;
   settings.ssl_only = sslonly;
@@ -514,6 +542,12 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
     settings.httpdir = realpath(httpdir, NULL);
 
   settings.listen_sock = sock;
+
+  settings.messager = messager = new GetAPIMessager(settings.passwdfile);
+  settings.screenshotCb = screenshotCb;
+  settings.adduserCb = adduserCb;
+  settings.removeCb = removeCb;
+  settings.givecontrolCb = givecontrolCb;
 
   pthread_t tid;
   pthread_create(&tid, NULL, start_server, NULL);
@@ -684,7 +718,7 @@ void network::createTcpListeners(std::list<SocketListener*> *listeners,
 void network::createWebsocketListeners(std::list<SocketListener*> *listeners,
                                  const struct addrinfo *ai,
                                  bool sslonly, const char *cert, const char *certkey,
-                                 const char *basicauth,
+                                 bool disablebasicauth,
                                  const char *httpdir)
 {
   const struct addrinfo *current;
@@ -711,7 +745,7 @@ void network::createWebsocketListeners(std::list<SocketListener*> *listeners,
     try {
       new_listeners.push_back(new WebsocketListener(current->ai_addr,
                                               current->ai_addrlen,
-                                              sslonly, cert, certkey, basicauth,
+                                              sslonly, cert, certkey, disablebasicauth,
                                               httpdir));
     } catch (SocketException& e) {
       // Ignore this if it is due to lack of address family support on
@@ -740,7 +774,7 @@ void network::createWebsocketListeners(std::list<SocketListener*> *listeners,
                                  bool sslonly,
                                  const char *cert,
                                  const char *certkey,
-                                 const char *basicauth,
+                                 bool disablebasicauth,
                                  const char *httpdir)
 {
   if (addr && !strcmp(addr, "local")) {
@@ -768,7 +802,7 @@ void network::createWebsocketListeners(std::list<SocketListener*> *listeners,
     ai[1].ai_addrlen = sizeof(sa[1].u.sin6);
     ai[1].ai_next = NULL;
 
-    createWebsocketListeners(listeners, ai, sslonly, cert, certkey, basicauth, httpdir);
+    createWebsocketListeners(listeners, ai, sslonly, cert, certkey, disablebasicauth, httpdir);
   } else {
     struct addrinfo *ai, hints;
     char service[16];
@@ -791,7 +825,7 @@ void network::createWebsocketListeners(std::list<SocketListener*> *listeners,
                            gai_strerror(result));
 
     try {
-      createWebsocketListeners(listeners, ai, sslonly, cert, certkey, basicauth, httpdir);
+      createWebsocketListeners(listeners, ai, sslonly, cert, certkey, disablebasicauth, httpdir);
     } catch(...) {
       freeaddrinfo(ai);
       throw;

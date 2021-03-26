@@ -1,6 +1,7 @@
 include_directories(${CMAKE_SOURCE_DIR}/common ${CMAKE_SOURCE_DIR}/unix/kasmvncpasswd)
 
 set(NETWORK_SOURCES
+  GetAPIMessager.cxx
   Socket.cxx
   TcpSocket.cxx
   websocket.c

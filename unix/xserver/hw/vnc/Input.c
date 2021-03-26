@@ -155,7 +155,8 @@ static void enqueueEvents(DeviceIntPtr dev, int n)
 }
 #endif /* XORG < 111 */
 
-void vncPointerButtonAction(int buttonMask)
+void vncPointerButtonAction(int buttonMask, const unsigned char skipclick,
+                            const unsigned char skiprelease)
 {
 	int i;
 #if XORG < 111
@@ -169,6 +170,14 @@ void vncPointerButtonAction(int buttonMask)
 		if ((buttonMask ^ oldButtonMask) & (1 << i)) {
 			int action = (buttonMask & (1<<i)) ?
 				     ButtonPress : ButtonRelease;
+
+			if (action == ButtonPress && skipclick) {
+				buttonMask &= ~(1<<i);
+				continue;
+			} else if (action == ButtonRelease && skiprelease) {
+				buttonMask |= (1<<i);
+				continue;
+			}
 #if XORG < 110
 			n = GetPointerEvents(eventq, vncPointerDev,
 			                     action, i + 1,

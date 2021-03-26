@@ -280,6 +280,20 @@ Kasm exposes a few settings to the client the standard VNC does not.
 This param lets the server ignore those.
 .
 .TP
+.B \-DLP_Region \fIx1,y1,x2,y2\fP
+Black out anything outside this region. x1,y1 is the upper-left corner,
+and x2,y2 the lower-left. In addition to absolute pixel values, percentages
+are allowed, zero means "default", and a negative number means "border".
+.
+.TP
+.B \-DLP_RegionAllowClick \fIbool\fP
+Allow clicks inside the blacked-out region.
+.
+.TP
+.B \-DLP_RegionAllowRelease \fIbool\fP
+Allow click releases inside the blacked-out region.
+.
+.TP
 .B \-DLP_ClipSendMax \fIbytes\fP
 Limit clipboard bytes to send to clients in one transaction. Default 10,000.
 0 disables the limit, use \fBSendCutText\fP to disable clipboard sending entirely.
@@ -325,9 +339,9 @@ are in the same file, use \fB-cert\fP.
 Require SSL for websocket connections. Default off, non-SSL allowed.
 .
 .TP
-.B \-basicAuth \fIuser:pass\fP
-Username and password for websocket connections. Default empty, no authentication required.
-If the password is empty, read it from the \fB-KasmPasswordFile\fP.
+.B \-disableBasicAuth
+Disable basic auth for websocket connections. Default enabled, details read from
+the \fB-KasmPasswordFile\fP.
 .
 .TP
 .B \-SecurityTypes \fIsec-types\fP
