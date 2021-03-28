@@ -37,6 +37,10 @@ tar -C unix/xserver -xvf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components
 
 cd unix/xserver
 patch -Np1 -i ../xserver${XORG_PATCH}.patch
+if [[ $XORG_VER =~ ^1\.20\..*$ ]]; then
+  patch -Np1 -i ../xserver120.7.patch
+fi
+
 autoreconf -i
 # Configuring Xorg is long and has many distro-specific paths.
 # The distro paths start after prefix and end with the font path,
