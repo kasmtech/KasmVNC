@@ -79,7 +79,7 @@ export default class RFB extends EventTargetMixin {
         this._rfbCredentials = options.credentials || {};
         this._shared = 'shared' in options ? !!options.shared : true;
         this._repeaterID = options.repeaterID || '';
-        this._wsProtocols = options.wsProtocols || [];
+        this._wsProtocols = options.wsProtocols || ['binary'];
 
         // Internal state
         this._rfbConnectionState = '';
@@ -1603,7 +1603,7 @@ export default class RFB extends EventTargetMixin {
             encs.push(encodings.pseudoEncodingCursor);
         }
 
-        if (supportsCursorURIs() && this._fb_depth == 24){
+        if (supportsCursorURIs && this._fb_depth == 24){
             // Allow the user to attempt using a local cursor even if they are using a touch device.  KASM-395
             if (this.preferLocalCursor || !isTouchDevice){
                 encs.push(encodings.pseudoEncodingCursor)

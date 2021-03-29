@@ -355,7 +355,7 @@ export default class Display {
 
     imageRect(x, y, w, h, mime, arr) {
         /* The internal logic cannot handle empty images, so bail early */
-        if ((width === 0) || (height === 0)) {
+        if ((w === 0) || (h === 0)) {
             return;
         }
 
