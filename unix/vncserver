@@ -465,8 +465,7 @@ sub LoadConfig {
           }
 	  # change username option to basicAuth and add colon as required by Xvnc, password will be taken from file
 	  if ($k = "username") {
-            $config{"basicauth"} = "$v:";
-	    $vncUserName = $v;
+            next;
 	  } else {
             $config{$k} = $v;
           }

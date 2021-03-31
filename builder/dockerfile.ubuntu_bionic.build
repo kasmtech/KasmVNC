@@ -2,6 +2,7 @@ FROM ubuntu:18.04
 
 ENV KASMVNC_BUILD_OS ubuntu
 ENV KASMVNC_BUILD_OS_CODENAME bionic
+ENV XORG_VER 1.20.10
 
 RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list
 

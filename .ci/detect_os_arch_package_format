@@ -1,0 +1,20 @@
+#!/usr/bin/ruby
+
+package_name = ARGV.first
+
+DEB_PACKAGE_REGEX = %r!(?<os>[^/]+)/kasmvncserver_.+?_(?<arch>.+?).(?<format>deb)!
+RPM_PACKAGE_REGEX = %r!(?<os>[^/]+)/kasmvncserver-.+?\.(?<arch>[^.]+).(?<format>rpm)!
+
+if matches = package_name.match(DEB_PACKAGE_REGEX)
+else matches = package_name.match(RPM_PACKAGE_REGEX)
+end
+
+os = matches["os"]
+arch = matches["arch"]
+package_format = matches["format"]
+
+puts <<-EXPORT
+  export PACKAGE_OS=#{os}
+  export OS_ARCH=#{arch}
+  export PACKAGE_FORMAT=#{package_format}
+EXPORT

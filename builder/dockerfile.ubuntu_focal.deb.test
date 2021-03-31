@@ -32,6 +32,7 @@ WORKDIR $HOME
 RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm libnss-wrapper gettext wget
 RUN apt-get purge -y pm-utils xscreensaver*
 RUN apt-get update && apt-get install -y vim less
+RUN apt-get update && apt-get -y install lsb-release
 
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
@@ -43,6 +44,9 @@ COPY startup/ $STARTUPDIR
 ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp
 RUN dpkg -i /tmp/*.deb; apt-get -yf install
+
+RUN mkdir ~/.vnc && echo '/usr/bin/xfce4-session &' >> ~/.vnc/xstartup && \
+  chmod +x ~/.vnc/xstartup
 
 ### END CUSTOM STUFF ###
 
