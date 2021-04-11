@@ -3,8 +3,6 @@
 # clear previous build
 rm -rf /build/*
 
-cp vnc.html load.html
-
 # build webpack
 npm run build
 # remove node stuff from directory
