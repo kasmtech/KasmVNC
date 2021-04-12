@@ -123,8 +123,8 @@ static void parseRegionPart(const bool percents, rdr::U16 &pcdest, int &dest,
 VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
   : blHosts(&blacklist), desktop(desktop_), desktopStarted(false),
     blockCounter(0), pb(0), blackedpb(0), ledState(ledUnknown),
-    name(strDup(name_)), pointerClient(0), comparer(0),
-    cursor(new Cursor(0, 0, Point(), NULL)),
+    name(strDup(name_)), pointerClient(0), clipboardClient(0),
+    comparer(0), cursor(new Cursor(0, 0, Point(), NULL)),
     renderedCursorInvalid(false),
     queryConnectionHandler(0), keyRemapper(&KeyRemapper::defInstance),
     lastConnectionTime(0), disableclients(false),
@@ -502,21 +502,51 @@ void VNCServerST::setScreenLayout(const ScreenSet& layout)
   }
 }
 
+void VNCServerST::requestClipboard()
+{
+  if (clipboardClient == NULL)
+    return;
+
+  clipboardClient->requestClipboard();
+}
+
+void VNCServerST::announceClipboard(bool available)
+{
+  std::list<VNCSConnectionST*>::iterator ci, ci_next;
+
+  if (available)
+    clipboardClient = NULL;
+
+  clipboardRequestors.clear();
+
+  for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
+    ci_next = ci; ci_next++;
+    (*ci)->announceClipboard(available);
+  }
+}
+
+void VNCServerST::sendClipboardData(const char* data)
+{
+  std::list<VNCSConnectionST*>::iterator ci, ci_next;
+
+  if (strchr(data, '\r') != NULL)
+    throw Exception("Invalid carriage return in clipboard data");
+
+  for (ci = clipboardRequestors.begin();
+       ci != clipboardRequestors.end(); ci = ci_next) {
+    ci_next = ci; ci_next++;
+    (*ci)->sendClipboardData(data, strlen(data));
+  }
+
+  clipboardRequestors.clear();
+}
+
 void VNCServerST::bell()
 {
   std::list<VNCSConnectionST*>::iterator ci, ci_next;
   for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
     ci_next = ci; ci_next++;
     (*ci)->bellOrClose();
-  }
-}
-
-void VNCServerST::serverCutText(const char* str, int len)
-{
-  std::list<VNCSConnectionST*>::iterator ci, ci_next;
-  for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
-    ci_next = ci; ci_next++;
-    (*ci)->serverCutTextOrClose(str, len);
   }
 }
 
@@ -1052,3 +1082,32 @@ bool VNCServerST::getComparerState()
   }
   return false;
 }
+
+void VNCServerST::handleClipboardRequest(VNCSConnectionST* client)
+{
+  clipboardRequestors.push_back(client);
+  if (clipboardRequestors.size() == 1)
+    desktop->handleClipboardRequest();
+}
+
+void VNCServerST::handleClipboardAnnounce(VNCSConnectionST* client,
+                                          bool available)
+{
+  if (available)
+    clipboardClient = client;
+  else {
+    if (client != clipboardClient)
+      return;
+    clipboardClient = NULL;
+  }
+  desktop->handleClipboardAnnounce(available);
+}
+
+void VNCServerST::handleClipboardData(VNCSConnectionST* client,
+                                      const char* data, int len)
+{
+  if (client != clipboardClient)
+    return;
+  desktop->handleClipboardData(data, len);
+}
+

@@ -94,6 +94,9 @@ namespace rfb {
     unsigned int ledState() { return ledState_; }
     void setLEDState(unsigned int state);
 
+    rdr::U32 clipboardFlags() const { return clipFlags; }
+    void setClipboardCaps(rdr::U32 flags, const rdr::U32* lengths);
+
     bool useCopyRect;
 
     bool supportsLocalCursor;
@@ -111,6 +114,7 @@ namespace rfb {
     bool supportsSetDesktopSize;
     bool supportsFence;
     bool supportsContinuousUpdates;
+    bool supportsExtendedClipboard;
 
     int compressLevel;
     int qualityLevel;
@@ -146,6 +150,8 @@ namespace rfb {
     int verStrPos;
     unsigned int ledState_;
     SMsgHandler *shandler;
+    rdr::U32 clipFlags;
+    rdr::U32 clipSizes[16];
   };
 }
 #endif

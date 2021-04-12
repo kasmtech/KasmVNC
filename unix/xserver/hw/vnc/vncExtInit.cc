@@ -315,10 +315,22 @@ void vncUpdateDesktopName(void)
     desktop[scr]->setDesktopName(desktopName);
 }
 
-void vncServerCutText(const char *text, size_t len)
+void vncRequestClipboard(void)
 {
   for (int scr = 0; scr < vncGetScreenCount(); scr++)
-    desktop[scr]->serverCutText(text, len);
+    desktop[scr]->requestClipboard();
+}
+
+void vncAnnounceClipboard(int available)
+{
+  for (int scr = 0; scr < vncGetScreenCount(); scr++)
+    desktop[scr]->announceClipboard(available);
+}
+
+void vncSendClipboardData(const char* data)
+{
+  for (int scr = 0; scr < vncGetScreenCount(); scr++)
+    desktop[scr]->sendClipboardData(data);
 }
 
 int vncConnectClient(const char *addr)

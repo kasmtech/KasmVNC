@@ -60,9 +60,11 @@ public:
   void unblockUpdates();
   void setFramebuffer(int w, int h, void* fbptr, int stride);
   void refreshScreenLayout();
+  void requestClipboard();
+  void announceClipboard(bool available);
+  void sendClipboardData(const char* data);
   void bell();
   void setLEDState(unsigned int state);
-  void serverCutText(const char* str, int len);
   void setDesktopName(const char* name);
   void setCursor(int width, int height, int hotX, int hotY,
                  const unsigned char *rgbaData);
@@ -90,9 +92,11 @@ public:
   virtual void pointerEvent(const rfb::Point& pos, int buttonMask,
                             const bool skipClick, const bool skipRelease);
   virtual void keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down);
-  virtual void clientCutText(const char* str, int len);
   virtual unsigned int setScreenLayout(int fb_width, int fb_height,
                                        const rfb::ScreenSet& layout);
+  virtual void handleClipboardRequest();
+  virtual void handleClipboardAnnounce(bool available);
+  virtual void handleClipboardData(const char* data);
 
   // rfb::PixelBuffer callbacks
   virtual void grabRegion(const rfb::Region& r);

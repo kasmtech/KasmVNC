@@ -403,7 +403,31 @@ static void keylog(unsigned keysym, const char *client) {
     flushKeylog(client);
 }
 
-void VNCSConnectionST::serverCutTextOrClose(const char *str, int len)
+void VNCSConnectionST::requestClipboardOrClose()
+{
+  try {
+    if (!(accessRights & AccessCutText)) return;
+    if (!rfb::Server::acceptCutText) return;
+    if (state() != RFBSTATE_NORMAL) return;
+    requestClipboard();
+  } catch(rdr::Exception& e) {
+    close(e.str());
+  }
+}
+
+void VNCSConnectionST::announceClipboardOrClose(bool available)
+{
+  try {
+    if (!(accessRights & AccessCutText)) return;
+    if (!rfb::Server::sendCutText) return;
+    if (state() != RFBSTATE_NORMAL) return;
+    announceClipboard(available);
+  } catch(rdr::Exception& e) {
+    close(e.str());
+  }
+}
+
+void VNCSConnectionST::sendClipboardDataOrClose(const char* data)
 {
   try {
     if (!(accessRights & AccessCutText)) return;
@@ -413,18 +437,18 @@ void VNCSConnectionST::serverCutTextOrClose(const char *str, int len)
                 sock->getPeerAddress());
       return;
     }
+    int len = strlen(data);
     const int origlen = len;
     if (rfb::Server::DLP_ClipSendMax && len > rfb::Server::DLP_ClipSendMax)
       len = rfb::Server::DLP_ClipSendMax;
-    cliplog(str, len, origlen, "sent", sock->getPeerAddress());
-    if (state() == RFBSTATE_NORMAL)
-      writer()->writeServerCutText(str, len);
+    cliplog(data, len, origlen, "sent", sock->getPeerAddress());
+    if (state() != RFBSTATE_NORMAL) return;
+    sendClipboardData(data, len);
     gettimeofday(&lastClipboardOp, NULL);
   } catch(rdr::Exception& e) {
     close(e.str());
   }
 }
-
 
 void VNCSConnectionST::setDesktopNameOrClose(const char *name)
 {
@@ -846,24 +870,6 @@ void VNCSConnectionST::keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down) {
   server->desktop->keyEvent(keysym, keycode, down);
 }
 
-void VNCSConnectionST::clientCutText(const char* str, int len)
-{
-  if (!(accessRights & AccessCutText)) return;
-  if (!rfb::Server::acceptCutText) return;
-  if (msSince(&lastClipboardOp) < (unsigned) rfb::Server::DLP_ClipDelay) {
-    vlog.info("DLP: client %s: refused to receive clipboard, too soon",
-              sock->getPeerAddress());
-    return;
-  }
-  const int origlen = len;
-  if (rfb::Server::DLP_ClipAcceptMax && len > rfb::Server::DLP_ClipAcceptMax)
-    len = rfb::Server::DLP_ClipAcceptMax;
-  cliplog(str, len, origlen, "received", sock->getPeerAddress());
-
-  gettimeofday(&lastClipboardOp, NULL);
-  server->desktop->clientCutText(str, len);
-}
-
 void VNCSConnectionST::framebufferUpdateRequest(const Rect& r,bool incremental)
 {
   Rect safeRect;
@@ -996,6 +1002,39 @@ void VNCSConnectionST::enableContinuousUpdates(bool enable,
     writer()->writeEndOfContinuousUpdates();
   }
 }
+
+void VNCSConnectionST::handleClipboardRequest()
+{
+  if (!(accessRights & AccessCutText)) return;
+  server->handleClipboardRequest(this);
+}
+
+void VNCSConnectionST::handleClipboardAnnounce(bool available)
+{
+  if (!(accessRights & AccessCutText)) return;
+  if (!rfb::Server::acceptCutText) return;
+  server->handleClipboardAnnounce(this, available);
+}
+
+void VNCSConnectionST::handleClipboardData(const char* data)
+{
+  if (!(accessRights & AccessCutText)) return;
+  if (!rfb::Server::acceptCutText) return;
+  if (msSince(&lastClipboardOp) < (unsigned) rfb::Server::DLP_ClipDelay) {
+    vlog.info("DLP: client %s: refused to receive clipboard, too soon",
+              sock->getPeerAddress());
+    return;
+  }
+  int len = strlen(data);
+  const int origlen = len;
+  if (rfb::Server::DLP_ClipAcceptMax && len > rfb::Server::DLP_ClipAcceptMax)
+    len = rfb::Server::DLP_ClipAcceptMax;
+  cliplog(data, len, origlen, "received", sock->getPeerAddress());
+
+  gettimeofday(&lastClipboardOp, NULL);
+  server->handleClipboardData(this, data, len);
+}
+
 
 // supportsLocalCursor() is called whenever the status of
 // cp.supportsLocalCursor has changed.  If the client does now support local

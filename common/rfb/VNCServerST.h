@@ -96,7 +96,9 @@ namespace rfb {
     virtual void setPixelBuffer(PixelBuffer* pb);
     virtual void setScreenLayout(const ScreenSet& layout);
     virtual PixelBuffer* getPixelBuffer() const { if (DLPRegion.enabled && blackedpb) return blackedpb; else return pb; }
-    virtual void serverCutText(const char* str, int len);
+    virtual void requestClipboard();
+    virtual void announceClipboard(bool available);
+    virtual void sendClipboardData(const char* data);
     virtual void add_changed(const Region &region);
     virtual void add_copied(const Region &dest, const Point &delta);
     virtual void setCursor(int width, int height, const Point& hotspot,
@@ -189,6 +191,10 @@ namespace rfb {
 
     void setAPIMessager(network::GetAPIMessager *msgr) { apimessager = msgr; }
 
+    void handleClipboardRequest(VNCSConnectionST* client);
+    void handleClipboardAnnounce(VNCSConnectionST* client, bool available);
+    void handleClipboardData(VNCSConnectionST* client, const char* data, int len);
+
   protected:
 
     friend class VNCSConnectionST;
@@ -217,6 +223,8 @@ namespace rfb {
 
     std::list<VNCSConnectionST*> clients;
     VNCSConnectionST* pointerClient;
+    VNCSConnectionST* clipboardClient;
+    std::list<VNCSConnectionST*> clipboardRequestors;
     std::list<network::Socket*> closingSockets;
 
     static EncCache encCache;
