@@ -54,15 +54,15 @@ builder/build-deb debian buster
 builder/test-deb debian buster
 ```
 
-`build-and-test-deb` is good to do the whole dev lifecycle, but to iterate
-quickly, you'll need to skip building tarball (which takes a long time), and
+Use `build-and-test-deb` to perform the whole dev lifecycle, but to iterate
+quickly, you'll need to skip building the tarball (which takes a long time), and
 just build your deb/rpm with `build-deb` and test with `test-deb`.
 
 `build-rpm` and `test-rpm` are also available.
 
 ## Ensuring packages have all dependencies they need.
 
-If you're working on a deb/rpm package, testing that it has all necessary
+If you're working on a deb/rpm package, testing that it has all the necessary
 dependencies is done via testing in a barebones environment (read: no XFCE). In
 this way we can be sure that runtime dependencies aren't met accidentally by
 packages installed with XFCE.
