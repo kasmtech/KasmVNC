@@ -96,7 +96,7 @@ public:
                                        const rfb::ScreenSet& layout);
   virtual void handleClipboardRequest();
   virtual void handleClipboardAnnounce(bool available);
-  virtual void handleClipboardData(const char* data);
+  virtual void handleClipboardData(const char* data, int len);
 
   // rfb::PixelBuffer callbacks
   virtual void grabRegion(const rfb::Region& r);

@@ -73,7 +73,7 @@ namespace rfb {
 
     virtual void setEncodings(int nEncodings, const rdr::S32* encodings);
 
-    virtual void clientCutText(const char* str);
+    virtual void clientCutText(const char* str, int len);
 
     virtual void handleClipboardRequest(rdr::U32 flags);
     virtual void handleClipboardPeek(rdr::U32 flags);

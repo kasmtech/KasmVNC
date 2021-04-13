@@ -296,8 +296,10 @@ void SConnection::setEncodings(int nEncodings, const rdr::S32* encodings)
   }
 }
 
-void SConnection::clientCutText(const char* str)
+void SConnection::clientCutText(const char* str, int len)
 {
+  hasLocalClipboard = false;
+
   strFree(clientClipboard);
   clientClipboard = NULL;
 
@@ -328,10 +330,12 @@ void SConnection::handleClipboardNotify(rdr::U32 flags)
   strFree(clientClipboard);
   clientClipboard = NULL;
 
-  if (flags & rfb::clipboardUTF8)
+  if (flags & rfb::clipboardUTF8) {
     handleClipboardAnnounce(true);
-  else
+    hasLocalClipboard = false;
+  } else {
     handleClipboardAnnounce(false);
+  }
 }
 
 void SConnection::handleClipboardProvide(rdr::U32 flags,

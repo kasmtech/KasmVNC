@@ -476,9 +476,9 @@ void XserverDesktop::handleClipboardAnnounce(bool available)
   vncHandleClipboardAnnounce(available);
 }
 
-void XserverDesktop::handleClipboardData(const char* data_)
+void XserverDesktop::handleClipboardData(const char* data_, int len)
 {
-  vncHandleClipboardData(data_);
+  vncHandleClipboardData(data_, len);
 }
 
 void XserverDesktop::grabRegion(const rfb::Region& region)

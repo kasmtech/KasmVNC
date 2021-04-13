@@ -185,7 +185,7 @@ namespace rfb {
                                          int x, int y, int w, int h);
     virtual void handleClipboardRequest();
     virtual void handleClipboardAnnounce(bool available);
-    virtual void handleClipboardData(const char* data);
+    virtual void handleClipboardData(const char* data, int len);
     virtual void supportsLocalCursor();
     virtual void supportsFence();
     virtual void supportsContinuousUpdates();

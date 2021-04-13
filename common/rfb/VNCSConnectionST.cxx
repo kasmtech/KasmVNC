@@ -1016,7 +1016,7 @@ void VNCSConnectionST::handleClipboardAnnounce(bool available)
   server->handleClipboardAnnounce(this, available);
 }
 
-void VNCSConnectionST::handleClipboardData(const char* data)
+void VNCSConnectionST::handleClipboardData(const char* data, int len)
 {
   if (!(accessRights & AccessCutText)) return;
   if (!rfb::Server::acceptCutText) return;
@@ -1025,7 +1025,6 @@ void VNCSConnectionST::handleClipboardData(const char* data)
               sock->getPeerAddress());
     return;
   }
-  int len = strlen(data);
   const int origlen = len;
   if (rfb::Server::DLP_ClipAcceptMax && len > rfb::Server::DLP_ClipAcceptMax)
     len = rfb::Server::DLP_ClipAcceptMax;

@@ -535,7 +535,7 @@ void VNCServerST::sendClipboardData(const char* data)
   for (ci = clipboardRequestors.begin();
        ci != clipboardRequestors.end(); ci = ci_next) {
     ci_next = ci; ci_next++;
-    (*ci)->sendClipboardData(data, strlen(data));
+    (*ci)->sendClipboardDataOrClose(data);
   }
 
   clipboardRequestors.clear();

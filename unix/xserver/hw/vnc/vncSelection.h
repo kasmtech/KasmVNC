@@ -26,7 +26,7 @@ void vncSelectionInit(void);
 
 void vncHandleClipboardRequest(void);
 void vncHandleClipboardAnnounce(int available);
-void vncHandleClipboardData(const char* data);
+void vncHandleClipboardData(const char* data, int len);
 
 #ifdef __cplusplus
 }

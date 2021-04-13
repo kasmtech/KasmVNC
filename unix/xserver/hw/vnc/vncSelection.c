@@ -67,7 +67,7 @@ static int vncOwnSelection(Atom selection);
 static int vncConvertSelection(ClientPtr client, Atom selection,
                                Atom target, Atom property,
                                Window requestor, CARD32 time,
-                               const char* data);
+                               const char* data, int len);
 static int vncProcConvertSelection(ClientPtr client);
 static void vncSelectionRequest(Atom selection, Atom target);
 static int vncProcSendEvent(ClientPtr client);
@@ -161,7 +161,7 @@ void vncHandleClipboardAnnounce(int available)
   }
 }
 
-void vncHandleClipboardData(const char* data)
+void vncHandleClipboardData(const char* data, int len)
 {
   struct VncDataTarget* next;
 
@@ -177,7 +177,7 @@ void vncHandleClipboardData(const char* data)
                              vncDataTargetHead->property,
                              vncDataTargetHead->requestor,
                              vncDataTargetHead->time,
-                             data);
+                             data, len);
     if (rc != Success) {
       event.u.u.type = SelectionNotify;
       event.u.selectionNotify.time = vncDataTargetHead->time;
@@ -280,7 +280,7 @@ static int vncOwnSelection(Atom selection)
 static int vncConvertSelection(ClientPtr client, Atom selection,
                                Atom target, Atom property,
                                Window requestor, CARD32 time,
-                               const char* data)
+                               const char* data, int len)
 {
   Selection *pSel;
   WindowPtr pWin;
@@ -370,7 +370,7 @@ static int vncConvertSelection(ClientPtr client, Atom selection,
 
         rc = dixChangeWindowProperty(serverClient, pWin, realProperty,
                                      XA_STRING, 8, PropModeReplace,
-                                     strlen(latin1), latin1, TRUE);
+                                     len, latin1, TRUE);
 
         vncStrFree(latin1);
 
@@ -379,7 +379,7 @@ static int vncConvertSelection(ClientPtr client, Atom selection,
       } else if (target == xaUTF8_STRING) {
         rc = dixChangeWindowProperty(serverClient, pWin, realProperty,
                                      xaUTF8_STRING, 8, PropModeReplace,
-                                     strlen(data), data, TRUE);
+                                     len, data, TRUE);
         if (rc != Success)
           return rc;
       } else {
@@ -424,7 +424,7 @@ static int vncProcConvertSelection(ClientPtr client)
       pSel->window == wid) {
     rc = vncConvertSelection(client, stuff->selection,
                              stuff->target, stuff->property,
-                             stuff->requestor, stuff->time, NULL);
+                             stuff->requestor, stuff->time, NULL, 0);
     if (rc != Success) {
       xEvent event;
 
