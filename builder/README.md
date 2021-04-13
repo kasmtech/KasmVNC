@@ -31,7 +31,7 @@ Open browser and point to https://localhost:443/ or https://\<ip-address\>:443/
 
 # Test a package
 
-If you want to test deb/rpm package you already built, please use this:
+If you want to test deb/rpm package you've already built, please use this:
 ```
 builder/test-deb ubuntu focal
 ```
