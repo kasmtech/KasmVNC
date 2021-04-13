@@ -54,9 +54,6 @@ kasmvncserver-easy-start -d && kasmvncserver-easy-start -kill
 # Modify vncstartup to launch your environment of choice, in this example LXDE
 echo '/usr/bin/lxsession -s LXDE &' >> ~/.vnc/xstartup
 
-# The KasmVNC username is automatically set to your system username, you can mofify it if you wish
-vi ~/.vnc/config
-
 # Start KasmVNC with debug logging:
 kasmvncserver-easy-start -d
 tail -f ~/.vnc/`hostname`:10.log
