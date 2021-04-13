@@ -22,7 +22,7 @@ builder/build-and-test-deb ubuntu focal
 builder/build-and-test-rpm centos core
 ```
 
-open browser and point to https://<ip-address>/
+Open browser and point to https://localhost:443/ or https://\<ip-address\>:443/
 
 3 default users are created:
 * 'foo' with default password 'foobar'. It can use mouse and keyboard.
@@ -35,7 +35,9 @@ If you want to test deb/rpm package you already built, please use this:
 ```
 builder/test-deb ubuntu focal
 ```
-It will install the package inside a new container.
+It will install the package inside a new container and run KasmVNC.
+
+Open browser and point to https://localhost:443/ or https://\<ip-address\>:443/
 
 # Package development
 
