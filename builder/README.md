@@ -7,6 +7,21 @@ docker build -t kasmweb/www -f builder/dockerfile.www.build .
 docker run -it --rm -v $PWD/builder/www:/build kasmweb/www:latest
 ```
 
+# Build a deb/rpm package
+```
+# builder/build-package <os> <os_codename>
+# os_codename is what "lsb_release -c" outputs, e.g. buster, focal.
+# Packages will be placed under builder/build/
+
+builder/build-package ubuntu bionic
+builder/build-package ubuntu focal
+builder/build-package debian buster
+builder/build-package debian bullseye
+builder/build-package kali kali-rolling
+builder/build-package centos core # CentOS 7
+builder/build-package fedora thirtythree
+```
+
 # build the docker image
 ```
     cd /src_code_root
