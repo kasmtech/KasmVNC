@@ -13,16 +13,17 @@
   - Webp image compression for better bandwidth usage
   - Automatic mixing of webp and jpeg based on CPU availability on server
   - Multi-threaded image encoding for smoother frame rate for servers with more cores
-  - Full screen video detection, goes into configurable video mode for better full screen videoo playback performance.
-  - Dynamic jpeg/webp image coompression quality settings based on screen change rates
-  - Seemless clipboard support
+  - [Full screen video detection](https://github.com/kasmtech/KasmVNC/wiki/Video-Rendering-Options#video-mode), goes into configurable video mode for better full screen videoo playback performance.
+  - [Dynamic jpeg/webp image coompression](https://github.com/kasmtech/KasmVNC/wiki/Video-Rendering-Options#dynamic-image-quality) quality settings based on screen change rates
+  - Seemless clipboard support (on Chromium based browsers)
   - Allow client to set/change most configuration settings
-  - Data Loss Prevention features
+  - [Data Loss Prevention features](https://github.com/kasmtech/KasmVNC/wiki/Data-Loss-Prevention)
     - Key stroke logging
     - Clipboard logging
     - Max clipboard transfer size up and down
     - Min time between clipboard operations required
     - Keyboard input rate limit
+    - Screen region selection
 
 
 
@@ -30,7 +31,6 @@ Future Goals:
 
   - Support uploads and downloads
   - Pre-build Packages for all major Linux distributions
-  - CI pipelines to create releases
 
 ### Installation
 
