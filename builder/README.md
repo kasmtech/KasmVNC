@@ -1,35 +1,72 @@
 ## REQIUREMENTS
 Docker CE
 
-# Build the www webpack
+# Build a deb/rpm package
 ```
-docker build -t kasmweb/www -f builder/dockerfile.www.build .
-docker run -it --rm -v $PWD/builder/www:/build kasmweb/www:latest
+# builder/build-package <os> <os_codename>
+# os_codename is what "lsb_release -c" outputs, e.g. buster, focal.
+# Packages will be placed under builder/build/
+
+builder/build-package ubuntu bionic
+builder/build-package ubuntu focal
+builder/build-package debian buster
+builder/build-package debian bullseye
+builder/build-package kali kali-rolling
+builder/build-package centos core # CentOS 7
+builder/build-package fedora thirtythree
 ```
 
-# build the docker image
+# Build and test a package
 ```
-    cd /src_code_root
-    docker build -t kasmvncbuilder:18.04 -f builder/dockerfile.ubuntu1804.build .
-```
-
-### Run the builder
-```sh
-    mkdir -p builder/build
-    docker run -v /tmp:/build --rm  kasmvncbuilder:18.04
-    cp /tmp/build/kasmvnc.ubuntu_18.04.tar.gz builder/build/
+builder/build-and-test-deb ubuntu focal
+builder/build-and-test-rpm centos core
 ```
 
-### Build test desktop container
-```sh
-    cd builder
-    docker build -t kasmvnctester:18.04 -f dockerfile.ubuntu1804.test .
+Open browser and point to https://localhost:443/ or https://\<ip-address\>:443/
+
+3 default users are created:
+* 'foo' with default password 'foobar'. It can use mouse and keyboard.
+* 'foo-ro' with default password 'foobar'. It can only view.
+* 'foo-owner' with default password 'foobar'. It can manage other users.
+
+# Test a package
+
+If you want to test deb/rpm package you've already built, please use this:
+```
+builder/test-deb ubuntu focal
+```
+It will install the package inside a new container and run KasmVNC.
+
+Open browser and point to https://localhost:443/ or https://\<ip-address\>:443/
+
+# Package development
+
+## deb/rpm package building and testing
+
+First, a tarball is built, and then its files are copied to deb/rpm package as
+it is being built.
+Package testing stage installs the deb/rpm package in a fresh docker container
+and runs KasmVNC.
+
+```
+builder/build-tarball debian buster
+builder/build-deb debian buster
+builder/test-deb debian buster
 ```
 
-### run an instance of the new destkop
-```sh
-docker run -it -p 443:8443 --rm -e "VNC_USER=username" -e "VNC_PW=password123"  kasmvnctester:18.04
-```
+Use `build-and-test-deb` to perform the whole dev lifecycle, but to iterate
+quickly, you'll need to skip building the tarball (which takes a long time), and
+just build your deb/rpm with `build-deb` and test with `test-deb`.
 
-open browser and point to https://<ip-address>/vnc.html
-The username and password were set in the docker run command
+`build-rpm` and `test-rpm` are also available.
+
+## Ensuring packages have all dependencies they need.
+
+If you're working on a deb/rpm package, testing that it has all the necessary
+dependencies is done via testing in a barebones environment (read: no XFCE). In
+this way we can be sure that runtime dependencies aren't met accidentally by
+packages installed with XFCE.
+
+```
+builder/test-deb-barebones ubuntu focal
+```
