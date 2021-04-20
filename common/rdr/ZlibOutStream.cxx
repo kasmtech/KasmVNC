@@ -30,9 +30,9 @@ using namespace rdr;
 
 enum { DEFAULT_BUF_SIZE = 16384 };
 
-ZlibOutStream::ZlibOutStream(OutStream* os, size_t bufSize_, int compressLevel)
+ZlibOutStream::ZlibOutStream(OutStream* os, int compressLevel)
   : underlying(os), compressionLevel(compressLevel), newLevel(compressLevel),
-    bufSize(bufSize_ ? bufSize_ : DEFAULT_BUF_SIZE), offset(0)
+    bufSize(DEFAULT_BUF_SIZE), offset(0)
 {
   zs = new z_stream;
   zs->zalloc    = Z_NULL;
@@ -95,18 +95,18 @@ void ZlibOutStream::flush()
   ptr = start;
 }
 
-size_t ZlibOutStream::overrun(size_t itemSize, size_t nItems)
+void ZlibOutStream::overrun(size_t needed)
 {
 #ifdef ZLIBOUT_DEBUG
   fprintf(stderr,"zos overrun\n");
 #endif
 
-  if (itemSize > bufSize)
-    throw Exception("ZlibOutStream overrun: max itemSize exceeded");
+  if (needed > bufSize)
+    throw Exception("ZlibOutStream overrun: buffer size exceeded");
 
   checkCompressionLevel();
 
-  while ((size_t)(end - ptr) < itemSize) {
+  while (avail() < needed) {
     zs->next_in = start;
     zs->avail_in = ptr - start;
 
@@ -126,13 +126,6 @@ size_t ZlibOutStream::overrun(size_t itemSize, size_t nItems)
       ptr -= zs->next_in - start;
     }
   }
-
-  size_t nAvail;
-  nAvail = (end - ptr) / itemSize;
-  if (nAvail < nItems)
-    return nAvail;
-
-  return nItems;
 }
 
 void ZlibOutStream::deflate(int flush)
@@ -148,7 +141,7 @@ void ZlibOutStream::deflate(int flush)
   do {
     underlying->check(1);
     zs->next_out = underlying->getptr();
-    zs->avail_out = underlying->getend() - underlying->getptr();
+    zs->avail_out = underlying->avail();
 
 #ifdef ZLIBOUT_DEBUG
     fprintf(stderr,"zos: calling deflate, avail_in %d, avail_out %d\n",

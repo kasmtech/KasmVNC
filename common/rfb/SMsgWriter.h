@@ -55,6 +55,14 @@ namespace rfb {
     // writeBell() and writeServerCutText() do the obvious thing.
     void writeBell();
     void writeServerCutText(const char* str, int len);
+
+    void writeClipboardCaps(rdr::U32 caps, const rdr::U32* lengths);
+    void writeClipboardRequest(rdr::U32 flags);
+    void writeClipboardPeek(rdr::U32 flags);
+    void writeClipboardNotify(rdr::U32 flags);
+    void writeClipboardProvide(rdr::U32 flags, const size_t* lengths,
+                               const rdr::U8* const* data);
+
     void writeStats(const char* str, int len);
 
     // writeFence() sends a new fence request or response to the client.
@@ -82,6 +90,9 @@ namespace rfb {
     bool writeSetCursor();
     bool writeSetXCursor();
     bool writeSetCursorWithAlpha();
+
+    // Notifies the client that the cursor pointer was moved by the server.
+    void writeCursorPos();
 
     // Same for LED state message
     bool writeLEDState();
@@ -138,6 +149,7 @@ namespace rfb {
     void writeSetCursorWithAlphaRect(int width, int height,
                                      int hotspotX, int hotspotY,
                                      const rdr::U8* data);
+    void writeSetVMwareCursorPositionRect(int hotspotX, int hotspotY);
     void writeLEDStateRect(rdr::U8 state);
     void writeQEMUKeyEventRect();
 
@@ -153,6 +165,7 @@ namespace rfb {
     bool needSetCursor;
     bool needSetXCursor;
     bool needSetCursorWithAlpha;
+    bool needCursorPos;
     bool needLEDState;
     bool needQEMUKeyEvent;
 

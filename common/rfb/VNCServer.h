@@ -52,9 +52,21 @@ namespace rfb {
     // getPixelBuffer() returns a pointer to the PixelBuffer object.
     virtual PixelBuffer* getPixelBuffer() const = 0;
 
-    // serverCutText() tells the server that the cut text has changed.  This
-    // will normally be sent to all clients.
-    virtual void serverCutText(const char* str, int len) = 0;
+    // requestClipboard() will result in a request to a client to
+    // transfer its clipboard data. A call to
+    // SDesktop::handleClipboardData() will be made once the data is
+    // available.
+    virtual void requestClipboard() = 0;
+
+    // announceClipboard() informs all clients of changes to the
+    // clipboard on the server. A client may later request the
+    // clipboard data via SDesktop::handleClipboardRequest().
+    virtual void announceClipboard(bool available) = 0;
+
+    // sendClipboardData() transfers the clipboard data to a client
+    // and should be called whenever a client has requested the
+    // clipboard via SDesktop::handleClipboardRequest().
+    virtual void sendClipboardData(const char* data) = 0;
 
     // bell() tells the server that it should make all clients make a bell sound.
     virtual void bell() = 0;
@@ -69,8 +81,10 @@ namespace rfb {
     virtual void setCursor(int width, int height, const Point& hotspot,
                            const rdr::U8* cursorData) = 0;
 
-    // setCursorPos() tells the server the current position of the cursor.
-    virtual void setCursorPos(const Point& p) = 0;
+    // setCursorPos() tells the server the current position of the cursor, and
+    // whether the server initiated that change (e.g. through another X11
+    // client calling XWarpPointer()).
+    virtual void setCursorPos(const Point& p, bool warped) = 0;
 
     // setName() tells the server what desktop title to supply to clients
     virtual void setName(const char* name) = 0;

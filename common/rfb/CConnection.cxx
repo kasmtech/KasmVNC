@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include <rfb/Exception.h>
+#include <rfb/clipboardTypes.h>
 #include <rfb/fenceTypes.h>
 #include <rfb/CMsgReader.h>
 #include <rfb/CMsgWriter.h>
@@ -42,7 +43,8 @@ CConnection::CConnection()
   : csecurity(0), is(0), os(0), reader_(0), writer_(0),
     shared(false),
     state_(RFBSTATE_UNINITIALISED), useProtocol3_3(false),
-    framebuffer(NULL), decoder(this)
+    framebuffer(NULL), decoder(this),
+    serverClipboard(NULL), hasLocalClipboard(false)
 {
 }
 
@@ -54,6 +56,7 @@ CConnection::~CConnection()
   reader_ = 0;
   delete writer_;
   writer_ = 0;
+  strFree(serverClipboard);
 }
 
 void CConnection::setStreams(rdr::InStream* is_, rdr::OutStream* os_)
@@ -342,6 +345,79 @@ void CConnection::dataRect(const Rect& r, int encoding)
   decoder.decodeRect(r, encoding, framebuffer);
 }
 
+void CConnection::serverCutText(const char* str)
+{
+  hasLocalClipboard = false;
+
+  strFree(serverClipboard);
+  serverClipboard = NULL;
+
+  serverClipboard = latin1ToUTF8(str);
+
+  handleClipboardAnnounce(true);
+}
+
+void CConnection::handleClipboardCaps(rdr::U32 flags,
+                                      const rdr::U32* lengths)
+{
+  rdr::U32 sizes[] = { 0 };
+
+  CMsgHandler::handleClipboardCaps(flags, lengths);
+
+  writer()->writeClipboardCaps(rfb::clipboardUTF8 |
+                               rfb::clipboardRequest |
+                               rfb::clipboardPeek |
+                               rfb::clipboardNotify |
+                               rfb::clipboardProvide,
+                               sizes);
+}
+
+void CConnection::handleClipboardRequest(rdr::U32 flags)
+{
+  if (!(flags & rfb::clipboardUTF8))
+    return;
+  if (!hasLocalClipboard)
+    return;
+  handleClipboardRequest();
+}
+
+void CConnection::handleClipboardPeek(rdr::U32 flags)
+{
+  if (!hasLocalClipboard)
+    return;
+  if (cp.clipboardFlags() & rfb::clipboardNotify)
+    writer()->writeClipboardNotify(rfb::clipboardUTF8);
+}
+
+void CConnection::handleClipboardNotify(rdr::U32 flags)
+{
+  strFree(serverClipboard);
+  serverClipboard = NULL;
+
+  if (flags & rfb::clipboardUTF8) {
+    hasLocalClipboard = false;
+    handleClipboardAnnounce(true);
+  } else {
+    handleClipboardAnnounce(false);
+  }
+}
+
+void CConnection::handleClipboardProvide(rdr::U32 flags,
+                                         const size_t* lengths,
+                                         const rdr::U8* const* data)
+{
+  if (!(flags & rfb::clipboardUTF8))
+    return;
+
+  strFree(serverClipboard);
+  serverClipboard = NULL;
+
+  serverClipboard = convertLF((const char*)data[0], lengths[0]);
+
+  // FIXME: Should probably verify that this data was actually requested
+  handleClipboardData(serverClipboard);
+}
+
 void CConnection::authSuccess()
 {
 }
@@ -364,3 +440,53 @@ void CConnection::fence(rdr::U32 flags, unsigned len, const char data[])
 
   writer()->writeFence(flags, len, data);
 }
+
+void CConnection::handleClipboardRequest()
+{
+}
+
+void CConnection::handleClipboardAnnounce(bool available)
+{
+}
+
+void CConnection::handleClipboardData(const char* data)
+{
+}
+
+void CConnection::requestClipboard()
+{
+  if (serverClipboard != NULL) {
+    handleClipboardData(serverClipboard);
+    return;
+  }
+
+  if (cp.clipboardFlags() & rfb::clipboardRequest)
+    writer()->writeClipboardRequest(rfb::clipboardUTF8);
+}
+
+void CConnection::announceClipboard(bool available)
+{
+  hasLocalClipboard = available;
+
+  if (cp.clipboardFlags() & rfb::clipboardNotify)
+    writer()->writeClipboardNotify(available ? rfb::clipboardUTF8 : 0);
+  else {
+    if (available)
+      handleClipboardRequest();
+  }
+}
+
+void CConnection::sendClipboardData(const char* data)
+{
+  if (cp.clipboardFlags() & rfb::clipboardProvide) {
+    CharArray filtered(convertCRLF(data));
+    size_t sizes[1] = { strlen(filtered.buf) + 1 };
+    const rdr::U8* data[1] = { (const rdr::U8*)filtered.buf };
+    writer()->writeClipboardProvide(rfb::clipboardUTF8, sizes, data);
+  } else {
+    CharArray latin1(utf8ToLatin1(data));
+
+    writer()->writeClientCutText(latin1.buf, strlen(latin1.buf));
+  }
+}
+

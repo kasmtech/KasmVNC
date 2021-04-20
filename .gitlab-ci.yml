@@ -4,6 +4,7 @@ services:
 
 variables:
   GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
+  GIT_SUBMODULE_STRATEGY: normal
   GIT_FETCH_EXTRA_FLAGS: --tags
 
 stages:

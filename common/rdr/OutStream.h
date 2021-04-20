@@ -40,22 +40,20 @@ namespace rdr {
 
     virtual ~OutStream() {}
 
-    // check() ensures there is buffer space for at least one item of size
-    // itemSize bytes.  Returns the number of items which fit (up to a maximum
-    // of nItems).
+    // avail() returns the number of bytes that currently be written to the
+    // stream without any risk of blocking.
 
-    inline size_t check(size_t itemSize, size_t nItems=1)
+    inline size_t avail()
     {
-      size_t nAvail;
+      return end - ptr;
+    }
 
-      if (itemSize > (size_t)(end - ptr))
-        return overrun(itemSize, nItems);
+    // check() ensures there is buffer space for at least needed bytes.
 
-      nAvail = (end - ptr) / itemSize;
-      if (nAvail < nItems)
-        return nAvail;
-
-      return nItems;
+    inline void check(size_t needed)
+    {
+      if (needed > avail())
+        overrun(needed);
     }
 
     // writeU/SN() methods write unsigned and signed N-bit integers.
@@ -83,19 +81,14 @@ namespace rdr {
       while (bytes-- > 0) writeU8(0);
     }
 
-    inline void skip(size_t bytes) {
-      while (bytes > 0) {
-        size_t n = check(1, bytes);
-        ptr += n;
-        bytes -= n;
-      }
-    }
-
     // writeBytes() writes an exact number of bytes.
 
     void writeBytes(const void* data, size_t length) {
       while (length > 0) {
-        size_t n = check(1, length);
+        check(1);
+        size_t n = length;
+        if (length > avail())
+          n = avail();
         memcpy(ptr, data, n);
         ptr += n;
         data = (U8*)data + n;
@@ -107,7 +100,10 @@ namespace rdr {
 
     void copyBytes(InStream* is, size_t length) {
       while (length > 0) {
-        size_t n = check(1, length);
+        check(1);
+        size_t n = length;
+        if (length > avail())
+          n = avail();
         is->readBytes(ptr, n);
         ptr += n;
         length -= n;
@@ -143,11 +139,9 @@ namespace rdr {
   private:
 
     // overrun() is implemented by a derived class to cope with buffer overrun.
-    // It ensures there are at least itemSize bytes of buffer space.  Returns
-    // the number of items which fit (up to a maximum of nItems).  itemSize is
-    // supposed to be "small" (a few bytes).
+    // It ensures there are at least needed bytes of buffer space.
 
-    virtual size_t overrun(size_t itemSize, size_t nItems) = 0;
+    virtual void overrun(size_t needed) = 0;
 
   protected:
 

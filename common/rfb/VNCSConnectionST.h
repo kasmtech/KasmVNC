@@ -75,9 +75,11 @@ namespace rfb {
     void screenLayoutChangeOrClose(rdr::U16 reason);
     void setCursorOrClose();
     void bellOrClose();
-    void serverCutTextOrClose(const char *str, int len);
     void setDesktopNameOrClose(const char *name);
     void setLEDStateOrClose(unsigned int state);
+    void requestClipboardOrClose();
+    void announceClipboardOrClose(bool available);
+    void sendClipboardDataOrClose(const char* data);
 
     // checkIdleTimeout() returns the number of milliseconds left until the
     // idle timeout expires.  If it has expired, the connection is closed and
@@ -96,6 +98,11 @@ namespace rfb {
     // clean up the old rendered cursor and if necessary draw the new rendered
     // cursor.
     void renderedCursorChange();
+
+    // cursorPositionChange() is called whenever the cursor has changed position by
+    // the server.  If the client supports being informed about these changes then
+    // it will arrange for the new cursor position to be sent to the client.
+    void cursorPositionChange();
 
     // needRenderedCursor() returns true if this client needs the server-side
     // rendered cursor.  This may be because it does not support local cursor
@@ -170,13 +177,15 @@ namespace rfb {
     virtual void setPixelFormat(const PixelFormat& pf);
     virtual void pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease);
     virtual void keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down);
-    virtual void clientCutText(const char* str, int len);
     virtual void framebufferUpdateRequest(const Rect& r, bool incremental);
     virtual void setDesktopSize(int fb_width, int fb_height,
                                 const ScreenSet& layout);
     virtual void fence(rdr::U32 flags, unsigned len, const char data[]);
     virtual void enableContinuousUpdates(bool enable,
                                          int x, int y, int w, int h);
+    virtual void handleClipboardRequest();
+    virtual void handleClipboardAnnounce(bool available);
+    virtual void handleClipboardData(const char* data, int len);
     virtual void supportsLocalCursor();
     virtual void supportsFence();
     virtual void supportsContinuousUpdates();
@@ -223,6 +232,7 @@ namespace rfb {
 
     void screenLayoutChange(rdr::U16 reason);
     void setCursor();
+    void setCursorPos();
     void setDesktopName(const char *name);
     void setLEDState(unsigned int state);
     void setSocketTimeouts();

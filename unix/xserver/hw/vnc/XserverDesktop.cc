@@ -176,6 +176,33 @@ XserverDesktop::queryConnection(network::Socket* sock,
   return rfb::VNCServerST::PENDING;
 }
 
+void XserverDesktop::requestClipboard()
+{
+  try {
+    server->requestClipboard();
+  } catch (rdr::Exception& e) {
+    vlog.error("XserverDesktop::requestClipboard: %s",e.str());
+  }
+}
+
+void XserverDesktop::announceClipboard(bool available)
+{
+  try {
+    server->announceClipboard(available);
+  } catch (rdr::Exception& e) {
+    vlog.error("XserverDesktop::announceClipboard: %s",e.str());
+  }
+}
+
+void XserverDesktop::sendClipboardData(const char* data)
+{
+  try {
+    server->sendClipboardData(data);
+  } catch (rdr::Exception& e) {
+    vlog.error("XserverDesktop::sendClipboardData: %s",e.str());
+  }
+}
+
 void XserverDesktop::bell()
 {
   server->bell();
@@ -184,15 +211,6 @@ void XserverDesktop::bell()
 void XserverDesktop::setLEDState(unsigned int state)
 {
   server->setLEDState(state);
-}
-
-void XserverDesktop::serverCutText(const char* str, int len)
-{
-  try {
-    server->serverCutText(str, len);
-  } catch (rdr::Exception& e) {
-    vlog.error("XserverDesktop::serverCutText: %s",e.str());
-  }
 }
 
 void XserverDesktop::setDesktopName(const char* name)
@@ -239,6 +257,15 @@ void XserverDesktop::setCursor(int width, int height, int hotX, int hotY,
   }
 
   delete [] cursorData;
+}
+
+void XserverDesktop::setCursorPos(int x, int y, bool warped)
+{
+  try {
+    server->setCursorPos(Point(x, y), warped);
+  } catch (rdr::Exception& e) {
+    vlog.error("XserverDesktop::setCursorPos: %s",e.str());
+  }
 }
 
 void XserverDesktop::add_changed(const rfb::Region &region)
@@ -358,7 +385,7 @@ void XserverDesktop::blockHandler(int* timeout)
     if (oldCursorPos.x != cursorX || oldCursorPos.y != cursorY) {
       oldCursorPos.x = cursorX;
       oldCursorPos.y = cursorY;
-      server->setCursorPos(oldCursorPos);
+      server->setCursorPos(oldCursorPos, false);
     }
 
     // Trigger timers and check when the next will expire
@@ -426,11 +453,6 @@ void XserverDesktop::pointerEvent(const Point& pos, int buttonMask,
   vncPointerButtonAction(buttonMask, skipClick, skipRelease);
 }
 
-void XserverDesktop::clientCutText(const char* str, int len)
-{
-  vncClientCutText(str, len);
-}
-
 unsigned int XserverDesktop::setScreenLayout(int fb_width, int fb_height,
                                              const rfb::ScreenSet& layout)
 {
@@ -442,6 +464,21 @@ unsigned int XserverDesktop::setScreenLayout(int fb_width, int fb_height,
 
   vncSetGlueContext(screenIndex);
   return ::setScreenLayout(fb_width, fb_height, layout, &outputIdMap);
+}
+
+void XserverDesktop::handleClipboardRequest()
+{
+  vncHandleClipboardRequest();
+}
+
+void XserverDesktop::handleClipboardAnnounce(bool available)
+{
+  vncHandleClipboardAnnounce(available);
+}
+
+void XserverDesktop::handleClipboardData(const char* data_, int len)
+{
+  vncHandleClipboardData(data_, len);
 }
 
 void XserverDesktop::grabRegion(const rfb::Region& region)

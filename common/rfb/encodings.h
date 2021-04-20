@@ -85,6 +85,12 @@ namespace rfb {
   const int pseudoEncodingVideoOutTimeLevel1 = -1986;
   const int pseudoEncodingVideoOutTimeLevel100 = -1887;
 
+  // VMware-specific
+  const int pseudoEncodingVMwareCursorPosition = 0x574d5666;
+
+  // UltraVNC-specific
+  const int pseudoEncodingExtendedClipboard = 0xC0A1E5CE;
+
   int encodingNum(const char* name);
   const char* encodingName(int num);
 }

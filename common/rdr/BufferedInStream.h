@@ -1,4 +1,5 @@
 /* Copyright (C) 2002-2005 RealVNC Ltd.  All Rights Reserved.
+ * Copyright 2020 Pierre Ossman for Cendio AB
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,46 +18,35 @@
  */
 
 //
-// FdInStream streams from a file descriptor.
+// Base class for input streams with a buffer
 //
 
-#ifndef __RDR_FDINSTREAM_H__
-#define __RDR_FDINSTREAM_H__
+#ifndef __RDR_BUFFEREDINSTREAM_H__
+#define __RDR_BUFFEREDINSTREAM_H__
 
-#include <rdr/BufferedInStream.h>
+#include <rdr/InStream.h>
 
 namespace rdr {
 
-  class FdInStreamBlockCallback {
-  public:
-    virtual void blockCallback() = 0;
-    virtual ~FdInStreamBlockCallback() {}
-  };
-
-  class FdInStream : public BufferedInStream {
+  class BufferedInStream : public InStream {
 
   public:
+    virtual ~BufferedInStream();
 
-    FdInStream(int fd, int timeoutms=-1, bool closeWhenDone_=false);
-    FdInStream(int fd, FdInStreamBlockCallback* blockCallback);
-    virtual ~FdInStream();
-
-    void setTimeout(int timeoutms);
-    void setBlockCallback(FdInStreamBlockCallback* blockCallback);
-    int getFd() { return fd; }
+    virtual size_t pos();
 
   private:
-    virtual bool fillBuffer(size_t maxSize, bool wait);
+    virtual bool fillBuffer(size_t maxSize, bool wait) = 0;
 
-    size_t readWithTimeoutOrCallback(void* buf, size_t len, bool wait=true);
+    virtual bool overrun(size_t needed, bool wait);
 
-    int fd;
-    bool closeWhenDone;
-    int timeoutms;
-    FdInStreamBlockCallback* blockCallback;
-
+  private:
+    size_t bufSize;
     size_t offset;
     U8* start;
+
+  protected:
+    BufferedInStream();
   };
 
 } // end of namespace rdr

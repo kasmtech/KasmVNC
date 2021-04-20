@@ -92,3 +92,26 @@ void CMsgHandler::setLEDState(unsigned int state)
 {
   cp.setLEDState(state);
 }
+
+void CMsgHandler::handleClipboardCaps(rdr::U32 flags, const rdr::U32* lengths)
+{
+  cp.setClipboardCaps(flags, lengths);
+}
+
+void CMsgHandler::handleClipboardRequest(rdr::U32 flags)
+{
+}
+
+void CMsgHandler::handleClipboardPeek(rdr::U32 flags)
+{
+}
+
+void CMsgHandler::handleClipboardNotify(rdr::U32 flags)
+{
+}
+
+void CMsgHandler::handleClipboardProvide(rdr::U32 flags,
+                                         const size_t* lengths,
+                                         const rdr::U8* const* data)
+{
+}

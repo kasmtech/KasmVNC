@@ -18,10 +18,14 @@
  */
 #include <stdio.h>
 #include <rdr/OutStream.h>
+#include <rdr/MemOutStream.h>
+#include <rdr/ZlibOutStream.h>
+
 #include <rfb/msgTypes.h>
 #include <rfb/fenceTypes.h>
 #include <rfb/encodings.h>
 #include <rfb/qemuTypes.h>
+#include <rfb/clipboardTypes.h>
 #include <rfb/Exception.h>
 #include <rfb/PixelFormat.h>
 #include <rfb/Rect.h>
@@ -57,7 +61,7 @@ void CMsgWriter::writeSetPixelFormat(const PixelFormat& pf)
 void CMsgWriter::writeSetEncodings(int nEncodings, rdr::U32* encodings)
 {
   startMsg(msgTypeSetEncodings);
-  os->skip(1);
+  os->pad(1);
   os->writeU16(nEncodings);
   for (int i = 0; i < nEncodings; i++)
     os->writeU32(encodings[i]);
@@ -262,6 +266,104 @@ void CMsgWriter::writeClientCutText(const char* str, rdr::U32 len)
   os->pad(3);
   os->writeU32(len);
   os->writeBytes(str, len);
+  endMsg();
+}
+
+void CMsgWriter::writeClipboardCaps(rdr::U32 caps,
+                                    const rdr::U32* lengths)
+{
+  size_t i, count;
+
+  if (!(cp->clipboardFlags() & clipboardCaps))
+    throw Exception("Server does not support clipboard \"caps\" action");
+
+  count = 0;
+  for (i = 0;i < 16;i++) {
+    if (caps & (1 << i))
+      count++;
+  }
+
+  startMsg(msgTypeClientCutText);
+  os->pad(3);
+  os->writeS32(-(4 + 4 * count));
+
+  os->writeU32(caps | clipboardCaps);
+
+  count = 0;
+  for (i = 0;i < 16;i++) {
+    if (caps & (1 << i))
+      os->writeU32(lengths[count++]);
+  }
+
+  endMsg();
+}
+
+void CMsgWriter::writeClipboardRequest(rdr::U32 flags)
+{
+  if (!(cp->clipboardFlags() & clipboardRequest))
+    throw Exception("Server does not support clipboard \"request\" action");
+
+  startMsg(msgTypeClientCutText);
+  os->pad(3);
+  os->writeS32(-4);
+  os->writeU32(flags | clipboardRequest);
+  endMsg();
+}
+
+void CMsgWriter::writeClipboardPeek(rdr::U32 flags)
+{
+  if (!(cp->clipboardFlags() & clipboardPeek))
+    throw Exception("Server does not support clipboard \"peek\" action");
+
+  startMsg(msgTypeClientCutText);
+  os->pad(3);
+  os->writeS32(-4);
+  os->writeU32(flags | clipboardPeek);
+  endMsg();
+}
+
+void CMsgWriter::writeClipboardNotify(rdr::U32 flags)
+{
+  if (!(cp->clipboardFlags() & clipboardNotify))
+    throw Exception("Server does not support clipboard \"notify\" action");
+
+  startMsg(msgTypeClientCutText);
+  os->pad(3);
+  os->writeS32(-4);
+  os->writeU32(flags | clipboardNotify);
+  endMsg();
+}
+
+void CMsgWriter::writeClipboardProvide(rdr::U32 flags,
+                                      const size_t* lengths,
+                                      const rdr::U8* const* data)
+{
+  rdr::MemOutStream mos;
+  rdr::ZlibOutStream zos;
+
+  int i, count;
+
+  if (!(cp->clipboardFlags() & clipboardProvide))
+    throw Exception("Server does not support clipboard \"provide\" action");
+
+  zos.setUnderlying(&mos);
+
+  count = 0;
+  for (i = 0;i < 16;i++) {
+    if (!(flags & (1 << i)))
+      continue;
+    zos.writeU32(lengths[count]);
+    zos.writeBytes(data[count], lengths[count]);
+    count++;
+  }
+
+  zos.flush();
+
+  startMsg(msgTypeClientCutText);
+  os->pad(3);
+  os->writeS32(-(4 + mos.length()));
+  os->writeU32(flags | clipboardProvide);
+  os->writeBytes(mos.data(), mos.length());
   endMsg();
 }
 

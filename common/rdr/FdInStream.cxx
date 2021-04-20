@@ -36,13 +36,6 @@
 #include <unistd.h>
 #endif
 
-#ifndef vncmin
-#define vncmin(a,b)            (((a) < (b)) ? (a) : (b))
-#endif
-#ifndef vncmax
-#define vncmax(a,b)            (((a) > (b)) ? (a) : (b))
-#endif
-
 /* Old systems have select() in sys/time.h */
 #ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
@@ -53,31 +46,22 @@
 
 using namespace rdr;
 
-enum { DEFAULT_BUF_SIZE = 8192,
-       MIN_BULK_SIZE = 1024 };
+enum { DEFAULT_BUF_SIZE = 8192 };
 
-FdInStream::FdInStream(int fd_, int timeoutms_, size_t bufSize_,
+FdInStream::FdInStream(int fd_, int timeoutms_,
                        bool closeWhenDone_)
   : fd(fd_), closeWhenDone(closeWhenDone_),
-    timeoutms(timeoutms_), blockCallback(0),
-    timing(false), timeWaitedIn100us(5), timedKbits(0),
-    bufSize(bufSize_ ? bufSize_ : DEFAULT_BUF_SIZE), offset(0)
+    timeoutms(timeoutms_), blockCallback(0)
 {
-  ptr = end = start = new U8[bufSize];
 }
 
-FdInStream::FdInStream(int fd_, FdInStreamBlockCallback* blockCallback_,
-                       size_t bufSize_)
-  : fd(fd_), timeoutms(0), blockCallback(blockCallback_),
-    timing(false), timeWaitedIn100us(5), timedKbits(0),
-    bufSize(bufSize_ ? bufSize_ : DEFAULT_BUF_SIZE), offset(0)
+FdInStream::FdInStream(int fd_, FdInStreamBlockCallback* blockCallback_)
+  : fd(fd_), timeoutms(0), blockCallback(blockCallback_)
 {
-  ptr = end = start = new U8[bufSize];
 }
 
 FdInStream::~FdInStream()
 {
-  delete [] start;
   if (closeWhenDone) close(fd);
 }
 
@@ -92,72 +76,15 @@ void FdInStream::setBlockCallback(FdInStreamBlockCallback* blockCallback_)
   timeoutms = 0;
 }
 
-size_t FdInStream::pos()
+
+bool FdInStream::fillBuffer(size_t maxSize, bool wait)
 {
-  return offset + ptr - start;
-}
+  size_t n = readWithTimeoutOrCallback((U8*)end, maxSize, wait);
+  if (n == 0)
+    return false;
+  end += n;
 
-void FdInStream::readBytes(void* data, size_t length)
-{
-  if (length < MIN_BULK_SIZE) {
-    InStream::readBytes(data, length);
-    return;
-  }
-
-  U8* dataPtr = (U8*)data;
-
-  size_t n = end - ptr;
-  if (n > length) n = length;
-
-  memcpy(dataPtr, ptr, n);
-  dataPtr += n;
-  length -= n;
-  ptr += n;
-
-  while (length > 0) {
-    n = readWithTimeoutOrCallback(dataPtr, length);
-    dataPtr += n;
-    length -= n;
-    offset += n;
-  }
-}
-
-
-size_t FdInStream::overrun(size_t itemSize, size_t nItems, bool wait)
-{
-  if (itemSize > bufSize)
-    throw Exception("FdInStream overrun: max itemSize exceeded");
-
-  if (end - ptr != 0)
-    memmove(start, ptr, end - ptr);
-
-  offset += ptr - start;
-  end -= ptr - start;
-  ptr = start;
-
-  size_t bytes_to_read;
-  while ((size_t)(end - start) < itemSize) {
-    bytes_to_read = start + bufSize - end;
-    if (!timing) {
-      // When not timing, we must be careful not to read too much
-      // extra data into the buffer. Otherwise, the line speed
-      // estimation might stay at zero for a long time: All reads
-      // during timing=1 can be satisfied without calling
-      // readWithTimeoutOrCallback. However, reading only 1 or 2 bytes
-      // bytes is ineffecient.
-      bytes_to_read = vncmin(bytes_to_read, vncmax(itemSize*nItems, 8));
-    }
-    size_t n = readWithTimeoutOrCallback((U8*)end, bytes_to_read, wait);
-    if (n == 0) return 0;
-    end += n;
-  }
-
-  size_t nAvail;
-  nAvail = (end - ptr) / itemSize;
-  if (nAvail < nItems)
-    return nAvail;
-
-  return nItems;
+  return true;
 }
 
 //
@@ -175,10 +102,6 @@ size_t FdInStream::overrun(size_t itemSize, size_t nItems, bool wait)
 
 size_t FdInStream::readWithTimeoutOrCallback(void* buf, size_t len, bool wait)
 {
-  struct timeval before, after;
-  if (timing)
-    gettimeofday(&before, 0);
-
   int n;
   while (true) {
     do {
@@ -215,48 +138,5 @@ size_t FdInStream::readWithTimeoutOrCallback(void* buf, size_t len, bool wait)
   if (n < 0) throw SystemException("read",errno);
   if (n == 0) throw EndOfStream();
 
-  if (timing) {
-    gettimeofday(&after, 0);
-    int newTimeWaited = ((after.tv_sec - before.tv_sec) * 10000 +
-                         (after.tv_usec - before.tv_usec) / 100);
-    int newKbits = n * 8 / 1000;
-
-    // limit rate to between 10kbit/s and 40Mbit/s
-
-    if (newTimeWaited > newKbits*1000) newTimeWaited = newKbits*1000;
-    if (newTimeWaited < newKbits/4)    newTimeWaited = newKbits/4;
-
-    timeWaitedIn100us += newTimeWaited;
-    timedKbits += newKbits;
-  }
-
   return n;
-}
-
-void FdInStream::startTiming()
-{
-  timing = true;
-
-  // Carry over up to 1s worth of previous rate for smoothing.
-
-  if (timeWaitedIn100us > 10000) {
-    timedKbits = timedKbits * 10000 / timeWaitedIn100us;
-    timeWaitedIn100us = 10000;
-  }
-}
-
-void FdInStream::stopTiming()
-{
-  timing = false; 
-  if (timeWaitedIn100us < timedKbits/2)
-    timeWaitedIn100us = timedKbits/2; // upper limit 20Mbit/s
-}
-
-unsigned int FdInStream::kbitsPerSecond()
-{
-  // The following calculation will overflow 32-bit arithmetic if we have
-  // received more than about 50Mbytes (400Mbits) since we started timing, so
-  // it should be OK for a single RFB update.
-
-  return timedKbits * 10000 / timeWaitedIn100us;
 }

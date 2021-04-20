@@ -1,4 +1,5 @@
 /* Copyright (C) 2002-2005 RealVNC Ltd.  All Rights Reserved.
+ * Copyright 2011-2020 Pierre Ossman for Cendio AB
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,48 +18,48 @@
  */
 
 //
-// FdInStream streams from a file descriptor.
+// Base class for output streams with a buffer
 //
 
-#ifndef __RDR_FDINSTREAM_H__
-#define __RDR_FDINSTREAM_H__
+#ifndef __RDR_BUFFEREDOUTSTREAM_H__
+#define __RDR_BUFFEREDOUTSTREAM_H__
 
-#include <rdr/BufferedInStream.h>
+#include <rdr/OutStream.h>
 
 namespace rdr {
 
-  class FdInStreamBlockCallback {
-  public:
-    virtual void blockCallback() = 0;
-    virtual ~FdInStreamBlockCallback() {}
-  };
-
-  class FdInStream : public BufferedInStream {
+  class BufferedOutStream : public OutStream {
 
   public:
+    virtual ~BufferedOutStream();
 
-    FdInStream(int fd, int timeoutms=-1, bool closeWhenDone_=false);
-    FdInStream(int fd, FdInStreamBlockCallback* blockCallback);
-    virtual ~FdInStream();
+    virtual size_t length();
+    virtual void flush();
 
-    void setTimeout(int timeoutms);
-    void setBlockCallback(FdInStreamBlockCallback* blockCallback);
-    int getFd() { return fd; }
+    size_t bufferUsage();
 
   private:
-    virtual bool fillBuffer(size_t maxSize, bool wait);
+    // flushBuffer() requests that the stream be flushed. Returns true if it is
+    // able to progress the output (which might still not mean any bytes
+    // actually moved) and can be called again. If wait is true then it will
+    // block until all data has been written.
 
-    size_t readWithTimeoutOrCallback(void* buf, size_t len, bool wait=true);
+    virtual bool flushBuffer(bool wait) = 0;
 
-    int fd;
-    bool closeWhenDone;
-    int timeoutms;
-    FdInStreamBlockCallback* blockCallback;
+    virtual void overrun(size_t needed);
 
+  private:
+    size_t bufSize;
     size_t offset;
     U8* start;
+
+  protected:
+    U8* sentUpTo;
+
+  protected:
+    BufferedOutStream();
   };
 
-} // end of namespace rdr
+}
 
 #endif

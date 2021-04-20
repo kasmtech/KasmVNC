@@ -85,7 +85,7 @@ JpegInitDestination(j_compress_ptr cinfo)
 
   jc->clear();
   dest->pub.next_output_byte = jc->getptr();
-  dest->pub.free_in_buffer = jc->getend() - jc->getptr();
+  dest->pub.free_in_buffer = jc->avail();
 }
 
 static boolean
@@ -95,9 +95,9 @@ JpegEmptyOutputBuffer(j_compress_ptr cinfo)
   JpegCompressor *jc = dest->instance;
 
   jc->setptr(jc->getend());
-  jc->overrun(jc->getend() - jc->getstart(), 1);
+  jc->check(jc->length());
   dest->pub.next_output_byte = jc->getptr();
-  dest->pub.free_in_buffer = jc->getend() - jc->getptr();
+  dest->pub.free_in_buffer = jc->avail();
 
   return TRUE;
 }

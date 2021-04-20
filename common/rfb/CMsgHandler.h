@@ -72,6 +72,15 @@ namespace rfb {
 
     virtual void setLEDState(unsigned int state);
 
+    virtual void handleClipboardCaps(rdr::U32 flags,
+                                     const rdr::U32* lengths);
+    virtual void handleClipboardRequest(rdr::U32 flags);
+    virtual void handleClipboardPeek(rdr::U32 flags);
+    virtual void handleClipboardNotify(rdr::U32 flags);
+    virtual void handleClipboardProvide(rdr::U32 flags,
+                                        const size_t* lengths,
+                                        const rdr::U8* const* data);
+
     ConnParams cp;
   };
 }

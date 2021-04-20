@@ -84,6 +84,9 @@ namespace rfb {
     const Cursor& cursor() const { return *cursor_; }
     void setCursor(const Cursor& cursor);
 
+    const Point& cursorPos() const { return cursorPos_; }
+    void setCursorPos(const Point& pos);
+
     bool supportsEncoding(rdr::S32 encoding) const;
 
     void setEncodings(int nEncodings, const rdr::S32* encodings);
@@ -91,11 +94,15 @@ namespace rfb {
     unsigned int ledState() { return ledState_; }
     void setLEDState(unsigned int state);
 
+    rdr::U32 clipboardFlags() const { return clipFlags; }
+    void setClipboardCaps(rdr::U32 flags, const rdr::U32* lengths);
+
     bool useCopyRect;
 
     bool supportsLocalCursor;
     bool supportsLocalXCursor;
     bool supportsLocalCursorWithAlpha;
+    bool supportsCursorPosition;
     bool supportsDesktopResize;
     bool supportsExtendedDesktopSize;
     bool supportsDesktopRename;
@@ -107,6 +114,7 @@ namespace rfb {
     bool supportsSetDesktopSize;
     bool supportsFence;
     bool supportsContinuousUpdates;
+    bool supportsExtendedClipboard;
 
     int compressLevel;
     int qualityLevel;
@@ -136,11 +144,14 @@ namespace rfb {
     PixelFormat pf_;
     char* name_;
     Cursor* cursor_;
+    Point cursorPos_;
     std::set<rdr::S32> encodings_;
     char verStr[13];
     int verStrPos;
     unsigned int ledState_;
     SMsgHandler *shandler;
+    rdr::U32 clipFlags;
+    rdr::U32 clipSizes[16];
   };
 }
 #endif

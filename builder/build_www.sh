@@ -14,6 +14,5 @@ cp -R ./* /build/
 cd /build
 rm *.md
 rm AUTHORS
-rm *.yml
 rm vnc.html
 rm vnc_lite.html
