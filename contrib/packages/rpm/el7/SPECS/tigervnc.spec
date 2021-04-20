@@ -376,7 +376,7 @@ fi
 %{_datadir}/vnc/classes/*
 
 %files license
-%doc %{_docdir}/%{name}-%{version}/LICENCE.TXT
+%doc %{_docdir}/%{name}-%{version}/LICENSE.TXT
 
 %files icons
 %defattr(-,root,root,-)

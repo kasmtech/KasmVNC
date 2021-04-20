@@ -1031,7 +1031,7 @@ fi
 
 %files license
 %defattr(-,root,root,-)
-%doc LICENCE.TXT
+%doc LICENSE.TXT
 
 %files icons
 %defattr(-,root,root,-)

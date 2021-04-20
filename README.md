@@ -101,4 +101,4 @@ We also need help with Windows, which is not currently supported. While KasmVNC 
 See the [builder/README.md](https://github.com/kasmtech/KasmVNC/blob/master/builder/README.md). We containerize our build systems to ensure highly repeatable builds.
 
 ### License and Acknowledgements
-See the [LICENSE.TXT](https://github.com/kasmtech/KasmVNC/blob/master/LICENCE.TXT) and [ACKNOWLEDGEMENTS.MD](https://github.com/kasmtech/KasmVNC/blob/master/LICENSE.TXT)
+See the [LICENSE.TXT](https://github.com/kasmtech/KasmVNC/blob/master/LICENSE.TXT) and [ACKNOWLEDGEMENTS.MD](https://github.com/kasmtech/KasmVNC/blob/master/LICENSE.TXT)

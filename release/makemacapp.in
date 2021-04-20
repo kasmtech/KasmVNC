@@ -62,7 +62,7 @@ if [ $UNIVERSAL = 1 ]; then
 		-output "$APPROOT/Contents/MacOS/KasmVNC Viewer"
 fi
 
-install -m 644 $SRCDIR/LICENCE.TXT $TMPDIR/dmg/
+install -m 644 $SRCDIR/LICENSE.TXT $TMPDIR/dmg/
 install -m 644 $SRCDIR/README.md $TMPDIR/dmg/
 
 hdiutil create -fs HFS+ -volname $PACKAGE_NAME-$VERSION \

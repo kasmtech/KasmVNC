@@ -69,7 +69,7 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 /usr/share/man/man1/*
 /usr/share/kasmvnc/www
 
-%license /usr/share/doc/kasmvncserver/LICENCE.TXT
+%license /usr/share/doc/kasmvncserver/LICENSE.TXT
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog

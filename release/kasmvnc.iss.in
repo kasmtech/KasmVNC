@@ -16,7 +16,7 @@ DefaultGroupName=KasmVNC 64-bit
 #else
 DefaultGroupName=KasmVNC
 #endif
-LicenseFile=@CMAKE_SOURCE_DIR@\LICENCE.txt
+LicenseFile=@CMAKE_SOURCE_DIR@\LICENSE.txt
 
 [Dirs]
 ; This directory is necessary to prevent the X509 file chooser from causing
@@ -31,7 +31,7 @@ Source: "@CMAKE_CURRENT_BINARY_DIR@\win\vncconfig\vncconfig.exe"; DestDir: "{app
 #endif
 Source: "@CMAKE_CURRENT_BINARY_DIR@\vncviewer\vncviewer.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace; 
 Source: "@CMAKE_SOURCE_DIR@\README.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "@CMAKE_SOURCE_DIR@\LICENCE.TXT"; DestDir: "{app}"; Flags: ignoreversion
+Source: "@CMAKE_SOURCE_DIR@\LICENSE.TXT"; DestDir: "{app}"; Flags: ignoreversion
 
 
 [Icons]
@@ -48,7 +48,7 @@ Name: "{group}\VNC Server (Service-Mode)\Unregister VNC Service"; FileName: "{ap
 Name: "{group}\VNC Server (Service-Mode)\Start VNC Service"; FileName: "{app}\winvnc4.exe"; Parameters: "-noconsole -start";
 Name: "{group}\VNC Server (Service-Mode)\Stop VNC Service"; FileName: "{app}\winvnc4.exe"; Parameters: "-noconsole -stop";
 #endif
-Name: "{group}\License"; FileName: "write.exe"; Parameters: "LICENCE.TXT"; WorkingDir: "{app}"; Flags: "useapppaths"
+Name: "{group}\License"; FileName: "write.exe"; Parameters: "LICENSE.TXT"; WorkingDir: "{app}"; Flags: "useapppaths"
 Name: "{group}\Read Me"; FileName: "write.exe"; Parameters: "README.md"; WorkingDir: "{app}"; Flags: "useapppaths"
 Name: "{group}\Uninstall KasmVNC"; FileName: "{uninstallexe}"; WorkingDir: "{app}";
 
