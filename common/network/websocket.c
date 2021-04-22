@@ -779,7 +779,13 @@ static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[
         if (!strcmp(names[i]->d_name, ".") || !strcmp(names[i]->d_name, ".."))
             continue;
 
-        sprintf(buf, "<li><a href=\"%s\">%s</a></li>", names[i]->d_name, names[i]->d_name);
+        if (names[i]->d_type == DT_DIR)
+	        sprintf(buf, "<li><a href=\"%s/\">%s/</a></li>", names[i]->d_name,
+	                names[i]->d_name);
+        else
+	        sprintf(buf, "<li><a href=\"%s\">%s</a></li>", names[i]->d_name,
+	                names[i]->d_name);
+
         ws_send(ws_ctx, buf, strlen(buf));
     }
 
