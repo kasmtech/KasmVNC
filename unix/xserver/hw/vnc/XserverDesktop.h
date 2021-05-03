@@ -89,7 +89,7 @@ public:
                          const char* rejectMsg=0);
 
   // rfb::SDesktop callbacks
-  virtual void pointerEvent(const rfb::Point& pos, int buttonMask,
+  virtual void pointerEvent(const rfb::Point& pos, const rfb::Point& abspos, int buttonMask,
                             const bool skipClick, const bool skipRelease);
   virtual void keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down);
   virtual unsigned int setScreenLayout(int fb_width, int fb_height,

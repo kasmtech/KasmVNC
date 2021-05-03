@@ -220,7 +220,7 @@ void SMsgReader::readPointerEvent()
   int mask = is->readU8();
   int x = is->readU16();
   int y = is->readU16();
-  handler->pointerEvent(Point(x, y), mask, false, false);
+  handler->pointerEvent(Point(x, y), Point(0, 0), mask, false, false);
 }
 
 

@@ -234,6 +234,40 @@ void vncPointerMove(int x, int y)
 	cursorPosY = y;
 }
 
+void vncPointerMoveRelative(int x, int y, int absx, int absy)
+{
+	int valuators[2];
+#if XORG < 111
+	int n;
+#endif
+#if XORG >= 110
+	ValuatorMask mask;
+#endif
+
+//	if (cursorPosX == absx && cursorPosY == absy)
+//		return;
+
+	valuators[0] = x;
+	valuators[1] = y;
+#if XORG < 110
+	n = GetPointerEvents(eventq, vncPointerDev, MotionNotify, 0,
+	                     POINTER_RELATIVE, 0, 2, valuators);
+	enqueueEvents(vncPointerDev, n);
+#elif XORG < 111
+	valuator_mask_set_range(&mask, 0, 2, valuators);
+	n = GetPointerEvents(eventq, vncPointerDev, MotionNotify, 0,
+	                     POINTER_RELATIVE, &mask);
+	enqueueEvents(vncPointerDev, n);
+#else
+	valuator_mask_set_range(&mask, 0, 2, valuators);
+	QueuePointerEvents(vncPointerDev, MotionNotify, 0,
+	                   POINTER_RELATIVE, &mask);
+#endif
+
+	cursorPosX = absx;
+	cursorPosY = absy;
+}
+
 void vncGetPointerPos(int *x, int *y)
 {
 	if (vncPointerDev != NULL) {
