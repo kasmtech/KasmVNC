@@ -206,7 +206,7 @@ namespace rfb {
 
         bool write, owner;
         if (!getPerms(write, owner) || !write)
-            accessRights = (accessRights & ~(AccessPtrEvents | AccessKeyEvents));
+            accessRights &= ~WRITER_PERMS;
         needsPermCheck = false;
     }
 

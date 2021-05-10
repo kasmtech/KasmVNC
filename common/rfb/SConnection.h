@@ -252,4 +252,7 @@ namespace rfb {
     bool hasLocalClipboard;
   };
 }
+
+#define WRITER_PERMS (AccessKeyEvents | AccessPtrEvents | AccessCutText | AccessSetDesktopSize)
+
 #endif
