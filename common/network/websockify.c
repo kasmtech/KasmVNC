@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include "websocket.h"
 
 /*
@@ -227,9 +228,13 @@ void proxy_handler(ws_ctx_t *ws_ctx) {
     strcpy(addr.sun_path, ".KasmVNCSock");
     addr.sun_path[0] = '\0';
 
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
     struct sockaddr_un myaddr;
     myaddr.sun_family = AF_UNIX;
-    sprintf(myaddr.sun_path, ".%s@%s", ws_ctx->user, ws_ctx->ip);
+    sprintf(myaddr.sun_path, ".%s@%s_%lu.%lu", ws_ctx->user, ws_ctx->ip,
+            tv.tv_sec, tv.tv_usec);
     myaddr.sun_path[0] = '\0';
 
     int tsock = socket(AF_UNIX, SOCK_STREAM, 0);
