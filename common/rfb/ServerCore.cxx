@@ -199,6 +199,10 @@ rfb::IntParameter rfb::Server::videoScaling
 ("VideoScaling",
  "Scaling method to use when in downscaled video mode. 0 = nearest, 1 = bilinear, 2 = prog bilinear",
  2, 0, 2);
+rfb::IntParameter rfb::Server::x264Bitrate
+("x264Bitrate",
+ "Enable x264 encoding for full-screen video, in kbps. Default 0 (off)",
+ 0, 0, 2000);
 rfb::BoolParameter rfb::Server::printVideoArea
 ("PrintVideoArea",
  "Print the detected video area % value.",

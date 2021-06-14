@@ -256,6 +256,10 @@ Scaling method to use when in downscaled video mode. 0 = nearest, 1 = bilinear,
 Default \fB2\fP.
 .
 .TP
+.B \-x264Bitrate \fInum\fP
+Enable x264 encoding for full-screen video, in kbps. Default \fB0\fP (off).
+.
+.TP
 .B \-CompareFB \fImode\fP
 Perform pixel comparison on framebuffer to reduce unnecessary updates. Can
 be either \fB0\fP (off), \fB1\fP (always) or \fB2\fP (auto). Default is

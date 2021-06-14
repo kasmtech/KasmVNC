@@ -24,7 +24,8 @@ namespace rfb {
   const unsigned int tightJpeg = 0x09;
   const unsigned int tightPng = 0x0a;
   const unsigned int tightWebp = 0x0b;
-  const unsigned int tightMaxSubencoding = 0x0b;
+  const unsigned int tightX264 = 0x0c;
+  const unsigned int tightMaxSubencoding = 0x0c;
 
   // Filters to improve compression efficiency
   const unsigned int tightFilterCopy = 0x00;

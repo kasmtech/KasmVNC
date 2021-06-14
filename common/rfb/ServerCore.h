@@ -59,6 +59,7 @@ namespace rfb {
     static IntParameter videoOutTime;
     static IntParameter videoArea;
     static IntParameter videoScaling;
+    static IntParameter x264Bitrate;
     static StringParameter kasmPasswordFile;
     static BoolParameter printVideoArea;
     static BoolParameter protocol3_3;

@@ -58,6 +58,7 @@ set(RFB_SOURCES
   TightEncoder.cxx
   TightJPEGEncoder.cxx
   TightWEBPEncoder.cxx
+  TightX264Encoder.cxx
   UpdateTracker.cxx
   VNCSConnectionST.cxx
   VNCServerST.cxx
@@ -65,6 +66,10 @@ set(RFB_SOURCES
   ZRLEDecoder.cxx
   encodings.cxx
   util.cxx
+  mp4.c
+  mp4_bitbuf.c
+  mp4_moov.c
+  mp4_moof.c
   xxhash.c)
 
 if(UNIX)

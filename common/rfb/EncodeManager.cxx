@@ -40,6 +40,7 @@
 #include <rfb/TightEncoder.h>
 #include <rfb/TightJPEGEncoder.h>
 #include <rfb/TightWEBPEncoder.h>
+#include <rfb/TightX264Encoder.h>
 
 using namespace rfb;
 
@@ -68,6 +69,7 @@ enum EncoderClass {
   encoderTight,
   encoderTightJPEG,
   encoderTightWEBP,
+  encoderTightX264,
   encoderZRLE,
   encoderClassMax,
 };
@@ -110,6 +112,8 @@ static const char *encoderClassName(EncoderClass klass)
     return "Tight (JPEG)";
   case encoderTightWEBP:
     return "Tight (WEBP)";
+  case encoderTightX264:
+    return "Tight (X264)";
   case encoderZRLE:
     return "ZRLE";
   case encoderClassMax:
@@ -170,6 +174,7 @@ EncodeManager::EncodeManager(SConnection* conn_, EncCache *encCache_) : conn(con
   encoders[encoderTight] = new TightEncoder(conn);
   encoders[encoderTightJPEG] = new TightJPEGEncoder(conn);
   encoders[encoderTightWEBP] = new TightWEBPEncoder(conn);
+  encoders[encoderTightX264] = new TightX264Encoder(conn, encCache, encoderTightX264);
   encoders[encoderZRLE] = new ZRLEEncoder(conn);
 
   webpBenchResult = ((TightWEBPEncoder *) encoders[encoderTightWEBP])->benchmark();
@@ -393,20 +398,32 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
 
     conn->writer()->writeFramebufferUpdateStart(nRects);
 
-    writeCopyRects(copied, copyDelta);
-    writeCopyPassRects(copypassed);
-
     /*
-     * We start by searching for solid rects, which are then removed
-     * from the changed region.
+     * In extra-low-quality mode, if x264 is enabled, send entire screen frames
      */
-    if (conn->cp.supportsLastRect)
-      writeSolidRects(&changed, pb);
+    if (rfb::Server::x264Bitrate && videoDetected) {
+      std::vector<Rect> rects;
+      changed.get_rects(&rects);
+      updateVideoStats(rects, pb);
 
-    writeRects(changed, pb,
-               &start, true);
-    if (!videoDetected) // In case detection happened between the calls
-      writeRects(cursorRegion, renderedCursor);
+      writeSubRect(pb->getRect(), pb, encoderFullColour, Palette(), std::vector<uint8_t>(),
+                   false);
+    } else {
+      writeCopyRects(copied, copyDelta);
+      writeCopyPassRects(copypassed);
+
+      /*
+       * We start by searching for solid rects, which are then removed
+       * from the changed region.
+       */
+      if (conn->cp.supportsLastRect)
+        writeSolidRects(&changed, pb);
+
+      writeRects(changed, pb,
+                 &start, true);
+      if (!videoDetected) // In case detection happened between the calls
+        writeRects(cursorRegion, renderedCursor);
+    }
 
     updateQualities();
 
@@ -617,6 +634,8 @@ Encoder *EncodeManager::startRect(const Rect& rect, int type, const bool trackQu
   klass = activeEncoders[activeType];
   if (isWebp)
     klass = encoderTightWEBP;
+  else if (rfb::Server::x264Bitrate && videoDetected) // if x264 enabled
+    klass = encoderTightX264;
 
   beforeLength = conn->getOutStream()->length();
 
@@ -656,6 +675,8 @@ void EncodeManager::endRect(const uint8_t isWebp)
   klass = activeEncoders[activeType];
   if (isWebp)
     klass = encoderTightWEBP;
+  else if (rfb::Server::x264Bitrate && videoDetected) // if x264 enabled
+    klass = encoderTightX264;
   stats[klass][activeType].bytes += length;
 }
 
@@ -861,6 +882,8 @@ void EncodeManager::updateVideoStats(const std::vector<Rect> &rects, const Pixel
   uint32_t i;
 
   if (!rfb::Server::videoTime) {
+      if (!videoDetected)
+        ((TightX264Encoder *) encoders[encoderTightX264])->setKeyframe();
     videoDetected = true;
     return;
   }
@@ -888,6 +911,8 @@ void EncodeManager::updateVideoStats(const std::vector<Rect> &rects, const Pixel
 
   if (area > (unsigned) rfb::Server::videoArea) {
     // Initiate low-quality video mode
+    if (!videoDetected)
+      ((TightX264Encoder *) encoders[encoderTightX264])->setKeyframe();
     videoDetected = true;
     videoTimer.start(1000 * rfb::Server::videoOutTime);
   }
@@ -1021,11 +1046,6 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
 
   webpTookTooLong = false;
   changed.get_rects(&rects);
-
-  // Update stats
-  if (mainScreen) {
-    updateVideoStats(rects, pb);
-  }
 
   if (videoDetected) {
     rects.clear();
@@ -1169,6 +1189,11 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
     }
 
     writeSubRect(subrects[i], pb, encoderTypes[i], palettes[i], compresseds[i], isWebp[i]);
+  }
+
+  // Update stats
+  if (mainScreen) {
+    updateVideoStats(rects, pb);
   }
 
   if (scaledpb)
