@@ -579,13 +579,20 @@ void VNCServerST::add_copied(const Region& dest, const Point& delta)
 }
 
 void VNCServerST::setCursor(int width, int height, const Point& newHotspot,
-                            const rdr::U8* data)
+                            const rdr::U8* data, const bool resizing)
 {
   delete cursor;
   cursor = new Cursor(width, height, newHotspot, data);
   cursor->crop();
 
   renderedCursorInvalid = true;
+
+  // If an app has an animated cursor on the resized edge, X internals
+  // will call for it to be rendered. Unlucky for us, the VNC screen
+  // is currently pointing to freed memory, and a cursor change
+  // would want to send a screen update. So, don't do that.
+  if (resizing)
+    return;
 
   std::list<VNCSConnectionST*>::iterator ci, ci_next;
   for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {

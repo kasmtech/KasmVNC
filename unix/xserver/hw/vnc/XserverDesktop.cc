@@ -74,7 +74,7 @@ XserverDesktop::XserverDesktop(int screenIndex_,
   : screenIndex(screenIndex_),
     server(0), listeners(listeners_),
     directFbptr(true),
-    queryConnectId(0), queryConnectTimer(this)
+    queryConnectId(0), queryConnectTimer(this), resizing(false)
 {
   format = pf;
 
@@ -251,7 +251,7 @@ void XserverDesktop::setCursor(int width, int height, int hotX, int hotY,
   }
 
   try {
-    server->setCursor(width, height, Point(hotX, hotY), cursorData);
+    server->setCursor(width, height, Point(hotX, hotY), cursorData, resizing);
   } catch (rdr::Exception& e) {
     vlog.error("XserverDesktop::setCursor: %s",e.str());
   }
@@ -462,8 +462,11 @@ unsigned int XserverDesktop::setScreenLayout(int fb_width, int fb_height,
   layout.print(buffer, sizeof(buffer));
   vlog.debug("%s", buffer);
 
+  resizing = true;
   vncSetGlueContext(screenIndex);
-  return ::setScreenLayout(fb_width, fb_height, layout, &outputIdMap);
+  const unsigned int ret = ::setScreenLayout(fb_width, fb_height, layout, &outputIdMap);
+  resizing = false;
+  return ret;
 }
 
 void XserverDesktop::handleClipboardRequest()

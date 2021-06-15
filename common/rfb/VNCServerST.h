@@ -102,7 +102,7 @@ namespace rfb {
     virtual void add_changed(const Region &region);
     virtual void add_copied(const Region &dest, const Point &delta);
     virtual void setCursor(int width, int height, const Point& hotspot,
-                           const rdr::U8* data);
+                           const rdr::U8* data, const bool resizing = false);
     virtual void setCursorPos(const Point& p, bool warped);
     virtual void setLEDState(unsigned state);
 
