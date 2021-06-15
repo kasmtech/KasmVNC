@@ -79,7 +79,7 @@ namespace rfb {
     // cursorData argument contains width*height rgba quadruplets with
     // non-premultiplied alpha.
     virtual void setCursor(int width, int height, const Point& hotspot,
-                           const rdr::U8* cursorData) = 0;
+                           const rdr::U8* cursorData, const bool resizing = false) = 0;
 
     // setCursorPos() tells the server the current position of the cursor, and
     // whether the server initiated that change (e.g. through another X11

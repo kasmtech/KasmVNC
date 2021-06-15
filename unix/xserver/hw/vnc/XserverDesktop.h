@@ -132,5 +132,7 @@ private:
   OutputIdMap outputIdMap;
 
   rfb::Point oldCursorPos;
+
+  bool resizing;
 };
 #endif
