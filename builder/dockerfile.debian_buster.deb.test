@@ -34,6 +34,8 @@ RUN apt-get purge -y pm-utils xscreensaver*
 RUN apt-get update && apt-get install -y vim less
 RUN apt-get update && apt-get -y install lsb-release
 
+RUN apt-get update && apt-get -y install xdg-desktop-portal xdg-desktop-portal-kde firefox-esr
+
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
 RUN mkdir -p $STARTUPDIR
@@ -47,8 +49,12 @@ RUN dpkg -i /tmp/*.deb; apt-get -yf install
 
 ### END CUSTOM STUFF ###
 
+RUN sed -i -e 's/about:home/postimages.org/' /usr/lib/firefox-esr/browser/defaults/preferences/firefox.js
+RUN sed -i -e '/browser.startup.firstrunSkipsHomepage/d' /usr/lib/firefox-esr/browser/defaults/preferences/firefox.js
+RUN echo 'pref("browser.startup.firstrunSkipsHomepage", false);' >> /usr/lib/firefox-esr/browser/defaults/preferences/firefox.js
 RUN chown -R 1000:0 $HOME
 USER 1000:ssl-cert
 WORKDIR $HOME
 
+ENV GTK_USE_PORTAL=1
 ENTRYPOINT [ "/dockerstartup/vnc_startup.sh" ]

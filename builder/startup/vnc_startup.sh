@@ -88,6 +88,8 @@ detect_www_dir
 detect_cert_location
 [ -n "$KASMVNC_VERBOSE_LOGGING" ] && verbose_logging_option="-log *:stderr:100"
 
+# dbus-daemon --session --address=systemd: --nofork --nopidfile --syslog-only &
+
 echo -e "start vncserver with param: VNC_COL_DEPTH=$VNC_COL_DEPTH, VNC_RESOLUTION=$VNC_RESOLUTION\n..."
 vncserver $DISPLAY -depth $VNC_COL_DEPTH -geometry $VNC_RESOLUTION -FrameRate=$MAX_FRAME_RATE -websocketPort $VNC_PORT $cert_option -sslOnly -interface 0.0.0.0 $VNCOPTIONS $package_www_dir_option $verbose_logging_option #&> $STARTUPDIR/no_vnc_startup.log
 
