@@ -70,6 +70,7 @@ set(RFB_SOURCES
   mp4_bitbuf.c
   mp4_moov.c
   mp4_moof.c
+  nvidia.cxx
   xxhash.c)
 
 if(UNIX)
