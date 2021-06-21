@@ -317,7 +317,7 @@ int nvenc_frame(const uint8_t *data, unsigned pts, uint8_t *out, uint32_t &outle
 		return -1;
 
 	nvenc.surf[nvenc.cursurf].pitch = lockBufferParams.pitch;
-	vlog.info("pitch %u\n", lockBufferParams.pitch);
+	//vlog.info("pitch %u", lockBufferParams.pitch);
 
 	// copy frame
 	unsigned y;
@@ -381,8 +381,8 @@ int nvenc_frame(const uint8_t *data, unsigned pts, uint8_t *out, uint32_t &outle
 
 	nvenc.cuda_dl->cuCtxPopCurrent(&dummy);
 
-	vlog.info("Pic type %x, idr %x i %x\n", lock_params.pictureType, NV_ENC_PIC_TYPE_IDR,
-		NV_ENC_PIC_TYPE_I);
+	//vlog.info("Pic type %x, idr %x i %x", lock_params.pictureType, NV_ENC_PIC_TYPE_IDR,
+	//	NV_ENC_PIC_TYPE_I);
 
 	return 0;
 }
