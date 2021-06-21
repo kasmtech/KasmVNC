@@ -174,7 +174,7 @@ static int setupdevice() {
 	const int minw = nvenc_check_cap(NV_ENC_CAPS_WIDTH_MIN);
 	const int minh = nvenc_check_cap(NV_ENC_CAPS_HEIGHT_MIN);
 
-	vlog.info("Max enc resolution %ux%u, min %ux%u\n", maxw, maxh, minw, minh);
+	vlog.info("Max enc resolution %ux%u, min %ux%u", maxw, maxh, minw, minh);
 
 	return 0;
 }
