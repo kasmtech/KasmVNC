@@ -269,7 +269,7 @@ static int setupsurf(const unsigned w, const unsigned h) {
 		NV_ENC_CREATE_INPUT_BUFFER allocSurf;
 		memset(&allocSurf, 0, sizeof(NV_ENC_CREATE_INPUT_BUFFER));
 
-		nvenc.surf[i].format = NV_ENC_BUFFER_FORMAT_ABGR; // doesn't have RGBA!
+		nvenc.surf[i].format = NV_ENC_BUFFER_FORMAT_ARGB; // doesn't have RGBA!
 		allocSurf.version = NV_ENC_CREATE_INPUT_BUFFER_VER;
 		allocSurf.width = w;
 		allocSurf.height = h;
