@@ -201,10 +201,10 @@ void TightX264Encoder::writeRect(const PixelBuffer* pb, const Palette& palette)
     if (!next)
       break;
 
-    nalstarts[i_nals] = next + 3;
+    remlen -= (next + 3) - nalptr;
+    nalptr = nalstarts[i_nals] = next + 3;
 
-    nalptr += 4; // 3 prefix, 1 type
-    remlen -= 4;
+    i_nals++;
   };
 
   // Lens
