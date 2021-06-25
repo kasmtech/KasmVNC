@@ -1,8 +1,8 @@
 # KasmVNC - Linux Web Remote Desktop
 
-[![Kasm Technologies](https://kasm-static-content.s3.amazonaws.com/368_kasm_logo_.jpg "Kasm Logo")](https://kasmweb.com)
-
-[Kasm Technologies LLC](https://www.kasmweb.com) developed Kasm Server, a Containerized Desktop Infrastructure (CDI) solution. Kasm started with TigerVNC and eventually forked it to create KasmVNC. KasmVNC is used within the overal Kasm CDI infrastructure, however, you can use KasmVNC for individual servers. KasmVNC has different goals than TigerVNC:
+<a href="https://kasmweb.com"><img src="https://kasm-static-content.s3.amazonaws.com/logo_kasm.png" width="300"><a/>
+  
+[Kasm Technologies](https://www.kasmweb.com) developed Kasm Workspaces, the Containerized Streaming Platform. Kasm has open-sourced the Workspace docker images, which include containerized [full desktops and apps](https://github.com/kasmtech/workspaces-images) and [base images](https://github.com/kasmtech/workspaces-core-images) intended for developers to create custimized streaming containers. These containers can be used standalone or within the [Kasm Workspaces Platform](https://www.kasmweb.com) which provides a full Enterprise feature set. KasmVNC is used as the streaming tech for our container images, however, you can use KasmVNC for individual servers. While the term VNC is in the name, KasmVNC is not intended to remain compliant with the RFB spec and has different goals than other VNC projects:
 
   - Web-based - KasmVNC is designed to provide a web accessible remote desktop. It comes with a web server and websocket server built in. There is no need to install other components. Simply run and navigate to your desktop's URL on the port you specify. While you can still tun on the legacy VNC port, it is disabled by default.
   - Security - The RFB specification (VNC) limits the password field to 8 characters, so while the client may take a longer password, only the first 8 characters are sent. KasmVNC defaults to HTTPS with HTTP Basic Auth and disables the legacy VNC authentication method which is not sufficiently secure for internet accessible systems.
@@ -91,11 +91,13 @@ The options for vncserver:
 | interface | Which interface to bind the web server to. |
 
 ### Development
-Would you like to contribute to KasmVNC? Please reachout to us at info@kasmweb.com
+Would you like to contribute to KasmVNC? Please reachout to us at info@kasmweb.com. We have investigated or are working on the following, if you have experience in these fields and would like to help please let us know.
 
-We need help, especially in packaging KasmVNC for various operating systems. We would love to have standard debian or RMP packages and host our own repo, however, that all requires a lot of experience, proper testing, and pipeline development for automated builds.
+Real-time H264 encoding using NVIDIA and Intel encoding technology.
 
-We also need help with Windows, which is not currently supported. While KasmVNC can technically be built for Windows 10, it is unusably slow, due to all the changes that occured in Windows since the original Windows support was added in the chain of VNC forked projects.
+Windows version of KasmVNC. We have been able to get it to compile for Windows and increased the performance, but still not releasable. Experienced Windows developers with a background in cross compiling would help.
+  
+ARM version of KasmVNC, we have had requests for this and at one point we did have an ARM build of KasmVNC but it takes dev cycles to mainain and bring it back to life.
 
 ### Compiling From Source
 See the [builder/README.md](https://github.com/kasmtech/KasmVNC/blob/master/builder/README.md). We containerize our build systems to ensure highly repeatable builds.
