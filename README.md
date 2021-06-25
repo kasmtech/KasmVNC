@@ -5,7 +5,7 @@
 [Kasm Technologies LLC](https://www.kasmweb.com) developed Kasm Server, a Containerized Desktop Infrastructure (CDI) solution. Kasm started with TigerVNC and eventually forked it to create KasmVNC. KasmVNC is used within the overal Kasm CDI infrastructure, however, you can use KasmVNC for individual servers. KasmVNC has different goals than TigerVNC:
 
   - Web-based - KasmVNC is designed to provide a web accessible remote desktop. It comes with a web server and websocket server built in. There is no need to install other components. Simply run and navigate to your desktop's URL on the port you specify. While you can still tun on the legacy VNC port, it is disabled by default.
-  - Security - KasmVNC defaults to HTTPS and allows for HTTP Basic Auth. VNC Password authentication is limited by specification to 8 characters and is not suffecient for use on an internet accessible remote desktop. Our goal is to create a by default secure, web based experience.
+  - Security - The RFB specification (VNC) limits the password field to 8 characters, so while the client may take a longer password, only the first 8 characters are sent. KasmVNC defaults to HTTPS with HTTP Basic Auth and disables the legacy VNC authentication method which is not sufficiently secure for internet accessible systems.
   - Simplicity - KasmVNC aims at being simple to deploy and configure.
 
 # New Features!
