@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm l
 RUN apt-get purge -y pm-utils xscreensaver*
 RUN apt-get update && apt-get install -y vim less
 RUN apt-get update && apt-get -y install lsb-release
+RUN apt-get update && apt-get -y install xdg-desktop-portal xdg-desktop-portal-gtk firefox
 
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
@@ -47,8 +48,12 @@ RUN dpkg -i /tmp/*.deb; apt-get -yf install
 
 ### END CUSTOM STUFF ###
 
+RUN echo 'pref("browser.startup.firstrunSkipsHomepage", false);' >> /usr/lib/firefox/browser/defaults/preferences/syspref.js
+RUN echo 'pref("browser.startup.homepage", "postimages.org");' >> /usr/lib/firefox/browser/defaults/preferences/syspref.js
+
 RUN chown -R 1000:0 $HOME
 USER 1000:ssl-cert
 WORKDIR $HOME
 
+ENV GTK_USE_PORTAL=1
 ENTRYPOINT [ "/dockerstartup/vnc_startup.sh" ]

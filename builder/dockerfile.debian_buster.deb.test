@@ -34,7 +34,10 @@ RUN apt-get purge -y pm-utils xscreensaver*
 RUN apt-get update && apt-get install -y vim less
 RUN apt-get update && apt-get -y install lsb-release
 
-RUN apt-get update && apt-get -y install xdg-desktop-portal xdg-desktop-portal-kde firefox-esr
+RUN apt-get update && apt-get -y install xdg-desktop-portal firefox-esr
+COPY ./xdg-desktop-portal-gtk_1.2.0-1_amd64.deb /tmp
+RUN apt-get install -y /tmp/xdg-*.deb
+# RUN apt-get install -y xdg-desktop-portal-gtk
 
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
