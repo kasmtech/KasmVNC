@@ -34,6 +34,9 @@ RUN apt-get purge -y pm-utils xscreensaver*
 RUN apt-get update && apt-get install -y vim less
 RUN apt-get update && apt-get -y install lsb-release
 
+RUN apt-get update && apt-get install -y task-cinnamon-desktop
+RUN apt-get update && apt-get install -y task-gnome-desktop
+
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
 RUN mkdir -p $STARTUPDIR
@@ -50,5 +53,10 @@ RUN dpkg -i /tmp/*.deb; apt-get -yf install
 RUN chown -R 1000:0 $HOME
 USER 1000:ssl-cert
 WORKDIR $HOME
+
+COPY $KASMVNC_PACKAGE_DIR/xstartup $HOME/
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver-easy-start $HOME/
+RUN mkdir ~/.vnc && cp xstartup ~/.vnc/xstartup && \
+  chmod +x ~/.vnc/xstartup
 
 ENTRYPOINT [ "/dockerstartup/vnc_startup.sh" ]

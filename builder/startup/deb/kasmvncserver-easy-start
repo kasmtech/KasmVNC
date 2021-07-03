@@ -6,6 +6,37 @@ display=:10
 interface=0.0.0.0
 cert_group=ssl-cert
 
+declare -A all_desktop_environments=([Cinnamon]=cinnamon-session)
+detected_desktop_environments=()
+
+print_detected_desktop_environments() {
+  declare -i i=1
+
+  echo "Detected DEs:"
+  for detected_de in "${detected_desktop_environments[@]}"; do
+    echo "[$i] $detected_de"
+    i+=1
+  done
+}
+
+detect_desktop_environments() {
+  for de_name in "${!all_desktop_environments[@]}"; do
+    local executable=${all_desktop_environments[$de_name]}
+
+    detected_desktop_environments+=("$de_name")
+    detect_desktop_environment "$de_name" "$executable"
+  done
+}
+
+detect_desktop_environment() {
+  local de_name="$1"
+  local executable="$2"
+
+  if command -v "$executable" &>/dev/null; then
+    echo "Detected $de_name"
+  fi
+}
+
 if [[ "$1" = "--help" ]]; then
   cat >&2 <<-USAGE
 Usage: `basename $0` [options]
@@ -37,6 +68,10 @@ if [[ "$action" = "kill" ]]; then
   vncserver -kill $display
   exit
 fi
+
+detect_desktop_environments
+print_detected_desktop_environments
+echo "Please choose DE to run"
 
 vncserver $display -interface $interface
 vncserver -kill $display
