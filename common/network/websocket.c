@@ -566,7 +566,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     headers->key3[0] = '\0';
 
     if ((strlen(handshake) < 92) || (bcmp(handshake, "GET ", 4) != 0) ||
-        (!strstr(handshake, "Upgrade: websocket"))) {
+        (!strcasestr(handshake, "Upgrade: websocket"))) {
         return 0;
     }
     start = handshake+4;
@@ -587,7 +587,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     if (start) {
         start += 10;
     } else {
-        start = strstr(handshake, "\r\nSec-WebSocket-Origin: ");
+        start = strcasestr(handshake, "\r\nSec-WebSocket-Origin: ");
         if (!start) { return 0; }
         start += 24;
     }
@@ -595,7 +595,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     strncpy(headers->origin, start, end-start);
     headers->origin[end-start] = '\0';
 
-    start = strstr(handshake, "\r\nSec-WebSocket-Version: ");
+    start = strcasestr(handshake, "\r\nSec-WebSocket-Version: ");
     if (start) {
         // HyBi/RFC 6455
         start += 25;
@@ -605,7 +605,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         ws_ctx->hixie = 0;
         ws_ctx->hybi = strtol(headers->version, NULL, 10);
 
-        start = strstr(handshake, "\r\nSec-WebSocket-Key: ");
+        start = strcasestr(handshake, "\r\nSec-WebSocket-Key: ");
         if (!start) { return 0; }
         start += 21;
         end = strstr(start, "\r\n");
@@ -619,7 +619,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         strncpy(headers->connection, start, end-start);
         headers->connection[end-start] = '\0';
 
-        start = strstr(handshake, "\r\nSec-WebSocket-Protocol: ");
+        start = strcasestr(handshake, "\r\nSec-WebSocket-Protocol: ");
         if (!start) { return 0; }
         start += 26;
         end = strstr(start, "\r\n");
@@ -637,14 +637,14 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
             strncpy(headers->key3, start, 8);
             headers->key3[8] = '\0';
 
-            start = strstr(handshake, "\r\nSec-WebSocket-Key1: ");
+            start = strcasestr(handshake, "\r\nSec-WebSocket-Key1: ");
             if (!start) { return 0; }
             start += 22;
             end = strstr(start, "\r\n");
             strncpy(headers->key1, start, end-start);
             headers->key1[end-start] = '\0';
 
-            start = strstr(handshake, "\r\nSec-WebSocket-Key2: ");
+            start = strcasestr(handshake, "\r\nSec-WebSocket-Key2: ");
             if (!start) { return 0; }
             start += 22;
             end = strstr(start, "\r\n");
