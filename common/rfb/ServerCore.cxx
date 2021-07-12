@@ -202,7 +202,7 @@ rfb::IntParameter rfb::Server::videoScaling
 rfb::IntParameter rfb::Server::x264Bitrate
 ("x264Bitrate",
  "Enable x264 encoding for full-screen video, in kbps. Default 0 (off)",
- 0, 0, 2000);
+ 0, 0, 6000);
 rfb::BoolParameter rfb::Server::printVideoArea
 ("PrintVideoArea",
  "Print the detected video area % value.",
