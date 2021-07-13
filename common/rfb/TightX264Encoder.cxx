@@ -45,7 +45,7 @@ TightX264Encoder::TightX264Encoder(SConnection* conn, EncCache *cache_, uint8_t 
   keyframe(true), mux(NULL), muxstate(NULL), framectr(0),
   nvidia_init_done(false),
   encCache(cache_), cacheType(cacheType_),
-  framebuf(NULL), framelen(0), bitbuf(NULL)
+  framebuf(NULL), framelen(0), bitbuf(NULL), myw(0), myh(0)
 {
   framebuf = new uint8_t[MAX_FRAMELEN];
   bitbuf = new uint8_t[MAX_FRAMELEN];
@@ -98,12 +98,22 @@ void TightX264Encoder::writeRect(const PixelBuffer* pb, const Palette& palette)
   /*w += w & 1;
   h += h & 1;*/
 
+  if (w != myw || h != myh) {
+    if (nvidia_init_done)
+      nvidia_unload();
+    nvidia_init_done = false;
+  }
+
   if (!nvidia_init_done) {
     if (nvidia_init(w, h, rfb::Server::x264Bitrate,
                 rfb::Server::frameRate) != 0) {
-      vlog.error("nvidia init failed");
+      vlog.error("nvidia init failed, disabling h264");
+      rfb::Server::x264Bitrate.setParam(0);
+      return;
     }
     nvidia_init_done = true;
+    myw = w;
+    myh = h;
   }
 
   os = conn->getOutStream();
@@ -314,4 +324,24 @@ void TightX264Encoder::writeCompact(rdr::U32 value, rdr::OutStream* os) const
       os->writeU8(value >> 14 & 0xFF);
     }
   }
+}
+
+bool TightX264Encoder::tryInit(const PixelBuffer* pb) {
+  if (nvidia_init_done)
+    return true;
+
+  uint32_t w, h;
+  w = pb->width();
+  h = pb->height();
+
+  if (nvidia_init(w, h, rfb::Server::x264Bitrate,
+              rfb::Server::frameRate) != 0) {
+    vlog.error("nvidia init failed, disabling h264");
+    rfb::Server::x264Bitrate.setParam(0);
+    return false;
+  }
+
+  nvidia_init_done = true;
+  myw = w;
+  myh = h;
 }

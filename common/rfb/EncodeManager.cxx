@@ -401,7 +401,8 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
     /*
      * In extra-low-quality mode, if x264 is enabled, send entire screen frames
      */
-    if (rfb::Server::x264Bitrate && videoDetected) {
+    if (rfb::Server::x264Bitrate && videoDetected &&
+        ((TightX264Encoder *) encoders[encoderTightX264])->tryInit(pb)) {
       std::vector<Rect> rects;
       changed.get_rects(&rects);
       updateVideoStats(rects, pb);

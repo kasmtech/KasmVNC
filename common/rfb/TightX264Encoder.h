@@ -50,6 +50,8 @@ namespace rfb {
 
     virtual void setKeyframe() { keyframe = true; }
 
+    bool tryInit(const PixelBuffer* pb);
+
   protected:
     void writeCompact(rdr::U32 value, rdr::OutStream* os) const;
     void mp4_write_callback(const void *buffer, size_t size);
@@ -69,6 +71,8 @@ namespace rfb {
     uint32_t framelen;
 
     uint8_t *bitbuf;
+
+    uint16_t myw, myh;
   };
 }
 #endif

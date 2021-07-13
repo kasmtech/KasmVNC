@@ -387,7 +387,7 @@ int nvenc_frame(const uint8_t *data, unsigned pts, uint8_t *out, uint32_t &outle
 	return 0;
 }
 
-static void unload() {
+void nvidia_unload() {
 	NV_ENC_PIC_PARAMS params;
 	memset(&params, 0, sizeof(NV_ENC_PIC_PARAMS));
 	params.version = NV_ENC_PIC_PARAMS_VER;
