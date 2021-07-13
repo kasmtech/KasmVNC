@@ -344,4 +344,6 @@ bool TightX264Encoder::tryInit(const PixelBuffer* pb) {
   nvidia_init_done = true;
   myw = w;
   myh = h;
+
+  return true;
 }
