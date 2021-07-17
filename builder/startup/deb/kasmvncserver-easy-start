@@ -12,7 +12,7 @@ detected_desktop_environments=()
 print_detected_desktop_environments() {
   declare -i i=1
 
-  echo "Detected DEs:"
+  echo "Detected Desktop Environments:"
   for detected_de in "${detected_desktop_environments[@]}"; do
     echo "[$i] $detected_de"
     i+=1
@@ -71,7 +71,7 @@ fi
 
 detect_desktop_environments
 print_detected_desktop_environments
-echo "Please choose DE to run"
+echo "Please choose Desktop Environment to run"
 
 vncserver $display -interface $interface
 vncserver -kill $display
