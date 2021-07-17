@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os_codename}" \
   -t kasmvnctester_${os}:$os_codename \
   -f dockerfile.${os}_${os_codename}.deb.test .
-docker run -it -p 443:8443 --rm \
+  docker run -it -v $(realpath ${PWD}/..):/src -p 8443:8443 --rm \
   -e KASMVNC_VERBOSE_LOGGING=$KASMVNC_VERBOSE_LOGGING \
   -e "VNC_USER=foo" -e "VNC_PW=foobar" \
   kasmvnctester_${os}:$os_codename
