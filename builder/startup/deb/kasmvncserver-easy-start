@@ -5,16 +5,31 @@ set -e
 display=:10
 interface=0.0.0.0
 cert_group=ssl-cert
+xstartup_script=~/.vnc/xstartup
 
-declare -A all_desktop_environments=([Cinnamon]=cinnamon-session)
+declare -A all_desktop_environments=(
+  [Cinnamon]=cinnamon-session
+  [Mate]="XDG_CURRENT_DESKTOP=MATE dbus-launch --exit-with-session mate-session"
+  [LXDE]=lxsession [Lxqt]=startlxqt
+  [KDE]=startkde
+  [Gnome]="XDG_CURRENT_DESKTOP=GNOME dbus-launch --exit-with-session /usr/bin/gnome-session"
+  [XFCE]=xfce4-session)
 detected_desktop_environments=()
+declare -A numbered_desktop_environments
+
+debug() {
+  if [ -z "$debug" ]; then return; fi
+
+  echo "$@"
+}
 
 print_detected_desktop_environments() {
   declare -i i=1
 
-  echo "Detected Desktop Environments:"
+  echo "Please choose Desktop Environment to run:"
   for detected_de in "${detected_desktop_environments[@]}"; do
     echo "[$i] $detected_de"
+    numbered_desktop_environments[$i]=$detected_de
     i+=1
   done
 }
@@ -22,9 +37,12 @@ print_detected_desktop_environments() {
 detect_desktop_environments() {
   for de_name in "${!all_desktop_environments[@]}"; do
     local executable=${all_desktop_environments[$de_name]}
+    executable=($executable)
+    executable=${executable[-1]}
 
-    detected_desktop_environments+=("$de_name")
-    detect_desktop_environment "$de_name" "$executable"
+    if detect_desktop_environment "$de_name" "$executable"; then
+      detected_desktop_environments+=("$de_name")
+    fi
   done
 }
 
@@ -33,8 +51,32 @@ detect_desktop_environment() {
   local executable="$2"
 
   if command -v "$executable" &>/dev/null; then
-    echo "Detected $de_name"
+    return 0
   fi
+
+  return 1
+}
+
+de_cmd_from_name() {
+  de_cmd=${all_desktop_environments[$de_name]}
+}
+
+de_name_from_number() {
+  local de_number_to_run="$1"
+
+  de_name=${numbered_desktop_environments[$de_number_to_run]}
+}
+
+generate_xstartup() {
+  local de_name="$1"
+
+  de_cmd_from_name
+
+  cat <<-SCRIPT > "$xstartup_script"
+    #!/bin/sh
+    exec $de_cmd
+SCRIPT
+  chmod +x "$xstartup_script"
 }
 
 if [[ "$1" = "--help" ]]; then
@@ -48,6 +90,7 @@ USAGE
 fi
 
 if [[ "$1" = "-d" ]]; then
+  debug=1
   log_option="-log *:stderr:100"
 fi
 
@@ -71,7 +114,10 @@ fi
 
 detect_desktop_environments
 print_detected_desktop_environments
-echo "Please choose Desktop Environment to run"
+read -r de_number_to_run
+de_name_from_number "$de_number_to_run"
+debug "You selected $de_name desktop environment"
+generate_xstartup "$de_name"
 
 vncserver $display -interface $interface
 vncserver -kill $display
