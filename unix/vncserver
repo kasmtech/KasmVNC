@@ -57,6 +57,12 @@ $xauthorityFile = "$ENV{XAUTHORITY}" || "$ENV{HOME}/.Xauthority";
 $xstartupFile = $vncUserDir . "/xstartup";
 $defaultXStartup
     = ("#!/bin/sh\n\n".
+       "# WARNING: THIS IS AN AUTO-GENERATED FILE. CHANGES TO IT ARE LIKELY\n".
+       "# TO BE OVERWRITTEN AND LOST.\n".
+       "# TO KEEP YOUR CHANGES TO THIS FILE, REMOVE THESE LINES.\n".
+       "# Magic token that lets kasmvncserver-easy-start know it's safe to\n".
+       "# replace this file: KasmVNC-safe-to-replace-this-file\n".
+       "\n".
        "unset SESSION_MANAGER\n".
        "unset DBUS_SESSION_BUS_ADDRESS\n".
        "OS=`uname -s`\n".
