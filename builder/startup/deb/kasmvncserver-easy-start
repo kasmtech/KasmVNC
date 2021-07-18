@@ -71,6 +71,10 @@ detect_desktop_environment() {
   return 1
 }
 
+did_user_forbid_replacing_xstartup() {
+  grep -q -v KasmVNC-safe-to-replace-this-file "$xstartup_script"
+}
+
 de_cmd_from_name() {
   de_cmd=${all_desktop_environments[$de_name]}
 }
