@@ -85,6 +85,10 @@ de_name_from_number() {
   de_name=${numbered_desktop_environments[$de_number_to_run]}
 }
 
+setup_de_to_run_via_xstartup() {
+  generate_xstartup "$de_name"
+}
+
 generate_xstartup() {
   local de_name="$1"
 
@@ -129,10 +133,6 @@ if [[ "$action" = "kill" ]]; then
   vncserver -kill $display
   exit
 fi
-
-setup_de_to_run_via_xstartup() {
-  generate_xstartup "$de_name"
-}
 
 detect_desktop_environments
 ask_user_to_choose_de
