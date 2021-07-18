@@ -6,6 +6,7 @@ display=:10
 interface=0.0.0.0
 cert_group=ssl-cert
 xstartup_script=~/.vnc/xstartup
+de_was_selected_file="$HOME/.vnc/.kasmvncserver-easy-start-de-was-selected"
 
 manual_xstartup_choice="Manually edit xstartup"
 declare -A all_desktop_environments=(
@@ -65,6 +66,14 @@ ask_user_to_choose_de() {
     echo "Incorrect number: $de_number_to_run"
     echo
   done
+}
+
+remember_de_choice() {
+  touch "$de_was_selected_file"
+}
+
+de_was_selected() {
+  [[ -f "$de_was_selected_file" ]]
 }
 
 detect_desktop_environment() {
@@ -141,10 +150,15 @@ if [[ "$action" = "kill" ]]; then
   exit
 fi
 
-detect_desktop_environments
-ask_user_to_choose_de
-debug "You selected $de_name desktop environment"
-setup_de_to_run_via_xstartup
+if ! de_was_selected; then
+  detect_desktop_environments
+  ask_user_to_choose_de
+  debug "You selected $de_name desktop environment"
+  if [[ "$de_name" != "$manual_xstartup_choice" ]]; then
+    setup_de_to_run_via_xstartup
+  fi
+  remember_de_choice
+fi
 
 vncserver $display -interface $interface
 vncserver -kill $display
