@@ -15,8 +15,13 @@ declare -A all_desktop_environments=(
   [LXDE]=lxsession [Lxqt]=startlxqt
   [KDE]=startkde
   [Gnome]="XDG_CURRENT_DESKTOP=GNOME dbus-launch --exit-with-session /usr/bin/gnome-session"
-  [XFCE]=xfce4-session
-  [$manual_xstartup_choice]="")
+  [XFCE]=xfce4-session)
+
+readarray -t sorted_desktop_environments < <(for de in "${!all_desktop_environments[@]}"; do echo "$de"; done | sort)
+
+all_desktop_environments[$manual_xstartup_choice]=""
+sorted_desktop_environments+=("$manual_xstartup_choice")
+
 detected_desktop_environments=()
 declare -A numbered_desktop_environments
 
@@ -38,7 +43,7 @@ print_detected_desktop_environments() {
 }
 
 detect_desktop_environments() {
-  for de_name in "${!all_desktop_environments[@]}"; do
+  for de_name in "${sorted_desktop_environments[@]}"; do
     if [[ "$de_name" = "$manual_xstartup_choice" ]]; then
       detected_desktop_environments+=("$de_name")
       continue;
