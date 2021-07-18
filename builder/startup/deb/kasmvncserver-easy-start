@@ -46,6 +46,20 @@ detect_desktop_environments() {
   done
 }
 
+ask_user_to_choose_de() {
+  while : ; do
+    print_detected_desktop_environments
+    read -r de_number_to_run
+    de_name_from_number "$de_number_to_run"
+    if [[ -n "$de_name" ]]; then
+      break;
+    fi
+
+    echo "Incorrect number: $de_number_to_run"
+    echo
+  done
+}
+
 detect_desktop_environment() {
   local de_name="$1"
   local executable="$2"
@@ -113,9 +127,7 @@ if [[ "$action" = "kill" ]]; then
 fi
 
 detect_desktop_environments
-print_detected_desktop_environments
-read -r de_number_to_run
-de_name_from_number "$de_number_to_run"
+ask_user_to_choose_de
 debug "You selected $de_name desktop environment"
 generate_xstartup "$de_name"
 
