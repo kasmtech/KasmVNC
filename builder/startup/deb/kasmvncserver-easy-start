@@ -130,10 +130,14 @@ if [[ "$action" = "kill" ]]; then
   exit
 fi
 
+setup_de_to_run_via_xstartup() {
+  generate_xstartup "$de_name"
+}
+
 detect_desktop_environments
 ask_user_to_choose_de
 debug "You selected $de_name desktop environment"
-generate_xstartup "$de_name"
+setup_de_to_run_via_xstartup
 
 vncserver $display -interface $interface
 vncserver -kill $display
