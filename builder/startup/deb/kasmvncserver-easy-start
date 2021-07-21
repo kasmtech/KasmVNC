@@ -8,6 +8,8 @@ cert_group=ssl-cert
 xstartup_script=~/.vnc/xstartup
 de_was_selected_file="$HOME/.vnc/.kasmvncserver-easy-start-de-was-selected"
 
+action=start
+
 manual_xstartup_choice="Manually edit xstartup"
 declare -A all_desktop_environments=(
   [Cinnamon]=cinnamon-session
@@ -122,25 +124,47 @@ SCRIPT
   chmod +x "$xstartup_script"
 }
 
-if [[ "$1" = "--help" ]]; then
-  cat >&2 <<-USAGE
-Usage: `basename $0` [options]
-  -d     Debug output
-  -kill  Kill vncserver
-  --help show this help
-USAGE
-  exit
-fi
-
-if [[ "$1" = "-d" ]]; then
+enable_debug() {
   debug=1
   log_option="-log *:stderr:100"
-fi
+}
 
-action=start
-if [[ "$1" = "-kill" ]]; then
-  action=kill
-fi
+kill_vnc_server() {
+  vncserver -kill $display
+}
+
+process_cli_options() {
+  for option in "$@"; do
+    case "$option" in
+      --help)
+        show_help
+        exit
+        ;;
+      -d)
+        enable_debug
+        ;;
+      -kill)
+        kill_vnc_server
+        exit
+        ;;
+      -select-de)
+        action=select-de-and-start
+        ;;
+    esac
+  done
+}
+
+show_help() {
+  cat >&2 <<-USAGE
+Usage: `basename $0` [options]
+  -d          Debug output
+  -kill       Kill vncserver
+  -select-de  Select desktop environent to run
+  --help      show this help
+USAGE
+}
+
+process_cli_options "$@"
 
 if groups | grep -qvw ssl-cert; then
   cat <<-EOF
@@ -148,11 +172,6 @@ if groups | grep -qvw ssl-cert; then
     Please add your user to $cert_group via 'addgroup <user> ssl-cert'
 EOF
   exit 1
-fi
-
-if [[ "$action" = "kill" ]]; then
-  vncserver -kill $display
-  exit
 fi
 
 if ! de_was_selected; then
