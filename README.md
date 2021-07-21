@@ -60,6 +60,13 @@ sudo addgroup $USER ssl-cert
 # Create ~/.vnc directory and corresponding files.
 kasmvncserver-easy-start -d && kasmvncserver-easy-start -kill
 
+# On the first run, kasmvncserver-easy-start will ask you to choose a desktop
+# environment you want to run. It can detect Cinnamon, Mate, LXDE, KDE, Gnome,
+# XFCE. You can also choose to manually edit xstartup.
+# After you chose a desktop environment or to manually edit xstartup,
+# kasmvncserver-easy-start won't ask you again, unless you run it as:
+kasmvncserver-easy-start -select-de
+
 # Modify vncstartup to launch your environment of choice, in this example LXDE
 # This may be optional depending on your system configuration
 echo '/usr/bin/lxsession -s LXDE &' >> ~/.vnc/xstartup
