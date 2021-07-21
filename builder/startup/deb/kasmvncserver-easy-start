@@ -157,6 +157,9 @@ process_cli_options() {
   done
 }
 
+user_asked_to_select_de() {
+  [[ "$action" = "select-de-and-start" ]]
+}
 show_help() {
   cat >&2 <<-USAGE
 Usage: `basename $0` [options]
@@ -177,7 +180,7 @@ EOF
   exit 1
 fi
 
-if ! de_was_selected; then
+if user_asked_to_select_de || ! de_was_selected; then
   detect_desktop_environments
   ask_user_to_choose_de
   debug "You selected $de_name desktop environment"
