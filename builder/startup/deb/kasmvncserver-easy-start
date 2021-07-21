@@ -150,6 +150,9 @@ process_cli_options() {
       -select-de)
         action=select-de-and-start
         ;;
+      *)
+        echo >&2 "Unsupported argument: $option"
+        exit 1
     esac
   done
 }
