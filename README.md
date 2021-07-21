@@ -74,6 +74,9 @@ echo -e '#!/bin/sh'"\n/usr/bin/lxsession -s LXDE &" > ~/.vnc/xstartup
 # Start KasmVNC with debug logging:
 kasmvncserver-easy-start -d
 
+# Get usage information of the easy start script:
+kasmvncserver-easy-start --help
+
 # Tail the logs
 tail -f ~/.vnc/`hostname`:10.log
 ```
