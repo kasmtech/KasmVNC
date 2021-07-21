@@ -151,14 +151,14 @@ process_cli_options() {
         show_help
         exit
         ;;
-      -d)
+      -d|--debug)
         enable_debug
         ;;
-      -kill)
+      -k|--kill)
         kill_vnc_server
         exit
         ;;
-      -select-de)
+      -s|--select-de)
         action=select-de-and-start
         ;;
       *)
@@ -173,11 +173,11 @@ user_asked_to_select_de() {
 }
 show_help() {
   cat >&2 <<-USAGE
-Usage: `basename $0` [options]
-  -d          Debug output
-  -kill       Kill vncserver
-  -select-de  Select desktop environent to run
-  --help      show this help
+Usage: $(basename "$0") [options]
+  -d, --debug      Debug output
+  -k, --kill       Kill vncserver
+  -s, --select-de  Select desktop environent to run
+  --help           Show this help
 USAGE
 }
 

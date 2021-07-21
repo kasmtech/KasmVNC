@@ -58,14 +58,14 @@ sudo addgroup $USER ssl-cert
 # You will need to re-connect in order to pick up the group change
 
 # Create ~/.vnc directory and corresponding files.
-kasmvncserver-easy-start -d && kasmvncserver-easy-start -kill
+kasmvncserver-easy-start --debug && kasmvncserver-easy-start --kill
 
 # On the first run, kasmvncserver-easy-start will ask you to choose a desktop
 # environment you want to run. It can detect Cinnamon, Mate, LXDE, KDE, Gnome,
 # XFCE. You can also choose to manually edit xstartup.
 # After you chose a desktop environment or to manually edit xstartup,
 # kasmvncserver-easy-start won't ask you again, unless you run it as:
-kasmvncserver-easy-start -select-de
+kasmvncserver-easy-start --select-de
 
 # Overwrite xstartup to launch your environment of choice, in this example LXDE
 # This may be optional depending on your system configuration
@@ -83,7 +83,7 @@ Now navigate to your system at https://[ip-address]:8443/
 To stop a running KasmVNC:
 
 ```sh
-kasmvncserver-easy-start -kill
+kasmvncserver-easy-start --kill
 ```
 
 The options for vncserver:
