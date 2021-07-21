@@ -67,9 +67,9 @@ kasmvncserver-easy-start -d && kasmvncserver-easy-start -kill
 # kasmvncserver-easy-start won't ask you again, unless you run it as:
 kasmvncserver-easy-start -select-de
 
-# Modify vncstartup to launch your environment of choice, in this example LXDE
+# Overwrite xstartup to launch your environment of choice, in this example LXDE
 # This may be optional depending on your system configuration
-echo '/usr/bin/lxsession -s LXDE &' >> ~/.vnc/xstartup
+echo -e '#!/bin/sh'"\n/usr/bin/lxsession -s LXDE &" > ~/.vnc/xstartup
 
 # Start KasmVNC with debug logging:
 kasmvncserver-easy-start -d
