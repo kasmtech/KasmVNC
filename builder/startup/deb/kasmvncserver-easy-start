@@ -108,7 +108,18 @@ de_name_from_number() {
   de_name=${numbered_desktop_environments[$de_number_to_run]}
 }
 
+warn_xstartup_will_be_overwriten() {
+  echo -n "WARNING: $xstartup_script will be overwritten y/N?"
+  read -r do_overwrite_xstartup
+  if [[ "$do_overwrite_xstartup" = "y" || "$do_overwrite_xstartup" = "Y" ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
 setup_de_to_run_via_xstartup() {
+  warn_xstartup_will_be_overwriten
   generate_xstartup "$de_name"
 }
 
