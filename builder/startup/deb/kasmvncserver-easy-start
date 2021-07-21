@@ -171,6 +171,7 @@ process_cli_options() {
 user_asked_to_select_de() {
   [[ "$action" = "select-de-and-start" ]]
 }
+
 show_help() {
   cat >&2 <<-USAGE
 Usage: $(basename "$0") [options]
