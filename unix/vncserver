@@ -179,6 +179,11 @@ if (!(-e $vncUserDir)) {
     }
 }
 
+$selectDeCmd = "builder/startup/deb/select-de.sh";
+if (!$skipxstartup) {
+   system($selectDeCmd);
+}
+
 # Find display number.
 if ((@ARGV > 0) && ($ARGV[0] =~ /^:(\d+)$/)) {
     $displayNumber = $1;

@@ -125,3 +125,19 @@ SCRIPT
 user_asked_to_select_de() {
   [[ "$action" = "select-de-and-start" ]]
 }
+
+debug() {
+  if [ -z "$debug" ]; then return; fi
+
+  echo "$@"
+}
+
+if user_asked_to_select_de || ! de_was_selected_on_previous_run; then
+  detect_desktop_environments
+  ask_user_to_choose_de
+  debug "You selected $de_name desktop environment"
+  if [[ "$de_name" != "$manual_xstartup_choice" ]]; then
+    setup_de_to_run_via_xstartup
+  fi
+  remember_de_choice
+fi
