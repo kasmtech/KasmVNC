@@ -60,6 +60,7 @@ GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_)
 
 	pthread_mutex_init(&screenMutex, NULL);
 	pthread_mutex_init(&userMutex, NULL);
+	pthread_mutex_init(&statMutex, NULL);
 }
 
 // from main thread
@@ -93,6 +94,15 @@ void GetAPIMessager::mainUpdateScreen(rfb::PixelBuffer *pb) {
 	}
 
 	pthread_mutex_unlock(&screenMutex);
+}
+
+void GetAPIMessager::mainUpdateBottleneckStats(const char userid[], const char stats[]) {
+	if (pthread_mutex_trylock(&statMutex))
+		return;
+
+	bottleneckStats[userid] = stats;
+
+	pthread_mutex_unlock(&statMutex);
 }
 
 // from network threads
@@ -285,4 +295,71 @@ uint8_t GetAPIMessager::netGiveControlTo(const char name[]) {
 	pthread_mutex_unlock(&userMutex);
 
 	return 1;
+}
+
+void GetAPIMessager::netGetBottleneckStats(char *buf, uint32_t len) {
+/*
+{
+    "username.1": {
+        "192.168.100.2:14908": [ 100, 100, 100, 100 ],
+        "192.168.100.3:14918": [ 100, 100, 100, 100 ]
+    },
+    "username.2": {
+        "192.168.100.5:14904": [ 100, 100, 100, 100 ]
+    }
+}
+*/
+	std::map<std::string, std::string>::const_iterator it;
+	const char *prev = NULL;
+	FILE *f;
+
+	if (pthread_mutex_lock(&statMutex)) {
+		buf[0] = 0;
+		return;
+	}
+
+	// Conservative estimate
+	if (len < bottleneckStats.size() * 60) {
+		buf[0] = 0;
+		goto out;
+	}
+
+	f = fmemopen(buf, len, "w");
+
+	fprintf(f, "{\n");
+
+	for (it = bottleneckStats.begin(); it != bottleneckStats.end(); it++) {
+		// user@127.0.0.1_1627311208.791752::websocket
+		const char *id = it->first.c_str();
+		const char *data = it->second.c_str();
+
+		const char *at = strchr(id, '@');
+		if (!at)
+			continue;
+
+		const unsigned userlen = at - id;
+		if (prev && !strncmp(prev, id, userlen)) {
+			// Same user
+			fprintf(f, ",\n\t\t\"%s\": %s", at + 1, data);
+		} else {
+			// New one
+			if (prev) {
+				fprintf(f, "\n\t},\n");
+			}
+			fprintf(f, "\t\"%.*s\": {\n", userlen, id);
+			fprintf(f, "\t\t\"%s\": %s", at + 1, data);
+		}
+
+		prev = id;
+	}
+
+	if (!bottleneckStats.size())
+		fprintf(f, "}\n");
+	else
+		fprintf(f, "\n\t}\n}\n");
+
+	fclose(f);
+
+out:
+	pthread_mutex_unlock(&statMutex);
 }

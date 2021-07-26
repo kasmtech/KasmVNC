@@ -459,6 +459,13 @@ static uint8_t givecontrolCb(void *messager, const char name[])
   return msgr->netGiveControlTo(name);
 }
 
+static void bottleneckStatsCb(void *messager, char *buf, uint32_t len)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  msgr->netGetBottleneckStats(buf, len);
+}
+
+
 WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
                          socklen_t listenaddrlen,
                          bool sslonly, const char *cert, const char *certkey,
@@ -548,6 +555,7 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   settings.adduserCb = adduserCb;
   settings.removeCb = removeCb;
   settings.givecontrolCb = givecontrolCb;
+  settings.bottleneckStatsCb = bottleneckStatsCb;
 
   pthread_t tid;
   pthread_create(&tid, NULL, start_server, NULL);

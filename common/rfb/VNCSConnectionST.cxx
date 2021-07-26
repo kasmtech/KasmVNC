@@ -17,6 +17,7 @@
  * USA.
  */
 
+#include <network/GetAPI.h>
 #include <network/TcpSocket.h>
 
 #include <rfb/ComparingUpdateTracker.h>
@@ -1459,7 +1460,7 @@ static void pruneStatList(std::list<struct timeval> &list, const struct timeval 
   }
 }
 
-void VNCSConnectionST::sendStats() {
+void VNCSConnectionST::sendStats(const bool toClient) {
   char buf[1024];
   struct timeval now;
 
@@ -1498,8 +1499,12 @@ void VNCSConnectionST::sendStats() {
 
   #undef ten
 
-  vlog.info("Sending client stats:\n%s\n", buf);
-  writer()->writeStats(buf, strlen(buf));
+  if (toClient) {
+    vlog.info("Sending client stats:\n%s\n", buf);
+    writer()->writeStats(buf, strlen(buf));
+  } else if (server->apimessager) {
+    server->apimessager->mainUpdateBottleneckStats(peerEndpoint.buf, buf);
+  }
 }
 
 // setCursor() is called whenever the cursor has changed shape or pixel format.

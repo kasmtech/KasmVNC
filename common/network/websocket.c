@@ -1074,6 +1074,21 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
 
         wserr("Passed give_control request to main thread\n");
         ret = 1;
+    } else entry("/api/get_bottleneck_stats") {
+        char statbuf[4096];
+        settings.bottleneckStatsCb(settings.messager, statbuf, 4096);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: %lu\r\n"
+                 "\r\n", strlen(statbuf));
+        ws_send(ws_ctx, buf, strlen(buf));
+        ws_send(ws_ctx, statbuf, strlen(statbuf));
+
+        wserr("Sent bottleneck stats to API caller\n");
+        ret = 1;
     }
 
     #undef entry

@@ -24,6 +24,8 @@
 #include <rfb/PixelBuffer.h>
 #include <rfb/PixelFormat.h>
 #include <stdint.h>
+#include <map>
+#include <string>
 #include <vector>
 
 namespace network {
@@ -34,6 +36,7 @@ namespace network {
 
     // from main thread
     void mainUpdateScreen(rfb::PixelBuffer *pb);
+    void mainUpdateBottleneckStats(const char userid[], const char stats[]);
 
     // from network threads
     uint8_t *netGetScreenshot(uint16_t w, uint16_t h,
@@ -42,6 +45,7 @@ namespace network {
     uint8_t netAddUser(const char name[], const char pw[], const bool write);
     uint8_t netRemoveUser(const char name[]);
     uint8_t netGiveControlTo(const char name[]);
+    void netGetBottleneckStats(char *buf, uint32_t len);
 
     enum USER_ACTION {
       //USER_ADD, - handled locally for interactivity
@@ -68,6 +72,9 @@ namespace network {
     std::vector<uint8_t> cachedJpeg;
     uint16_t cachedW, cachedH;
     uint8_t cachedQ;
+
+    std::map<std::string, std::string> bottleneckStats;
+    pthread_mutex_t statMutex;
   };
 
 }

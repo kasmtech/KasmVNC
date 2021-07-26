@@ -84,6 +84,7 @@ typedef struct {
                           const uint8_t write);
     uint8_t (*removeCb)(void *messager, const char name[]);
     uint8_t (*givecontrolCb)(void *messager, const char name[]);
+    void (*bottleneckStatsCb)(void *messager, char *buf, uint32_t len);
 } settings_t;
 
 #ifdef __cplusplus

@@ -997,6 +997,9 @@ void VNCServerST::writeUpdate()
     (*ci)->add_copypassed(ui.copypassed);
     (*ci)->add_changed(ui.changed);
     (*ci)->writeFramebufferUpdateOrClose();
+
+    if (apimessager)
+      (*ci)->sendStats(false);
   }
 }
 

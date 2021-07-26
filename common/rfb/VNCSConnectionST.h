@@ -164,6 +164,8 @@ namespace rfb {
     void setStatus(int status);
     int getStatus();
 
+    virtual void sendStats(const bool toClient = true);
+
   private:
     // SConnection callbacks
 
@@ -191,7 +193,6 @@ namespace rfb {
     virtual void supportsContinuousUpdates();
     virtual void supportsLEDState();
 
-    virtual void sendStats();
     virtual bool canChangeKasmSettings() const {
         return (accessRights & (AccessPtrEvents | AccessKeyEvents)) ==
                (AccessPtrEvents | AccessKeyEvents);
