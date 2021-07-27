@@ -359,6 +359,8 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
     changed = changed_;
 
     gettimeofday(&start, NULL);
+    memset(&jpegstats, 0, sizeof(codecstats_t));
+    memset(&webpstats, 0, sizeof(codecstats_t));
 
     if (allowLossy && activeEncoders[encoderFullColour] == encoderTightWEBP) {
         const unsigned rate = 1024 * 1000 / rfb::Server::frameRate;
@@ -1014,6 +1016,7 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
   std::vector<uint8_t> isWebp, fromCache;
   std::vector<Palette> palettes;
   std::vector<std::vector<uint8_t> > compresseds;
+  std::vector<uint32_t> ms;
   uint32_t i;
 
   if (rfb::Server::rectThreads > 0)
@@ -1078,6 +1081,7 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
   palettes.resize(subrects.size());
   compresseds.resize(subrects.size());
   scaledrects.resize(subrects.size());
+  ms.resize(subrects.size());
 
   // In case the current resolution is above the max video res, and video was detected,
   // scale to that res, keeping aspect ratio
@@ -1134,8 +1138,17 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
   for (i = 0; i < subrects.size(); ++i) {
     encoderTypes[i] = getEncoderType(subrects[i], pb, &palettes[i], compresseds[i],
                                      &isWebp[i], &fromCache[i],
-                                     scaledpb, scaledrects[i]);
+                                     scaledpb, scaledrects[i], ms[i]);
     checkWebpFallback(start);
+  }
+
+  for (i = 0; i < subrects.size(); ++i) {
+    if (encoderTypes[i] == encoderFullColour) {
+      if (isWebp[i])
+        webpstats.ms += ms[i];
+      else
+        jpegstats.ms += ms[i];
+    }
   }
 
   if (start) {
@@ -1178,7 +1191,8 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
 uint8_t EncodeManager::getEncoderType(const Rect& rect, const PixelBuffer *pb,
                                       Palette *pal, std::vector<uint8_t> &compressed,
                                       uint8_t *isWebp, uint8_t *fromCache,
-                                      const PixelBuffer *scaledpb, const Rect& scaledrect) const
+                                      const PixelBuffer *scaledpb, const Rect& scaledrect,
+                                      uint32_t &ms) const
 {
   struct RectInfo info;
   unsigned int maxColours = 256;
@@ -1231,9 +1245,12 @@ uint8_t EncodeManager::getEncoderType(const Rect& rect, const PixelBuffer *pb,
 
   *isWebp = 0;
   *fromCache = 0;
+  ms = 0;
   if (type == encoderFullColour) {
     uint32_t len;
     const void *data;
+    struct timeval start;
+    gettimeofday(&start, NULL);
 
     if (encCache->enabled &&
         (data = encCache->get(activeEncoders[encoderFullColour],
@@ -1274,6 +1291,8 @@ uint8_t EncodeManager::getEncoderType(const Rect& rect, const PixelBuffer *pb,
                                                                       compressed,
                                                                       videoDetected);
     }
+
+    ms = msSince(&start);
   }
 
   delete ppb;
@@ -1292,10 +1311,15 @@ void EncodeManager::writeSubRect(const Rect& rect, const PixelBuffer *pb,
   encoder = startRect(rect, type, compressed.size() == 0, isWebp);
 
   if (compressed.size()) {
-    if (isWebp)
+    if (isWebp) {
       ((TightWEBPEncoder *) encoder)->writeOnly(compressed);
-    else
+      webpstats.area += rect.area();
+      webpstats.rects++;
+    } else {
       ((TightJPEGEncoder *) encoder)->writeOnly(compressed);
+      jpegstats.area += rect.area();
+      jpegstats.rects++;
+    }
   } else {
     if (encoder->flags & EncoderUseNativePF) {
       ppb = preparePixelBuffer(rect, pb, false);

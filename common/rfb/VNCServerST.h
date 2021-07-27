@@ -267,6 +267,9 @@ namespace rfb {
 
     network::GetAPIMessager *apimessager;
 
+    rdr::U8 trackingFrameStats;
+    char trackingClient[128];
+
     struct {
         bool enabled;
         int x1, y1, x2, y2;

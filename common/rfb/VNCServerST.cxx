@@ -128,7 +128,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
     renderedCursorInvalid(false),
     queryConnectionHandler(0), keyRemapper(&KeyRemapper::defInstance),
     lastConnectionTime(0), disableclients(false),
-    frameTimer(this), apimessager(NULL)
+    frameTimer(this), apimessager(NULL), trackingFrameStats(0)
 {
   lastUserInputTime = lastDisconnectTime = time(0);
   slog.debug("creating single-threaded server %s", name.buf);
@@ -210,6 +210,8 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
     if (inotify_add_watch(inotifyfd, kasmpasswdpath, IN_CLOSE_WRITE | IN_DELETE_SELF) < 0)
       slog.error("Failed to set watch");
   }
+
+  trackingClient[0] = 0;
 }
 
 VNCServerST::~VNCServerST()
@@ -774,7 +776,8 @@ int VNCServerST::msToNextUpdate()
     return frameTimer.getRemainingMs();
 }
 
-static void checkAPIMessages(network::GetAPIMessager *apimessager)
+static void checkAPIMessages(network::GetAPIMessager *apimessager,
+                             rdr::U8 &trackingFrameStats, char trackingClient[])
 {
   if (pthread_mutex_lock(&apimessager->userMutex))
     return;
@@ -826,6 +829,20 @@ static void checkAPIMessages(network::GetAPIMessager *apimessager)
         } else {
           slog.error("Tried to give control to nonexistent user %s", act.data.user);
         }
+      break;
+
+      case network::GetAPIMessager::WANT_FRAME_STATS_SERVERONLY:
+        trackingFrameStats = act.action;
+      break;
+      case network::GetAPIMessager::WANT_FRAME_STATS_ALL:
+        trackingFrameStats = act.action;
+      break;
+      case network::GetAPIMessager::WANT_FRAME_STATS_OWNER:
+        trackingFrameStats = act.action;
+      break;
+      case network::GetAPIMessager::WANT_FRAME_STATS_SPECIFIC:
+        trackingFrameStats = act.action;
+        memcpy(trackingClient, act.data.password, 128);
       break;
     }
 
@@ -923,6 +940,9 @@ void VNCServerST::writeUpdate()
   assert(blockCounter == 0);
   assert(desktopStarted);
 
+  struct timeval start;
+  gettimeofday(&start, NULL);
+
   if (DLPRegion.enabled) {
     comparer->enable_copyrect(false);
     blackOut();
@@ -949,12 +969,17 @@ void VNCServerST::writeUpdate()
   else
     comparer->disable();
 
+  struct timeval beforeAnalysis;
+  gettimeofday(&beforeAnalysis, NULL);
+
   // Skip scroll detection if the client is slow, and didn't get the previous one yet
   if (comparer->compare(clients.size() == 1 && (*clients.begin())->has_copypassed(),
                         cursorReg))
     comparer->getUpdateInfo(&ui, pb->getRect());
 
   comparer->clear();
+
+  const unsigned analysisMs = msSince(&beforeAnalysis);
 
   encCache.clear();
   encCache.enabled = clients.size() > 1;
@@ -984,8 +1009,13 @@ void VNCServerST::writeUpdate()
   if (apimessager) {
     apimessager->mainUpdateScreen(pb);
 
-    checkAPIMessages(apimessager);
+    trackingFrameStats = 0;
+    checkAPIMessages(apimessager, trackingFrameStats, trackingClient);
   }
+
+  EncodeManager::codecstats_t jpegstats, webpstats;
+  memset(&jpegstats, 0, sizeof(EncodeManager::codecstats_t));
+  memset(&webpstats, 0, sizeof(EncodeManager::codecstats_t));
 
   for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
     ci_next = ci; ci_next++;
@@ -993,13 +1023,50 @@ void VNCServerST::writeUpdate()
     if (permcheck)
       (*ci)->recheckPerms();
 
+    if (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_ALL ||
+        (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_OWNER &&
+         (*ci)->is_owner()) ||
+        (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_SPECIFIC &&
+         strstr((*ci)->getPeerEndpoint(), trackingClient))) {
+
+      (*ci)->setFrameTracking();
+
+      // Only one owner
+      if (trackingFrameStats == network::GetAPIMessager::WANT_FRAME_STATS_OWNER)
+        trackingFrameStats = network::GetAPIMessager::WANT_FRAME_STATS_SERVERONLY;
+    }
+
     (*ci)->add_copied(ui.copied, ui.copy_delta);
     (*ci)->add_copypassed(ui.copypassed);
     (*ci)->add_changed(ui.changed);
     (*ci)->writeFramebufferUpdateOrClose();
 
-    if (apimessager)
+    if (apimessager) {
       (*ci)->sendStats(false);
+      const EncodeManager::codecstats_t subjpeg = (*ci)->getJpegStats();
+      const EncodeManager::codecstats_t subwebp = (*ci)->getWebpStats();
+
+      jpegstats.ms += subjpeg.ms;
+      jpegstats.area += subjpeg.area;
+      jpegstats.rects += subjpeg.rects;
+
+      webpstats.ms += subwebp.ms;
+      webpstats.area += subwebp.area;
+      webpstats.rects += subwebp.rects;
+    }
+  }
+
+  if (trackingFrameStats) {
+    const unsigned totalMs = msSince(&start);
+
+    if (apimessager)
+      apimessager->mainUpdateServerFrameStats(comparer->changedPerc, totalMs,
+                                              jpegstats.ms, webpstats.ms,
+                                              analysisMs,
+                                              jpegstats.area, webpstats.area,
+                                              jpegstats.rects, webpstats.rects,
+                                              pb->getRect().width(),
+                                              pb->getRect().height());
   }
 }
 

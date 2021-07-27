@@ -62,7 +62,7 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
     continuousUpdates(false), encodeManager(this, &server_->encCache),
     needsPermCheck(false), pointerEventTime(0),
     clientHasCursor(false),
-    accessRights(AccessDefault), startTime(time(0))
+    accessRights(AccessDefault), startTime(time(0)), frameTracking(false)
 {
   setStreams(&sock->inStream(), &sock->outStream());
   peerEndpoint.buf = sock->getPeerEndpoint();
@@ -99,6 +99,9 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
   gettimeofday(&lastKeyEvent, NULL);
 
   server->clients.push_front(this);
+
+  if (server->apimessager)
+    server->apimessager->mainUpdateUserInfo(checkOwnerConn(), server->clients.size());
 }
 
 
@@ -129,6 +132,9 @@ VNCSConnectionST::~VNCSConnectionST()
   server->clients.remove(this);
 
   delete [] fenceData;
+
+  if (server->apimessager)
+    server->apimessager->mainUpdateUserInfo(checkOwnerConn(), server->clients.size());
 }
 
 
@@ -1230,6 +1236,9 @@ void VNCSConnectionST::writeFramebufferUpdate()
   // window.
   sock->cork(true);
 
+  if (frameTracking)
+    writer()->writeRequestFrameStats();
+
   // First take care of any updates that cannot contain framebuffer data
   // changes.
   writeNoDataUpdate();
@@ -1507,6 +1516,22 @@ void VNCSConnectionST::sendStats(const bool toClient) {
   }
 }
 
+void VNCSConnectionST::handleFrameStats(rdr::U32 all, rdr::U32 render)
+{
+  if (server->apimessager) {
+    const char *at = strchr(peerEndpoint.buf, '@');
+    if (!at)
+      at = peerEndpoint.buf;
+    else
+      at++;
+
+    server->apimessager->mainUpdateClientFrameStats(at, render, all,
+                                                    congestion.getPingTime());
+  }
+
+  frameTracking = false;
+}
+
 // setCursor() is called whenever the cursor has changed shape or pixel format.
 // If the client supports local cursor then it will arrange for the cursor to
 // be sent to the client.
@@ -1616,3 +1641,15 @@ int VNCSConnectionST::getStatus()
   return 4;
 }
 
+bool VNCSConnectionST::checkOwnerConn() const
+{
+  std::list<VNCSConnectionST*>::const_iterator it;
+
+  for (it = server->clients.begin(); it != server->clients.end(); it++) {
+    bool write, owner;
+    if ((*it)->getPerms(write, owner) && owner)
+      return true;
+  }
+
+  return false;
+}

@@ -208,6 +208,12 @@ void SMsgWriter::writeStats(const char* str, int len)
   endMsg();
 }
 
+void SMsgWriter::writeRequestFrameStats()
+{
+  startMsg(msgTypeRequestFrameStats);
+  endMsg();
+}
+
 void SMsgWriter::writeFence(rdr::U32 flags, unsigned len, const char data[])
 {
   if (!cp->supportsFence)

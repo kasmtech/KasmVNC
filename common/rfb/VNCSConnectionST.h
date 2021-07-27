@@ -165,6 +165,26 @@ namespace rfb {
     int getStatus();
 
     virtual void sendStats(const bool toClient = true);
+    virtual void handleFrameStats(rdr::U32 all, rdr::U32 render);
+
+    bool is_owner() const {
+      bool write, owner;
+      if (getPerms(write, owner) && owner)
+        return true;
+      return false;
+    }
+
+    void setFrameTracking() {
+      frameTracking = true;
+    }
+
+    EncodeManager::codecstats_t getJpegStats() const {
+      return encodeManager.jpegstats;
+    }
+
+    EncodeManager::codecstats_t getWebpStats() const {
+      return encodeManager.webpstats;
+    }
 
   private:
     // SConnection callbacks
@@ -219,6 +239,8 @@ namespace rfb {
     bool isShiftPressed();
 
     bool getPerms(bool &write, bool &owner) const;
+
+    bool checkOwnerConn() const;
 
     // Congestion control
     void writeRTTPing();
@@ -295,6 +317,8 @@ namespace rfb {
     time_t startTime;
 
     std::vector<CopyPassRect> copypassed;
+
+    bool frameTracking;
   };
 }
 #endif

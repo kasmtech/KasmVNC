@@ -65,6 +65,8 @@ namespace rfb {
 
     void writeStats(const char* str, int len);
 
+    void writeRequestFrameStats();
+
     // writeFence() sends a new fence request or response to the client.
     void writeFence(rdr::U32 flags, unsigned len, const char data[]);
 

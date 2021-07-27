@@ -72,6 +72,14 @@ namespace rfb {
         return encodingTime;
     };
 
+    struct codecstats_t {
+      uint32_t ms;
+      uint32_t area;
+      uint32_t rects;
+    };
+
+    codecstats_t jpegstats, webpstats;
+
   protected:
     void doUpdate(bool allowLossy, const Region& changed,
                   const Region& copied, const Point& copy_delta,
@@ -105,7 +113,8 @@ namespace rfb {
     uint8_t getEncoderType(const Rect& rect, const PixelBuffer *pb, Palette *pal,
                            std::vector<uint8_t> &compressed, uint8_t *isWebp,
                            uint8_t *fromCache,
-                           const PixelBuffer *scaledpb, const Rect& scaledrect) const;
+                           const PixelBuffer *scaledpb, const Rect& scaledrect,
+                           uint32_t &ms) const;
     virtual bool handleTimeout(Timer* t);
 
     bool checkSolidTile(const Rect& r, const rdr::U8* colourValue,

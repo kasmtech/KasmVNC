@@ -85,6 +85,17 @@ typedef struct {
     uint8_t (*removeCb)(void *messager, const char name[]);
     uint8_t (*givecontrolCb)(void *messager, const char name[]);
     void (*bottleneckStatsCb)(void *messager, char *buf, uint32_t len);
+    void (*frameStatsCb)(void *messager, char *buf, uint32_t len);
+
+    uint8_t (*requestFrameStatsNoneCb)(void *messager);
+    uint8_t (*requestFrameStatsOwnerCb)(void *messager);
+    uint8_t (*requestFrameStatsAllCb)(void *messager);
+    uint8_t (*requestFrameStatsOneCb)(void *messager, const char *client);
+
+    uint8_t (*ownerConnectedCb)(void *messager);
+    uint8_t (*numActiveUsersCb)(void *messager);
+    uint8_t (*getClientFrameStatsNumCb)(void *messager);
+    uint8_t (*serverFrameStatsReadyCb)(void *messager);
 } settings_t;
 
 #ifdef __cplusplus

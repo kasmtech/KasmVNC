@@ -48,6 +48,8 @@ namespace rfb {
     virtual void getUpdateInfo(UpdateInfo* info, const Region& cliprgn);
     virtual void clear();
 
+    rdr::U8 changedPerc;
+
   private:
     void compareRect(const Rect& r, Region* newchanged, const Region &skipCursorArea);
     PixelBuffer* fb;

@@ -298,6 +298,11 @@ size_t Congestion::getBandwidth()
   return congWindow * 1000 / safeBaseRTT;
 }
 
+unsigned Congestion::getPingTime() const
+{
+  return safeBaseRTT;
+}
+
 void Congestion::debugTrace(const char* filename, int fd)
 {
 #ifdef CONGESTION_TRACE

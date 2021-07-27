@@ -56,11 +56,16 @@ static const struct TightJPEGConfiguration conf[10] = {
 
 GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_),
 					screenW(0), screenH(0), screenHash(0),
-					cachedW(0), cachedH(0), cachedQ(0) {
+					cachedW(0), cachedH(0), cachedQ(0),
+					ownerConnected(0), activeUsers(0) {
 
 	pthread_mutex_init(&screenMutex, NULL);
 	pthread_mutex_init(&userMutex, NULL);
 	pthread_mutex_init(&statMutex, NULL);
+	pthread_mutex_init(&frameStatMutex, NULL);
+	pthread_mutex_init(&userInfoMutex, NULL);
+
+	serverFrameStats.inprogress = 0;
 }
 
 // from main thread
@@ -103,6 +108,56 @@ void GetAPIMessager::mainUpdateBottleneckStats(const char userid[], const char s
 	bottleneckStats[userid] = stats;
 
 	pthread_mutex_unlock(&statMutex);
+}
+
+void GetAPIMessager::mainUpdateServerFrameStats(uint8_t changedPerc,
+	uint32_t all, uint32_t jpeg, uint32_t webp, uint32_t analysis,
+	uint32_t jpegarea, uint32_t webparea,
+	uint16_t njpeg, uint16_t nwebp,
+	uint16_t w, uint16_t h) {
+
+	if (pthread_mutex_lock(&frameStatMutex))
+		return;
+
+	serverFrameStats.changedPerc = changedPerc;
+	serverFrameStats.all = all;
+	serverFrameStats.jpeg = jpeg;
+	serverFrameStats.webp = webp;
+	serverFrameStats.analysis = analysis;
+	serverFrameStats.jpegarea = jpegarea;
+	serverFrameStats.webparea = webparea;
+	serverFrameStats.njpeg = njpeg;
+	serverFrameStats.nwebp = nwebp;
+	serverFrameStats.w = w;
+	serverFrameStats.h = h;
+
+	pthread_mutex_unlock(&frameStatMutex);
+}
+
+void GetAPIMessager::mainUpdateClientFrameStats(const char userid[], uint32_t render,
+	uint32_t all, uint32_t ping) {
+
+	if (pthread_mutex_lock(&frameStatMutex))
+		return;
+
+	clientFrameStats_t s;
+	s.render = render;
+	s.all = all;
+	s.ping = ping;
+
+	clientFrameStats[userid] = s;
+
+	pthread_mutex_unlock(&frameStatMutex);
+}
+
+void GetAPIMessager::mainUpdateUserInfo(const uint8_t ownerConn, const uint8_t numUsers) {
+	if (pthread_mutex_lock(&userInfoMutex))
+		return;
+
+	ownerConnected = ownerConn;
+	activeUsers = numUsers;
+
+	pthread_mutex_unlock(&userInfoMutex);
 }
 
 // from network threads
@@ -362,4 +417,198 @@ void GetAPIMessager::netGetBottleneckStats(char *buf, uint32_t len) {
 
 out:
 	pthread_mutex_unlock(&statMutex);
+}
+
+void GetAPIMessager::netGetFrameStats(char *buf, uint32_t len) {
+/*
+{
+	"frame" : {
+		"resx": 1024,
+		"resy": 1280,
+		"changed": 75,
+		"server_time": 23
+	},
+	"server_side" : [
+		{ "process_name": "Analysis", "time": 20 },
+		{ "process_name": "TightWEBPEncoder", "time": 20, "count": 64, "area": 12 },
+		{ "process_name": "TightJPEGEncoder", "time": 20, "count": 64, "area": 12 }
+	],
+	"client_side" : [
+		"123.1.2.1:1211" : {
+			"client_time": 20,
+			"ping": 20,
+			"processes" : [
+				{ "process_name": "scanRenderQ", "time": 20 }
+			]
+		}
+	}
+}
+*/
+	std::map<std::string, clientFrameStats_t>::const_iterator it;
+	unsigned i = 0;
+	FILE *f;
+
+	if (pthread_mutex_lock(&frameStatMutex)) {
+		buf[0] = 0;
+		return;
+	}
+
+	const unsigned num = clientFrameStats.size();
+
+	// Conservative estimate
+	if (len < 1024) {
+		buf[0] = 0;
+		goto out;
+	}
+
+	f = fmemopen(buf, len, "w");
+
+	fprintf(f, "{\n");
+
+	fprintf(f, "\t\"frame\" : {\n"
+	           "\t\t\"resx\": %u,\n"
+	           "\t\t\"resy\": %u,\n"
+	           "\t\t\"changed\": %u,\n"
+	           "\t\t\"server_time\": %u\n"
+	           "\t},\n",
+	           serverFrameStats.w,
+	           serverFrameStats.h,
+	           serverFrameStats.changedPerc,
+	           serverFrameStats.all);
+
+	fprintf(f, "\t\"server_side\" : [\n"
+	           "\t\t{ \"process_name\": \"Analysis\", \"time\": %u },\n"
+	           "\t\t{ \"process_name\": \"TightJPEGEncoder\", \"time\": %u, \"count\": %u, \"area\": %u },\n"
+	           "\t\t{ \"process_name\": \"TightWEBPEncoder\", \"time\": %u, \"count\": %u, \"area\": %u }\n"
+	           "\t],\n",
+	           serverFrameStats.analysis,
+	           serverFrameStats.jpeg,
+	           serverFrameStats.njpeg,
+	           serverFrameStats.jpegarea,
+	           serverFrameStats.webp,
+	           serverFrameStats.nwebp,
+	           serverFrameStats.webparea);
+
+	fprintf(f, "\t\"client_side\" : [\n");
+
+	for (it = clientFrameStats.begin(); it != clientFrameStats.end(); it++, i++) {
+		const char *id = it->first.c_str();
+		const clientFrameStats_t &s = it->second;
+
+		fprintf(f, "\t\t\"%s\" : {\n"
+		           "\t\t\t\"client_time\": %u,\n"
+		           "\t\t\t\"ping\": %u,\n"
+		           "\t\t\t\"processes\" : [\n"
+		           "\t\t\t\t{ \"process_name\": \"scanRenderQ\", \"time\": %u }\n"
+		           "\t\t\t]\n"
+		           "\t\t}",
+		           id,
+		           s.all,
+		           s.ping,
+		           s.render);
+
+		if (i == num - 1)
+			fprintf(f, "\n");
+		else
+			fprintf(f, ",\n");
+	}
+
+	fprintf(f, "\t]\n}\n");
+
+	fclose(f);
+
+	serverFrameStats.inprogress = 0;
+
+out:
+	pthread_mutex_unlock(&frameStatMutex);
+}
+
+uint8_t GetAPIMessager::netRequestFrameStats(USER_ACTION what, const char *client) {
+	// Return 1 for success
+	action_data act;
+	act.action = what;
+	if (client) {
+		strncpy(act.data.password, client, PASSWORD_LEN);
+		act.data.password[PASSWORD_LEN - 1] = '\0';
+	}
+
+	// In progress already?
+	bool fail = false;
+	if (pthread_mutex_lock(&frameStatMutex))
+		return 0;
+
+	if (serverFrameStats.inprogress) {
+		fail = true;
+		vlog.error("Frame stats request already in progress, refusing another");
+	} else {
+		clientFrameStats.clear();
+		memset(&serverFrameStats, 0, sizeof(serverFrameStats_t));
+		serverFrameStats.inprogress = 1;
+	}
+
+	pthread_mutex_unlock(&frameStatMutex);
+	if (fail)
+		return 0;
+
+	// Send it in
+	if (pthread_mutex_lock(&userMutex))
+		return 0;
+
+	actionQueue.push_back(act);
+
+	pthread_mutex_unlock(&userMutex);
+
+	return 1;
+}
+
+uint8_t GetAPIMessager::netOwnerConnected() {
+	uint8_t ret;
+
+	if (pthread_mutex_lock(&userInfoMutex))
+		return 0;
+
+	ret = ownerConnected;
+
+	pthread_mutex_unlock(&userInfoMutex);
+
+	return ret;
+}
+
+uint8_t GetAPIMessager::netNumActiveUsers() {
+	uint8_t ret;
+
+	if (pthread_mutex_lock(&userInfoMutex))
+		return 0;
+
+	ret = activeUsers;
+
+	pthread_mutex_unlock(&userInfoMutex);
+
+	return ret;
+}
+
+uint8_t GetAPIMessager::netGetClientFrameStatsNum() {
+	uint8_t ret;
+
+	if (pthread_mutex_lock(&frameStatMutex))
+		return 0;
+
+	ret = clientFrameStats.size();
+
+	pthread_mutex_unlock(&frameStatMutex);
+
+	return ret;
+}
+
+uint8_t GetAPIMessager::netServerFrameStatsReady() {
+	uint8_t ret;
+
+	if (pthread_mutex_lock(&frameStatMutex))
+		return 0;
+
+	ret = serverFrameStats.w != 0;
+
+	pthread_mutex_unlock(&frameStatMutex);
+
+	return ret;
 }
