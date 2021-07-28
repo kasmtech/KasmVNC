@@ -31,7 +31,7 @@ $slashndx = rindex($0, "/");
 if($slashndx>=0) {
     $exedir = substr($0, 0, $slashndx+1);
 }
-if ($exedir =~ m!^unix/!) {
+if ($exedir =~ m!unix/!) {
    $exedir = "/usr/bin/";
 }
 
