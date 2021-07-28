@@ -386,13 +386,7 @@ warn "\nUsername: $vncUserName\n\n";
 
 # Create the user's xstartup script if necessary.
 if (! $skipxstartup) {
-    if (!(-e "$xstartupFile")) {
-	warn "Creating default startup script $xstartupFile\n";
-	open(XSTARTUP, ">$xstartupFile");
-        print XSTARTUP $defaultXStartup;
-        close(XSTARTUP);
-        chmod 0755, "$xstartupFile";
-    }
+   &CreateXstartup();
 }
 
 # Create the user's config file if necessary.
@@ -908,4 +902,17 @@ sub SanityCheck
 	$AF_INET = &AF_INET;
 	$SOCK_STREAM = &SOCK_STREAM;
     }
+}
+
+sub CreateXstartup
+{
+   if ((-e "$xstartupFile")) {
+      return;
+   }
+
+   warn "Creating default startup script $xstartupFile\n";
+   open(XSTARTUP, ">$xstartupFile");
+         print XSTARTUP $defaultXStartup;
+         close(XSTARTUP);
+         chmod 0755, "$xstartupFile";
 }
