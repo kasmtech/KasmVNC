@@ -404,10 +404,12 @@ if (! $skipxstartup) {
 }
 warn "Log file is $desktopLog\n\n";
 
-&DetectDisplay();
-$ENV{VNCDESKTOP}= $desktopName;
+if (! $skipxstartup) {
+   &DetectDisplay();
+   $ENV{VNCDESKTOP}= $desktopName;
 
-&RunXstartup();
+   &RunXstartup();
+}
 
 exit;
 
