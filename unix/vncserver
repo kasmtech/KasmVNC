@@ -404,39 +404,10 @@ if (! $skipxstartup) {
 }
 warn "Log file is $desktopLog\n\n";
 
-# If the unix domain socket exists then use that (DISPLAY=:n) otherwise use
-# TCP (DISPLAY=host:n)
-
-if (-e "/tmp/.X11-unix/X$displayNumber" ||
-    -e "/usr/spool/sockets/X11/$displayNumber")
-{
-    $ENV{DISPLAY}= ":$displayNumber";
-} else {
-    $ENV{DISPLAY}= "$host:$displayNumber";
-}
+&DetectDisplay();
 $ENV{VNCDESKTOP}= $desktopName;
 
-if ($opt{'-fg'}) {
-    if (! $skipxstartup) {
-        system("$xstartupFile >> " . &quotedString($desktopLog) . " 2>&1");
-    }
-    if (kill 0, `cat $pidFile`) {
-        $opt{'-kill'} = ':'.$displayNumber;
-        &Kill();
-    }
-} else {
-    if ($opt{'-autokill'}) {
-    	if (! $skipxstartup) {
-            system("($xstartupFile; $0 -kill :$displayNumber) >> "
-	     . &quotedString($desktopLog) . " 2>&1 &");
-    	}
-    } else {
-    	if (! $skipxstartup) {
-            system("$xstartupFile >> " . &quotedString($desktopLog)
-	     . " 2>&1 &");
-    	}
-    }
-}
+&RunXstartup();
 
 exit;
 
@@ -915,4 +886,41 @@ sub CreateXstartup
          print XSTARTUP $defaultXStartup;
          close(XSTARTUP);
          chmod 0755, "$xstartupFile";
+}
+
+sub DetectDisplay {
+   # If the unix domain socket exists then use that (DISPLAY=:n) otherwise use
+   # TCP (DISPLAY=host:n)
+
+   if (-e "/tmp/.X11-unix/X$displayNumber" ||
+      -e "/usr/spool/sockets/X11/$displayNumber")
+   {
+      $ENV{DISPLAY}= ":$displayNumber";
+   } else {
+      $ENV{DISPLAY}= "$host:$displayNumber";
+   }
+}
+
+sub RunXstartup {
+   if ($opt{'-fg'}) {
+      if (! $skipxstartup) {
+         system("$xstartupFile >> " . &quotedString($desktopLog) . " 2>&1");
+      }
+      if (kill 0, `cat $pidFile`) {
+         $opt{'-kill'} = ':'.$displayNumber;
+         &Kill();
+      }
+   } else {
+      if ($opt{'-autokill'}) {
+         if (! $skipxstartup) {
+               system("($xstartupFile; $0 -kill :$displayNumber) >> "
+         . &quotedString($desktopLog) . " 2>&1 &");
+         }
+      } else {
+         if (! $skipxstartup) {
+               system("$xstartupFile >> " . &quotedString($desktopLog)
+         . " 2>&1 &");
+         }
+      }
+   }
 }
