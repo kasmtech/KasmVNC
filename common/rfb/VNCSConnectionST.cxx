@@ -574,6 +574,7 @@ bool VNCSConnectionST::needRenderedCursor()
     return false;
 
   if (!cp.supportsLocalCursorWithAlpha &&
+      !cp.supportsVMWareCursor &&
       !cp.supportsLocalCursor && !cp.supportsLocalXCursor)
     return true;
   if (!server->cursorPos.equals(pointerEventPos) &&
@@ -1550,11 +1551,13 @@ void VNCSConnectionST::setCursor()
     clientHasCursor = true;
   }
 
-  if (!writer()->writeSetCursorWithAlpha()) {
-    if (!writer()->writeSetCursor()) {
-      if (!writer()->writeSetXCursor()) {
-        // No client support
-        return;
+  if (!writer()->writeSetVMwareCursor()) {
+    if (!writer()->writeSetCursorWithAlpha()) {
+      if (!writer()->writeSetCursor()) {
+        if (!writer()->writeSetXCursor()) {
+          // No client support
+          return;
+        }
       }
     }
   }
