@@ -386,9 +386,9 @@ sub CheckGeometryAndDepth
 sub GetLowestAvailableDisplayNumber
 {
     foreach $n (1..99) {
-	if (&CheckDisplayNumber($n)) {
-	    return $n+0; # Bruce Mah's workaround for bug in perl 5.005_02
-	}
+      if (&CheckDisplayNumber($n)) {
+            return $n+0; # Bruce Mah's workaround for bug in perl 5.005_02
+      }
     }
 
     die "$prog: no free display number on $host.\n";
