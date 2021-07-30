@@ -76,11 +76,7 @@ chop($host = `uname -n`);
 &CheckGeometryAndDepth();
 
 # Create the user's vnc directory if necessary.
-if (!(-e $vncUserDir)) {
-    if (!mkdir($vncUserDir,0755)) {
-	die "$prog: Could not create $vncUserDir.\n";
-    }
-}
+&CreateDotVncDir();
 
 $selectDeCmd = "builder/startup/deb/select-de.sh";
 if (!$skipxstartup) {
@@ -945,5 +941,13 @@ sub ProcessCliOptions {
    if ($opt{'-fp'}) {
       $fontPath = $opt{'-fp'};
       $fpArgSpecified = 1;
+   }
+}
+
+sub CreateDotVncDir {
+   if (!(-e $vncUserDir)) {
+      if (!mkdir($vncUserDir,0755)) {
+         die "$prog: Could not create $vncUserDir.\n";
+      }
    }
 }
