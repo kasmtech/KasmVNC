@@ -64,41 +64,7 @@ $defaultConfig
 
 chop($host = `uname -n`);
 
-if (-d "/etc/X11/fontpath.d") {
-    $fontPath = "catalogue:/etc/X11/fontpath.d";
-}
-
-@fontpaths = ('/usr/share/X11/fonts', '/usr/share/fonts', '/usr/share/fonts/X11/');
-if (! -l "/usr/lib/X11") {push(@fontpaths, '/usr/lib/X11/fonts');}
-if (! -l "/usr/X11") {push(@fontpaths, '/usr/X11/lib/X11/fonts');}
-if (! -l "/usr/X11R6") {push(@fontpaths, '/usr/X11R6/lib/X11/fonts');}
-push(@fontpaths, '/usr/share/fonts/default');
-
-@fonttypes = ('misc',
-             '75dpi',
-             '100dpi',
-             'Speedo',
-             'Type1');
-
-foreach $_fpath (@fontpaths) {
-    foreach $_ftype (@fonttypes) {
-        if (-f "$_fpath/$_ftype/fonts.dir") {
-            if (! -l "$_fpath/$_ftype") {
-                $defFontPath .= "$_fpath/$_ftype,";
-            }
-        }
-    }
-}
-
-if ($defFontPath) {
-    if (substr($defFontPath, -1, 1) == ',') {
-        chop $defFontPath;
-    }
-}
-
-if ($fontPath eq "") {
-    $fontPath = $defFontPath;
-}
+&DetectFontPath();
 
 # Check command line options
 
@@ -938,4 +904,42 @@ sub DetectUserName {
    $vncUserName =~ s/^\s+|\s+$//g;
 
    return $vncUserName;
+}
+
+sub DetectFontPath {
+   if (-d "/etc/X11/fontpath.d") {
+      $fontPath = "catalogue:/etc/X11/fontpath.d";
+   }
+
+   @fontpaths = ('/usr/share/X11/fonts', '/usr/share/fonts', '/usr/share/fonts/X11/');
+   if (! -l "/usr/lib/X11") {push(@fontpaths, '/usr/lib/X11/fonts');}
+   if (! -l "/usr/X11") {push(@fontpaths, '/usr/X11/lib/X11/fonts');}
+   if (! -l "/usr/X11R6") {push(@fontpaths, '/usr/X11R6/lib/X11/fonts');}
+   push(@fontpaths, '/usr/share/fonts/default');
+
+   @fonttypes = ('misc',
+               '75dpi',
+               '100dpi',
+               'Speedo',
+               'Type1');
+
+   foreach $_fpath (@fontpaths) {
+      foreach $_ftype (@fonttypes) {
+         if (-f "$_fpath/$_ftype/fonts.dir") {
+               if (! -l "$_fpath/$_ftype") {
+                  $defFontPath .= "$_fpath/$_ftype,";
+               }
+         }
+      }
+   }
+
+   if ($defFontPath) {
+      if (substr($defFontPath, -1, 1) == ',') {
+         chop $defFontPath;
+      }
+   }
+
+   if ($fontPath eq "") {
+      $fontPath = $defFontPath;
+   }
 }
