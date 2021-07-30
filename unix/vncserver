@@ -40,8 +40,7 @@ $geometry = "1024x768";
 
 $vncUserDir = "$ENV{HOME}/.vnc";
 $vncUserConfig = "$vncUserDir/config";
-$vncUserName = `id -u -n`;
-$vncUserName =~ s/^\s+|\s+$//g;
+$vncUserName = &DetectUserName();
 
 $vncSystemConfigDir = "/etc/kasmvnc";
 $vncSystemConfigDefaultsFile = "$vncSystemConfigDir/vncserver-config-defaults";
@@ -932,4 +931,11 @@ sub DetectBinariesDir {
    }
 
    return $result;
+}
+
+sub DetectUserName {
+   my $vncUserName = `id -u -n`;
+   $vncUserName =~ s/^\s+|\s+$//g;
+
+   return $vncUserName;
 }
