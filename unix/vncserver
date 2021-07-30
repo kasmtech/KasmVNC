@@ -71,36 +71,7 @@ chop($host = `uname -n`);
 &ParseOptions("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,
 	      "-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1);
 
-&Usage() if ($opt{'-help'} || $opt{'-h'} || $opt{'--help'});
-
-&Kill() if ($opt{'-kill'});
-
-&List() if ($opt{'-list'});
-
-# Uncomment this line if you want default geometry, depth and pixelformat
-# to match the current X display:
-# &GetXDisplayDefaults();
-
-if ($opt{'-geometry'}) {
-    $geometry = $opt{'-geometry'};
-}
-if ($opt{'-depth'}) {
-    $depth = $opt{'-depth'};
-    $pixelformat = "";
-}
-if ($opt{'-pixelformat'}) {
-    $pixelformat = $opt{'-pixelformat'};
-}
-if ($opt{'-noxstartup'}) {
-    $skipxstartup = 1;
-}
-if ($opt{'-xstartup'}) {
-    $xstartupFile = $opt{'-xstartup'};
-}
-if ($opt{'-fp'}) {
-    $fontPath = $opt{'-fp'};
-    $fpArgSpecified = 1;
-}
+&ProcessCliOptions();
 
 &CheckGeometryAndDepth();
 
@@ -941,5 +912,38 @@ sub DetectFontPath {
 
    if ($fontPath eq "") {
       $fontPath = $defFontPath;
+   }
+}
+
+sub ProcessCliOptions {
+   &Usage() if ($opt{'-help'} || $opt{'-h'} || $opt{'--help'});
+
+   &Kill() if ($opt{'-kill'});
+
+   &List() if ($opt{'-list'});
+
+   # Uncomment this line if you want default geometry, depth and pixelformat
+   # to match the current X display:
+   # &GetXDisplayDefaults();
+
+   if ($opt{'-geometry'}) {
+      $geometry = $opt{'-geometry'};
+   }
+   if ($opt{'-depth'}) {
+      $depth = $opt{'-depth'};
+      $pixelformat = "";
+   }
+   if ($opt{'-pixelformat'}) {
+      $pixelformat = $opt{'-pixelformat'};
+   }
+   if ($opt{'-noxstartup'}) {
+      $skipxstartup = 1;
+   }
+   if ($opt{'-xstartup'}) {
+      $xstartupFile = $opt{'-xstartup'};
+   }
+   if ($opt{'-fp'}) {
+      $fontPath = $opt{'-fp'};
+      $fpArgSpecified = 1;
    }
 }
