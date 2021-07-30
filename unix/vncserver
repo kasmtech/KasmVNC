@@ -88,7 +88,7 @@ if ((@ARGV > 0) && ($ARGV[0] =~ /^:(\d+)$/)) {
 } elsif ((@ARGV > 0) && ($ARGV[0] !~ /^-/) && ($ARGV[0] !~ /^\+/)) {
     &Usage();
 } else {
-    $displayNumber = &GetDisplayNumber();
+    $displayNumber = &GetLowestAvailableDisplayNumber();
 }
 
 $vncPort = 5900 + $displayNumber;
@@ -378,12 +378,12 @@ sub CheckGeometryAndDepth
 
 
 #
-# GetDisplayNumber gets the lowest available display number.  A display number
-# n is taken if something is listening on the VNC server port (5900+n) or the
-# X server port (6000+n).
+# GetLowestAvailableDisplayNumber gets the lowest available display number.  A
+# display number n is taken if something is listening on the VNC server port
+# (5900+n) or the X server port (6000+n).
 #
 
-sub GetDisplayNumber
+sub GetLowestAvailableDisplayNumber
 {
     foreach $n (1..99) {
 	if (&CheckDisplayNumber($n)) {
