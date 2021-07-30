@@ -405,7 +405,7 @@ if (! $skipxstartup) {
 warn "Log file is $desktopLog\n\n";
 
 if (! $skipxstartup) {
-   &DetectDisplay();
+   &DetectAndExportDisplay();
    $ENV{VNCDESKTOP}= $desktopName;
 
    &RunXstartup();
@@ -890,7 +890,7 @@ sub CreateXstartup
          chmod 0755, "$xstartupFile";
 }
 
-sub DetectDisplay {
+sub DetectAndExportDisplay {
    # If the unix domain socket exists then use that (DISPLAY=:n) otherwise use
    # TCP (DISPLAY=host:n)
 
