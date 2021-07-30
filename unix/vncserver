@@ -78,19 +78,7 @@ chop($host = `uname -n`);
 # Create the user's vnc directory if necessary.
 &CreateDotVncDir();
 
-# Find display number.
-if ((@ARGV > 0) && ($ARGV[0] =~ /^:(\d+)$/)) {
-    $displayNumber = $1;
-    shift(@ARGV);
-    if (!&CheckDisplayNumber($displayNumber)) {
-	die "A VNC server is already running as :$displayNumber\n";
-    }
-} elsif ((@ARGV > 0) && ($ARGV[0] !~ /^-/) && ($ARGV[0] !~ /^\+/)) {
-    &Usage();
-} else {
-    $displayNumber = &GetLowestAvailableDisplayNumber();
-}
-
+&DetectDisplayNumberFromCliArgs();
 $vncPort = 5900 + $displayNumber;
 
 if ($opt{'-name'}) {
@@ -951,5 +939,22 @@ sub AskUserToChooseDeOrManualXstartup {
    $selectDeCmd = "builder/startup/deb/select-de.sh";
    if (!$skipxstartup) {
       system($selectDeCmd) == 0 || die("Failed to execute $selectDeCmd\n");
+   }
+}
+
+sub DetectDisplayNumberFromCliArgs {
+   if (@ARGV == 0) {
+      $displayNumber = &GetLowestAvailableDisplayNumber();
+      return;
+   }
+
+   if ($ARGV[0] =~ /^:(\d+)$/) {
+      $displayNumber = $1;
+      shift(@ARGV);
+      if (!&CheckDisplayNumber($displayNumber)) {
+         die "A VNC server is already running as :$displayNumber\n";
+      }
+   } elsif (($ARGV[0] !~ /^-/) && ($ARGV[0] !~ /^\+/)) {
+      &Usage();
    }
 }
