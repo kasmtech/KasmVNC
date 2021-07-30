@@ -26,14 +26,7 @@
 #
 
 # First make sure we're operating in a sane environment.
-$exedir = "";
-$slashndx = rindex($0, "/");
-if($slashndx>=0) {
-    $exedir = substr($0, 0, $slashndx+1);
-}
-if ($exedir =~ m!unix/!) {
-   $exedir = "/usr/bin/";
-}
+$exedir = &DetectBinariesDir($0);
 
 &SanityCheck();
 
@@ -925,4 +918,18 @@ sub RunXstartup {
          }
       }
    }
+}
+
+sub DetectBinariesDir {
+   my $result = "";
+   my $slashndx = rindex($0, "/");
+
+   if($slashndx>=0) {
+      $result = substr($0, 0, $slashndx+1);
+   }
+   if ($result =~ m!unix/!) {
+      $result = "/usr/bin/";
+   }
+
+   return $result;
 }
