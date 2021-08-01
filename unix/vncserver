@@ -91,11 +91,6 @@ my %config;
 &SetReasonabeDefaults();
 &LoadSystemThenUserThenMandatoryConfigs();
 
-#
-# Check whether VNC authentication is enabled, and if so, prompt the user to
-# create a VNC password if they don't already have one.
-#
-
 &DisableVncAuth();
 
 $kasmAuthEnabled = 1;
