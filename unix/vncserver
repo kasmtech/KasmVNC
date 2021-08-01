@@ -118,7 +118,7 @@ sleep(3);
 
 &IfXvncDidntStartTryFixingFontPathAndStartXvncAgain();
 
-unless (kill 0, `cat $pidFile`) {
+unless (&IsXvncRunning()) {
     warn "Could not start Xvnc.\n\n";
     unlink $pidFile;
     open(LOG, "<$desktopLog");
@@ -930,7 +930,7 @@ sub StartXvncAndRecordPID {
 
 sub IfXvncDidntStartTryFixingFontPathAndStartXvncAgain {
    if ($fontPath ne $defFontPath) {
-      unless (kill 0, `cat $pidFile`) {
+      unless (&IsXvncRunning()) {
          if ($fpArgSpecified) {
                warn "\nWARNING: The first attempt to start Xvnc failed, probably because the font\n";
                warn "path you specified using the -fp argument is incorrect.  Attempting to\n";
@@ -947,4 +947,8 @@ sub IfXvncDidntStartTryFixingFontPathAndStartXvncAgain {
          sleep(3);
       }
    }
+}
+
+sub IsXvncRunning {
+   kill 0, `cat $pidFile`;
 }
