@@ -119,12 +119,7 @@ sleep(3);
 &IfXvncDidntStartTryFixingFontPathAndStartXvncAgain();
 
 unless (&IsXvncRunning()) {
-    warn "Could not start Xvnc.\n\n";
-    unlink $pidFile;
-    open(LOG, "<$desktopLog");
-    while (<LOG>) { print; }
-    close(LOG);
-    die "\n";
+   &WarnUserXvncNotStartedAndExit();
 }
 
 warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
@@ -951,4 +946,13 @@ sub IfXvncDidntStartTryFixingFontPathAndStartXvncAgain {
 
 sub IsXvncRunning {
    kill 0, `cat $pidFile`;
+}
+
+sub WarnUserXvncNotStartedAndExit {
+    warn "Could not start Xvnc.\n\n";
+    unlink $pidFile;
+    open(LOG, "<$desktopLog");
+    while (<LOG>) { print; }
+    close(LOG);
+    die "\n";
 }
