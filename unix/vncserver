@@ -69,7 +69,7 @@ chop($host = `uname -n`);
 # Check command line options
 
 &ParseOptions("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,
-	      "-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1);
+              "-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1);
 
 &ProcessCliOptions();
 
@@ -119,19 +119,19 @@ sleep(3);
 if ($fontPath ne $defFontPath) {
     unless (kill 0, `cat $pidFile`) {
         if ($fpArgSpecified) {
-	    warn "\nWARNING: The first attempt to start Xvnc failed, probably because the font\n";
-	    warn "path you specified using the -fp argument is incorrect.  Attempting to\n";
-	    warn "determine an appropriate font path for this system and restart Xvnc using\n";
-	    warn "that font path ...\n";
+            warn "\nWARNING: The first attempt to start Xvnc failed, probably because the font\n";
+            warn "path you specified using the -fp argument is incorrect.  Attempting to\n";
+            warn "determine an appropriate font path for this system and restart Xvnc using\n";
+            warn "that font path ...\n";
         } else {
-	    warn "\nWARNING: The first attempt to start Xvnc failed, possibly because the font\n";
-	    warn "catalog is not properly configured.  Attempting to determine an appropriate\n";
-	    warn "font path for this system and restart Xvnc using that font path ...\n";
+            warn "\nWARNING: The first attempt to start Xvnc failed, possibly because the font\n";
+            warn "catalog is not properly configured.  Attempting to determine an appropriate\n";
+            warn "font path for this system and restart Xvnc using that font path ...\n";
         }
-	$cmd =~ s@-fp [^ ]+@@;
-	$cmd .= " -fp $defFontPath" if ($defFontPath);
-	&StartXAndRecordPID();
-	sleep(3);
+        $cmd =~ s@-fp [^ ]+@@;
+        $cmd .= " -fp $defFontPath" if ($defFontPath);
+        &StartXAndRecordPID();
+        sleep(3);
     }
 }
 unless (kill 0, `cat $pidFile`) {
@@ -200,10 +200,10 @@ sub LoadConfig {
           if ($warnoverride && $config{$k}) {
             print("Warning: $configFile is overriding previously defined '$k' to be '$v'\n");
           }
-	  # change username option to basicAuth and add colon as required by Xvnc, password will be taken from file
-	  if ($k = "username") {
+          # change username option to basicAuth and add colon as required by Xvnc, password will be taken from file
+          if ($k = "username") {
             next;
-	  } else {
+          } else {
             $config{$k} = $v;
           }
         } elsif ($_ =~ m/^\s*(\S+)/) {
@@ -228,19 +228,19 @@ sub LoadConfig {
 sub CheckGeometryAndDepth
 {
     if ($geometry =~ /^(\d+)x(\d+)$/) {
-	$width = $1; $height = $2;
+        $width = $1; $height = $2;
 
-	if (($width<1) || ($height<1)) {
-	    die "$prog: geometry $geometry is invalid\n";
-	}
+        if (($width<1) || ($height<1)) {
+            die "$prog: geometry $geometry is invalid\n";
+        }
 
-	$geometry = "${width}x$height";
+        $geometry = "${width}x$height";
     } else {
-	die "$prog: geometry $geometry is invalid\n";
+        die "$prog: geometry $geometry is invalid\n";
     }
 
     if ($depth && (($depth < 8) || ($depth > 32))) {
-	die "Depth must be between 8 and 32\n";
+        die "Depth must be between 8 and 32\n";
     }
 }
 
@@ -276,29 +276,29 @@ sub CheckDisplayNumber
     socket(S, $AF_INET, $SOCK_STREAM, 0) || die "$prog: socket failed: $!\n";
     eval 'setsockopt(S, &SOL_SOCKET, &SO_REUSEADDR, pack("l", 1))';
     if (!bind(S, pack('S n x12', $AF_INET, 6000 + $n))) {
-	close(S);
-	return 0;
+        close(S);
+        return 0;
     }
     close(S);
 
     socket(S, $AF_INET, $SOCK_STREAM, 0) || die "$prog: socket failed: $!\n";
     eval 'setsockopt(S, &SOL_SOCKET, &SO_REUSEADDR, pack("l", 1))';
     if (!bind(S, pack('S n x12', $AF_INET, 5900 + $n))) {
-	close(S);
-	return 0;
+        close(S);
+        return 0;
     }
     close(S);
 
     if (-e "/tmp/.X$n-lock") {
-	warn "\nWarning: $host:$n is taken because of /tmp/.X$n-lock\n";
-	warn "Remove this file if there is no X server $host:$n\n";
-	return 0;
+        warn "\nWarning: $host:$n is taken because of /tmp/.X$n-lock\n";
+        warn "Remove this file if there is no X server $host:$n\n";
+        return 0;
     }
 
     if (-e "/tmp/.X11-unix/X$n") {
-	warn "\nWarning: $host:$n is taken because of /tmp/.X11-unix/X$n\n";
-	warn "Remove this file if there is no X server $host:$n\n";
-	return 0;
+        warn "\nWarning: $host:$n is taken because of /tmp/.X11-unix/X$n\n";
+        warn "Remove this file if there is no X server $host:$n\n";
+        return 0;
     }
 
     return 1;
@@ -318,10 +318,10 @@ sub CheckDisplayNumber
 sub GetXDisplayDefaults
 {
     local (@lines, @matchlines, $width, $height, $defaultVisualId, $i,
-	   $red, $green, $blue);
+           $red, $green, $blue);
 
-    $wmDecorationWidth = 4;	# a guess at typical size for window manager
-    $wmDecorationHeight = 24;	# decoration size
+    $wmDecorationWidth = 4;     # a guess at typical size for window manager
+    $wmDecorationHeight = 24;   # decoration size
 
     return if (!defined($ENV{DISPLAY}));
 
@@ -331,52 +331,52 @@ sub GetXDisplayDefaults
 
     @matchlines = grep(/dimensions/, @lines);
     if (@matchlines) {
-	($width, $height) = ($matchlines[0] =~ /(\d+)x(\d+) pixels/);
+        ($width, $height) = ($matchlines[0] =~ /(\d+)x(\d+) pixels/);
 
-	$width -= $wmDecorationWidth;
-	$height -= $wmDecorationHeight;
+        $width -= $wmDecorationWidth;
+        $height -= $wmDecorationHeight;
 
-	$geometry = "${width}x$height";
+        $geometry = "${width}x$height";
     }
 
     @matchlines = grep(/default visual id/, @lines);
     if (@matchlines) {
-	($defaultVisualId) = ($matchlines[0] =~ /id:\s+(\S+)/);
+        ($defaultVisualId) = ($matchlines[0] =~ /id:\s+(\S+)/);
 
-	for ($i = 0; $i < @lines; $i++) {
-	    if ($lines[$i] =~ /^\s*visual id:\s+$defaultVisualId$/) {
-		if (($lines[$i+1] !~ /TrueColor/) ||
-		    ($lines[$i+2] !~ /depth/) ||
-		    ($lines[$i+4] !~ /red, green, blue masks/))
-		{
-		    return;
-		}
-		last;
-	    }
-	}
+        for ($i = 0; $i < @lines; $i++) {
+            if ($lines[$i] =~ /^\s*visual id:\s+$defaultVisualId$/) {
+                if (($lines[$i+1] !~ /TrueColor/) ||
+                    ($lines[$i+2] !~ /depth/) ||
+                    ($lines[$i+4] !~ /red, green, blue masks/))
+                {
+                    return;
+                }
+                last;
+            }
+        }
 
-	return if ($i >= @lines);
+        return if ($i >= @lines);
 
-	($depth) = ($lines[$i+2] =~ /depth:\s+(\d+)/);
-	($red,$green,$blue)
-	    = ($lines[$i+4]
-	       =~ /masks:\s+0x([0-9a-f]+), 0x([0-9a-f]+), 0x([0-9a-f]+)/);
+        ($depth) = ($lines[$i+2] =~ /depth:\s+(\d+)/);
+        ($red,$green,$blue)
+            = ($lines[$i+4]
+               =~ /masks:\s+0x([0-9a-f]+), 0x([0-9a-f]+), 0x([0-9a-f]+)/);
 
-	$red = hex($red);
-	$green = hex($green);
-	$blue = hex($blue);
+        $red = hex($red);
+        $green = hex($green);
+        $blue = hex($blue);
 
-	if ($red > $blue) {
-	    $red = int(log($red) / log(2)) - int(log($green) / log(2));
-	    $green = int(log($green) / log(2)) - int(log($blue) / log(2));
-	    $blue = int(log($blue) / log(2)) + 1;
-	    $pixelformat = "rgb$red$green$blue";
-	} else {
-	    $blue = int(log($blue) / log(2)) - int(log($green) / log(2));
-	    $green = int(log($green) / log(2)) - int(log($red) / log(2));
-	    $red = int(log($red) / log(2)) + 1;
-	    $pixelformat = "bgr$blue$green$red";
-	}
+        if ($red > $blue) {
+            $red = int(log($red) / log(2)) - int(log($green) / log(2));
+            $green = int(log($green) / log(2)) - int(log($blue) / log(2));
+            $blue = int(log($blue) / log(2)) + 1;
+            $pixelformat = "rgb$red$green$blue";
+        } else {
+            $blue = int(log($blue) / log(2)) - int(log($green) / log(2));
+            $green = int(log($green) / log(2)) - int(log($red) / log(2));
+            $red = int(log($red) / log(2)) + 1;
+            $pixelformat = "bgr$blue$green$red";
+        }
     }
 }
 
@@ -417,16 +417,16 @@ sub removeSlashes
 sub Usage
 {
     die("\nusage: $prog [:<number>] [-name <desktop-name>] [-depth <depth>]\n".
-	"                 [-geometry <width>x<height>]\n".
-	"                 [-pixelformat rgbNNN|bgrNNN]\n".
-	"                 [-fp <font-path>]\n".
-	"                 [-fg]\n".
-	"                 [-autokill]\n".
-	"                 [-noxstartup]\n".
-	"                 [-xstartup <file>]\n".
-	"                 <Xvnc-options>...\n\n".
-	"       $prog -kill <X-display>\n\n".
-	"       $prog -list\n\n");
+        "                 [-geometry <width>x<height>]\n".
+        "                 [-pixelformat rgbNNN|bgrNNN]\n".
+        "                 [-fp <font-path>]\n".
+        "                 [-fg]\n".
+        "                 [-autokill]\n".
+        "                 [-noxstartup]\n".
+        "                 [-xstartup <file>]\n".
+        "                 <Xvnc-options>...\n\n".
+        "       $prog -kill <X-display>\n\n".
+        "       $prog -list\n\n");
 }
 
 
@@ -442,14 +442,14 @@ sub List
     print "\nKasmVNC server sessions:\n\n";
     print "X DISPLAY #\tPROCESS ID\n";
     foreach my $file (@filelist) {
-	if ($file =~ /$host:(\d+)$\.pid/) {
-	    chop($tmp_pid = `cat $vncUserDir/$file`);
-	    if (kill 0, $tmp_pid) {
-		print ":".$1."\t\t".`cat $vncUserDir/$file`;
-	    } else {
-		unlink ($vncUserDir . "/" . $file);
-	    }
-	}
+        if ($file =~ /$host:(\d+)$\.pid/) {
+            chop($tmp_pid = `cat $vncUserDir/$file`);
+            if (kill 0, $tmp_pid) {
+                print ":".$1."\t\t".`cat $vncUserDir/$file`;
+            } else {
+                unlink ($vncUserDir . "/" . $file);
+            }
+        }
     }
     exit 1;
 }
@@ -464,18 +464,18 @@ sub Kill
     $opt{'-kill'} =~ s/(:\d+)\.\d+$/$1/; # e.g. turn :1.0 into :1
 
     if ($opt{'-kill'} =~ /^:\d+$/) {
-	$pidFile = "$vncUserDir/$host$opt{'-kill'}.pid";
+        $pidFile = "$vncUserDir/$host$opt{'-kill'}.pid";
     } else {
-	if ($opt{'-kill'} !~ /^$host:/) {
-	    die "\nCan't tell if $opt{'-kill'} is on $host\n".
-		"Use -kill :<number> instead\n\n";
-	}
-	$pidFile = "$vncUserDir/$opt{'-kill'}.pid";
+        if ($opt{'-kill'} !~ /^$host:/) {
+            die "\nCan't tell if $opt{'-kill'} is on $host\n".
+                "Use -kill :<number> instead\n\n";
+        }
+        $pidFile = "$vncUserDir/$opt{'-kill'}.pid";
     }
 
     if (! -r $pidFile) {
-	die "\nCan't find file $pidFile\n".
-	    "You'll have to kill the Xvnc process manually\n\n";
+        die "\nCan't find file $pidFile\n".
+            "You'll have to kill the Xvnc process manually\n\n";
     }
 
     $SIG{'HUP'} = 'IGNORE';
@@ -483,29 +483,29 @@ sub Kill
     warn "Killing Xvnc process ID $pid\n";
 
     if (kill 0, $pid) {
-	system("kill $pid");
-	sleep(1);
-	if (kill 0, $pid) {
-	    print "Xvnc seems to be deadlocked.  Kill the process manually and then re-run\n";
-	    print "    ".$0." -kill ".$opt{'-kill'}."\n";
-	    print "to clean up the socket files.\n";
-	    exit
-	}
+        system("kill $pid");
+        sleep(1);
+        if (kill 0, $pid) {
+            print "Xvnc seems to be deadlocked.  Kill the process manually and then re-run\n";
+            print "    ".$0." -kill ".$opt{'-kill'}."\n";
+            print "to clean up the socket files.\n";
+            exit
+        }
 
     } else {
-	warn "Xvnc process ID $pid already killed\n";
-	$opt{'-kill'} =~ s/://;
+        warn "Xvnc process ID $pid already killed\n";
+        $opt{'-kill'} =~ s/://;
 
-	if (-e "/tmp/.X11-unix/X$opt{'-kill'}") {
-	    print "Xvnc did not appear to shut down cleanly.";
-	    print " Removing /tmp/.X11-unix/X$opt{'-kill'}\n";
-	    unlink "/tmp/.X11-unix/X$opt{'-kill'}";
-	}
-	if (-e "/tmp/.X$opt{'-kill'}-lock") {
-	    print "Xvnc did not appear to shut down cleanly.";
-	    print " Removing /tmp/.X$opt{'-kill'}-lock\n";
-	    unlink "/tmp/.X$opt{'-kill'}-lock";
-	}
+        if (-e "/tmp/.X11-unix/X$opt{'-kill'}") {
+            print "Xvnc did not appear to shut down cleanly.";
+            print " Removing /tmp/.X11-unix/X$opt{'-kill'}\n";
+            unlink "/tmp/.X11-unix/X$opt{'-kill'}";
+        }
+        if (-e "/tmp/.X$opt{'-kill'}-lock") {
+            print "Xvnc did not appear to shut down cleanly.";
+            print " Removing /tmp/.X$opt{'-kill'}-lock\n";
+            unlink "/tmp/.X$opt{'-kill'}-lock";
+        }
     }
 
     unlink $pidFile;
@@ -526,31 +526,31 @@ sub ParseOptions
     local ($opt, @opts, %valFollows, @newargs);
 
     while (@optval) {
-	$opt = shift(@optval);
-	push(@opts,$opt);
-	$valFollows{$opt} = shift(@optval);
+        $opt = shift(@optval);
+        push(@opts,$opt);
+        $valFollows{$opt} = shift(@optval);
     }
 
     @optArgs = ();
     %opt = ();
 
     arg: while (defined($arg = shift(@ARGV))) {
-	foreach $opt (@opts) {
-	    if ($arg eq $opt) {
-		push(@optArgs, $arg);
-		if ($valFollows{$opt}) {
-		    if (@ARGV == 0) {
-			&Usage();
-		    }
-		    $opt{$opt} = shift(@ARGV);
-		    push(@optArgs, $opt{$opt});
-		} else {
-		    $opt{$opt} = 1;
-		}
-		next arg;
-	    }
-	}
-	push(@newargs,$arg);
+        foreach $opt (@opts) {
+            if ($arg eq $opt) {
+                push(@optArgs, $arg);
+                if ($valFollows{$opt}) {
+                    if (@ARGV == 0) {
+                        &Usage();
+                    }
+                    $opt{$opt} = shift(@ARGV);
+                    push(@optArgs, $opt{$opt});
+                } else {
+                    $opt{$opt} = 1;
+                }
+                next arg;
+            }
+        }
+        push(@newargs,$arg);
     }
 
     @ARGV = @newargs;
@@ -571,39 +571,39 @@ sub SanityCheck
 
  cmd:
     foreach $cmd ("uname","xauth") {
-	for (split(/:/,$ENV{PATH})) {
-	    if (-x "$_/$cmd") {
-		next cmd;
-	    }
-	}
-	die "$prog: couldn't find \"$cmd\" on your PATH.\n";
+        for (split(/:/,$ENV{PATH})) {
+            if (-x "$_/$cmd") {
+                next cmd;
+            }
+        }
+        die "$prog: couldn't find \"$cmd\" on your PATH.\n";
     }
 
     if($exedir eq "") {
       cmd2:
-	foreach $cmd ("Xvnc","vncpasswd") {
-	    for (split(/:/,$ENV{PATH})) {
-		if (-x "$_/$cmd") {
-		    next cmd2;
-		}
-	    }
-	    die "$prog: couldn't find \"$cmd\" on your PATH.\n";
-	}
+        foreach $cmd ("Xvnc","vncpasswd") {
+            for (split(/:/,$ENV{PATH})) {
+                if (-x "$_/$cmd") {
+                    next cmd2;
+                }
+            }
+            die "$prog: couldn't find \"$cmd\" on your PATH.\n";
+        }
     }
     else {
       cmd3:
-	foreach $cmd ($exedir."Xvnc",$exedir."vncpasswd") {
-	    for (split(/:/,$ENV{PATH})) {
-		if (-x "$cmd") {
-		    next cmd3;
-		}
-	    }
-	    die "$prog: couldn't find \"$cmd\".\n";
-	}
+        foreach $cmd ($exedir."Xvnc",$exedir."vncpasswd") {
+            for (split(/:/,$ENV{PATH})) {
+                if (-x "$cmd") {
+                    next cmd3;
+                }
+            }
+            die "$prog: couldn't find \"$cmd\".\n";
+        }
     }
 
     if (!defined($ENV{HOME})) {
-	die "$prog: The HOME environment variable is not set.\n";
+        die "$prog: The HOME environment variable is not set.\n";
     }
 
     #
@@ -620,22 +620,22 @@ sub SanityCheck
 
     eval 'use Socket';
     if ($@) {
-	eval 'require "sys/socket.ph"';
-	if ($@) {
-	    if (($os eq "SunOS") && ($osrev !~ /^4/)) {
-		$AF_INET = 2;
-		$SOCK_STREAM = 2;
-	    } else {
-		$AF_INET = 2;
-		$SOCK_STREAM = 1;
-	    }
-	} else {
-	    $AF_INET = &AF_INET;
-	    $SOCK_STREAM = &SOCK_STREAM;
-	}
+        eval 'require "sys/socket.ph"';
+        if ($@) {
+            if (($os eq "SunOS") && ($osrev !~ /^4/)) {
+                $AF_INET = 2;
+                $SOCK_STREAM = 2;
+            } else {
+                $AF_INET = 2;
+                $SOCK_STREAM = 1;
+            }
+        } else {
+            $AF_INET = &AF_INET;
+            $SOCK_STREAM = &SOCK_STREAM;
+        }
     } else {
-	$AF_INET = &AF_INET;
-	$SOCK_STREAM = &SOCK_STREAM;
+        $AF_INET = &AF_INET;
+        $SOCK_STREAM = &SOCK_STREAM;
     }
 }
 
