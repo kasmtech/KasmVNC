@@ -96,47 +96,6 @@ my %config;
 # create a VNC password if they don't already have one.
 #
 
-$securityTypeArgSpecified = 0;
-$vncAuthEnabled = 0;
-$passwordArgSpecified = 0;
-@vncAuthStrings = ("vncauth", "tlsvnc", "x509vnc");
-
-# ...first we check our configuration files' settings
-#if ($config{'securitytypes'}) {
-#  $securityTypeArgSpecified = 1;
-#  foreach $arg2 (split(',', $config{'securitytypes'})) {
-#    if (grep {$_ eq lc($arg2)} @vncAuthStrings) {
-#      $vncAuthEnabled = 1;
-#    }
-#  }
-#}
-
-# ...and finally we check CLI args, which in the case of the topic at
-# hand (VNC auth or not), override anything found in configuration files
-# (even so-called "mandatory" settings).
-#for ($i = 0; $i < @ARGV; ++$i) {
-#    # -SecurityTypes can be followed by a space or "="
-#    my @splitargs = split('=', $ARGV[$i]);
-#    if (@splitargs <= 1 && $i < @ARGV - 1) {
-#        push(@splitargs, $ARGV[$i + 1]);
-#    }
-#    if (lc(@splitargs[0]) eq "-securitytypes") {
-#        if (@splitargs > 1) {
-#            $securityTypeArgSpecified = 1;
-#        }
-#        foreach $arg2 (split(',', @splitargs[1])) {
-#            if (grep {$_ eq lc($arg2)} @vncAuthStrings) {
-#                $vncAuthEnabled = 1;
-#            }
-#        }
-#    }
-#    if ((lc(@splitargs[0]) eq "-password")
-#     || (lc(@splitargs[0]) eq "-passwordfile"
-#     || (lc(@splitargs[0]) eq "-rfbauth"))) {
-#        $passwordArgSpecified = 1;
-#    }
-#}
-
 # Disable vnc auth, kasmvnc uses https basic auth
 system("echo 'WrLNwLrcrxM=' | base64 -d > $vncUserDir/passwd");
 
