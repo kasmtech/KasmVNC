@@ -96,8 +96,7 @@ my %config;
 # create a VNC password if they don't already have one.
 #
 
-# Disable vnc auth, kasmvnc uses https basic auth
-system("echo 'WrLNwLrcrxM=' | base64 -d > $vncUserDir/passwd");
+&DisableVncAuth();
 
 $kasmAuthEnabled = 1;
 
@@ -919,4 +918,9 @@ sub LoadSystemThenUserThenMandatoryConfigs {
    # hard force policy in a non-subvertible way would require major
    # development work that touches Xvnc itself.
    LoadConfig($vncSystemConfigMandatoryFile, 1);
+}
+
+sub DisableVncAuth() {
+   # Disable vnc auth, kasmvnc uses https basic auth
+   system("echo 'WrLNwLrcrxM=' | base64 -d > $vncUserDir/passwd");
 }
