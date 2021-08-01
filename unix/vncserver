@@ -107,24 +107,7 @@ unlink($desktopLog);
 # Now start the X VNC Server
 
 # We build up our Xvnc command with options
-$cmd = $exedir."Xvnc :$displayNumber";
-
-foreach my $k (sort keys %config) {
-  $cmd .= " -$k $config{$k}";
-  delete $default_opts{$k}; # file options take precedence
-}
-
-foreach my $k (sort keys %default_opts) {
-  $cmd .= " -$k $default_opts{$k}";
-}
-
-# Add color database stuff here, e.g.:
-# $cmd .= " -co /usr/lib/X11/rgb";
-
-foreach $arg (@ARGV) {
-  $cmd .= " " . &quotedString($arg);
-}
-$cmd .= " >> " . &quotedString($desktopLog) . " 2>&1";
+$cmd = &ConstructXvncCmd();
 
 # Run $cmd and record the process ID.
 $pidFile = "$vncUserDir/$host:$displayNumber.pid";
@@ -932,4 +915,27 @@ sub SetupXauthorityFile {
    print XAUTH "add $host:$displayNumber . $cookie\n";
    print XAUTH "add $host/unix:$displayNumber . $cookie\n";
    close(XAUTH);
+}
+
+sub ConstructXvncCmd {
+   my $cmd = $exedir."Xvnc :$displayNumber";
+
+   foreach my $k (sort keys %config) {
+      $cmd .= " -$k $config{$k}";
+      delete $default_opts{$k}; # file options take precedence
+   }
+
+   foreach my $k (sort keys %default_opts) {
+      $cmd .= " -$k $default_opts{$k}";
+   }
+
+   # Add color database stuff here, e.g.:
+   # $cmd .= " -co /usr/lib/X11/rgb";
+
+   foreach $arg (@ARGV) {
+      $cmd .= " " . &quotedString($arg);
+   }
+   $cmd .= " >> " . &quotedString($desktopLog) . " 2>&1";
+
+   return $cmd;
 }
