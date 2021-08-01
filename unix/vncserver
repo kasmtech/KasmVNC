@@ -81,11 +81,7 @@ chop($host = `uname -n`);
 &DetectDisplayNumberFromCliArgs();
 $vncPort = 5900 + $displayNumber;
 
-if ($opt{'-name'}) {
-    $desktopName = $opt{'-name'};
-} else {
-    $desktopName = "$host:$displayNumber ($ENV{USER})";
-}
+$desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
 
 my %default_opts;
 my %config;
