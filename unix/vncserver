@@ -88,31 +88,8 @@ my %config;
 
 # We set some reasonable defaults. Config file settings
 # override these where present.
-$default_opts{desktop} = &quotedString($desktopName);
-$default_opts{auth} = &quotedString($xauthorityFile);
-$default_opts{geometry} = $geometry if ($geometry);
-$default_opts{depth} = $depth if ($depth);
-$default_opts{pixelformat} = $pixelformat if ($pixelformat);
-$default_opts{rfbwait} = 30000;
-$default_opts{rfbauth} = "$vncUserDir/passwd";
-$default_opts{rfbport} = $vncPort;
-$default_opts{fp} = $fontPath if ($fontPath);
-$default_opts{pn} = "";
-
-# Load user-overrideable system defaults
-LoadConfig($vncSystemConfigDefaultsFile);
-
-# Then the user's settings
-LoadConfig($vncUserConfig);
-
-# And then override anything set above if mandatory settings exist.
-# WARNING: "Mandatory" is used loosely here! As the man page says,
-# there is nothing stopping someone from EASILY subverting the
-# settings in $vncSystemConfigMandatoryFile by simply passing
-# CLI args to vncserver, which trump config files! To properly
-# hard force policy in a non-subvertible way would require major
-# development work that touches Xvnc itself.
-LoadConfig($vncSystemConfigMandatoryFile, 1);
+&SetReasonabeDefaults();
+&LoadSystemThenUserThenMandatoryConfigs();
 
 #
 # Check whether VNC authentication is enabled, and if so, prompt the user to
@@ -953,4 +930,34 @@ sub DetectDisplayNumberFromCliArgs {
    } elsif (($ARGV[0] !~ /^-/) && ($ARGV[0] !~ /^\+/)) {
       &Usage();
    }
+}
+
+sub SetReasonabeDefaults {
+   $default_opts{desktop} = &quotedString($desktopName);
+   $default_opts{auth} = &quotedString($xauthorityFile);
+   $default_opts{geometry} = $geometry if ($geometry);
+   $default_opts{depth} = $depth if ($depth);
+   $default_opts{pixelformat} = $pixelformat if ($pixelformat);
+   $default_opts{rfbwait} = 30000;
+   $default_opts{rfbauth} = "$vncUserDir/passwd";
+   $default_opts{rfbport} = $vncPort;
+   $default_opts{fp} = $fontPath if ($fontPath);
+   $default_opts{pn} = "";
+}
+
+sub LoadSystemThenUserThenMandatoryConfigs {
+   # Load user-overrideable system defaults
+   LoadConfig($vncSystemConfigDefaultsFile);
+
+   # Then the user's settings
+   LoadConfig($vncUserConfig);
+
+   # And then override anything set above if mandatory settings exist.
+   # WARNING: "Mandatory" is used loosely here! As the man page says,
+   # there is nothing stopping someone from EASILY subverting the
+   # settings in $vncSystemConfigMandatoryFile by simply passing
+   # CLI args to vncserver, which trump config files! To properly
+   # hard force policy in a non-subvertible way would require major
+   # development work that touches Xvnc itself.
+   LoadConfig($vncSystemConfigMandatoryFile, 1);
 }
