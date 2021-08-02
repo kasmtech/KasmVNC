@@ -94,6 +94,7 @@ my %config;
 &DisableVncAuth();
 
 $kasmAuthEnabled = 1;
+$kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
 
 if ($kasmAuthEnabled) {
    &TellUserToSetupUserAndPassword();
@@ -841,9 +842,9 @@ sub DisableVncAuth() {
 }
 
 sub TellUserToSetupUserAndPassword {
-   if (!(-e "$ENV{HOME}/.kasmpasswd")) {
+   if (!(-e $kasmPasswdFile)) {
       warn "\nYou will require a password to access your desktops.\n\n";
-      system($exedir."kasmvncpasswd $ENV{HOME}/.kasmpasswd");
+      system($exedir."kasmvncpasswd $kasmPasswdFile");
       if (($? >> 8) != 0) {
          exit 1;
       }
