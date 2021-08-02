@@ -125,9 +125,8 @@ unless (&IsXvncRunning()) {
 warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
 warn "\nUsername: $vncUserName\n\n";
 
-# Create the user's xstartup script if necessary.
 if (! $skipxstartup) {
-   &CreateXstartup();
+   &CreateXstartupIfNeeded();
 }
 
 # Create the user's config file if necessary.
@@ -618,7 +617,7 @@ sub SanityCheck
     }
 }
 
-sub CreateXstartup
+sub CreateXstartupIfNeeded
 {
    if ((-e "$xstartupFile")) {
       return;
