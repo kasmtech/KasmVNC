@@ -95,6 +95,7 @@ my %config;
 
 $kasmAuthEnabled = 1;
 $kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
+@kasmPasswdUsers = &LoadKasmPasswdUsers();
 
 if ($kasmAuthEnabled) {
    &TellUserToSetupUserAndPassword();
@@ -842,14 +843,32 @@ sub DisableVncAuth() {
 }
 
 sub TellUserToSetupUserAndPassword {
-   if (!(-e $kasmPasswdFile)) {
-      warn "\nYou will require a password to access your desktops.\n\n";
-      system($exedir."kasmvncpasswd $kasmPasswdFile");
-      if (($? >> 8) != 0) {
-         exit 1;
-      }
+   if (scalar @kasmPasswdUsers > 0) {
+      return;
+   }
+
+   warn "\nYou will require a password to access your desktops.\n\n";
+   system($exedir."kasmvncpasswd $kasmPasswdFile");
+   if (($? >> 8) != 0) {
+      exit 1;
    }
 }
+
+sub LoadKasmPasswdUsers {
+   my @result = ();
+
+   open(FH, '<', $kasmPasswdFile) or return @result;
+
+   while(<FH>){
+      $_ =~ /^([^:]+):/ or die "$kasmPasswdFile is incorrect";
+      push(@result, $1);
+   }
+
+   close(FH);
+
+   return @result;
+}
+
 
 sub MakeXCookie {
    # Make an X server cookie and set up the Xauthority file
