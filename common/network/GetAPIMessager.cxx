@@ -111,7 +111,7 @@ void GetAPIMessager::mainUpdateBottleneckStats(const char userid[], const char s
 }
 
 void GetAPIMessager::mainClearBottleneckStats(const char userid[]) {
-	if (pthread_mutex_trylock(&statMutex))
+	if (pthread_mutex_lock(&statMutex))
 		return;
 
 	bottleneckStats.erase(userid);
