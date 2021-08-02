@@ -112,9 +112,7 @@ $cmd = &ConstructXvncCmd();
 # Run $cmd and record the process ID.
 $pidFile = "$vncUserDir/$host:$displayNumber.pid";
 &StartXvncAndRecordPID();
-
-# Give Xvnc a chance to start up
-sleep(3);
+&WaitForXvncToStart();
 
 &IfXvncDidntStartTryFixingFontPathAndStartXvncAgain();
 
@@ -939,7 +937,7 @@ sub IfXvncDidntStartTryFixingFontPathAndStartXvncAgain {
          $cmd =~ s@-fp [^ ]+@@;
          $cmd .= " -fp $defFontPath" if ($defFontPath);
          &StartXvncAndRecordPID();
-         sleep(3);
+         &WaitForXvncToStart();
       }
    }
 }
@@ -955,4 +953,8 @@ sub WarnUserXvncNotStartedAndExit {
     while (<LOG>) { print; }
     close(LOG);
     die "\n";
+}
+
+sub WaitForXvncToStart {
+   sleep(3);
 }
