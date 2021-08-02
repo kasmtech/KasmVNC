@@ -114,7 +114,10 @@ $pidFile = "$vncUserDir/$host:$displayNumber.pid";
 &StartXvncAndRecordPID();
 &WaitForXvncToStart();
 
-&IfXvncDidntStartTryFixingFontPathAndStartXvncAgain();
+if (!&IsXvncRunning() && !&UsingSafeFontPath())  {
+   &StartXvncWithSafeFontPath();
+   &WaitForXvncToStart();
+}
 
 unless (&IsXvncRunning()) {
    &WarnUserXvncNotStartedAndExit();
@@ -921,25 +924,20 @@ sub StartXvncAndRecordPID {
    system("$cmd & echo \$! >$pidFile");
 }
 
-sub IfXvncDidntStartTryFixingFontPathAndStartXvncAgain {
-   if ($fontPath ne $defFontPath) {
-      unless (&IsXvncRunning()) {
-         if ($fpArgSpecified) {
-               warn "\nWARNING: The first attempt to start Xvnc failed, probably because the font\n";
-               warn "path you specified using the -fp argument is incorrect.  Attempting to\n";
-               warn "determine an appropriate font path for this system and restart Xvnc using\n";
-               warn "that font path ...\n";
-         } else {
-               warn "\nWARNING: The first attempt to start Xvnc failed, possibly because the font\n";
-               warn "catalog is not properly configured.  Attempting to determine an appropriate\n";
-               warn "font path for this system and restart Xvnc using that font path ...\n";
-         }
-         $cmd =~ s@-fp [^ ]+@@;
-         $cmd .= " -fp $defFontPath" if ($defFontPath);
-         &StartXvncAndRecordPID();
-         &WaitForXvncToStart();
-      }
+sub StartXvncWithSafeFontPath {
+   if ($fpArgSpecified) {
+         warn "\nWARNING: The first attempt to start Xvnc failed, probably because the font\n";
+         warn "path you specified using the -fp argument is incorrect.  Attempting to\n";
+         warn "determine an appropriate font path for this system and restart Xvnc using\n";
+         warn "that font path ...\n";
+   } else {
+         warn "\nWARNING: The first attempt to start Xvnc failed, possibly because the font\n";
+         warn "catalog is not properly configured.  Attempting to determine an appropriate\n";
+         warn "font path for this system and restart Xvnc using that font path ...\n";
    }
+   $cmd =~ s@-fp [^ ]+@@;
+   $cmd .= " -fp $defFontPath" if ($defFontPath);
+   &StartXvncAndRecordPID();
 }
 
 sub IsXvncRunning {
@@ -957,4 +955,8 @@ sub WarnUserXvncNotStartedAndExit {
 
 sub WaitForXvncToStart {
    sleep(3);
+}
+
+sub UsingSafeFontPath {
+   $fontPath eq $defFontPath
 }
