@@ -109,7 +109,6 @@ unlink($desktopLog);
 # We build up our Xvnc command with options
 $cmd = &ConstructXvncCmd();
 
-# Run $cmd and record the process ID.
 $pidFile = "$vncUserDir/$host:$displayNumber.pid";
 &StartXvncAndRecordPID();
 &WaitForXvncToStart();
