@@ -123,6 +123,7 @@ void GetAPIMessager::mainUpdateServerFrameStats(uint8_t changedPerc,
 	uint32_t all, uint32_t jpeg, uint32_t webp, uint32_t analysis,
 	uint32_t jpegarea, uint32_t webparea,
 	uint16_t njpeg, uint16_t nwebp,
+	uint16_t enc, uint16_t scale, uint16_t shot,
 	uint16_t w, uint16_t h) {
 
 	if (pthread_mutex_lock(&frameStatMutex))
@@ -137,6 +138,9 @@ void GetAPIMessager::mainUpdateServerFrameStats(uint8_t changedPerc,
 	serverFrameStats.webparea = webparea;
 	serverFrameStats.njpeg = njpeg;
 	serverFrameStats.nwebp = nwebp;
+	serverFrameStats.enc = enc;
+	serverFrameStats.scale = scale;
+	serverFrameStats.shot = shot;
 	serverFrameStats.w = w;
 	serverFrameStats.h = h;
 
@@ -487,10 +491,15 @@ void GetAPIMessager::netGetFrameStats(char *buf, uint32_t len) {
 
 	fprintf(f, "\t\"server_side\" : [\n"
 	           "\t\t{ \"process_name\": \"Analysis\", \"time\": %u },\n"
+	           "\t\t{ \"process_name\": \"Screenshot\", \"time\": %u },\n"
+	           "\t\t{ \"process_name\": \"Encoding_total\", \"time\": %u, \"videoscaling\": %u },\n"
 	           "\t\t{ \"process_name\": \"TightJPEGEncoder\", \"time\": %u, \"count\": %u, \"area\": %u },\n"
 	           "\t\t{ \"process_name\": \"TightWEBPEncoder\", \"time\": %u, \"count\": %u, \"area\": %u }\n"
 	           "\t],\n",
 	           serverFrameStats.analysis,
+	           serverFrameStats.shot,
+	           serverFrameStats.enc,
+	           serverFrameStats.scale,
 	           serverFrameStats.jpeg,
 	           serverFrameStats.njpeg,
 	           serverFrameStats.jpegarea,

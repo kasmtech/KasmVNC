@@ -68,8 +68,15 @@ namespace rfb {
                               const RenderedCursor* renderedCursor,
                               size_t maxUpdateSize);
 
+    void clearEncodingTime() {
+        encodingTime = 0;
+    };
+
     unsigned getEncodingTime() const {
         return encodingTime;
+    };
+    unsigned getScalingTime() const {
+        return scalingTime;
     };
 
     struct codecstats_t {
@@ -192,6 +199,7 @@ namespace rfb {
     bool webpTookTooLong;
     unsigned encodingTime;
     unsigned maxEncodingTime, framesSinceEncPrint;
+    unsigned scalingTime;
 
     EncCache *encCache;
 

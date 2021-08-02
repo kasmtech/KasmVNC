@@ -1194,6 +1194,7 @@ bool VNCSConnectionST::isCongested()
 void VNCSConnectionST::writeFramebufferUpdate()
 {
   congestion.updatePosition(sock->outStream().length());
+  encodeManager.clearEncodingTime();
 
   // We're in the middle of processing a command that's supposed to be
   // synchronised. Allowing an update to slip out right now might violate

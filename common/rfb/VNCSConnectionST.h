@@ -186,6 +186,13 @@ namespace rfb {
       return encodeManager.webpstats;
     }
 
+    unsigned getEncodingTime() const {
+      return encodeManager.getEncodingTime();
+    }
+    unsigned getScalingTime() const {
+      return encodeManager.getScalingTime();
+    }
+
   private:
     // SConnection callbacks
 

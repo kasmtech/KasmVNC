@@ -1006,14 +1006,20 @@ void VNCServerST::writeUpdate()
     }
   }
 
+  unsigned shottime = 0;
   if (apimessager) {
+    struct timeval shotstart;
+    gettimeofday(&shotstart, NULL);
     apimessager->mainUpdateScreen(pb);
+    shottime = msSince(&shotstart);
 
     trackingFrameStats = 0;
     checkAPIMessages(apimessager, trackingFrameStats, trackingClient);
   }
+  const rdr::U8 origtrackingFrameStats = trackingFrameStats;
 
   EncodeManager::codecstats_t jpegstats, webpstats;
+  unsigned enctime = 0, scaletime = 0;
   memset(&jpegstats, 0, sizeof(EncodeManager::codecstats_t));
   memset(&webpstats, 0, sizeof(EncodeManager::codecstats_t));
 
@@ -1053,20 +1059,38 @@ void VNCServerST::writeUpdate()
       webpstats.ms += subwebp.ms;
       webpstats.area += subwebp.area;
       webpstats.rects += subwebp.rects;
+
+      enctime += (*ci)->getEncodingTime();
+      scaletime += (*ci)->getScalingTime();
     }
   }
 
   if (trackingFrameStats) {
-    const unsigned totalMs = msSince(&start);
+    if (enctime) {
+      const unsigned totalMs = msSince(&start);
 
-    if (apimessager)
-      apimessager->mainUpdateServerFrameStats(comparer->changedPerc, totalMs,
-                                              jpegstats.ms, webpstats.ms,
-                                              analysisMs,
-                                              jpegstats.area, webpstats.area,
-                                              jpegstats.rects, webpstats.rects,
-                                              pb->getRect().width(),
-                                              pb->getRect().height());
+      if (apimessager)
+        apimessager->mainUpdateServerFrameStats(comparer->changedPerc, totalMs,
+                                                jpegstats.ms, webpstats.ms,
+                                                analysisMs,
+                                                jpegstats.area, webpstats.area,
+                                                jpegstats.rects, webpstats.rects,
+                                                enctime, scaletime, shottime,
+                                                pb->getRect().width(),
+                                                pb->getRect().height());
+    } else {
+      // Zero encoding time means this was a no-data frame; restore the stats request
+      if (apimessager && pthread_mutex_lock(&apimessager->userMutex) == 0) {
+
+        network::GetAPIMessager::action_data act;
+        act.action = (network::GetAPIMessager::USER_ACTION) origtrackingFrameStats;
+        memcpy(act.data.password, trackingClient, 128);
+
+        apimessager->actionQueue.push_back(act);
+
+        pthread_mutex_unlock(&apimessager->userMutex);
+      }
+    }
   }
 }
 

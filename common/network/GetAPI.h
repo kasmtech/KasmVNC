@@ -42,6 +42,7 @@ namespace network {
                                     uint32_t jpeg, uint32_t webp, uint32_t analysis,
                                     uint32_t jpegarea, uint32_t webparea,
                                     uint16_t njpeg, uint16_t nwebp,
+                                    uint16_t enc, uint16_t scale, uint16_t shot,
                                     uint16_t w, uint16_t h);
     void mainUpdateClientFrameStats(const char userid[], uint32_t render, uint32_t all,
                                     uint32_t ping);
@@ -110,6 +111,9 @@ namespace network {
       uint32_t webparea;
       uint16_t njpeg;
       uint16_t nwebp;
+      uint16_t enc;
+      uint16_t scale;
+      uint16_t shot;
       uint16_t w;
       uint16_t h;
       uint8_t changedPerc;

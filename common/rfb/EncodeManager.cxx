@@ -1085,6 +1085,9 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
 
   // In case the current resolution is above the max video res, and video was detected,
   // scale to that res, keeping aspect ratio
+  struct timeval scalestart;
+  gettimeofday(&scalestart, NULL);
+
   const PixelBuffer *scaledpb = NULL;
   if (videoDetected &&
       (maxVideoX < pb->getRect().width() || maxVideoY < pb->getRect().height())) {
@@ -1133,6 +1136,7 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
       }
     }
   }
+  scalingTime = msSince(&scalestart);
 
   #pragma omp parallel for schedule(dynamic, 1)
   for (i = 0; i < subrects.size(); ++i) {
