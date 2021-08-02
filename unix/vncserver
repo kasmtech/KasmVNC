@@ -129,14 +129,7 @@ if (! $skipxstartup) {
    &CreateXstartupIfNeeded();
 }
 
-# Create the user's config file if necessary.
-if (!(-e "$vncUserDir/config")) {
-    warn "Creating default config $vncUserDir/config\n";
-    open(VNCUSERCONFIG, ">$vncUserDir/config");
-    print VNCUSERCONFIG $defaultConfig;
-    close(VNCUSERCONFIG);
-    chmod 0644, "$vncUserDir/config";
-}
+&CreateUserConfigIfNeeded();
 
 # Run the X startup script.
 if (! $skipxstartup) {
@@ -957,4 +950,16 @@ sub WaitForXvncToStart {
 
 sub UsingSafeFontPath {
    $fontPath eq $defFontPath
+}
+
+sub CreateUserConfigIfNeeded {
+   if (-e "$vncUserDir/config") {
+      return;
+   }
+
+   warn "Creating default config $vncUserDir/config\n";
+   open(VNCUSERCONFIG, ">$vncUserDir/config");
+   print VNCUSERCONFIG $defaultConfig;
+   close(VNCUSERCONFIG);
+   chmod 0644, "$vncUserDir/config";
 }
