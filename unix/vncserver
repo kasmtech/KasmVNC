@@ -124,23 +124,14 @@ unless (&IsXvncRunning()) {
 
 warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
 warn "\nUsername: $vncUserName\n\n";
+warn "Log file is $desktopLog\n\n";
 
 if (! $skipxstartup) {
    &CreateXstartupIfNeeded();
 }
-
 &CreateUserConfigIfNeeded();
 
-# Run the X startup script.
 if (! $skipxstartup) {
-    warn "Starting applications specified in $xstartupFile\n";
-}
-warn "Log file is $desktopLog\n\n";
-
-if (! $skipxstartup) {
-   &DetectAndExportDisplay();
-   $ENV{VNCDESKTOP}= $desktopName;
-
    &RunXstartup();
 }
 
@@ -663,6 +654,10 @@ sub DetectAndExportDisplay {
 }
 
 sub RunXstartup {
+   warn "Starting applications specified in $xstartupFile\n";
+   &DetectAndExportDisplay();
+   $ENV{VNCDESKTOP}= $desktopName;
+
    if ($opt{'-fg'}) {
       if (! $skipxstartup) {
          system("$xstartupFile >> " . &quotedString($desktopLog) . " 2>&1");
