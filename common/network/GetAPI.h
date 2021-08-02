@@ -37,6 +37,7 @@ namespace network {
     // from main thread
     void mainUpdateScreen(rfb::PixelBuffer *pb);
     void mainUpdateBottleneckStats(const char userid[], const char stats[]);
+    void mainClearBottleneckStats(const char userid[]);
     void mainUpdateServerFrameStats(uint8_t changedPerc, uint32_t all,
                                     uint32_t jpeg, uint32_t webp, uint32_t analysis,
                                     uint32_t jpegarea, uint32_t webparea,

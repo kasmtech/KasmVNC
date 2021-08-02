@@ -110,6 +110,15 @@ void GetAPIMessager::mainUpdateBottleneckStats(const char userid[], const char s
 	pthread_mutex_unlock(&statMutex);
 }
 
+void GetAPIMessager::mainClearBottleneckStats(const char userid[]) {
+	if (pthread_mutex_trylock(&statMutex))
+		return;
+
+	bottleneckStats.erase(userid);
+
+	pthread_mutex_unlock(&statMutex);
+}
+
 void GetAPIMessager::mainUpdateServerFrameStats(uint8_t changedPerc,
 	uint32_t all, uint32_t jpeg, uint32_t webp, uint32_t analysis,
 	uint32_t jpegarea, uint32_t webparea,

@@ -133,8 +133,10 @@ VNCSConnectionST::~VNCSConnectionST()
 
   delete [] fenceData;
 
-  if (server->apimessager)
+  if (server->apimessager) {
     server->apimessager->mainUpdateUserInfo(checkOwnerConn(), server->clients.size());
+    server->apimessager->mainClearBottleneckStats(peerEndpoint.buf);
+  }
 }
 
 
