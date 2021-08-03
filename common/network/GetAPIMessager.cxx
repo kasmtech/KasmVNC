@@ -447,7 +447,8 @@ void GetAPIMessager::netGetFrameStats(char *buf, uint32_t len) {
 		{ "process_name": "TightJPEGEncoder", "time": 20, "count": 64, "area": 12 }
 	],
 	"client_side" : [
-		"123.1.2.1:1211" : {
+		{
+			"client": "123.1.2.1:1211",
 			"client_time": 20,
 			"ping": 20,
 			"processes" : [
@@ -513,7 +514,8 @@ void GetAPIMessager::netGetFrameStats(char *buf, uint32_t len) {
 		const char *id = it->first.c_str();
 		const clientFrameStats_t &s = it->second;
 
-		fprintf(f, "\t\t\"%s\" : {\n"
+		fprintf(f, "\t\t\{\n"
+		           "\t\t\t\"client\": \"%s\",\n"
 		           "\t\t\t\"client_time\": %u,\n"
 		           "\t\t\t\"ping\": %u,\n"
 		           "\t\t\t\"processes\" : [\n"
