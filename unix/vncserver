@@ -843,7 +843,7 @@ sub DisableVncAuth() {
 }
 
 sub TellUserToSetupUserAndPassword {
-   if (scalar @kasmPasswdUsers > 0) {
+   if (&AtLeastOneUserConfigured()) {
       return;
    }
 
@@ -852,6 +852,10 @@ sub TellUserToSetupUserAndPassword {
    if (($? >> 8) != 0) {
       exit 1;
    }
+}
+
+sub AtLeastOneUserConfigured {
+   scalar @kasmPasswdUsers > 0;
 }
 
 sub LoadKasmPasswdUsers {
