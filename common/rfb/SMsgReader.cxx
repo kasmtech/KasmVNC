@@ -80,6 +80,9 @@ void SMsgReader::readMsg()
   case msgTypeRequestStats:
     readRequestStats();
     break;
+  case msgTypeFrameStats:
+    readFrameStats();
+    break;
   case msgTypeKeyEvent:
     readKeyEvent();
     break;
@@ -344,6 +347,14 @@ void SMsgReader::readRequestStats()
 {
   is->skip(3);
   handler->sendStats();
+}
+
+void SMsgReader::readFrameStats()
+{
+  is->skip(3);
+  rdr::U32 all = is->readU32();
+  rdr::U32 render = is->readU32();
+  handler->handleFrameStats(all, render);
 }
 
 void SMsgReader::readQEMUMessage()

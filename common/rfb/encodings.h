@@ -86,6 +86,7 @@ namespace rfb {
   const int pseudoEncodingVideoOutTimeLevel100 = -1887;
 
   // VMware-specific
+  const int pseudoEncodingVMwareCursor = 0x574d5664;
   const int pseudoEncodingVMwareCursorPosition = 0x574d5666;
 
   // UltraVNC-specific

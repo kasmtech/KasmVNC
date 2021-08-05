@@ -459,6 +459,67 @@ static uint8_t givecontrolCb(void *messager, const char name[])
   return msgr->netGiveControlTo(name);
 }
 
+static void bottleneckStatsCb(void *messager, char *buf, uint32_t len)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  msgr->netGetBottleneckStats(buf, len);
+}
+
+static void frameStatsCb(void *messager, char *buf, uint32_t len)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  msgr->netGetFrameStats(buf, len);
+}
+
+static uint8_t requestFrameStatsNoneCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netRequestFrameStats(GetAPIMessager::WANT_FRAME_STATS_SERVERONLY, NULL);
+}
+
+static uint8_t requestFrameStatsOwnerCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netRequestFrameStats(GetAPIMessager::WANT_FRAME_STATS_OWNER, NULL);
+}
+
+static uint8_t requestFrameStatsAllCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netRequestFrameStats(GetAPIMessager::WANT_FRAME_STATS_ALL, NULL);
+}
+
+static uint8_t requestFrameStatsOneCb(void *messager, const char *client)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netRequestFrameStats(GetAPIMessager::WANT_FRAME_STATS_SPECIFIC, client);
+}
+
+static uint8_t ownerConnectedCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netOwnerConnected();
+}
+
+static uint8_t numActiveUsersCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netNumActiveUsers();
+}
+
+static uint8_t getClientFrameStatsNumCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netGetClientFrameStatsNum();
+}
+
+static uint8_t serverFrameStatsReadyCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netServerFrameStatsReady();
+}
+
+
 WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
                          socklen_t listenaddrlen,
                          bool sslonly, const char *cert, const char *certkey,
@@ -548,6 +609,18 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   settings.adduserCb = adduserCb;
   settings.removeCb = removeCb;
   settings.givecontrolCb = givecontrolCb;
+  settings.bottleneckStatsCb = bottleneckStatsCb;
+  settings.frameStatsCb = frameStatsCb;
+
+  settings.requestFrameStatsNoneCb = requestFrameStatsNoneCb;
+  settings.requestFrameStatsOwnerCb = requestFrameStatsOwnerCb;
+  settings.requestFrameStatsAllCb = requestFrameStatsAllCb;
+  settings.requestFrameStatsOneCb = requestFrameStatsOneCb;
+
+  settings.ownerConnectedCb = ownerConnectedCb;
+  settings.numActiveUsersCb = numActiveUsersCb;
+  settings.getClientFrameStatsNumCb = getClientFrameStatsNumCb;
+  settings.serverFrameStatsReadyCb = serverFrameStatsReadyCb;
 
   pthread_t tid;
   pthread_create(&tid, NULL, start_server, NULL);

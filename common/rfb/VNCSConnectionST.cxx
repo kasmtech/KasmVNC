@@ -17,6 +17,7 @@
  * USA.
  */
 
+#include <network/GetAPI.h>
 #include <network/TcpSocket.h>
 
 #include <rfb/ComparingUpdateTracker.h>
@@ -61,7 +62,7 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
     continuousUpdates(false), encodeManager(this, &server_->encCache),
     needsPermCheck(false), pointerEventTime(0),
     clientHasCursor(false),
-    accessRights(AccessDefault), startTime(time(0))
+    accessRights(AccessDefault), startTime(time(0)), frameTracking(false)
 {
   setStreams(&sock->inStream(), &sock->outStream());
   peerEndpoint.buf = sock->getPeerEndpoint();
@@ -98,6 +99,9 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
   gettimeofday(&lastKeyEvent, NULL);
 
   server->clients.push_front(this);
+
+  if (server->apimessager)
+    server->apimessager->mainUpdateUserInfo(checkOwnerConn(), server->clients.size());
 }
 
 
@@ -128,6 +132,11 @@ VNCSConnectionST::~VNCSConnectionST()
   server->clients.remove(this);
 
   delete [] fenceData;
+
+  if (server->apimessager) {
+    server->apimessager->mainUpdateUserInfo(checkOwnerConn(), server->clients.size());
+    server->apimessager->mainClearBottleneckStats(peerEndpoint.buf);
+  }
 }
 
 
@@ -567,6 +576,7 @@ bool VNCSConnectionST::needRenderedCursor()
     return false;
 
   if (!cp.supportsLocalCursorWithAlpha &&
+      !cp.supportsVMWareCursor &&
       !cp.supportsLocalCursor && !cp.supportsLocalXCursor)
     return true;
   if (!server->cursorPos.equals(pointerEventPos) &&
@@ -1184,6 +1194,7 @@ bool VNCSConnectionST::isCongested()
 void VNCSConnectionST::writeFramebufferUpdate()
 {
   congestion.updatePosition(sock->outStream().length());
+  encodeManager.clearEncodingTime();
 
   // We're in the middle of processing a command that's supposed to be
   // synchronised. Allowing an update to slip out right now might violate
@@ -1228,6 +1239,9 @@ void VNCSConnectionST::writeFramebufferUpdate()
   // need to aggregate these in order to not clog up TCP's congestion
   // window.
   sock->cork(true);
+
+  if (frameTracking)
+    writer()->writeRequestFrameStats();
 
   // First take care of any updates that cannot contain framebuffer data
   // changes.
@@ -1459,7 +1473,7 @@ static void pruneStatList(std::list<struct timeval> &list, const struct timeval 
   }
 }
 
-void VNCSConnectionST::sendStats() {
+void VNCSConnectionST::sendStats(const bool toClient) {
   char buf[1024];
   struct timeval now;
 
@@ -1498,8 +1512,28 @@ void VNCSConnectionST::sendStats() {
 
   #undef ten
 
-  vlog.info("Sending client stats:\n%s\n", buf);
-  writer()->writeStats(buf, strlen(buf));
+  if (toClient) {
+    vlog.info("Sending client stats:\n%s\n", buf);
+    writer()->writeStats(buf, strlen(buf));
+  } else if (server->apimessager) {
+    server->apimessager->mainUpdateBottleneckStats(peerEndpoint.buf, buf);
+  }
+}
+
+void VNCSConnectionST::handleFrameStats(rdr::U32 all, rdr::U32 render)
+{
+  if (server->apimessager) {
+    const char *at = strchr(peerEndpoint.buf, '@');
+    if (!at)
+      at = peerEndpoint.buf;
+    else
+      at++;
+
+    server->apimessager->mainUpdateClientFrameStats(at, render, all,
+                                                    congestion.getPingTime());
+  }
+
+  frameTracking = false;
 }
 
 // setCursor() is called whenever the cursor has changed shape or pixel format.
@@ -1520,11 +1554,13 @@ void VNCSConnectionST::setCursor()
     clientHasCursor = true;
   }
 
-  if (!writer()->writeSetCursorWithAlpha()) {
-    if (!writer()->writeSetCursor()) {
-      if (!writer()->writeSetXCursor()) {
-        // No client support
-        return;
+  if (!writer()->writeSetVMwareCursor()) {
+    if (!writer()->writeSetCursorWithAlpha()) {
+      if (!writer()->writeSetCursor()) {
+        if (!writer()->writeSetXCursor()) {
+          // No client support
+          return;
+        }
       }
     }
   }
@@ -1611,3 +1647,15 @@ int VNCSConnectionST::getStatus()
   return 4;
 }
 
+bool VNCSConnectionST::checkOwnerConn() const
+{
+  std::list<VNCSConnectionST*>::const_iterator it;
+
+  for (it = server->clients.begin(); it != server->clients.end(); it++) {
+    bool write, owner;
+    if ((*it)->getPerms(write, owner) && owner)
+      return true;
+  }
+
+  return false;
+}

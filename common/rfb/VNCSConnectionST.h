@@ -164,6 +164,35 @@ namespace rfb {
     void setStatus(int status);
     int getStatus();
 
+    virtual void sendStats(const bool toClient = true);
+    virtual void handleFrameStats(rdr::U32 all, rdr::U32 render);
+
+    bool is_owner() const {
+      bool write, owner;
+      if (getPerms(write, owner) && owner)
+        return true;
+      return false;
+    }
+
+    void setFrameTracking() {
+      frameTracking = true;
+    }
+
+    EncodeManager::codecstats_t getJpegStats() const {
+      return encodeManager.jpegstats;
+    }
+
+    EncodeManager::codecstats_t getWebpStats() const {
+      return encodeManager.webpstats;
+    }
+
+    unsigned getEncodingTime() const {
+      return encodeManager.getEncodingTime();
+    }
+    unsigned getScalingTime() const {
+      return encodeManager.getScalingTime();
+    }
+
   private:
     // SConnection callbacks
 
@@ -191,7 +220,6 @@ namespace rfb {
     virtual void supportsContinuousUpdates();
     virtual void supportsLEDState();
 
-    virtual void sendStats();
     virtual bool canChangeKasmSettings() const {
         return (accessRights & (AccessPtrEvents | AccessKeyEvents)) ==
                (AccessPtrEvents | AccessKeyEvents);
@@ -218,6 +246,8 @@ namespace rfb {
     bool isShiftPressed();
 
     bool getPerms(bool &write, bool &owner) const;
+
+    bool checkOwnerConn() const;
 
     // Congestion control
     void writeRTTPing();
@@ -294,6 +324,8 @@ namespace rfb {
     time_t startTime;
 
     std::vector<CopyPassRect> copypassed;
+
+    bool frameTracking;
   };
 }
 #endif

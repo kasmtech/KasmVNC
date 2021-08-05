@@ -65,6 +65,8 @@ namespace rfb {
 
     void writeStats(const char* str, int len);
 
+    void writeRequestFrameStats();
+
     // writeFence() sends a new fence request or response to the client.
     void writeFence(rdr::U32 flags, unsigned len, const char data[]);
 
@@ -90,6 +92,7 @@ namespace rfb {
     bool writeSetCursor();
     bool writeSetXCursor();
     bool writeSetCursorWithAlpha();
+    bool writeSetVMwareCursor();
 
     // Notifies the client that the cursor pointer was moved by the server.
     void writeCursorPos();
@@ -149,6 +152,9 @@ namespace rfb {
     void writeSetCursorWithAlphaRect(int width, int height,
                                      int hotspotX, int hotspotY,
                                      const rdr::U8* data);
+    void writeSetVMwareCursorRect(int width, int height,
+                                  int hotspotX, int hotspotY,
+                                  const rdr::U8* data);
     void writeSetVMwareCursorPositionRect(int hotspotX, int hotspotY);
     void writeLEDStateRect(rdr::U8 state);
     void writeQEMUKeyEventRect();
@@ -165,6 +171,7 @@ namespace rfb {
     bool needSetCursor;
     bool needSetXCursor;
     bool needSetCursorWithAlpha;
+    bool needSetVMWareCursor;
     bool needCursorPos;
     bool needLEDState;
     bool needQEMUKeyEvent;

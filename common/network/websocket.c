@@ -1074,6 +1074,89 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
 
         wserr("Passed give_control request to main thread\n");
         ret = 1;
+    } else entry("/api/get_bottleneck_stats") {
+        char statbuf[4096];
+        settings.bottleneckStatsCb(settings.messager, statbuf, 4096);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: %lu\r\n"
+                 "\r\n", strlen(statbuf));
+        ws_send(ws_ctx, buf, strlen(buf));
+        ws_send(ws_ctx, statbuf, strlen(statbuf));
+
+        wserr("Sent bottleneck stats to API caller\n");
+        ret = 1;
+    } else entry("/api/get_frame_stats") {
+        char statbuf[4096], decname[1024];
+        unsigned waitfor;
+
+        param = parse_get(args, "client", &len);
+        if (len) {
+            memcpy(buf, param, len);
+            buf[len] = '\0';
+            percent_decode(buf, decname);
+        } else {
+            wserr("client param required\n");
+            goto nope;
+        }
+
+        if (!decname[0])
+            goto nope;
+
+        if (!strcmp(decname, "none")) {
+            waitfor = 0;
+            if (!settings.requestFrameStatsNoneCb(settings.messager))
+                goto nope;
+        } else if (!strcmp(decname, "auto")) {
+            waitfor = settings.ownerConnectedCb(settings.messager);
+            if (!waitfor) {
+                if (!settings.requestFrameStatsNoneCb(settings.messager))
+                    goto nope;
+            } else {
+                if (!settings.requestFrameStatsOwnerCb(settings.messager))
+                    goto nope;
+            }
+        } else if (!strcmp(decname, "all")) {
+            waitfor = settings.numActiveUsersCb(settings.messager);
+            if (!settings.requestFrameStatsAllCb(settings.messager))
+                goto nope;
+        } else {
+            waitfor = 1;
+            if (!settings.requestFrameStatsOneCb(settings.messager, decname))
+                goto nope;
+        }
+
+        while (1) {
+            usleep(10 * 1000);
+            if (settings.serverFrameStatsReadyCb(settings.messager))
+                break;
+        }
+
+        if (waitfor) {
+            unsigned waits;
+            for (waits = 0; waits < 20; waits++) { // wait up to 2s
+                if (settings.getClientFrameStatsNumCb(settings.messager) >= waitfor)
+                    break;
+                usleep(100 * 1000);
+            }
+        }
+
+        settings.frameStatsCb(settings.messager, statbuf, 4096);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: %lu\r\n"
+                 "\r\n", strlen(statbuf));
+        ws_send(ws_ctx, buf, strlen(buf));
+        ws_send(ws_ctx, statbuf, strlen(statbuf));
+
+        wserr("Sent frame stats to API caller\n");
+        ret = 1;
     }
 
     #undef entry

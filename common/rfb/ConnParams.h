@@ -102,6 +102,7 @@ namespace rfb {
     bool supportsLocalCursor;
     bool supportsLocalXCursor;
     bool supportsLocalCursorWithAlpha;
+    bool supportsVMWareCursor;
     bool supportsCursorPosition;
     bool supportsDesktopResize;
     bool supportsExtendedDesktopSize;

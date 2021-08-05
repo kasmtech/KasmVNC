@@ -57,6 +57,7 @@ namespace rfb {
     void readClientCutText();
     void readExtendedClipboard(rdr::S32 len);
     void readRequestStats();
+    void readFrameStats();
 
     void readQEMUMessage();
     void readQEMUKeyEvent();

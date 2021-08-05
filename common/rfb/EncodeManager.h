@@ -68,9 +68,24 @@ namespace rfb {
                               const RenderedCursor* renderedCursor,
                               size_t maxUpdateSize);
 
+    void clearEncodingTime() {
+        encodingTime = 0;
+    };
+
     unsigned getEncodingTime() const {
         return encodingTime;
     };
+    unsigned getScalingTime() const {
+        return scalingTime;
+    };
+
+    struct codecstats_t {
+      uint32_t ms;
+      uint32_t area;
+      uint32_t rects;
+    };
+
+    codecstats_t jpegstats, webpstats;
 
   protected:
     void doUpdate(bool allowLossy, const Region& changed,
@@ -105,7 +120,8 @@ namespace rfb {
     uint8_t getEncoderType(const Rect& rect, const PixelBuffer *pb, Palette *pal,
                            std::vector<uint8_t> &compressed, uint8_t *isWebp,
                            uint8_t *fromCache,
-                           const PixelBuffer *scaledpb, const Rect& scaledrect) const;
+                           const PixelBuffer *scaledpb, const Rect& scaledrect,
+                           uint32_t &ms) const;
     virtual bool handleTimeout(Timer* t);
 
     bool checkSolidTile(const Rect& r, const rdr::U8* colourValue,
@@ -183,6 +199,7 @@ namespace rfb {
     bool webpTookTooLong;
     unsigned encodingTime;
     unsigned maxEncodingTime, framesSinceEncPrint;
+    unsigned scalingTime;
 
     EncCache *encCache;
 
