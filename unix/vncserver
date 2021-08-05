@@ -97,9 +97,10 @@ $kasmAuthEnabled = 1;
 $kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
 @kasmPasswdUsers = &LoadKasmPasswdUsers();
 
-if ($kasmAuthEnabled) {
-   &TellUserToSetupUserAndPassword();
+if ($kasmAuthEnabled && !&AtLeastOneUserConfigured()) {
+   &GuideUserToSetupKasmPasswdUser();
 }
+@kasmPasswdUsers = &LoadKasmPasswdUsers();
 
 $desktopLog = "$vncUserDir/$host:$displayNumber.log";
 unlink($desktopLog);
@@ -852,6 +853,34 @@ sub TellUserToSetupUserAndPassword {
    if (($? >> 8) != 0) {
       exit 1;
    }
+}
+
+sub GuideUserToSetupKasmPasswdUser {
+   my $defaultUser = $ENV{USER};
+   print(<<"NEEDTOCREATEUSER");
+In order to access your desktop, at least one KasmVNC user must be setup.
+Let's create a user.
+
+NEEDTOCREATEUSER
+
+   my $username = &Prompt("Enter username (default: $defaultUser): ");
+   $username ||= $defaultUser;
+
+   system($exedir."kasmvncpasswd -u \"$username\" -w $kasmPasswdFile");
+   if ($?) {
+      die("\nFailed to setup user \"$username\"\n");
+   }
+   print("Created user \"$username\"\n");
+}
+
+sub Prompt {
+   my $prompt = shift;
+
+   print($prompt);
+   my $userInput = <STDIN>;
+   $userInput =~ s/^\s+|\s+$//g;
+
+   return $userInput;
 }
 
 sub AtLeastOneUserConfigured {
