@@ -5,6 +5,8 @@ RUN apt-get update && \
 
 # Install build-deps for the package.
 COPY ./debian/control /tmp
+COPY ./libjpeg-turbo_2.1.1_amd64.deb /tmp
+RUN apt-get install /tmp/libjpeg-turbo*deb
 RUN apt-get update && echo YYY | mk-build-deps --install --remove /tmp/control
 
 USER 1000
