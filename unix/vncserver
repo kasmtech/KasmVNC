@@ -805,6 +805,8 @@ sub DetectDisplayNumberFromCliArgs {
       }
    } elsif (($ARGV[0] !~ /^-/) && ($ARGV[0] !~ /^\+/)) {
       &Usage();
+   } else {
+      $displayNumber = &GetLowestAvailableDisplayNumber();
    }
 }
 
