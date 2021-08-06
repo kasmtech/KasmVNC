@@ -68,9 +68,8 @@ chop($host = `uname -n`);
 
 # Check command line options
 
-&ParseOptions("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,
-              "-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1);
-
+my @supportedOptions = ("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,"-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1);
+&ParseOptionsAndRemoveMatchesFromARGV(@supportedOptions);
 &ProcessCliOptions();
 
 &CheckGeometryAndDepth();
@@ -481,13 +480,13 @@ sub Kill
 
 
 #
-# ParseOptions takes a list of possible options and a boolean indicating
-# whether the option has a value following, and sets up an associative array
-# %opt of the values of the options given on the command line. It removes all
-# the arguments it uses from @ARGV and returns them in @optArgs.
+# ParseOptionsAndRemoveMatchesFromARGV takes a list of possible options and a
+# boolean indicating whether the option has a value following, and sets up an
+# associative array %opt of the values of the options given on the command line.
+# It removes all the arguments it uses from @ARGV and returns them in @optArgs.
 #
 
-sub ParseOptions
+sub ParseOptionsAndRemoveMatchesFromARGV
 {
     local (@optval) = @_;
     local ($opt, @opts, %valFollows, @newargs);
