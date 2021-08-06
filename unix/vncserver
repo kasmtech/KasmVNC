@@ -78,7 +78,9 @@ chop($host = `uname -n`);
 # Create the user's vnc directory if necessary.
 &CreateDotVncDir();
 
-&DetectDisplayNumberFromCliArgs();
+$displayNumber = &DetectDisplayNumberFromCliArgs() ||
+   &GetLowestAvailableDisplayNumber();
+&CheckCliOptionsForBeingValid();
 $vncPort = 5900 + $displayNumber;
 
 $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
@@ -793,21 +795,35 @@ sub AskUserToChooseDeOrManualXstartup {
 
 sub DetectDisplayNumberFromCliArgs {
    if (@ARGV == 0) {
-      $displayNumber = &GetLowestAvailableDisplayNumber();
       return;
    }
 
+   my $displayNumber;
    if ($ARGV[0] =~ /^:(\d+)$/) {
       $displayNumber = $1;
       shift(@ARGV);
       if (!&CheckDisplayNumber($displayNumber)) {
          die "A VNC server is already running as :$displayNumber\n";
       }
-   } elsif (($ARGV[0] !~ /^-/) && ($ARGV[0] !~ /^\+/)) {
-      &Usage();
-   } else {
-      $displayNumber = &GetLowestAvailableDisplayNumber();
    }
+
+   $displayNumber;
+}
+
+sub CheckCliOptionsForBeingValid {
+   if (@ARGV == 0) {
+      return;
+   }
+
+   if (! &IsCliOption($ARGV[0])) {
+      &Usage();
+   }
+}
+
+sub IsCliOption {
+   my $arg = shift;
+
+   ($arg =~ /^-/) || ($arg =~ /^\+/);
 }
 
 sub SetReasonabeDefaults {
