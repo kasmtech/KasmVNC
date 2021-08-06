@@ -906,19 +906,23 @@ sub AtLeastOneUserConfigured {
 
 sub LoadKasmPasswdUsers {
    my @result = ();
+   my %permissionExplanations = ("w" => "can use keyboard and mouse",
+      "o" => "can add/remove users",
+      "ow" => "can use keyboard and mouse, add/remove users",
+      "" => "can only view");
 
    open(FH, '<', $kasmPasswdFile) or return @result;
 
    while(<FH>){
-      $_ =~ /^([^:]+):/ or die "$kasmPasswdFile is incorrect";
-      push(@result, $1);
+      chomp $_;
+      my ($name, $__, $permissions) = split(':', $_);
+      push(@result, "$name ($permissionExplanations{$permissions})");
    }
 
    close(FH);
 
    return @result;
 }
-
 
 sub MakeXCookie {
    # Make an X server cookie and set up the Xauthority file
