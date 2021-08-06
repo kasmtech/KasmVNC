@@ -127,7 +127,7 @@ unless (&IsXvncRunning()) {
 }
 
 warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
-warn "\nUsername: $vncUserName\n\n";
+&PrintKasmUsers();
 warn "Log file is $desktopLog\n\n";
 
 if (! $skipxstartup) {
@@ -1027,4 +1027,12 @@ sub CreateUserConfigIfNeeded {
    print VNCUSERCONFIG $defaultConfig;
    close(VNCUSERCONFIG);
    chmod 0644, "$vncUserDir/config";
+}
+
+sub PrintKasmUsers {
+   warn "\nUsers configured:\n";
+   foreach my $user (@kasmPasswdUsers) {
+      warn "$user\n";
+   }
+   warn "\n";
 }
