@@ -37,14 +37,7 @@ $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
 
 &CreateDotVncDir();
 
-my %default_opts;
-my %config;
-
-# We set some reasonable defaults. Config file settings
-# override these where present.
-&SetReasonabeDefaults();
-&LoadSystemThenUserThenMandatoryConfigs();
-
+&PrepareDefaultsForPassingToXvnc();
 &DisableVncAuth();
 
 $kasmAuthEnabled = 1;
@@ -1042,4 +1035,14 @@ sub ParseAndProcessCliOptions {
    $displayNumber = &DetectDisplayNumberFromCliArgs() ||
       &GetLowestAvailableDisplayNumber();
    &CheckCliOptionsForBeingValid();
+}
+
+sub PrepareDefaultsForPassingToXvnc {
+   # We set some reasonable defaults. Config file settings
+   # override these where present.
+   %default_opts;
+   %config;
+
+   &SetReasonabeDefaults();
+   &LoadSystemThenUserThenMandatoryConfigs();
 }
