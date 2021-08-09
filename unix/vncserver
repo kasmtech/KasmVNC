@@ -178,7 +178,7 @@ sub CheckGeometryAndDepthAreSensible
 sub GetLowestAvailableDisplayNumber
 {
     foreach $n (1..99) {
-      if (&CheckDisplayNumber($n)) {
+      if (&CheckVncIsntRunningOnDisplay($n)) {
             return $n+0; # Bruce Mah's workaround for bug in perl 5.005_02
       }
     }
@@ -188,12 +188,12 @@ sub GetLowestAvailableDisplayNumber
 
 
 #
-# CheckDisplayNumber checks if the given display number is available.  A
+# CheckVncIsntRunningOnDisplay checks if the given display number is available.  A
 # display number n is taken if something is listening on the VNC server port
 # (5900+n) or the X server port (6000+n).
 #
 
-sub CheckDisplayNumber
+sub CheckVncIsntRunningOnDisplay
 {
     local ($n) = @_;
 
@@ -759,7 +759,7 @@ sub DetectDisplayNumberFromCliArgs {
    if ($ARGV[0] =~ /^:(\d+)$/) {
       $displayNumber = $1;
       shift(@ARGV);
-      if (!&CheckDisplayNumber($displayNumber)) {
+      if (!&CheckVncIsntRunningOnDisplay($displayNumber)) {
          die "A VNC server is already running as :$displayNumber\n";
       }
    }
