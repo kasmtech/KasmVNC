@@ -27,39 +27,7 @@
 
 &DetectEnvironment();
 
-#
-# Global variables.  You may want to configure some of these for
-# your site
-#
-
-$geometry = "1024x768";
-#$depth = 16;
-
-$vncUserDir = "$ENV{HOME}/.vnc";
-$vncUserConfig = "$vncUserDir/config";
-$vncUserName = &DetectUserName();
-
-$vncSystemConfigDir = "/etc/kasmvnc";
-$vncSystemConfigDefaultsFile = "$vncSystemConfigDir/vncserver-config-defaults";
-$vncSystemConfigMandatoryFile = "$vncSystemConfigDir/vncserver-config-mandatory";
-
-$skipxstartup = 0;
-$xauthorityFile = "$ENV{XAUTHORITY}" || "$ENV{HOME}/.Xauthority";
-
-$xstartupFile = $vncUserDir . "/xstartup";
-$defaultConfig
-    = ("## Supported server options to pass to vncserver upon invocation can be listed\n".
-       "## in this file. See the following manpages for more: vncserver(1) Xvnc(1).\n".
-       "## Several common ones are shown below. Uncomment and modify to your liking.\n".
-       "##\n".
-       "# securitytypes=vncauth,tlsvnc\n".
-       "# desktop=sandbox\n".
-       "# geometry=2000x1200\n".
-       "# localhost\n".
-       "# alwaysshared\n".
-       "username=$vncUserName");
-
-chop($host = `uname -n`);
+&SetGlobalVariables();
 
 &DetectFontPath();
 
@@ -1041,4 +1009,40 @@ sub PrintKasmUsers {
 sub DetectEnvironment {
    $exedir = &DetectBinariesDir();
    &CheckRequiredDependenciesArePresent();
+}
+
+sub SetGlobalVariables {
+   #
+   # Global variables.  You may want to configure some of these for
+   # your site
+   #
+
+   $geometry = "1024x768";
+   #$depth = 16;
+
+   $vncUserDir = "$ENV{HOME}/.vnc";
+   $vncUserConfig = "$vncUserDir/config";
+   $vncUserName = &DetectUserName();
+
+   $vncSystemConfigDir = "/etc/kasmvnc";
+   $vncSystemConfigDefaultsFile = "$vncSystemConfigDir/vncserver-config-defaults";
+   $vncSystemConfigMandatoryFile = "$vncSystemConfigDir/vncserver-config-mandatory";
+
+   $skipxstartup = 0;
+   $xauthorityFile = "$ENV{XAUTHORITY}" || "$ENV{HOME}/.Xauthority";
+
+   $xstartupFile = $vncUserDir . "/xstartup";
+   $defaultConfig
+      = ("## Supported server options to pass to vncserver upon invocation can be listed\n".
+         "## in this file. See the following manpages for more: vncserver(1) Xvnc(1).\n".
+         "## Several common ones are shown below. Uncomment and modify to your liking.\n".
+         "##\n".
+         "# securitytypes=vncauth,tlsvnc\n".
+         "# desktop=sandbox\n".
+         "# geometry=2000x1200\n".
+         "# localhost\n".
+         "# alwaysshared\n".
+         "username=$vncUserName");
+
+   chop($host = `uname -n`);
 }
