@@ -31,11 +31,7 @@
 
 &DetectFontPath();
 
-# Check command line options
-
-my @supportedOptions = ("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,"-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1);
-&ParseOptionsAndRemoveMatchesFromARGV(@supportedOptions);
-&ProcessCliOptions();
+&ParseAndProcessCliOptions();
 
 &CheckGeometryAndDepth();
 
@@ -1045,4 +1041,10 @@ sub SetGlobalVariables {
          "username=$vncUserName");
 
    chop($host = `uname -n`);
+}
+
+sub ParseAndProcessCliOptions {
+   my @supportedOptions = ("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,"-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1);
+   &ParseOptionsAndRemoveMatchesFromARGV(@supportedOptions);
+   &ProcessCliOptions();
 }
