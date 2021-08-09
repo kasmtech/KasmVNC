@@ -65,7 +65,6 @@ unlink($desktopLog);
 
 # Now start the X VNC Server
 
-# We build up our Xvnc command with options
 $cmd = &ConstructXvncCmd();
 
 $pidFile = "$vncUserDir/$host:$displayNumber.pid";
