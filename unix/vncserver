@@ -32,12 +32,10 @@
 &DetectFontPath();
 
 &ParseAndProcessCliOptions();
+$vncPort = 5900 + $displayNumber;
+$desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
 
 &CreateDotVncDir();
-
-$vncPort = 5900 + $displayNumber;
-
-$desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
 
 my %default_opts;
 my %config;
