@@ -25,8 +25,7 @@
 # vncserver - wrapper script to start an X VNC server.
 #
 
-$exedir = &DetectBinariesDir();
-&CheckRequiredDependenciesArePresent();
+&DetectEnvironment();
 
 #
 # Global variables.  You may want to configure some of these for
@@ -1037,4 +1036,9 @@ sub PrintKasmUsers {
       warn "$user\n";
    }
    warn "\n";
+}
+
+sub DetectEnvironment {
+   $exedir = &DetectBinariesDir();
+   &CheckRequiredDependenciesArePresent();
 }
