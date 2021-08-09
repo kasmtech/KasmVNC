@@ -33,9 +33,8 @@
 
 &ParseAndProcessCliOptions();
 
-&CheckGeometryAndDepth();
+&CheckGeometryAndDepthAreSensible();
 
-# Create the user's vnc directory if necessary.
 &CreateDotVncDir();
 
 $displayNumber = &DetectDisplayNumberFromCliArgs() ||
@@ -148,11 +147,11 @@ sub LoadConfig {
 }
 
 #
-# CheckGeometryAndDepth simply makes sure that the geometry and depth values
-# are sensible.
+# CheckGeometryAndDepthAreSensible simply makes sure that the geometry and depth
+# values are sensible.
 #
 
-sub CheckGeometryAndDepth
+sub CheckGeometryAndDepthAreSensible
 {
     if ($geometry =~ /^(\d+)x(\d+)$/) {
         $width = $1; $height = $2;
