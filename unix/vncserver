@@ -25,10 +25,8 @@
 # vncserver - wrapper script to start an X VNC server.
 #
 
-# First make sure we're operating in a sane environment.
 $exedir = &DetectBinariesDir();
-
-&SanityCheck();
+&CheckRequiredDependenciesArePresent();
 
 #
 # Global variables.  You may want to configure some of these for
@@ -524,7 +522,7 @@ sub ParseOptionsAndRemoveMatchesFromARGV
 
 
 # Routine to make sure we're operating in a sane environment.
-sub SanityCheck
+sub CheckRequiredDependenciesArePresent
 {
     local ($cmd);
 
