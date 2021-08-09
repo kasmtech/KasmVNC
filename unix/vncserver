@@ -35,9 +35,6 @@
 
 &CreateDotVncDir();
 
-$displayNumber = &DetectDisplayNumberFromCliArgs() ||
-   &GetLowestAvailableDisplayNumber();
-&CheckCliOptionsForBeingValid();
 $vncPort = 5900 + $displayNumber;
 
 $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
@@ -1045,4 +1042,7 @@ sub ParseAndProcessCliOptions {
    &ParseOptionsAndRemoveMatchesFromARGV(@supportedOptions);
    &ProcessCliOptions();
    &CheckGeometryAndDepthAreSensible();
+   $displayNumber = &DetectDisplayNumberFromCliArgs() ||
+      &GetLowestAvailableDisplayNumber();
+   &CheckCliOptionsForBeingValid();
 }
