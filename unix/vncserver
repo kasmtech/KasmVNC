@@ -25,6 +25,8 @@
 # vncserver - wrapper script to start an X VNC server.
 #
 
+use Time::HiRes qw (sleep);
+
 &DetectEnvironment();
 
 &SetGlobalVariables();
@@ -41,7 +43,6 @@ $pidFile = "$vncUserDir/$host:$displayNumber.pid";
 
 $kasmAuthEnabled = 1;
 &DisableVncAuth();
-
 if ($kasmAuthEnabled) {
    &EnsureAtLeastOneKasmUserExists();
 }
@@ -54,11 +55,11 @@ $cmd = &ConstructXvncCmd();
 
 &DeleteLogLeftFromPreviousXvncRun();
 &StartXvncAndRecordPID();
-&WaitForXvncToStart();
+&WaitForXvncToRespond();
 
 if (!&IsXvncRunning() && !&UsingSafeFontPath())  {
    &StartXvncWithSafeFontPath();
-   &WaitForXvncToStart();
+   &WaitForXvncToRespond();
 }
 
 unless (&IsXvncRunning()) {
@@ -956,8 +957,20 @@ sub WarnUserXvncNotStartedAndExit {
     die "\n";
 }
 
-sub WaitForXvncToStart {
-   sleep(3);
+sub WaitForXvncToRespond {
+   my $sleepSlice = 0.1;
+   my $sleptFor = 0;
+   my $sleepLimit = 3;
+
+   until (&IsXvncResponding() || $sleptFor >= $sleepLimit) {
+      sleep($sleepSlice);
+      $sleptFor += $sleepSlice;
+   }
+}
+
+sub IsXvncResponding {
+   `xdpyinfo -display :$displayNumber >/dev/null 2>&1`;
+   $? == 0;
 }
 
 sub UsingSafeFontPath {
