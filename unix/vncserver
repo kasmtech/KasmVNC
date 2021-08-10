@@ -39,13 +39,12 @@ $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
 
 $kasmAuthEnabled = 1;
 &DisableVncAuth();
-$kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
-@kasmPasswdUsers = &LoadKasmPasswdUsers();
 
+@kasmPasswdUsers = &LoadKasmPasswdUsers();
 if ($kasmAuthEnabled && !&AtLeastOneUserConfigured()) {
    &GuideUserToSetupKasmPasswdUser();
+   @kasmPasswdUsers = &LoadKasmPasswdUsers();
 }
-@kasmPasswdUsers = &LoadKasmPasswdUsers();
 
 $desktopLog = "$vncUserDir/$host:$displayNumber.log";
 unlink($desktopLog);
@@ -1002,6 +1001,7 @@ sub SetGlobalVariables {
    $vncUserDir = "$ENV{HOME}/.vnc";
    $vncUserConfig = "$vncUserDir/config";
    $vncUserName = &DetectUserName();
+   $kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
 
    $vncSystemConfigDir = "/etc/kasmvnc";
    $vncSystemConfigDefaultsFile = "$vncSystemConfigDir/vncserver-config-defaults";
