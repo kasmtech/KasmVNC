@@ -36,9 +36,9 @@ $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
 &CreateDotVncDir();
 
 &PrepareDefaultsForPassingToXvnc();
-&DisableVncAuth();
 
 $kasmAuthEnabled = 1;
+&DisableVncAuth();
 $kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
 @kasmPasswdUsers = &LoadKasmPasswdUsers();
 
