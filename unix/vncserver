@@ -32,6 +32,8 @@
 &ParseAndProcessCliOptions();
 $vncPort = 5900 + $displayNumber;
 $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
+$desktopLog = "$vncUserDir/$host:$displayNumber.log";
+$pidFile = "$vncUserDir/$host:$displayNumber.pid";
 
 &CreateDotVncDir();
 
@@ -46,16 +48,13 @@ if ($kasmAuthEnabled && !&AtLeastOneUserConfigured()) {
    @kasmPasswdUsers = &LoadKasmPasswdUsers();
 }
 
-$desktopLog = "$vncUserDir/$host:$displayNumber.log";
-unlink($desktopLog);
-
 &SetupXauthorityFile();
 
 # Now start the X VNC Server
 
 $cmd = &ConstructXvncCmd();
 
-$pidFile = "$vncUserDir/$host:$displayNumber.pid";
+&DeleteLogLeftFromPreviousXvncRun();
 &StartXvncAndRecordPID();
 &WaitForXvncToStart();
 
@@ -924,6 +923,10 @@ sub ConstructXvncCmd {
 
 sub StartXvncAndRecordPID {
    system("$cmd & echo \$! >$pidFile");
+}
+
+sub DeleteLogLeftFromPreviousXvncRun {
+   unlink($desktopLog);
 }
 
 sub StartXvncWithSafeFontPath {
