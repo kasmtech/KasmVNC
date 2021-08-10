@@ -49,22 +49,7 @@ if ($kasmAuthEnabled) {
 
 &SetupXauthorityFile();
 
-# Now start the X VNC Server
-
-$cmd = &ConstructXvncCmd();
-
-&DeleteLogLeftFromPreviousXvncRun();
-&StartXvncAndRecordPID();
-&WaitForXvncToRespond();
-
-if (!&IsXvncRunning() && !&UsingSafeFontPath())  {
-   &StartXvncWithSafeFontPath();
-   &WaitForXvncToRespond();
-}
-
-unless (&IsXvncRunning()) {
-   &WarnUserXvncNotStartedAndExit();
-}
+&StartXvncOrExit();
 
 warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
 &PrintKasmUsers();
@@ -1065,5 +1050,22 @@ sub EnsureAtLeastOneKasmUserExists {
    if (!&AtLeastOneUserConfigured()) {
       &GuideUserToSetupKasmPasswdUser();
       @kasmPasswdUsers = &LoadKasmPasswdUsers();
+   }
+}
+
+sub StartXvncOrExit {
+   $cmd = &ConstructXvncCmd();
+
+   &DeleteLogLeftFromPreviousXvncRun();
+   &StartXvncAndRecordPID();
+   &WaitForXvncToRespond();
+
+   if (!&IsXvncRunning() && !&UsingSafeFontPath())  {
+      &StartXvncWithSafeFontPath();
+      &WaitForXvncToRespond();
+   }
+
+   unless (&IsXvncRunning()) {
+      &WarnUserXvncNotStartedAndExit();
    }
 }
