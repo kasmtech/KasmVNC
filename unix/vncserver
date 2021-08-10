@@ -42,10 +42,8 @@ $pidFile = "$vncUserDir/$host:$displayNumber.pid";
 $kasmAuthEnabled = 1;
 &DisableVncAuth();
 
-@kasmPasswdUsers = &LoadKasmPasswdUsers();
-if ($kasmAuthEnabled && !&AtLeastOneUserConfigured()) {
-   &GuideUserToSetupKasmPasswdUser();
-   @kasmPasswdUsers = &LoadKasmPasswdUsers();
+if ($kasmAuthEnabled) {
+   &EnsureAtLeastOneKasmUserExists();
 }
 
 &SetupXauthorityFile();
@@ -1047,4 +1045,12 @@ sub PrepareDefaultsForPassingToXvnc {
 
    &SetReasonabeDefaults();
    &LoadSystemThenUserThenMandatoryConfigs();
+}
+
+sub EnsureAtLeastOneKasmUserExists {
+   @kasmPasswdUsers = &LoadKasmPasswdUsers();
+   if (!&AtLeastOneUserConfigured()) {
+      &GuideUserToSetupKasmPasswdUser();
+      @kasmPasswdUsers = &LoadKasmPasswdUsers();
+   }
 }
