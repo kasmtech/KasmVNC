@@ -29,8 +29,6 @@
 
 &SetGlobalVariables();
 
-&DetectFontPath();
-
 &ParseAndProcessCliOptions();
 $vncPort = 5900 + $displayNumber;
 $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
@@ -989,6 +987,7 @@ sub PrintKasmUsers {
 sub DetectEnvironment {
    $exedir = &DetectBinariesDir();
    &CheckRequiredDependenciesArePresent();
+   &DetectFontPath();
 }
 
 sub SetGlobalVariables {
