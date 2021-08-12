@@ -932,7 +932,7 @@ sub StartXvncWithSafeFontPath {
 }
 
 sub IsXvncRunning {
-   kill 0, `cat $pidFile`;
+    &IsProcessRunning(`cat $pidFile`);
 }
 
 sub WarnUserXvncNotStartedAndExit {
@@ -1085,6 +1085,7 @@ sub WaitForTimeLimitOrSubReturningTrue {
 
 sub IsProcessRunning {
    my $pid = shift;
+   unless ($pid) { return 0 };
 
    kill 0, $pid;
 }
