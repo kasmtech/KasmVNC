@@ -42,7 +42,7 @@ $pidFile = "$vncUserDir/$host:$displayNumber.pid";
 $kasmAuthEnabled = 1;
 &DisableVncAuth();
 if ($kasmAuthEnabled) {
-   &EnsureAtLeastOneKasmUserExists();
+  &EnsureAtLeastOneKasmUserExists();
 }
 
 &SetupXauthorityFile();
@@ -54,12 +54,12 @@ warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
 warn "Log file is $desktopLog\n\n";
 
 if (! $skipxstartup) {
-   &CreateXstartupIfNeeded();
+  &CreateXstartupIfNeeded();
 }
 &CreateUserConfigIfNeeded();
 
 if (! $skipxstartup) {
-   &RunXstartup();
+  &RunXstartup();
 }
 
 exit;
@@ -116,21 +116,21 @@ sub LoadConfig {
 
 sub CheckGeometryAndDepthAreSensible
 {
-    if ($geometry =~ /^(\d+)x(\d+)$/) {
-        $width = $1; $height = $2;
+  if ($geometry =~ /^(\d+)x(\d+)$/) {
+    $width = $1; $height = $2;
 
-        if (($width<1) || ($height<1)) {
-            die "$prog: geometry $geometry is invalid\n";
-        }
-
-        $geometry = "${width}x$height";
-    } else {
-        die "$prog: geometry $geometry is invalid\n";
+    if (($width<1) || ($height<1)) {
+      die "$prog: geometry $geometry is invalid\n";
     }
 
-    if ($depth && (($depth < 8) || ($depth > 32))) {
-        die "Depth must be between 8 and 32\n";
-    }
+    $geometry = "${width}x$height";
+  } else {
+    die "$prog: geometry $geometry is invalid\n";
+  }
+
+  if ($depth && (($depth < 8) || ($depth > 32))) {
+    die "Depth must be between 8 and 32\n";
+  }
 }
 
 
@@ -142,13 +142,13 @@ sub CheckGeometryAndDepthAreSensible
 
 sub GetLowestAvailableDisplayNumber
 {
-    foreach $n (1..99) {
-      if (&CheckVncIsntRunningOnDisplay($n)) {
-            return $n+0; # Bruce Mah's workaround for bug in perl 5.005_02
-      }
+  foreach $n (1..99) {
+    if (&CheckVncIsntRunningOnDisplay($n)) {
+      return $n+0; # Bruce Mah's workaround for bug in perl 5.005_02
     }
+  }
 
-    die "$prog: no free display number on $host.\n";
+  die "$prog: no free display number on $host.\n";
 }
 
 
@@ -160,37 +160,37 @@ sub GetLowestAvailableDisplayNumber
 
 sub CheckVncIsntRunningOnDisplay
 {
-    local ($n) = @_;
+  local ($n) = @_;
 
-    socket(S, $AF_INET, $SOCK_STREAM, 0) || die "$prog: socket failed: $!\n";
-    eval 'setsockopt(S, &SOL_SOCKET, &SO_REUSEADDR, pack("l", 1))';
-    if (!bind(S, pack('S n x12', $AF_INET, 6000 + $n))) {
-        close(S);
-        return 0;
-    }
+  socket(S, $AF_INET, $SOCK_STREAM, 0) || die "$prog: socket failed: $!\n";
+  eval 'setsockopt(S, &SOL_SOCKET, &SO_REUSEADDR, pack("l", 1))';
+  if (!bind(S, pack('S n x12', $AF_INET, 6000 + $n))) {
     close(S);
+    return 0;
+  }
+  close(S);
 
-    socket(S, $AF_INET, $SOCK_STREAM, 0) || die "$prog: socket failed: $!\n";
-    eval 'setsockopt(S, &SOL_SOCKET, &SO_REUSEADDR, pack("l", 1))';
-    if (!bind(S, pack('S n x12', $AF_INET, 5900 + $n))) {
-        close(S);
-        return 0;
-    }
+  socket(S, $AF_INET, $SOCK_STREAM, 0) || die "$prog: socket failed: $!\n";
+  eval 'setsockopt(S, &SOL_SOCKET, &SO_REUSEADDR, pack("l", 1))';
+  if (!bind(S, pack('S n x12', $AF_INET, 5900 + $n))) {
     close(S);
+    return 0;
+  }
+  close(S);
 
-    if (-e "/tmp/.X$n-lock") {
-        warn "\nWarning: $host:$n is taken because of /tmp/.X$n-lock\n";
-        warn "Remove this file if there is no X server $host:$n\n";
-        return 0;
-    }
+  if (-e "/tmp/.X$n-lock") {
+    warn "\nWarning: $host:$n is taken because of /tmp/.X$n-lock\n";
+    warn "Remove this file if there is no X server $host:$n\n";
+    return 0;
+  }
 
-    if (-e "/tmp/.X11-unix/X$n") {
-        warn "\nWarning: $host:$n is taken because of /tmp/.X11-unix/X$n\n";
-        warn "Remove this file if there is no X server $host:$n\n";
-        return 0;
-    }
+  if (-e "/tmp/.X11-unix/X$n") {
+    warn "\nWarning: $host:$n is taken because of /tmp/.X11-unix/X$n\n";
+    warn "Remove this file if there is no X server $host:$n\n";
+    return 0;
+  }
 
-    return 1;
+  return 1;
 }
 
 
@@ -206,67 +206,67 @@ sub CheckVncIsntRunningOnDisplay
 
 sub GetXDisplayDefaults
 {
-    local (@lines, @matchlines, $width, $height, $defaultVisualId, $i,
-           $red, $green, $blue);
+  local (@lines, @matchlines, $width, $height, $defaultVisualId, $i,
+    $red, $green, $blue);
 
-    $wmDecorationWidth = 4;     # a guess at typical size for window manager
-    $wmDecorationHeight = 24;   # decoration size
+  $wmDecorationWidth = 4;     # a guess at typical size for window manager
+  $wmDecorationHeight = 24;   # decoration size
 
-    return if (!defined($ENV{DISPLAY}));
+  return if (!defined($ENV{DISPLAY}));
 
-    @lines = `xdpyinfo 2>/dev/null`;
+  @lines = `xdpyinfo 2>/dev/null`;
 
-    return if ($? != 0);
+  return if ($? != 0);
 
-    @matchlines = grep(/dimensions/, @lines);
-    if (@matchlines) {
-        ($width, $height) = ($matchlines[0] =~ /(\d+)x(\d+) pixels/);
+  @matchlines = grep(/dimensions/, @lines);
+  if (@matchlines) {
+    ($width, $height) = ($matchlines[0] =~ /(\d+)x(\d+) pixels/);
 
-        $width -= $wmDecorationWidth;
-        $height -= $wmDecorationHeight;
+    $width -= $wmDecorationWidth;
+    $height -= $wmDecorationHeight;
 
-        $geometry = "${width}x$height";
+    $geometry = "${width}x$height";
+  }
+
+  @matchlines = grep(/default visual id/, @lines);
+  if (@matchlines) {
+    ($defaultVisualId) = ($matchlines[0] =~ /id:\s+(\S+)/);
+
+    for ($i = 0; $i < @lines; $i++) {
+      if ($lines[$i] =~ /^\s*visual id:\s+$defaultVisualId$/) {
+        if (($lines[$i+1] !~ /TrueColor/) ||
+          ($lines[$i+2] !~ /depth/) ||
+          ($lines[$i+4] !~ /red, green, blue masks/))
+        {
+          return;
+        }
+        last;
+      }
     }
 
-    @matchlines = grep(/default visual id/, @lines);
-    if (@matchlines) {
-        ($defaultVisualId) = ($matchlines[0] =~ /id:\s+(\S+)/);
+    return if ($i >= @lines);
 
-        for ($i = 0; $i < @lines; $i++) {
-            if ($lines[$i] =~ /^\s*visual id:\s+$defaultVisualId$/) {
-                if (($lines[$i+1] !~ /TrueColor/) ||
-                    ($lines[$i+2] !~ /depth/) ||
-                    ($lines[$i+4] !~ /red, green, blue masks/))
-                {
-                    return;
-                }
-                last;
-            }
-        }
+    ($depth) = ($lines[$i+2] =~ /depth:\s+(\d+)/);
+    ($red,$green,$blue)
+    = ($lines[$i+4]
+      =~ /masks:\s+0x([0-9a-f]+), 0x([0-9a-f]+), 0x([0-9a-f]+)/);
 
-        return if ($i >= @lines);
+    $red = hex($red);
+    $green = hex($green);
+    $blue = hex($blue);
 
-        ($depth) = ($lines[$i+2] =~ /depth:\s+(\d+)/);
-        ($red,$green,$blue)
-            = ($lines[$i+4]
-               =~ /masks:\s+0x([0-9a-f]+), 0x([0-9a-f]+), 0x([0-9a-f]+)/);
-
-        $red = hex($red);
-        $green = hex($green);
-        $blue = hex($blue);
-
-        if ($red > $blue) {
-            $red = int(log($red) / log(2)) - int(log($green) / log(2));
-            $green = int(log($green) / log(2)) - int(log($blue) / log(2));
-            $blue = int(log($blue) / log(2)) + 1;
-            $pixelformat = "rgb$red$green$blue";
-        } else {
-            $blue = int(log($blue) / log(2)) - int(log($green) / log(2));
-            $green = int(log($green) / log(2)) - int(log($red) / log(2));
-            $red = int(log($red) / log(2)) + 1;
-            $pixelformat = "bgr$blue$green$red";
-        }
+    if ($red > $blue) {
+      $red = int(log($red) / log(2)) - int(log($green) / log(2));
+      $green = int(log($green) / log(2)) - int(log($blue) / log(2));
+      $blue = int(log($blue) / log(2)) + 1;
+      $pixelformat = "rgb$red$green$blue";
+    } else {
+      $blue = int(log($blue) / log(2)) - int(log($green) / log(2));
+      $green = int(log($green) / log(2)) - int(log($red) / log(2));
+      $red = int(log($red) / log(2)) + 1;
+      $pixelformat = "bgr$blue$green$red";
     }
+  }
 }
 
 
@@ -277,11 +277,11 @@ sub GetXDisplayDefaults
 
 sub quotedString
 {
-    local ($in) = @_;
+  local ($in) = @_;
 
-    $in =~ s/\'/\'\"\'\"\'/g;
+  $in =~ s/\'/\'\"\'\"\'/g;
 
-    return "'$in'";
+  return "'$in'";
 }
 
 
@@ -291,11 +291,11 @@ sub quotedString
 
 sub removeSlashes
 {
-    local ($in) = @_;
+  local ($in) = @_;
 
-    $in =~ s|/|_|g;
+  $in =~ s|/|_|g;
 
-    return "$in";
+  return "$in";
 }
 
 
@@ -305,17 +305,17 @@ sub removeSlashes
 
 sub Usage
 {
-    die("\nusage: $prog [:<number>] [-name <desktop-name>] [-depth <depth>]\n".
-        "                 [-geometry <width>x<height>]\n".
-        "                 [-pixelformat rgbNNN|bgrNNN]\n".
-        "                 [-fp <font-path>]\n".
-        "                 [-fg]\n".
-        "                 [-autokill]\n".
-        "                 [-noxstartup]\n".
-        "                 [-xstartup <file>]\n".
-        "                 <Xvnc-options>...\n\n".
-        "       $prog -kill <X-display>\n\n".
-        "       $prog -list\n\n");
+  die("\nusage: $prog [:<number>] [-name <desktop-name>] [-depth <depth>]\n".
+    "                 [-geometry <width>x<height>]\n".
+    "                 [-pixelformat rgbNNN|bgrNNN]\n".
+    "                 [-fp <font-path>]\n".
+    "                 [-fg]\n".
+    "                 [-autokill]\n".
+    "                 [-noxstartup]\n".
+    "                 [-xstartup <file>]\n".
+    "                 <Xvnc-options>...\n\n".
+    "       $prog -kill <X-display>\n\n".
+    "       $prog -list\n\n");
 }
 
 
@@ -325,22 +325,22 @@ sub Usage
 
 sub List
 {
-    opendir(dir, $vncUserDir);
-    my @filelist = readdir(dir);
-    closedir(dir);
-    print "\nKasmVNC server sessions:\n\n";
-    print "X DISPLAY #\tPROCESS ID\n";
-    foreach my $file (@filelist) {
-        if ($file =~ /$host:(\d+)$\.pid/) {
-            chop($tmp_pid = `cat $vncUserDir/$file`);
-            if (&IsProcessRunning($tmp_pid)) {
-                print ":".$1."\t\t".`cat $vncUserDir/$file`;
-            } else {
-                unlink ($vncUserDir . "/" . $file);
-            }
-        }
+  opendir(dir, $vncUserDir);
+  my @filelist = readdir(dir);
+  closedir(dir);
+  print "\nKasmVNC server sessions:\n\n";
+  print "X DISPLAY #\tPROCESS ID\n";
+  foreach my $file (@filelist) {
+    if ($file =~ /$host:(\d+)$\.pid/) {
+      chop($tmp_pid = `cat $vncUserDir/$file`);
+      if (&IsProcessRunning($tmp_pid)) {
+        print ":".$1."\t\t".`cat $vncUserDir/$file`;
+      } else {
+        unlink ($vncUserDir . "/" . $file);
+      }
     }
-    exit 1;
+  }
+  exit 1;
 }
 
 
@@ -350,57 +350,57 @@ sub List
 
 sub Kill
 {
-    $opt{'-kill'} =~ s/(:\d+)\.\d+$/$1/; # e.g. turn :1.0 into :1
+  $opt{'-kill'} =~ s/(:\d+)\.\d+$/$1/; # e.g. turn :1.0 into :1
 
-    if ($opt{'-kill'} =~ /^:\d+$/) {
-        $pidFile = "$vncUserDir/$host$opt{'-kill'}.pid";
-    } else {
-        if ($opt{'-kill'} !~ /^$host:/) {
-            die "\nCan't tell if $opt{'-kill'} is on $host\n".
-                "Use -kill :<number> instead\n\n";
-        }
-        $pidFile = "$vncUserDir/$opt{'-kill'}.pid";
+  if ($opt{'-kill'} =~ /^:\d+$/) {
+    $pidFile = "$vncUserDir/$host$opt{'-kill'}.pid";
+  } else {
+    if ($opt{'-kill'} !~ /^$host:/) {
+      die "\nCan't tell if $opt{'-kill'} is on $host\n".
+      "Use -kill :<number> instead\n\n";
     }
+    $pidFile = "$vncUserDir/$opt{'-kill'}.pid";
+  }
 
-    if (! -r $pidFile) {
-        die "\nCan't find file $pidFile\n".
-            "You'll have to kill the Xvnc process manually\n\n";
-    }
+  if (! -r $pidFile) {
+    die "\nCan't find file $pidFile\n".
+    "You'll have to kill the Xvnc process manually\n\n";
+  }
 
-    $SIG{'HUP'} = 'IGNORE';
-    chop($pid = `cat $pidFile`);
-    warn "Killing Xvnc process ID $pid\n";
+  $SIG{'HUP'} = 'IGNORE';
+  chop($pid = `cat $pidFile`);
+  warn "Killing Xvnc process ID $pid\n";
 
+  if (&IsProcessRunning($pid)) {
+    system("kill $pid");
+    &WaitForTimeLimitOrSubReturningTrue(1, sub {
+        !IsProcessRunning($pid)
+      });
     if (&IsProcessRunning($pid)) {
-        system("kill $pid");
-        &WaitForTimeLimitOrSubReturningTrue(1, sub {
-            !IsProcessRunning($pid)
-        });
-        if (&IsProcessRunning($pid)) {
-            print "Xvnc seems to be deadlocked.  Kill the process manually and then re-run\n";
-            print "    ".$0." -kill ".$opt{'-kill'}."\n";
-            print "to clean up the socket files.\n";
-            exit
-        }
-
-    } else {
-        warn "Xvnc process ID $pid already killed\n";
-        $opt{'-kill'} =~ s/://;
-
-        if (-e "/tmp/.X11-unix/X$opt{'-kill'}") {
-            print "Xvnc did not appear to shut down cleanly.";
-            print " Removing /tmp/.X11-unix/X$opt{'-kill'}\n";
-            unlink "/tmp/.X11-unix/X$opt{'-kill'}";
-        }
-        if (-e "/tmp/.X$opt{'-kill'}-lock") {
-            print "Xvnc did not appear to shut down cleanly.";
-            print " Removing /tmp/.X$opt{'-kill'}-lock\n";
-            unlink "/tmp/.X$opt{'-kill'}-lock";
-        }
+      print "Xvnc seems to be deadlocked.  Kill the process manually and then re-run\n";
+      print "    ".$0." -kill ".$opt{'-kill'}."\n";
+      print "to clean up the socket files.\n";
+      exit
     }
 
-    unlink $pidFile;
-    exit;
+  } else {
+    warn "Xvnc process ID $pid already killed\n";
+    $opt{'-kill'} =~ s/://;
+
+    if (-e "/tmp/.X11-unix/X$opt{'-kill'}") {
+      print "Xvnc did not appear to shut down cleanly.";
+      print " Removing /tmp/.X11-unix/X$opt{'-kill'}\n";
+      unlink "/tmp/.X11-unix/X$opt{'-kill'}";
+    }
+    if (-e "/tmp/.X$opt{'-kill'}-lock") {
+      print "Xvnc did not appear to shut down cleanly.";
+      print " Removing /tmp/.X$opt{'-kill'}-lock\n";
+      unlink "/tmp/.X$opt{'-kill'}-lock";
+    }
+  }
+
+  unlink $pidFile;
+  exit;
 }
 
 
@@ -413,680 +413,680 @@ sub Kill
 
 sub ParseOptionsAndRemoveMatchesFromARGV
 {
-    local (@optval) = @_;
-    local ($opt, @opts, %valFollows, @newargs);
+  local (@optval) = @_;
+  local ($opt, @opts, %valFollows, @newargs);
 
-    while (@optval) {
-        $opt = shift(@optval);
-        push(@opts,$opt);
-        $valFollows{$opt} = shift(@optval);
-    }
+  while (@optval) {
+    $opt = shift(@optval);
+    push(@opts,$opt);
+    $valFollows{$opt} = shift(@optval);
+  }
 
-    @optArgs = ();
-    %opt = ();
+  @optArgs = ();
+  %opt = ();
 
-    arg: while (defined($arg = shift(@ARGV))) {
-        foreach $opt (@opts) {
-            if ($arg eq $opt) {
-                push(@optArgs, $arg);
-                if ($valFollows{$opt}) {
-                    if (@ARGV == 0) {
-                        &Usage();
-                    }
-                    $opt{$opt} = shift(@ARGV);
-                    push(@optArgs, $opt{$opt});
-                } else {
-                    $opt{$opt} = 1;
-                }
-                next arg;
-            }
+  arg: while (defined($arg = shift(@ARGV))) {
+    foreach $opt (@opts) {
+      if ($arg eq $opt) {
+        push(@optArgs, $arg);
+        if ($valFollows{$opt}) {
+          if (@ARGV == 0) {
+            &Usage();
+          }
+          $opt{$opt} = shift(@ARGV);
+          push(@optArgs, $opt{$opt});
+        } else {
+          $opt{$opt} = 1;
         }
-        push(@newargs,$arg);
+        next arg;
+      }
     }
+    push(@newargs,$arg);
+  }
 
-    @ARGV = @newargs;
+  @ARGV = @newargs;
 }
 
 
 # Routine to make sure we're operating in a sane environment.
 sub CheckRequiredDependenciesArePresent
 {
-    local ($cmd);
+  local ($cmd);
 
-    # Get the program name
-    ($prog) = ($0 =~ m|([^/]+)$|);
+  # Get the program name
+  ($prog) = ($0 =~ m|([^/]+)$|);
 
-    #
-    # Check we have all the commands we'll need on the path.
-    #
+  #
+  # Check we have all the commands we'll need on the path.
+  #
 
- cmd:
-    foreach $cmd ("uname","xauth") {
-        for (split(/:/,$ENV{PATH})) {
-            if (-x "$_/$cmd") {
-                next cmd;
-            }
+  cmd:
+  foreach $cmd ("uname","xauth") {
+    for (split(/:/,$ENV{PATH})) {
+      if (-x "$_/$cmd") {
+        next cmd;
+      }
+    }
+    die "$prog: couldn't find \"$cmd\" on your PATH.\n";
+  }
+
+  if($exedir eq "") {
+    cmd2:
+    foreach $cmd ("Xvnc","vncpasswd") {
+      for (split(/:/,$ENV{PATH})) {
+        if (-x "$_/$cmd") {
+          next cmd2;
         }
-        die "$prog: couldn't find \"$cmd\" on your PATH.\n";
+      }
+      die "$prog: couldn't find \"$cmd\" on your PATH.\n";
     }
-
-    if($exedir eq "") {
-      cmd2:
-        foreach $cmd ("Xvnc","vncpasswd") {
-            for (split(/:/,$ENV{PATH})) {
-                if (-x "$_/$cmd") {
-                    next cmd2;
-                }
-            }
-            die "$prog: couldn't find \"$cmd\" on your PATH.\n";
+  }
+  else {
+    cmd3:
+    foreach $cmd ($exedir."Xvnc",$exedir."vncpasswd") {
+      for (split(/:/,$ENV{PATH})) {
+        if (-x "$cmd") {
+          next cmd3;
         }
+      }
+      die "$prog: couldn't find \"$cmd\".\n";
     }
-    else {
-      cmd3:
-        foreach $cmd ($exedir."Xvnc",$exedir."vncpasswd") {
-            for (split(/:/,$ENV{PATH})) {
-                if (-x "$cmd") {
-                    next cmd3;
-                }
-            }
-            die "$prog: couldn't find \"$cmd\".\n";
-        }
-    }
+  }
 
-    if (!defined($ENV{HOME})) {
-        die "$prog: The HOME environment variable is not set.\n";
-    }
+  if (!defined($ENV{HOME})) {
+    die "$prog: The HOME environment variable is not set.\n";
+  }
 
-    #
-    # Find socket constants. 'use Socket' is a perl5-ism, so we wrap it in an
-    # eval, and if it fails we try 'require "sys/socket.ph"'.  If this fails,
-    # we just guess at the values.  If you find perl moaning here, just
-    # hard-code the values of AF_INET and SOCK_STREAM.  You can find these out
-    # for your platform by looking in /usr/include/sys/socket.h and related
-    # files.
-    #
+  #
+  # Find socket constants. 'use Socket' is a perl5-ism, so we wrap it in an
+  # eval, and if it fails we try 'require "sys/socket.ph"'.  If this fails,
+  # we just guess at the values.  If you find perl moaning here, just
+  # hard-code the values of AF_INET and SOCK_STREAM.  You can find these out
+  # for your platform by looking in /usr/include/sys/socket.h and related
+  # files.
+  #
 
-    chop($os = `uname`);
-    chop($osrev = `uname -r`);
+  chop($os = `uname`);
+  chop($osrev = `uname -r`);
 
-    eval 'use Socket';
+  eval 'use Socket';
+  if ($@) {
+    eval 'require "sys/socket.ph"';
     if ($@) {
-        eval 'require "sys/socket.ph"';
-        if ($@) {
-            if (($os eq "SunOS") && ($osrev !~ /^4/)) {
-                $AF_INET = 2;
-                $SOCK_STREAM = 2;
-            } else {
-                $AF_INET = 2;
-                $SOCK_STREAM = 1;
-            }
-        } else {
-            $AF_INET = &AF_INET;
-            $SOCK_STREAM = &SOCK_STREAM;
-        }
+      if (($os eq "SunOS") && ($osrev !~ /^4/)) {
+        $AF_INET = 2;
+        $SOCK_STREAM = 2;
+      } else {
+        $AF_INET = 2;
+        $SOCK_STREAM = 1;
+      }
     } else {
-        $AF_INET = &AF_INET;
-        $SOCK_STREAM = &SOCK_STREAM;
+      $AF_INET = &AF_INET;
+      $SOCK_STREAM = &SOCK_STREAM;
     }
+  } else {
+    $AF_INET = &AF_INET;
+    $SOCK_STREAM = &SOCK_STREAM;
+  }
 }
 
 sub CreateXstartupIfNeeded
 {
-   if ((-e "$xstartupFile")) {
-      return;
-   }
+  if ((-e "$xstartupFile")) {
+    return;
+  }
 
-   my $defaultXStartup
-      = ("#!/bin/sh\n\n".
-         "unset SESSION_MANAGER\n".
-         "unset DBUS_SESSION_BUS_ADDRESS\n".
-         "OS=`uname -s`\n".
-         "if [ \$OS = 'Linux' ]; then\n".
-         "  case \"\$WINDOWMANAGER\" in\n".
-         "    \*gnome\*)\n".
-         "      if [ -e /etc/SuSE-release ]; then\n".
-         "        PATH=\$PATH:/opt/gnome/bin\n".
-         "        export PATH\n".
-         "      fi\n".
-         "      ;;\n".
-         "  esac\n".
-         "fi\n".
-         "if [ -x /etc/X11/xinit/xinitrc ]; then\n".
-         "  exec /etc/X11/xinit/xinitrc\n".
-         "fi\n".
-         "if [ -f /etc/X11/xinit/xinitrc ]; then\n".
-         "  exec sh /etc/X11/xinit/xinitrc\n".
-         "fi\n".
-         "[ -r \$HOME/.Xresources ] && xrdb \$HOME/.Xresources\n".
-         "xsetroot -solid grey\n".
-         "xterm -geometry 80x24+10+10 -ls -title \"\$VNCDESKTOP Desktop\" &\n".
-         "twm\n");
+  my $defaultXStartup
+  = ("#!/bin/sh\n\n".
+    "unset SESSION_MANAGER\n".
+    "unset DBUS_SESSION_BUS_ADDRESS\n".
+    "OS=`uname -s`\n".
+    "if [ \$OS = 'Linux' ]; then\n".
+    "  case \"\$WINDOWMANAGER\" in\n".
+    "    \*gnome\*)\n".
+    "      if [ -e /etc/SuSE-release ]; then\n".
+    "        PATH=\$PATH:/opt/gnome/bin\n".
+    "        export PATH\n".
+    "      fi\n".
+    "      ;;\n".
+    "  esac\n".
+    "fi\n".
+    "if [ -x /etc/X11/xinit/xinitrc ]; then\n".
+    "  exec /etc/X11/xinit/xinitrc\n".
+    "fi\n".
+    "if [ -f /etc/X11/xinit/xinitrc ]; then\n".
+    "  exec sh /etc/X11/xinit/xinitrc\n".
+    "fi\n".
+    "[ -r \$HOME/.Xresources ] && xrdb \$HOME/.Xresources\n".
+    "xsetroot -solid grey\n".
+    "xterm -geometry 80x24+10+10 -ls -title \"\$VNCDESKTOP Desktop\" &\n".
+    "twm\n");
 
-   warn "Creating default startup script $xstartupFile\n";
-   open(XSTARTUP, ">$xstartupFile");
-         print XSTARTUP $defaultXStartup;
-         close(XSTARTUP);
-         chmod 0755, "$xstartupFile";
+  warn "Creating default startup script $xstartupFile\n";
+  open(XSTARTUP, ">$xstartupFile");
+  print XSTARTUP $defaultXStartup;
+  close(XSTARTUP);
+  chmod 0755, "$xstartupFile";
 }
 
 sub DetectAndExportDisplay {
-   # If the unix domain socket exists then use that (DISPLAY=:n) otherwise use
-   # TCP (DISPLAY=host:n)
+  # If the unix domain socket exists then use that (DISPLAY=:n) otherwise use
+  # TCP (DISPLAY=host:n)
 
-   if (-e "/tmp/.X11-unix/X$displayNumber" ||
-      -e "/usr/spool/sockets/X11/$displayNumber")
-   {
-      $ENV{DISPLAY}= ":$displayNumber";
-   } else {
-      $ENV{DISPLAY}= "$host:$displayNumber";
-   }
+  if (-e "/tmp/.X11-unix/X$displayNumber" ||
+    -e "/usr/spool/sockets/X11/$displayNumber")
+  {
+    $ENV{DISPLAY}= ":$displayNumber";
+  } else {
+    $ENV{DISPLAY}= "$host:$displayNumber";
+  }
 }
 
 sub RunXstartup {
-   warn "Starting applications specified in $xstartupFile\n";
-   &DetectAndExportDisplay();
-   $ENV{VNCDESKTOP}= $desktopName;
+  warn "Starting applications specified in $xstartupFile\n";
+  &DetectAndExportDisplay();
+  $ENV{VNCDESKTOP}= $desktopName;
 
-   if ($opt{'-fg'}) {
+  if ($opt{'-fg'}) {
+    if (! $skipxstartup) {
+      system("$xstartupFile >> " . &quotedString($desktopLog) . " 2>&1");
+    }
+    if (&IsXvncRunning()) {
+      $opt{'-kill'} = ':'.$displayNumber;
+      &Kill();
+    }
+  } else {
+    if ($opt{'-autokill'}) {
       if (! $skipxstartup) {
-         system("$xstartupFile >> " . &quotedString($desktopLog) . " 2>&1");
+        system("($xstartupFile; $0 -kill :$displayNumber) >> "
+          . &quotedString($desktopLog) . " 2>&1 &");
       }
-      if (&IsXvncRunning()) {
-         $opt{'-kill'} = ':'.$displayNumber;
-         &Kill();
+    } else {
+      if (! $skipxstartup) {
+        system("$xstartupFile >> " . &quotedString($desktopLog)
+          . " 2>&1 &");
       }
-   } else {
-      if ($opt{'-autokill'}) {
-         if (! $skipxstartup) {
-               system("($xstartupFile; $0 -kill :$displayNumber) >> "
-         . &quotedString($desktopLog) . " 2>&1 &");
-         }
-      } else {
-         if (! $skipxstartup) {
-               system("$xstartupFile >> " . &quotedString($desktopLog)
-         . " 2>&1 &");
-         }
-      }
-   }
+    }
+  }
 }
 
 sub DetectBinariesDir {
-   my $result = "";
-   my $slashndx = rindex($0, "/");
+  my $result = "";
+  my $slashndx = rindex($0, "/");
 
-   if($slashndx>=0) {
-      $result = substr($0, 0, $slashndx+1);
-   }
-   if ($result =~ m!unix/!) {
-      $result = "/usr/bin/";
-   }
+  if($slashndx>=0) {
+    $result = substr($0, 0, $slashndx+1);
+  }
+  if ($result =~ m!unix/!) {
+    $result = "/usr/bin/";
+  }
 
-   return $result;
+  return $result;
 }
 
 sub DetectUserName {
-   my $vncUserName = `id -u -n`;
-   $vncUserName =~ s/^\s+|\s+$//g;
+  my $vncUserName = `id -u -n`;
+  $vncUserName =~ s/^\s+|\s+$//g;
 
-   return $vncUserName;
+  return $vncUserName;
 }
 
 sub DetectFontPath {
-   if (-d "/etc/X11/fontpath.d") {
-      $fontPath = "catalogue:/etc/X11/fontpath.d";
-   }
+  if (-d "/etc/X11/fontpath.d") {
+    $fontPath = "catalogue:/etc/X11/fontpath.d";
+  }
 
-   @fontpaths = ('/usr/share/X11/fonts', '/usr/share/fonts', '/usr/share/fonts/X11/');
-   if (! -l "/usr/lib/X11") {push(@fontpaths, '/usr/lib/X11/fonts');}
-   if (! -l "/usr/X11") {push(@fontpaths, '/usr/X11/lib/X11/fonts');}
-   if (! -l "/usr/X11R6") {push(@fontpaths, '/usr/X11R6/lib/X11/fonts');}
-   push(@fontpaths, '/usr/share/fonts/default');
+  @fontpaths = ('/usr/share/X11/fonts', '/usr/share/fonts', '/usr/share/fonts/X11/');
+  if (! -l "/usr/lib/X11") {push(@fontpaths, '/usr/lib/X11/fonts');}
+  if (! -l "/usr/X11") {push(@fontpaths, '/usr/X11/lib/X11/fonts');}
+  if (! -l "/usr/X11R6") {push(@fontpaths, '/usr/X11R6/lib/X11/fonts');}
+  push(@fontpaths, '/usr/share/fonts/default');
 
-   @fonttypes = ('misc',
-               '75dpi',
-               '100dpi',
-               'Speedo',
-               'Type1');
+  @fonttypes = ('misc',
+    '75dpi',
+    '100dpi',
+    'Speedo',
+    'Type1');
 
-   foreach $_fpath (@fontpaths) {
-      foreach $_ftype (@fonttypes) {
-         if (-f "$_fpath/$_ftype/fonts.dir") {
-               if (! -l "$_fpath/$_ftype") {
-                  $defFontPath .= "$_fpath/$_ftype,";
-               }
-         }
+  foreach $_fpath (@fontpaths) {
+    foreach $_ftype (@fonttypes) {
+      if (-f "$_fpath/$_ftype/fonts.dir") {
+        if (! -l "$_fpath/$_ftype") {
+          $defFontPath .= "$_fpath/$_ftype,";
+        }
       }
-   }
+    }
+  }
 
-   if ($defFontPath) {
-      if (substr($defFontPath, -1, 1) == ',') {
-         chop $defFontPath;
-      }
-   }
+  if ($defFontPath) {
+    if (substr($defFontPath, -1, 1) == ',') {
+      chop $defFontPath;
+    }
+  }
 
-   if ($fontPath eq "") {
-      $fontPath = $defFontPath;
-   }
+  if ($fontPath eq "") {
+    $fontPath = $defFontPath;
+  }
 }
 
 sub ProcessCliOptions {
-   &Usage() if ($opt{'-help'} || $opt{'-h'} || $opt{'--help'});
+  &Usage() if ($opt{'-help'} || $opt{'-h'} || $opt{'--help'});
 
-   &Kill() if ($opt{'-kill'});
+  &Kill() if ($opt{'-kill'});
 
-   &List() if ($opt{'-list'});
+  &List() if ($opt{'-list'});
 
-   # Uncomment this line if you want default geometry, depth and pixelformat
-   # to match the current X display:
-   # &GetXDisplayDefaults();
+  # Uncomment this line if you want default geometry, depth and pixelformat
+  # to match the current X display:
+  # &GetXDisplayDefaults();
 
-   if ($opt{'-geometry'}) {
-      $geometry = $opt{'-geometry'};
-   }
-   if ($opt{'-depth'}) {
-      $depth = $opt{'-depth'};
-      $pixelformat = "";
-   }
-   if ($opt{'-pixelformat'}) {
-      $pixelformat = $opt{'-pixelformat'};
-   }
-   if ($opt{'-noxstartup'}) {
-      $skipxstartup = 1;
-   }
-   if ($opt{'-xstartup'}) {
-      $xstartupFile = $opt{'-xstartup'};
-   }
-   if ($opt{'-fp'}) {
-      $fontPath = $opt{'-fp'};
-      $fpArgSpecified = 1;
-   }
+  if ($opt{'-geometry'}) {
+    $geometry = $opt{'-geometry'};
+  }
+  if ($opt{'-depth'}) {
+    $depth = $opt{'-depth'};
+    $pixelformat = "";
+  }
+  if ($opt{'-pixelformat'}) {
+    $pixelformat = $opt{'-pixelformat'};
+  }
+  if ($opt{'-noxstartup'}) {
+    $skipxstartup = 1;
+  }
+  if ($opt{'-xstartup'}) {
+    $xstartupFile = $opt{'-xstartup'};
+  }
+  if ($opt{'-fp'}) {
+    $fontPath = $opt{'-fp'};
+    $fpArgSpecified = 1;
+  }
 }
 
 sub CreateDotVncDir {
-   if (!(-e $vncUserDir)) {
-      if (!mkdir($vncUserDir,0755)) {
-         die "$prog: Could not create $vncUserDir.\n";
-      }
-   }
+  if (!(-e $vncUserDir)) {
+    if (!mkdir($vncUserDir,0755)) {
+      die "$prog: Could not create $vncUserDir.\n";
+    }
+  }
 }
 
 sub AskUserToChooseDeOrManualXstartup {
-   $selectDeCmd = "builder/startup/deb/select-de.sh";
-   if (!$skipxstartup) {
-      system($selectDeCmd) == 0 || die("Failed to execute $selectDeCmd\n");
-   }
+  $selectDeCmd = "builder/startup/deb/select-de.sh";
+  if (!$skipxstartup) {
+    system($selectDeCmd) == 0 || die("Failed to execute $selectDeCmd\n");
+  }
 }
 
 sub DetectDisplayNumberFromCliArgs {
-   if (@ARGV == 0) {
-      return;
-   }
+  if (@ARGV == 0) {
+    return;
+  }
 
-   my $displayNumber;
-   if ($ARGV[0] =~ /^:(\d+)$/) {
-      $displayNumber = $1;
-      shift(@ARGV);
-      if (!&CheckVncIsntRunningOnDisplay($displayNumber)) {
-         die "A VNC server is already running as :$displayNumber\n";
-      }
-   }
+  my $displayNumber;
+  if ($ARGV[0] =~ /^:(\d+)$/) {
+    $displayNumber = $1;
+    shift(@ARGV);
+    if (!&CheckVncIsntRunningOnDisplay($displayNumber)) {
+      die "A VNC server is already running as :$displayNumber\n";
+    }
+  }
 
-   $displayNumber;
+  $displayNumber;
 }
 
 sub CheckCliOptionsForBeingValid {
-   if (@ARGV == 0) {
-      return;
-   }
+  if (@ARGV == 0) {
+    return;
+  }
 
-   if (! &IsCliOption($ARGV[0])) {
-      &Usage();
-   }
+  if (! &IsCliOption($ARGV[0])) {
+    &Usage();
+  }
 }
 
 sub IsCliOption {
-   my $arg = shift;
+  my $arg = shift;
 
-   ($arg =~ /^-/) || ($arg =~ /^\+/);
+  ($arg =~ /^-/) || ($arg =~ /^\+/);
 }
 
 sub SetReasonabeDefaults {
-   $default_opts{desktop} = &quotedString($desktopName);
-   $default_opts{auth} = &quotedString($xauthorityFile);
-   $default_opts{geometry} = $geometry if ($geometry);
-   $default_opts{depth} = $depth if ($depth);
-   $default_opts{pixelformat} = $pixelformat if ($pixelformat);
-   $default_opts{rfbwait} = 30000;
-   $default_opts{rfbauth} = "$vncUserDir/passwd";
-   $default_opts{rfbport} = $vncPort;
-   $default_opts{fp} = $fontPath if ($fontPath);
-   $default_opts{pn} = "";
+  $default_opts{desktop} = &quotedString($desktopName);
+  $default_opts{auth} = &quotedString($xauthorityFile);
+  $default_opts{geometry} = $geometry if ($geometry);
+  $default_opts{depth} = $depth if ($depth);
+  $default_opts{pixelformat} = $pixelformat if ($pixelformat);
+  $default_opts{rfbwait} = 30000;
+  $default_opts{rfbauth} = "$vncUserDir/passwd";
+  $default_opts{rfbport} = $vncPort;
+  $default_opts{fp} = $fontPath if ($fontPath);
+  $default_opts{pn} = "";
 }
 
 sub LoadSystemThenUserThenMandatoryConfigs {
-   # Load user-overrideable system defaults
-   LoadConfig($vncSystemConfigDefaultsFile);
+  # Load user-overrideable system defaults
+  LoadConfig($vncSystemConfigDefaultsFile);
 
-   # Then the user's settings
-   LoadConfig($vncUserConfig);
+  # Then the user's settings
+  LoadConfig($vncUserConfig);
 
-   # And then override anything set above if mandatory settings exist.
-   # WARNING: "Mandatory" is used loosely here! As the man page says,
-   # there is nothing stopping someone from EASILY subverting the
-   # settings in $vncSystemConfigMandatoryFile by simply passing
-   # CLI args to vncserver, which trump config files! To properly
-   # hard force policy in a non-subvertible way would require major
-   # development work that touches Xvnc itself.
-   LoadConfig($vncSystemConfigMandatoryFile, 1);
+  # And then override anything set above if mandatory settings exist.
+  # WARNING: "Mandatory" is used loosely here! As the man page says,
+  # there is nothing stopping someone from EASILY subverting the
+  # settings in $vncSystemConfigMandatoryFile by simply passing
+  # CLI args to vncserver, which trump config files! To properly
+  # hard force policy in a non-subvertible way would require major
+  # development work that touches Xvnc itself.
+  LoadConfig($vncSystemConfigMandatoryFile, 1);
 }
 
 sub DisableVncAuth() {
-   # Disable vnc auth, kasmvnc uses https basic auth
-   system("echo 'WrLNwLrcrxM=' | base64 -d > $vncUserDir/passwd");
+  # Disable vnc auth, kasmvnc uses https basic auth
+  system("echo 'WrLNwLrcrxM=' | base64 -d > $vncUserDir/passwd");
 }
 
 sub TellUserToSetupUserAndPassword {
-   if (&AtLeastOneUserConfigured()) {
-      return;
-   }
+  if (&AtLeastOneUserConfigured()) {
+    return;
+  }
 
-   warn "\nYou will require a password to access your desktops.\n\n";
-   system($exedir."kasmvncpasswd $kasmPasswdFile");
-   if (($? >> 8) != 0) {
-      exit 1;
-   }
+  warn "\nYou will require a password to access your desktops.\n\n";
+  system($exedir."kasmvncpasswd $kasmPasswdFile");
+  if (($? >> 8) != 0) {
+    exit 1;
+  }
 }
 
 sub GuideUserToSetupKasmPasswdUser {
-   my $defaultUser = $ENV{USER};
-   print(<<"NEEDTOCREATEUSER");
+  my $defaultUser = $ENV{USER};
+  print(<<"NEEDTOCREATEUSER");
 In order to access your desktop, at least one KasmVNC user must be setup.
 Let's create a user.
 
 NEEDTOCREATEUSER
 
-   my $username = &Prompt("Enter username (default: $defaultUser): ");
-   $username ||= $defaultUser;
+  my $username = &Prompt("Enter username (default: $defaultUser): ");
+  $username ||= $defaultUser;
 
-   system($exedir."kasmvncpasswd -u \"$username\" -w $kasmPasswdFile");
-   if ($?) {
-      die("\nFailed to setup user \"$username\"\n");
-   }
-   print("Created user \"$username\"\n");
+  system($exedir."kasmvncpasswd -u \"$username\" -w $kasmPasswdFile");
+  if ($?) {
+    die("\nFailed to setup user \"$username\"\n");
+  }
+  print("Created user \"$username\"\n");
 }
 
 sub Prompt {
-   my $prompt = shift;
+  my $prompt = shift;
 
-   print($prompt);
-   my $userInput = <STDIN>;
-   $userInput =~ s/^\s+|\s+$//g;
+  print($prompt);
+  my $userInput = <STDIN>;
+  $userInput =~ s/^\s+|\s+$//g;
 
-   return $userInput;
+  return $userInput;
 }
 
 sub AtLeastOneUserConfigured {
-   scalar @kasmPasswdUsers > 0;
+  scalar @kasmPasswdUsers > 0;
 }
 
 sub LoadKasmPasswdUsers {
-   my @result = ();
-   my %permissionExplanations = ("w" => "can use keyboard and mouse",
-      "o" => "can add/remove users",
-      "ow" => "can use keyboard and mouse, add/remove users",
-      "" => "can only view");
+  my @result = ();
+  my %permissionExplanations = ("w" => "can use keyboard and mouse",
+    "o" => "can add/remove users",
+    "ow" => "can use keyboard and mouse, add/remove users",
+    "" => "can only view");
 
-   open(FH, '<', $kasmPasswdFile) or return @result;
+  open(FH, '<', $kasmPasswdFile) or return @result;
 
-   while(<FH>){
-      chomp $_;
-      my ($name, $__, $permissions) = split(':', $_);
-      push(@result, "$name ($permissionExplanations{$permissions})");
-   }
+  while(<FH>){
+    chomp $_;
+    my ($name, $__, $permissions) = split(':', $_);
+    push(@result, "$name ($permissionExplanations{$permissions})");
+  }
 
-   close(FH);
+  close(FH);
 
-   return @result;
+  return @result;
 }
 
 sub MakeXCookie {
-   # Make an X server cookie and set up the Xauthority file
-   # mcookie is a part of util-linux, usually only GNU/Linux systems have it.
-   my $cookie = `mcookie`;
-   # Fallback for non GNU/Linux OS - use /dev/urandom on systems that have it,
-   # otherwise use perl's random number generator, seeded with the sum
-   # of the current time, our PID and part of the encrypted form of the password.
-   if ($cookie eq "" && open(URANDOM, '<', '/dev/urandom')) {
-      my $randata;
-      if (sysread(URANDOM, $randata, 16) == 16) {
-         $cookie = unpack 'h*', $randata;
-      }
-      close(URANDOM);
-   }
-   if ($cookie eq "") {
-      srand(time+$$+unpack("L",`cat $vncUserDir/passwd`));
-      for (1..16) {
-         $cookie .= sprintf("%02x", int(rand(256)) % 256);
-      }
-   }
+  # Make an X server cookie and set up the Xauthority file
+  # mcookie is a part of util-linux, usually only GNU/Linux systems have it.
+  my $cookie = `mcookie`;
+  # Fallback for non GNU/Linux OS - use /dev/urandom on systems that have it,
+  # otherwise use perl's random number generator, seeded with the sum
+  # of the current time, our PID and part of the encrypted form of the password.
+  if ($cookie eq "" && open(URANDOM, '<', '/dev/urandom')) {
+    my $randata;
+    if (sysread(URANDOM, $randata, 16) == 16) {
+      $cookie = unpack 'h*', $randata;
+    }
+    close(URANDOM);
+  }
+  if ($cookie eq "") {
+    srand(time+$$+unpack("L",`cat $vncUserDir/passwd`));
+    for (1..16) {
+      $cookie .= sprintf("%02x", int(rand(256)) % 256);
+    }
+  }
 
-   return $cookie;
+  return $cookie;
 }
 
 sub SetupXauthorityFile {
-   my $cookie = &MakeXCookie();
+  my $cookie = &MakeXCookie();
 
-   open(XAUTH, "|xauth -f $xauthorityFile source -");
-   print XAUTH "add $host:$displayNumber . $cookie\n";
-   print XAUTH "add $host/unix:$displayNumber . $cookie\n";
-   close(XAUTH);
+  open(XAUTH, "|xauth -f $xauthorityFile source -");
+  print XAUTH "add $host:$displayNumber . $cookie\n";
+  print XAUTH "add $host/unix:$displayNumber . $cookie\n";
+  close(XAUTH);
 }
 
 sub ConstructXvncCmd {
-   my $cmd = $exedir."Xvnc :$displayNumber";
+  my $cmd = $exedir."Xvnc :$displayNumber";
 
-   foreach my $k (sort keys %config) {
-      $cmd .= " -$k $config{$k}";
-      delete $default_opts{$k}; # file options take precedence
-   }
+  foreach my $k (sort keys %config) {
+    $cmd .= " -$k $config{$k}";
+    delete $default_opts{$k}; # file options take precedence
+  }
 
-   foreach my $k (sort keys %default_opts) {
-      $cmd .= " -$k $default_opts{$k}";
-   }
+  foreach my $k (sort keys %default_opts) {
+    $cmd .= " -$k $default_opts{$k}";
+  }
 
-   # Add color database stuff here, e.g.:
-   # $cmd .= " -co /usr/lib/X11/rgb";
+  # Add color database stuff here, e.g.:
+  # $cmd .= " -co /usr/lib/X11/rgb";
 
-   foreach $arg (@ARGV) {
-      $cmd .= " " . &quotedString($arg);
-   }
-   $cmd .= " >> " . &quotedString($desktopLog) . " 2>&1";
+  foreach $arg (@ARGV) {
+    $cmd .= " " . &quotedString($arg);
+  }
+  $cmd .= " >> " . &quotedString($desktopLog) . " 2>&1";
 
-   return $cmd;
+  return $cmd;
 }
 
 sub StartXvncAndRecordPID {
-   system("$cmd & echo \$! >$pidFile");
+  system("$cmd & echo \$! >$pidFile");
 }
 
 sub DeleteLogLeftFromPreviousXvncRun {
-   unlink($desktopLog);
+  unlink($desktopLog);
 }
 
 sub StartXvncWithSafeFontPath {
-   if ($fpArgSpecified) {
-         warn "\nWARNING: The first attempt to start Xvnc failed, probably because the font\n";
-         warn "path you specified using the -fp argument is incorrect.  Attempting to\n";
-         warn "determine an appropriate font path for this system and restart Xvnc using\n";
-         warn "that font path ...\n";
-   } else {
-         warn "\nWARNING: The first attempt to start Xvnc failed, possibly because the font\n";
-         warn "catalog is not properly configured.  Attempting to determine an appropriate\n";
-         warn "font path for this system and restart Xvnc using that font path ...\n";
-   }
-   $cmd =~ s@-fp [^ ]+@@;
-   $cmd .= " -fp $defFontPath" if ($defFontPath);
-   &StartXvncAndRecordPID();
+  if ($fpArgSpecified) {
+    warn "\nWARNING: The first attempt to start Xvnc failed, probably because the font\n";
+    warn "path you specified using the -fp argument is incorrect.  Attempting to\n";
+    warn "determine an appropriate font path for this system and restart Xvnc using\n";
+    warn "that font path ...\n";
+  } else {
+    warn "\nWARNING: The first attempt to start Xvnc failed, possibly because the font\n";
+    warn "catalog is not properly configured.  Attempting to determine an appropriate\n";
+    warn "font path for this system and restart Xvnc using that font path ...\n";
+  }
+  $cmd =~ s@-fp [^ ]+@@;
+  $cmd .= " -fp $defFontPath" if ($defFontPath);
+  &StartXvncAndRecordPID();
 }
 
 sub IsXvncRunning {
-    &IsProcessRunning(`cat $pidFile`);
+  &IsProcessRunning(`cat $pidFile`);
 }
 
 sub WarnUserXvncNotStartedAndExit {
-    warn "Could not start Xvnc.\n\n";
-    unlink $pidFile;
-    open(LOG, "<$desktopLog");
-    while (<LOG>) { print; }
-    close(LOG);
-    die "\n";
+  warn "Could not start Xvnc.\n\n";
+  unlink $pidFile;
+  open(LOG, "<$desktopLog");
+  while (<LOG>) { print; }
+  close(LOG);
+  die "\n";
 }
 
 sub WaitForXvncToRespond {
-   my $sleepSlice = 0.1;
-   my $sleptFor = 0;
-   my $sleepLimit = 3;
+  my $sleepSlice = 0.1;
+  my $sleptFor = 0;
+  my $sleepLimit = 3;
 
-   until (&IsXvncResponding() || $sleptFor >= $sleepLimit) {
-      sleep($sleepSlice);
-      $sleptFor += $sleepSlice;
-   }
+  until (&IsXvncResponding() || $sleptFor >= $sleepLimit) {
+    sleep($sleepSlice);
+    $sleptFor += $sleepSlice;
+  }
 }
 
 sub IsXvncResponding {
-   `xdpyinfo -display :$displayNumber >/dev/null 2>&1`;
-   $? == 0;
+  `xdpyinfo -display :$displayNumber >/dev/null 2>&1`;
+  $? == 0;
 }
 
 sub UsingSafeFontPath {
-   $fontPath eq $defFontPath
+  $fontPath eq $defFontPath
 }
 
 sub CreateUserConfigIfNeeded {
-   if (-e "$vncUserDir/config") {
-      return;
-   }
+  if (-e "$vncUserDir/config") {
+    return;
+  }
 
-   warn "Creating default config $vncUserDir/config\n";
-   open(VNCUSERCONFIG, ">$vncUserDir/config");
-   print VNCUSERCONFIG $defaultConfig;
-   close(VNCUSERCONFIG);
-   chmod 0644, "$vncUserDir/config";
+  warn "Creating default config $vncUserDir/config\n";
+  open(VNCUSERCONFIG, ">$vncUserDir/config");
+  print VNCUSERCONFIG $defaultConfig;
+  close(VNCUSERCONFIG);
+  chmod 0644, "$vncUserDir/config";
 }
 
 sub PrintKasmUsers {
-   warn "\nUsers configured:\n";
-   foreach my $user (@kasmPasswdUsers) {
-      warn "$user\n";
-   }
-   warn "\n";
+  warn "\nUsers configured:\n";
+  foreach my $user (@kasmPasswdUsers) {
+    warn "$user\n";
+  }
+  warn "\n";
 }
 
 sub DetectEnvironment {
-   $exedir = &DetectBinariesDir();
-   &CheckRequiredDependenciesArePresent();
-   &DetectFontPath();
+  $exedir = &DetectBinariesDir();
+  &CheckRequiredDependenciesArePresent();
+  &DetectFontPath();
 }
 
 sub SetGlobalVariables {
-   #
-   # Global variables.  You may want to configure some of these for
-   # your site
-   #
+  #
+  # Global variables.  You may want to configure some of these for
+  # your site
+  #
 
-   $geometry = "1024x768";
-   #$depth = 16;
+  $geometry = "1024x768";
+  #$depth = 16;
 
-   $vncUserDir = "$ENV{HOME}/.vnc";
-   $vncUserConfig = "$vncUserDir/config";
-   $vncUserName = &DetectUserName();
-   $kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
+  $vncUserDir = "$ENV{HOME}/.vnc";
+  $vncUserConfig = "$vncUserDir/config";
+  $vncUserName = &DetectUserName();
+  $kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
 
-   $vncSystemConfigDir = "/etc/kasmvnc";
-   $vncSystemConfigDefaultsFile = "$vncSystemConfigDir/vncserver-config-defaults";
-   $vncSystemConfigMandatoryFile = "$vncSystemConfigDir/vncserver-config-mandatory";
+  $vncSystemConfigDir = "/etc/kasmvnc";
+  $vncSystemConfigDefaultsFile = "$vncSystemConfigDir/vncserver-config-defaults";
+  $vncSystemConfigMandatoryFile = "$vncSystemConfigDir/vncserver-config-mandatory";
 
-   $skipxstartup = 0;
-   $xauthorityFile = "$ENV{XAUTHORITY}" || "$ENV{HOME}/.Xauthority";
+  $skipxstartup = 0;
+  $xauthorityFile = "$ENV{XAUTHORITY}" || "$ENV{HOME}/.Xauthority";
 
-   $xstartupFile = $vncUserDir . "/xstartup";
-   $defaultConfig
-      = ("## Supported server options to pass to vncserver upon invocation can be listed\n".
-         "## in this file. See the following manpages for more: vncserver(1) Xvnc(1).\n".
-         "## Several common ones are shown below. Uncomment and modify to your liking.\n".
-         "##\n".
-         "# securitytypes=vncauth,tlsvnc\n".
-         "# desktop=sandbox\n".
-         "# geometry=2000x1200\n".
-         "# localhost\n".
-         "# alwaysshared\n".
-         "username=$vncUserName");
+  $xstartupFile = $vncUserDir . "/xstartup";
+  $defaultConfig
+  = ("## Supported server options to pass to vncserver upon invocation can be listed\n".
+    "## in this file. See the following manpages for more: vncserver(1) Xvnc(1).\n".
+    "## Several common ones are shown below. Uncomment and modify to your liking.\n".
+    "##\n".
+    "# securitytypes=vncauth,tlsvnc\n".
+    "# desktop=sandbox\n".
+    "# geometry=2000x1200\n".
+    "# localhost\n".
+    "# alwaysshared\n".
+    "username=$vncUserName");
 
-   chop($host = `uname -n`);
+  chop($host = `uname -n`);
 }
 
 sub ParseAndProcessCliOptions {
-   my @supportedOptions = ("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,"-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1);
-   &ParseOptionsAndRemoveMatchesFromARGV(@supportedOptions);
-   &ProcessCliOptions();
-   &CheckGeometryAndDepthAreSensible();
-   $displayNumber = &DetectDisplayNumberFromCliArgs() ||
-      &GetLowestAvailableDisplayNumber();
-   &CheckCliOptionsForBeingValid();
+  my @supportedOptions = ("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,"-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1);
+  &ParseOptionsAndRemoveMatchesFromARGV(@supportedOptions);
+  &ProcessCliOptions();
+  &CheckGeometryAndDepthAreSensible();
+  $displayNumber = &DetectDisplayNumberFromCliArgs() ||
+  &GetLowestAvailableDisplayNumber();
+  &CheckCliOptionsForBeingValid();
 }
 
 sub PrepareDefaultsForPassingToXvnc {
-   # We set some reasonable defaults. Config file settings
-   # override these where present.
-   %default_opts;
-   %config;
+  # We set some reasonable defaults. Config file settings
+  # override these where present.
+  %default_opts;
+  %config;
 
-   $vncPort = 5900 + $displayNumber;
-   $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
+  $vncPort = 5900 + $displayNumber;
+  $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
 
-   &SetReasonabeDefaults();
-   &LoadSystemThenUserThenMandatoryConfigs();
+  &SetReasonabeDefaults();
+  &LoadSystemThenUserThenMandatoryConfigs();
 }
 
 sub EnsureAtLeastOneKasmUserExists {
-   @kasmPasswdUsers = &LoadKasmPasswdUsers();
-   if (!&AtLeastOneUserConfigured()) {
-      &GuideUserToSetupKasmPasswdUser();
-      @kasmPasswdUsers = &LoadKasmPasswdUsers();
-   }
+  @kasmPasswdUsers = &LoadKasmPasswdUsers();
+  if (!&AtLeastOneUserConfigured()) {
+    &GuideUserToSetupKasmPasswdUser();
+    @kasmPasswdUsers = &LoadKasmPasswdUsers();
+  }
 }
 
 sub StartXvncOrExit {
-   $cmd = &ConstructXvncCmd();
+  $cmd = &ConstructXvncCmd();
 
-   &DeleteLogLeftFromPreviousXvncRun();
-   &StartXvncAndRecordPID();
-   &WaitForXvncToRespond();
+  &DeleteLogLeftFromPreviousXvncRun();
+  &StartXvncAndRecordPID();
+  &WaitForXvncToRespond();
 
-   if (!&IsXvncRunning() && !&UsingSafeFontPath())  {
-      &StartXvncWithSafeFontPath();
-      &WaitForXvncToRespond();
-   }
+  if (!&IsXvncRunning() && !&UsingSafeFontPath())  {
+    &StartXvncWithSafeFontPath();
+    &WaitForXvncToRespond();
+  }
 
-   unless (&IsXvncRunning()) {
-      &WarnUserXvncNotStartedAndExit();
-   }
+  unless (&IsXvncRunning()) {
+    &WarnUserXvncNotStartedAndExit();
+  }
 }
 
 sub WaitForTimeLimitOrSubReturningTrue {
-   my ($timeLimit, $sub) = @_;
-   my $sleepSlice = 0.05;
-   my $sleptFor = 0;
+  my ($timeLimit, $sub) = @_;
+  my $sleepSlice = 0.05;
+  my $sleptFor = 0;
 
-   until (&$sub() || $sleptFor >= $timeLimit) {
-      sleep($sleepSlice);
-      $sleptFor += $sleepSlice;
-   }
+  until (&$sub() || $sleptFor >= $timeLimit) {
+    sleep($sleepSlice);
+    $sleptFor += $sleepSlice;
+  }
 }
 
 sub IsProcessRunning {
-   my $pid = shift;
-   unless ($pid) { return 0 };
+  my $pid = shift;
+  unless ($pid) { return 0 };
 
-   kill 0, $pid;
+  kill 0, $pid;
 }
