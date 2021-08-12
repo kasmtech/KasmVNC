@@ -373,12 +373,12 @@ sub Kill
     chop($pid = `cat $pidFile`);
     warn "Killing Xvnc process ID $pid\n";
 
-    if (kill 0, $pid) {
+    if (&IsProcessRunning($pid)) {
         system("kill $pid");
         &WaitForTimeLimitOrSubReturningTrue(1, sub {
             !IsProcessRunning($pid)
         });
-        if (kill 0, $pid) {
+        if (&IsProcessRunning($pid)) {
             print "Xvnc seems to be deadlocked.  Kill the process manually and then re-run\n";
             print "    ".$0." -kill ".$opt{'-kill'}."\n";
             print "to clean up the socket files.\n";
