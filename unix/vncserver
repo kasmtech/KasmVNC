@@ -593,7 +593,7 @@ sub RunXstartup {
       if (! $skipxstartup) {
          system("$xstartupFile >> " . &quotedString($desktopLog) . " 2>&1");
       }
-      if (kill 0, `cat $pidFile`) {
+      if (&IsXvncRunning()) {
          $opt{'-kill'} = ':'.$displayNumber;
          &Kill();
       }
