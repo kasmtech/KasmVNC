@@ -32,8 +32,6 @@ use Time::HiRes qw (sleep);
 &SetGlobalVariables();
 
 &ParseAndProcessCliOptions();
-$vncPort = 5900 + $displayNumber;
-$desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
 $desktopLog = "$vncUserDir/$host:$displayNumber.log";
 $pidFile = "$vncUserDir/$host:$displayNumber.pid";
 
@@ -1042,6 +1040,9 @@ sub PrepareDefaultsForPassingToXvnc {
    # override these where present.
    %default_opts;
    %config;
+
+   $vncPort = 5900 + $displayNumber;
+   $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
 
    &SetReasonabeDefaults();
    &LoadSystemThenUserThenMandatoryConfigs();
