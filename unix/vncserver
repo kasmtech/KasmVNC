@@ -375,7 +375,9 @@ sub Kill
 
     if (kill 0, $pid) {
         system("kill $pid");
-        sleep(1);
+        &WaitForTimeLimitOrSubReturningTrue(1, sub {
+            !IsProcessRunning($pid)
+        });
         if (kill 0, $pid) {
             print "Xvnc seems to be deadlocked.  Kill the process manually and then re-run\n";
             print "    ".$0." -kill ".$opt{'-kill'}."\n";
@@ -1068,4 +1070,21 @@ sub StartXvncOrExit {
    unless (&IsXvncRunning()) {
       &WarnUserXvncNotStartedAndExit();
    }
+}
+
+sub WaitForTimeLimitOrSubReturningTrue {
+   my ($timeLimit, $sub) = @_;
+   my $sleepSlice = 0.05;
+   my $sleptFor = 0;
+
+   until (&$sub() || $sleptFor >= $timeLimit) {
+      sleep($sleepSlice);
+      $sleptFor += $sleepSlice;
+   }
+}
+
+sub IsProcessRunning {
+   my $pid = shift;
+
+   kill 0, $pid;
 }
