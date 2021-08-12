@@ -335,7 +335,7 @@ sub List
     foreach my $file (@filelist) {
         if ($file =~ /$host:(\d+)$\.pid/) {
             chop($tmp_pid = `cat $vncUserDir/$file`);
-            if (kill 0, $tmp_pid) {
+            if (&IsProcessRunning($tmp_pid)) {
                 print ":".$1."\t\t".`cat $vncUserDir/$file`;
             } else {
                 unlink ($vncUserDir . "/" . $file);
