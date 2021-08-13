@@ -28,7 +28,7 @@
 use v5.10;
 use Time::HiRes qw (sleep);
 
-&DetectEnvironment();
+&EnsureWeCanRunInThisEnvironment();
 
 &DefineFilePathsAndStuff();
 
@@ -967,10 +967,9 @@ sub PrintKasmUsers {
   warn "\n";
 }
 
-sub DetectEnvironment {
+sub EnsureWeCanRunInThisEnvironment {
   $exedir = &DetectBinariesDir();
   &CheckRequiredDependenciesArePresent();
-  &DetectFontPath();
 }
 
 sub DefineFilePathsAndStuff {
@@ -1005,6 +1004,8 @@ sub DefineFilePathsAndStuff {
     "# alwaysshared\n");
 
   chop($host = `uname -n`);
+
+  &DetectFontPath();
 }
 
 sub ParseAndProcessCliOptions {
