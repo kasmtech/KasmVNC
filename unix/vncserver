@@ -30,7 +30,7 @@ use Time::HiRes qw (sleep);
 
 &DetectEnvironment();
 
-&SetGlobalVariables();
+&DefineFilePathsAndStuff();
 
 &ParseAndProcessCliOptions();
 
@@ -973,7 +973,7 @@ sub DetectEnvironment {
   &DetectFontPath();
 }
 
-sub SetGlobalVariables {
+sub DefineFilePathsAndStuff {
   #
   # Global variables.  You may want to configure some of these for
   # your site
