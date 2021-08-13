@@ -43,9 +43,7 @@ use Time::HiRes qw (sleep);
 &PrepareDefaultsForPassingToXvnc();
 &StartXvncOrExit();
 
-warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
-&PrintKasmUsers();
-warn "Log file is $desktopLog\n\n";
+&PrintLogFilenameAndConfiguredUsersAndStuff();
 
 &CreateUserConfigIfNeeded();
 
@@ -1086,4 +1084,10 @@ sub PrepareLoggingAndXvncKillingFramework {
 
 sub AllowXProgramsToConnectToXvnc {
   &SetupXauthorityFile();
+}
+
+sub PrintLogFilenameAndConfiguredUsersAndStuff {
+  warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
+  &PrintKasmUsers();
+  warn "Log file is $desktopLog\n\n";
 }
