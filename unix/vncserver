@@ -36,7 +36,7 @@ use Time::HiRes qw (sleep);
 
 &PrepareLoggingAndXvncKillingFramework();
 &DisableLegacyVncAuth();
-&SetupXauthorityFile();
+&AllowXProgramsToConnectToXvnc();
 
 &EnsureAtLeastOneKasmUserExists();
 
@@ -1083,4 +1083,8 @@ sub DefineLogAndPidFilesForDisplayNumber {
 sub PrepareLoggingAndXvncKillingFramework {
   &CreateDotVncDir();
   &DefineLogAndPidFilesForDisplayNumber();
+}
+
+sub AllowXProgramsToConnectToXvnc {
+  &SetupXauthorityFile();
 }
