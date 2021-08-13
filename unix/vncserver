@@ -47,12 +47,10 @@ warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
 &PrintKasmUsers();
 warn "Log file is $desktopLog\n\n";
 
-if (! $skipxstartup) {
-  &CreateXstartupIfNeeded();
-}
 &CreateUserConfigIfNeeded();
 
 if (! $skipxstartup) {
+  &CreateXstartupIfNeeded();
   &RunXstartup();
 }
 
