@@ -33,8 +33,6 @@ use Time::HiRes qw (sleep);
 &SetGlobalVariables();
 
 &ParseAndProcessCliOptions();
-$desktopLog = "$vncUserDir/$host:$displayNumber.log";
-$pidFile = "$vncUserDir/$host:$displayNumber.pid";
 
 &CreateDotVncDir();
 
@@ -1024,6 +1022,8 @@ sub ParseAndProcessCliOptions {
   $displayNumber = &DetectDisplayNumberFromCliArgs() ||
   &GetLowestAvailableDisplayNumber();
   &CheckCliOptionsForBeingValid();
+
+  &DefineLogAndPidFilesForDisplayNumber();
 }
 
 sub PrepareDefaultsForPassingToXvnc {
@@ -1080,4 +1080,9 @@ sub IsProcessRunning {
   unless ($pid) { return 0 };
 
   kill 0, $pid;
+}
+
+sub DefineLogAndPidFilesForDisplayNumber {
+  $desktopLog = "$vncUserDir/$host:$displayNumber.log";
+  $pidFile = "$vncUserDir/$host:$displayNumber.pid";
 }
