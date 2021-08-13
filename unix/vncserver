@@ -35,11 +35,10 @@ use Time::HiRes qw (sleep);
 &ParseAndProcessCliOptions();
 
 &CreateDotVncDir();
-
 &DisableLegacyVncAuth();
-&EnsureAtLeastOneKasmUserExists();
-
 &SetupXauthorityFile();
+
+&EnsureAtLeastOneKasmUserExists();
 
 &PrepareDefaultsForPassingToXvnc();
 &StartXvncOrExit();
