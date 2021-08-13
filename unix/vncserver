@@ -36,13 +36,12 @@ use Time::HiRes qw (sleep);
 
 &CreateDotVncDir();
 
-&PrepareDefaultsForPassingToXvnc();
-
 &DisableLegacyVncAuth();
 &EnsureAtLeastOneKasmUserExists();
 
 &SetupXauthorityFile();
 
+&PrepareDefaultsForPassingToXvnc();
 &StartXvncOrExit();
 
 warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
