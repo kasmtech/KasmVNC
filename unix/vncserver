@@ -25,6 +25,7 @@
 # vncserver - wrapper script to start an X VNC server.
 #
 
+use v5.10;
 use Time::HiRes qw (sleep);
 
 &DetectEnvironment();
