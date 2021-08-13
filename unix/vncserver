@@ -38,7 +38,7 @@ use Time::HiRes qw (sleep);
 
 &PrepareDefaultsForPassingToXvnc();
 
-&DisableVncAuth();
+&DisableLegacyVncAuth();
 &EnsureAtLeastOneKasmUserExists();
 
 &SetupXauthorityFile();
@@ -769,7 +769,7 @@ sub LoadSystemThenUserThenMandatoryConfigs {
   LoadConfig($vncSystemConfigMandatoryFile, 1);
 }
 
-sub DisableVncAuth() {
+sub DisableLegacyVncAuth() {
   # Disable vnc auth, kasmvnc uses https basic auth
   system("echo 'WrLNwLrcrxM=' | base64 -d > $vncUserDir/passwd");
 }
