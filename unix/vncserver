@@ -38,11 +38,8 @@ use Time::HiRes qw (sleep);
 
 &PrepareDefaultsForPassingToXvnc();
 
-$kasmAuthEnabled = 1;
 &DisableVncAuth();
-if ($kasmAuthEnabled) {
-  &EnsureAtLeastOneKasmUserExists();
-}
+&EnsureAtLeastOneKasmUserExists();
 
 &SetupXauthorityFile();
 
