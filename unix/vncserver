@@ -625,13 +625,6 @@ sub DetectBinariesDir {
   return $result;
 }
 
-sub DetectUserName {
-  my $vncUserName = `id -u -n`;
-  $vncUserName =~ s/^\s+|\s+$//g;
-
-  return $vncUserName;
-}
-
 sub DetectFontPath {
   if (-d "/etc/X11/fontpath.d") {
     $fontPath = "catalogue:/etc/X11/fontpath.d";
@@ -1000,7 +993,6 @@ sub SetGlobalVariables {
 
   $vncUserDir = "$ENV{HOME}/.vnc";
   $vncUserConfig = "$vncUserDir/config";
-  $vncUserName = &DetectUserName();
   $kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
 
   $vncSystemConfigDir = "/etc/kasmvnc";
@@ -1020,8 +1012,7 @@ sub SetGlobalVariables {
     "# desktop=sandbox\n".
     "# geometry=2000x1200\n".
     "# localhost\n".
-    "# alwaysshared\n".
-    "username=$vncUserName");
+    "# alwaysshared\n");
 
   chop($host = `uname -n`);
 }
