@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include "websocket.h"
 
 /*
@@ -223,9 +224,12 @@ static void do_proxy(ws_ctx_t *ws_ctx, int target) {
 
 void proxy_handler(ws_ctx_t *ws_ctx) {
 
+    char sockname[32];
+    sprintf(sockname, ".KasmVNCSock%u", getpid());
+
     struct sockaddr_un addr;
     addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, ".KasmVNCSock");
+    strcpy(addr.sun_path, sockname);
     addr.sun_path[0] = '\0';
 
     struct timeval tv;
@@ -243,7 +247,7 @@ void proxy_handler(ws_ctx_t *ws_ctx) {
     handler_msg("connecting to VNC target\n");
 
     if (connect(tsock, (struct sockaddr *) &addr,
-        sizeof(sa_family_t) + sizeof(".KasmVNCSock")) < 0) {
+        sizeof(sa_family_t) + strlen(sockname)) < 0) {
 
         handler_emsg("Could not connect to target: %s\n",
                      strerror(errno));
