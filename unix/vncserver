@@ -989,7 +989,6 @@ sub SetGlobalVariables {
   #
 
   $geometry = "1024x768";
-  #$depth = 16;
 
   $vncUserDir = "$ENV{HOME}/.vnc";
   $vncUserConfig = "$vncUserDir/config";
