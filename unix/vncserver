@@ -28,7 +28,7 @@
 use v5.10;
 use Time::HiRes qw (sleep);
 
-&EnsureWeCanRunInThisEnvironment();
+&CheckWeCanRunInThisEnvironment();
 
 &DefineFilePathsAndStuff();
 
@@ -965,7 +965,7 @@ sub PrintKasmUsers {
   warn "\n";
 }
 
-sub EnsureWeCanRunInThisEnvironment {
+sub CheckWeCanRunInThisEnvironment {
   $exedir = &DetectBinariesDir();
   &CheckRequiredDependenciesArePresent();
 }
