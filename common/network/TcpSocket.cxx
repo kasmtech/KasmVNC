@@ -40,6 +40,8 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <wordexp.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include "websocket.h"
 
 #include <network/GetAPI.h>
@@ -459,6 +461,67 @@ static uint8_t givecontrolCb(void *messager, const char name[])
   return msgr->netGiveControlTo(name);
 }
 
+static void bottleneckStatsCb(void *messager, char *buf, uint32_t len)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  msgr->netGetBottleneckStats(buf, len);
+}
+
+static void frameStatsCb(void *messager, char *buf, uint32_t len)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  msgr->netGetFrameStats(buf, len);
+}
+
+static uint8_t requestFrameStatsNoneCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netRequestFrameStats(GetAPIMessager::WANT_FRAME_STATS_SERVERONLY, NULL);
+}
+
+static uint8_t requestFrameStatsOwnerCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netRequestFrameStats(GetAPIMessager::WANT_FRAME_STATS_OWNER, NULL);
+}
+
+static uint8_t requestFrameStatsAllCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netRequestFrameStats(GetAPIMessager::WANT_FRAME_STATS_ALL, NULL);
+}
+
+static uint8_t requestFrameStatsOneCb(void *messager, const char *client)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netRequestFrameStats(GetAPIMessager::WANT_FRAME_STATS_SPECIFIC, client);
+}
+
+static uint8_t ownerConnectedCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netOwnerConnected();
+}
+
+static uint8_t numActiveUsersCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netNumActiveUsers();
+}
+
+static uint8_t getClientFrameStatsNumCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netGetClientFrameStatsNum();
+}
+
+static uint8_t serverFrameStatsReadyCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netServerFrameStatsReady();
+}
+
+
 WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
                          socklen_t listenaddrlen,
                          bool sslonly, const char *cert, const char *certkey,
@@ -503,7 +566,7 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   if (bind(sock, &sa.u.sa, listenaddrlen) == -1) {
     int e = errorNumber;
     closesocket(sock);
-    throw SocketException("failed to bind socket", e);
+    throw SocketException("failed to bind socket, is someone else on our -websocketPort?", e);
   }
 
   listen(sock); // sets the internal fd
@@ -513,13 +576,16 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   //
   internalSocket = socket(AF_UNIX, SOCK_STREAM, 0);
 
+  char sockname[32];
+  sprintf(sockname, ".KasmVNCSock%u", getpid());
+
   struct sockaddr_un addr;
   addr.sun_family = AF_UNIX;
-  strcpy(addr.sun_path, ".KasmVNCSock");
+  strcpy(addr.sun_path, sockname);
   addr.sun_path[0] = '\0';
 
   if (bind(internalSocket, (struct sockaddr *) &addr,
-           sizeof(sa_family_t) + sizeof(".KasmVNCSock"))) {
+           sizeof(sa_family_t) + strlen(sockname))) {
     throw SocketException("failed to bind socket", errorNumber);
   }
 
@@ -548,6 +614,18 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   settings.adduserCb = adduserCb;
   settings.removeCb = removeCb;
   settings.givecontrolCb = givecontrolCb;
+  settings.bottleneckStatsCb = bottleneckStatsCb;
+  settings.frameStatsCb = frameStatsCb;
+
+  settings.requestFrameStatsNoneCb = requestFrameStatsNoneCb;
+  settings.requestFrameStatsOwnerCb = requestFrameStatsOwnerCb;
+  settings.requestFrameStatsAllCb = requestFrameStatsAllCb;
+  settings.requestFrameStatsOneCb = requestFrameStatsOneCb;
+
+  settings.ownerConnectedCb = ownerConnectedCb;
+  settings.numActiveUsersCb = numActiveUsersCb;
+  settings.getClientFrameStatsNumCb = getClientFrameStatsNumCb;
+  settings.serverFrameStatsReadyCb = serverFrameStatsReadyCb;
 
   pthread_t tid;
   pthread_create(&tid, NULL, start_server, NULL);

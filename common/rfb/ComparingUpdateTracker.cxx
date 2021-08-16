@@ -695,6 +695,8 @@ bool ComparingUpdateTracker::compare(bool skipScrollDetection, const Region &ski
   std::vector<Rect> rects;
   std::vector<Rect>::iterator i;
 
+  changedPerc = 100;
+
   if (!enabled)
     return false;
 
@@ -749,8 +751,13 @@ bool ComparingUpdateTracker::compare(bool skipScrollDetection, const Region &ski
   for (i = rects.begin(); i != rects.end(); i++)
     totalPixels += i->area();
   newChanged.get_rects(&rects);
-  for (i = rects.begin(); i != rects.end(); i++)
+  unsigned newchangedarea = 0;
+  for (i = rects.begin(); i != rects.end(); i++) {
     missedPixels += i->area();
+    newchangedarea += i->area();
+  }
+
+  changedPerc = newchangedarea * 100 / fb->area();
 
   if (changed.equals(newChanged))
     return false;

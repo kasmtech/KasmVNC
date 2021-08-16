@@ -24,6 +24,8 @@
 #include <rfb/PixelBuffer.h>
 #include <rfb/PixelFormat.h>
 #include <stdint.h>
+#include <map>
+#include <string>
 #include <vector>
 
 namespace network {
@@ -34,6 +36,17 @@ namespace network {
 
     // from main thread
     void mainUpdateScreen(rfb::PixelBuffer *pb);
+    void mainUpdateBottleneckStats(const char userid[], const char stats[]);
+    void mainClearBottleneckStats(const char userid[]);
+    void mainUpdateServerFrameStats(uint8_t changedPerc, uint32_t all,
+                                    uint32_t jpeg, uint32_t webp, uint32_t analysis,
+                                    uint32_t jpegarea, uint32_t webparea,
+                                    uint16_t njpeg, uint16_t nwebp,
+                                    uint16_t enc, uint16_t scale, uint16_t shot,
+                                    uint16_t w, uint16_t h);
+    void mainUpdateClientFrameStats(const char userid[], uint32_t render, uint32_t all,
+                                    uint32_t ping);
+    void mainUpdateUserInfo(const uint8_t ownerConn, const uint8_t numUsers);
 
     // from network threads
     uint8_t *netGetScreenshot(uint16_t w, uint16_t h,
@@ -42,12 +55,24 @@ namespace network {
     uint8_t netAddUser(const char name[], const char pw[], const bool write);
     uint8_t netRemoveUser(const char name[]);
     uint8_t netGiveControlTo(const char name[]);
+    void netGetBottleneckStats(char *buf, uint32_t len);
+    void netGetFrameStats(char *buf, uint32_t len);
+    uint8_t netServerFrameStatsReady();
 
     enum USER_ACTION {
       //USER_ADD, - handled locally for interactivity
       USER_REMOVE,
       USER_GIVE_CONTROL,
+      WANT_FRAME_STATS_SERVERONLY,
+      WANT_FRAME_STATS_ALL,
+      WANT_FRAME_STATS_OWNER,
+      WANT_FRAME_STATS_SPECIFIC,
     };
+
+    uint8_t netRequestFrameStats(USER_ACTION what, const char *client);
+    uint8_t netOwnerConnected();
+    uint8_t netNumActiveUsers();
+    uint8_t netGetClientFrameStatsNum();
 
     struct action_data {
       enum USER_ACTION action;
@@ -68,6 +93,40 @@ namespace network {
     std::vector<uint8_t> cachedJpeg;
     uint16_t cachedW, cachedH;
     uint8_t cachedQ;
+
+    std::map<std::string, std::string> bottleneckStats;
+    pthread_mutex_t statMutex;
+
+    struct clientFrameStats_t {
+      uint32_t render;
+      uint32_t all;
+      uint32_t ping;
+    };
+    struct serverFrameStats_t {
+      uint32_t all;
+      uint32_t jpeg;
+      uint32_t webp;
+      uint32_t analysis;
+      uint32_t jpegarea;
+      uint32_t webparea;
+      uint16_t njpeg;
+      uint16_t nwebp;
+      uint16_t enc;
+      uint16_t scale;
+      uint16_t shot;
+      uint16_t w;
+      uint16_t h;
+      uint8_t changedPerc;
+
+      uint8_t inprogress;
+    };
+    std::map<std::string, clientFrameStats_t> clientFrameStats;
+    serverFrameStats_t serverFrameStats;
+    pthread_mutex_t frameStatMutex;
+
+    uint8_t ownerConnected;
+    uint8_t activeUsers;
+    pthread_mutex_t userInfoMutex;
   };
 
 }

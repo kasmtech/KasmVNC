@@ -51,6 +51,8 @@ namespace rfb {
     // per second.
     size_t getBandwidth();
 
+    unsigned getPingTime() const;
+
     // debugTrace() writes the current congestion window, as well as the
     // congestion window of the underlying TCP layer, to the specified
     // file

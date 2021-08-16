@@ -566,7 +566,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     headers->key3[0] = '\0';
 
     if ((strlen(handshake) < 92) || (bcmp(handshake, "GET ", 4) != 0) ||
-        (!strstr(handshake, "Upgrade: websocket"))) {
+        (!strcasestr(handshake, "Upgrade: websocket"))) {
         return 0;
     }
     start = handshake+4;
@@ -587,7 +587,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     if (start) {
         start += 10;
     } else {
-        start = strstr(handshake, "\r\nSec-WebSocket-Origin: ");
+        start = strcasestr(handshake, "\r\nSec-WebSocket-Origin: ");
         if (!start) { return 0; }
         start += 24;
     }
@@ -595,7 +595,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     strncpy(headers->origin, start, end-start);
     headers->origin[end-start] = '\0';
 
-    start = strstr(handshake, "\r\nSec-WebSocket-Version: ");
+    start = strcasestr(handshake, "\r\nSec-WebSocket-Version: ");
     if (start) {
         // HyBi/RFC 6455
         start += 25;
@@ -605,7 +605,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         ws_ctx->hixie = 0;
         ws_ctx->hybi = strtol(headers->version, NULL, 10);
 
-        start = strstr(handshake, "\r\nSec-WebSocket-Key: ");
+        start = strcasestr(handshake, "\r\nSec-WebSocket-Key: ");
         if (!start) { return 0; }
         start += 21;
         end = strstr(start, "\r\n");
@@ -619,7 +619,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         strncpy(headers->connection, start, end-start);
         headers->connection[end-start] = '\0';
 
-        start = strstr(handshake, "\r\nSec-WebSocket-Protocol: ");
+        start = strcasestr(handshake, "\r\nSec-WebSocket-Protocol: ");
         if (!start) { return 0; }
         start += 26;
         end = strstr(start, "\r\n");
@@ -637,14 +637,14 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
             strncpy(headers->key3, start, 8);
             headers->key3[8] = '\0';
 
-            start = strstr(handshake, "\r\nSec-WebSocket-Key1: ");
+            start = strcasestr(handshake, "\r\nSec-WebSocket-Key1: ");
             if (!start) { return 0; }
             start += 22;
             end = strstr(start, "\r\n");
             strncpy(headers->key1, start, end-start);
             headers->key1[end-start] = '\0';
 
-            start = strstr(handshake, "\r\nSec-WebSocket-Key2: ");
+            start = strcasestr(handshake, "\r\nSec-WebSocket-Key2: ");
             if (!start) { return 0; }
             start += 22;
             end = strstr(start, "\r\n");
@@ -1073,6 +1073,89 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
         ws_send(ws_ctx, buf, strlen(buf));
 
         wserr("Passed give_control request to main thread\n");
+        ret = 1;
+    } else entry("/api/get_bottleneck_stats") {
+        char statbuf[4096];
+        settings.bottleneckStatsCb(settings.messager, statbuf, 4096);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: %lu\r\n"
+                 "\r\n", strlen(statbuf));
+        ws_send(ws_ctx, buf, strlen(buf));
+        ws_send(ws_ctx, statbuf, strlen(statbuf));
+
+        wserr("Sent bottleneck stats to API caller\n");
+        ret = 1;
+    } else entry("/api/get_frame_stats") {
+        char statbuf[4096], decname[1024];
+        unsigned waitfor;
+
+        param = parse_get(args, "client", &len);
+        if (len) {
+            memcpy(buf, param, len);
+            buf[len] = '\0';
+            percent_decode(buf, decname);
+        } else {
+            wserr("client param required\n");
+            goto nope;
+        }
+
+        if (!decname[0])
+            goto nope;
+
+        if (!strcmp(decname, "none")) {
+            waitfor = 0;
+            if (!settings.requestFrameStatsNoneCb(settings.messager))
+                goto nope;
+        } else if (!strcmp(decname, "auto")) {
+            waitfor = settings.ownerConnectedCb(settings.messager);
+            if (!waitfor) {
+                if (!settings.requestFrameStatsNoneCb(settings.messager))
+                    goto nope;
+            } else {
+                if (!settings.requestFrameStatsOwnerCb(settings.messager))
+                    goto nope;
+            }
+        } else if (!strcmp(decname, "all")) {
+            waitfor = settings.numActiveUsersCb(settings.messager);
+            if (!settings.requestFrameStatsAllCb(settings.messager))
+                goto nope;
+        } else {
+            waitfor = 1;
+            if (!settings.requestFrameStatsOneCb(settings.messager, decname))
+                goto nope;
+        }
+
+        while (1) {
+            usleep(10 * 1000);
+            if (settings.serverFrameStatsReadyCb(settings.messager))
+                break;
+        }
+
+        if (waitfor) {
+            unsigned waits;
+            for (waits = 0; waits < 20; waits++) { // wait up to 2s
+                if (settings.getClientFrameStatsNumCb(settings.messager) >= waitfor)
+                    break;
+                usleep(100 * 1000);
+            }
+        }
+
+        settings.frameStatsCb(settings.messager, statbuf, 4096);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: %lu\r\n"
+                 "\r\n", strlen(statbuf));
+        ws_send(ws_ctx, buf, strlen(buf));
+        ws_send(ws_ctx, statbuf, strlen(statbuf));
+
+        wserr("Sent frame stats to API caller\n");
         ret = 1;
     }
 

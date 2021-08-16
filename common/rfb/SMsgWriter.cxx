@@ -43,6 +43,7 @@ SMsgWriter::SMsgWriter(ConnParams* cp_, rdr::OutStream* os_)
     needSetDesktopSize(false), needExtendedDesktopSize(false),
     needSetDesktopName(false), needSetCursor(false),
     needSetXCursor(false), needSetCursorWithAlpha(false),
+    needSetVMWareCursor(false),
     needCursorPos(false),
     needLEDState(false), needQEMUKeyEvent(false)
 {
@@ -208,6 +209,12 @@ void SMsgWriter::writeStats(const char* str, int len)
   endMsg();
 }
 
+void SMsgWriter::writeRequestFrameStats()
+{
+  startMsg(msgTypeRequestFrameStats);
+  endMsg();
+}
+
 void SMsgWriter::writeFence(rdr::U32 flags, unsigned len, const char data[])
 {
   if (!cp->supportsFence)
@@ -315,6 +322,16 @@ bool SMsgWriter::writeSetCursorWithAlpha()
   return true;
 }
 
+bool SMsgWriter::writeSetVMwareCursor()
+{
+  if (!cp->supportsVMWareCursor)
+    return false;
+
+  needSetVMWareCursor = true;
+
+  return true;
+}
+
 void SMsgWriter::writeCursorPos()
 {
   if (!cp->supportsEncoding(pseudoEncodingVMwareCursorPosition))
@@ -349,7 +366,7 @@ bool SMsgWriter::needFakeUpdate()
 {
   if (needSetDesktopName)
     return true;
-  if (needSetCursor || needSetXCursor || needSetCursorWithAlpha)
+  if (needSetCursor || needSetXCursor || needSetCursorWithAlpha || needSetVMWareCursor)
     return true;
   if (needCursorPos)
     return true;
@@ -404,6 +421,8 @@ void SMsgWriter::writeFramebufferUpdateStart(int nRects)
     if (needSetXCursor)
       nRects++;
     if (needSetCursorWithAlpha)
+      nRects++;
+    if (needSetVMWareCursor)
       nRects++;
     if (needCursorPos)
       nRects++;
@@ -520,6 +539,15 @@ void SMsgWriter::writePseudoRects()
                                 cursor.hotspot().x, cursor.hotspot().y,
                                 cursor.getBuffer());
     needSetCursorWithAlpha = false;
+  }
+
+  if (needSetVMWareCursor) {
+    const Cursor& cursor = cp->cursor();
+
+    writeSetVMwareCursorRect(cursor.width(), cursor.height(),
+                                cursor.hotspot().x, cursor.hotspot().y,
+                                cursor.getBuffer());
+    needSetVMWareCursor = false;
   }
 
   if (needCursorPos) {
@@ -710,6 +738,28 @@ void SMsgWriter::writeSetCursorWithAlphaRect(int width, int height,
     os->writeU8(data[3]);
     data += 4;
   }
+}
+
+void SMsgWriter::writeSetVMwareCursorRect(int width, int height,
+                                          int hotspotX, int hotspotY,
+                                          const rdr::U8* data)
+{
+  if (!cp->supportsVMWareCursor)
+    throw Exception("Client does not support local cursors");
+  if (++nRectsInUpdate > nRectsInHeader && nRectsInHeader)
+    throw Exception("SMsgWriter::writeSetVMwareCursorRect: nRects out of sync");
+
+  os->writeS16(hotspotX);
+  os->writeS16(hotspotY);
+  os->writeU16(width);
+  os->writeU16(height);
+  os->writeU32(pseudoEncodingVMwareCursor);
+
+  os->writeU8(1); // Alpha cursor
+  os->pad(1);
+
+  // FIXME: Should alpha be premultiplied?
+  os->writeBytes(data, width*height*4);
 }
 
 void SMsgWriter::writeSetVMwareCursorPositionRect(int hotspotX, int hotspotY)

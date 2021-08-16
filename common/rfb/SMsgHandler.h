@@ -63,7 +63,8 @@ namespace rfb {
                                         const size_t* lengths,
                                         const rdr::U8* const* data);
 
-    virtual void sendStats() = 0;
+    virtual void sendStats(const bool toClient = true) = 0;
+    virtual void handleFrameStats(rdr::U32 all, rdr::U32 render) = 0;
 
     virtual bool canChangeKasmSettings() const = 0;
 
