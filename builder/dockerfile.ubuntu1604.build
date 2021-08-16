@@ -14,8 +14,7 @@ RUN cd /tmp/libwebp-1.0.2 && ./configure && make && make install
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
 
-COPY . /src
-RUN chown -R docker:docker /src
+COPY --chown=docker:docker . /src/
 
 
 USER docker

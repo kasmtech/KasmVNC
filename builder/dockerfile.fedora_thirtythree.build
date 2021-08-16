@@ -31,8 +31,7 @@ RUN cd /tmp/libwebp-1.0.2 && \
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd
 
-COPY . /src
-RUN chown -R docker:docker /src
+COPY --chown=docker:docker . /src/
 
 USER docker
 ENTRYPOINT ["/src/builder/build.sh"]
