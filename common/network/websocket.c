@@ -583,7 +583,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     headers->host[end-start] = '\0';
 
     headers->origin[0] = '\0';
-    start = strstr(handshake, "\r\nOrigin: ");
+    start = strcasestr(handshake, "\r\nOrigin: ");
     if (start) {
         start += 10;
     } else {
