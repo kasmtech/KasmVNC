@@ -1,0 +1,40 @@
+FROM ubuntu:bionic
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV VNC_PORT 8443
+ENV VNC_PORT2 8444
+ENV VNC_PORT3 8445
+EXPOSE $VNC_PORT
+EXPOSE $VNC_PORT2
+EXPOSE $VNC_PORT3
+
+RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm libnss-wrapper gettext wget
+RUN apt-get purge -y pm-utils xscreensaver*
+RUN apt-get update && apt-get install -y vim less
+RUN apt-get update && apt-get -y install lsb-release
+RUN apt-get update && apt-get -y install net-tools
+
+# RUN apt-get update && apt-get install -y task-cinnamon-desktop
+# RUN apt-get update && apt-get install -y task-gnome-desktop
+# RUN mkdir -p /usr/share/man/man1
+# RUN apt-get update && apt-get install -y apt-utils openjdk-11-jre
+# RUN apt-get update && apt-get install -y task-lxde-desktop
+# RUN apt-get update && apt-get install -y task-mate-desktop
+# RUN apt-get update && apt-get install -y task-kde-desktop
+
+RUN useradd -m docker
+ENV USER docker
+
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp
+RUN dpkg -i /tmp/*.deb; apt-get -yf install
+
+ENV HOME /home/docker
+RUN chown -R 1000:0 $HOME
+USER 1000:ssl-cert
+WORKDIR $HOME
+
+RUN echo 'PATH="/src/unix:$PATH"' >> ~/.bashrc
+RUN echo 'alias go="sh /src/s; vncserver -kill :1"' >> ~/.bashrc
+
+ENTRYPOINT "/bin/bash"
