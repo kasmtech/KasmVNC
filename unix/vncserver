@@ -783,6 +783,7 @@ sub TellUserToSetupUserAndPassword {
 sub GuideUserToSetupKasmPasswdUser {
   my $defaultUser = $ENV{USER};
   print(<<"NEEDTOCREATEUSER");
+
 In order to access your desktop, at least one KasmVNC user must be setup.
 Let's create a user.
 
