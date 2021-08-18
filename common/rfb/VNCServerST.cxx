@@ -53,6 +53,7 @@
 
 #include <network/GetAPI.h>
 
+#include <rfb/cpuid.h>
 #include <rfb/ComparingUpdateTracker.h>
 #include <rfb/KeyRemapper.h>
 #include <rfb/ListConnInfo.h>
@@ -132,6 +133,9 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
 {
   lastUserInputTime = lastDisconnectTime = time(0);
   slog.debug("creating single-threaded server %s", name.buf);
+  slog.info("CPU capability: SSE2 %s, AVX512f %s",
+            supportsSSE2() ? "yes" : "no",
+            supportsAVX512f() ? "yes" : "no");
 
   DLPRegion.enabled = DLPRegion.percents = false;
 

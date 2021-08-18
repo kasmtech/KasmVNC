@@ -22,6 +22,7 @@
 #include <omp.h>
 #include <stdlib.h>
 
+#include <rfb/cpuid.h>
 #include <rfb/EncCache.h>
 #include <rfb/EncodeManager.h>
 #include <rfb/Encoder.h>

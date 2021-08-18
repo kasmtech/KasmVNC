@@ -63,6 +63,7 @@ set(RFB_SOURCES
   VNCServerST.cxx
   ZRLEEncoder.cxx
   ZRLEDecoder.cxx
+  cpuid.cxx
   encodings.cxx
   util.cxx
   xxhash.c)
