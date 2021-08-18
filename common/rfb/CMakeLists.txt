@@ -99,6 +99,29 @@ endif()
 
 add_library(rfb STATIC ${RFB_SOURCES})
 
+# SSE2
+
+set(SSE2_SOURCES
+  scale_sse2.cxx)
+
+set(SCALE_DUMMY_SOURCES
+  scale_dummy.cxx)
+
+if(COMPILER_SUPPORTS_SSE2)
+  add_library(scale_sse2 STATIC ${SSE2_SOURCES})
+  set(RFB_LIBRARIES
+    ${RFB_LIBRARIES}
+    scale_sse2
+  )
+  set_target_properties(scale_sse2 PROPERTIES COMPILE_FLAGS ${COMPILE_FLAGS} -msse2)
+else()
+  add_library(scale_dummy STATIC ${SCALE_DUMMY_SOURCES})
+  set(RFB_LIBRARIES
+    ${RFB_LIBRARIES}
+    scale_dummy
+  )
+endif()
+
 target_link_libraries(rfb ${RFB_LIBRARIES})
 
 if(UNIX)

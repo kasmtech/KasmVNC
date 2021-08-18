@@ -27,6 +27,7 @@
 #include <rfb/EncodeManager.h>
 #include <rfb/Encoder.h>
 #include <rfb/Palette.h>
+#include <rfb/scale_sse2.h>
 #include <rfb/SConnection.h>
 #include <rfb/ServerCore.h>
 #include <rfb/SMsgWriter.h>
@@ -973,6 +974,64 @@ PixelBuffer *progressiveBilinearScale(const PixelBuffer *pb,
                                  const uint16_t tgtw, const uint16_t tgth,
                                  const float tgtdiff)
 {
+  if (supportsSSE2()) {
+    if (tgtdiff >= 0.5f) {
+      ManagedPixelBuffer *newpb = new ManagedPixelBuffer(pb->getPF(), tgtw, tgth);
+
+      int oldstride, newstride;
+      const rdr::U8 *oldpx = pb->getBuffer(pb->getRect(), &oldstride);
+      rdr::U8 *newpx = newpb->getBufferRW(newpb->getRect(), &newstride);
+
+      SSE2_scale(oldpx, tgtw, tgth, newpx, oldstride, newstride, tgtdiff);
+      return newpb;
+    }
+
+    PixelBuffer *newpb;
+    uint16_t neww, newh, oldw, oldh;
+    bool del = false;
+
+    do {
+      oldw = pb->getRect().width();
+      oldh = pb->getRect().height();
+      neww = oldw / 2;
+      newh = oldh / 2;
+
+      newpb = new ManagedPixelBuffer(pb->getPF(), neww, newh);
+
+      int oldstride, newstride;
+      const rdr::U8 *oldpx = pb->getBuffer(pb->getRect(), &oldstride);
+      rdr::U8 *newpx = ((ManagedPixelBuffer *) newpb)->getBufferRW(newpb->getRect(),
+                                                                   &newstride);
+
+      SSE2_halve(oldpx, neww, newh, newpx, oldstride, newstride);
+
+      if (del)
+        delete pb;
+      del = true;
+
+      pb = newpb;
+    } while (tgtw * 2 < neww);
+
+    // Final, non-halving step
+    if (tgtw != neww || tgth != newh) {
+      oldw = pb->getRect().width();
+      oldh = pb->getRect().height();
+
+      newpb = new ManagedPixelBuffer(pb->getPF(), tgtw, tgth);
+
+      int oldstride, newstride;
+      const rdr::U8 *oldpx = pb->getBuffer(pb->getRect(), &oldstride);
+      rdr::U8 *newpx = ((ManagedPixelBuffer *) newpb)->getBufferRW(newpb->getRect(),
+                                                                   &newstride);
+
+      SSE2_scale(oldpx, tgtw, tgth, newpx, oldstride, newstride, tgtdiff);
+      if (del)
+        delete pb;
+    }
+
+    return newpb;
+  } // SSE2
+
   if (tgtdiff >= 0.5f)
     return bilinearScale(pb, tgtw, tgth, tgtdiff);
 
