@@ -741,7 +741,7 @@ sub SetReasonabeDefaults {
   $default_opts{pixelformat} = $pixelformat if ($pixelformat);
   $default_opts{rfbwait} = 30000;
   $default_opts{rfbauth} = "$vncUserDir/passwd";
-  $default_opts{rfbport} = $vncPort;
+  $default_opts{websocketPort} = $websocketPort;
   $default_opts{fp} = $fontPath if ($fontPath);
   $default_opts{pn} = "";
 }
@@ -986,6 +986,7 @@ sub DefineFilePathsAndStuff {
   $vncSystemConfigDir = "/etc/kasmvnc";
   $vncSystemConfigDefaultsFile = "$vncSystemConfigDir/vncserver-config-defaults";
   $vncSystemConfigMandatoryFile = "$vncSystemConfigDir/vncserver-config-mandatory";
+  $defaultWebsocketPort = 8443;
 
   $skipxstartup = 0;
   $xauthorityFile = "$ENV{XAUTHORITY}" || "$ENV{HOME}/.Xauthority";
@@ -1023,7 +1024,7 @@ sub PrepareDefaultsForPassingToXvnc {
   %default_opts;
   %config;
 
-  $vncPort = 5900 + $displayNumber;
+  $websocketPort = $defaultWebsocketPort + $displayNumber;
   $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
 
   &SetReasonabeDefaults();
