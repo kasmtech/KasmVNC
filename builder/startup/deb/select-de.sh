@@ -1,7 +1,60 @@
 #!/bin/bash
 
+set -e
+
 xstartup_script=~/.vnc/xstartup
-de_was_selected_file="$HOME/.vnc/.kasmvncserver-easy-start-de-was-selected"
+de_was_selected_file="$HOME/.vnc/.de-was-selected"
+
+debug() {
+  if [ -z "$debug" ]; then return; fi
+
+  echo "$@"
+}
+
+enable_debug() {
+  debug=1
+}
+
+process_cli_options() {
+  while [ $# -gt 0 ]; do
+    local option="$1"
+    shift
+
+    case "$option" in
+      --help|-h)
+        show_help
+        exit
+        ;;
+      -d|--debug)
+        enable_debug
+        ;;
+      -s|--select-de)
+        action=select-de
+        if [[ "${1:1}" != "-" ]]; then
+          selected_de="$1"
+          if [ "$selected_de" = "manual" ]; then
+            selected_de="$manual_xstartup_choice"
+          fi
+          shift
+        fi
+        ;;
+      *)
+        echo >&2 "Unsupported argument: $option"
+        exit 1
+    esac
+  done
+}
+
+show_help() {
+  cat >&2 <<-USAGE
+Usage: $(basename "$0") [options]
+  -d, --debug      Debug output
+  -s, --select-de  Select desktop environent to run
+  --help           Show this help
+USAGE
+}
+
+process_cli_options "$@"
 
 manual_xstartup_choice="Manually edit xstartup"
 declare -A all_desktop_environments=(
@@ -123,16 +176,27 @@ SCRIPT
 }
 
 user_asked_to_select_de() {
-  [[ "$action" = "select-de-and-start" ]]
+  [[ "$action" = "select-de" ]]
 }
 
-debug() {
-  if [ -z "$debug" ]; then return; fi
+user_specified_de() {
+  [ -n "$selected_de" ]
+}
 
-  echo "$@"
+check_de_name_is_valid() {
+  local selected_de="$1"
+  local de_cmd=${all_desktop_environments["$selected_de"]:-}
+  if [ -z "$de_cmd" ]; then
+    echo >&2 "'$selected_de': not supported Desktop Environment"
+    return 1
+  fi
 }
 
 if user_asked_to_select_de || ! de_was_selected_on_previous_run; then
+  if user_specified_de; then
+    check_de_name_is_valid "$selected_de"
+  fi
+
   detect_desktop_environments
   ask_user_to_choose_de
   debug "You selected $de_name desktop environment"
