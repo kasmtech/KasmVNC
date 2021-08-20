@@ -54,6 +54,15 @@ Usage: $(basename "$0") [options]
 USAGE
 }
 
+add_uppercase_desktop_environment_keys() {
+  local de_cmd
+
+  for de in "${!all_desktop_environments[@]}"; do
+    de_cmd=${all_desktop_environments[$de]};
+    all_desktop_environments[${de^^}]="$de_cmd"
+  done
+}
+
 process_cli_options "$@"
 
 manual_xstartup_choice="Manually edit xstartup"
@@ -69,6 +78,7 @@ readarray -t sorted_desktop_environments < <(for de in "${!all_desktop_environme
 
 all_desktop_environments[$manual_xstartup_choice]=""
 sorted_desktop_environments+=("$manual_xstartup_choice")
+add_uppercase_desktop_environment_keys
 
 detected_desktop_environments=()
 declare -A numbered_desktop_environments
@@ -185,9 +195,30 @@ user_specified_de() {
 
 check_de_name_is_valid() {
   local selected_de="$1"
-  local de_cmd=${all_desktop_environments["$selected_de"]:-}
+  local de_cmd=${all_desktop_environments["${selected_de^^}"]:-}
   if [ -z "$de_cmd" ]; then
     echo >&2 "'$selected_de': not supported Desktop Environment"
+    return 1
+  fi
+}
+
+de_installed() {
+  local de_name="${1^^}"
+
+  for de in "${detected_desktop_environments[@]}"; do
+    if [ "${de^^}" = "$de_name" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+check_de_installed() {
+  local de_name="$1"
+
+  if ! de_installed "$de_name"; then
+    echo >&2 "'$de_name': Desktop Environment not installed"
     return 1
   fi
 }
@@ -198,7 +229,13 @@ if user_asked_to_select_de || ! de_was_selected_on_previous_run; then
   fi
 
   detect_desktop_environments
-  ask_user_to_choose_de
+  if user_specified_de; then
+    check_de_installed "$selected_de"
+    # set DE as in ask_user_to_choose_de
+  else
+    ask_user_to_choose_de
+  fi
+
   debug "You selected $de_name desktop environment"
   if [[ "$de_name" != "$manual_xstartup_choice" ]]; then
     setup_de_to_run_via_xstartup
