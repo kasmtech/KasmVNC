@@ -36,5 +36,6 @@ WORKDIR $HOME
 
 RUN echo 'PATH="/src/unix:$PATH"' >> ~/.bashrc
 RUN echo 'alias go="sh /src/s; vncserver -kill :1"' >> ~/.bashrc
+RUN echo 'alias ns="netstat -nltp"' >> ~/.bashrc
 
 ENTRYPOINT "/bin/bash"
