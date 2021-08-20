@@ -27,6 +27,13 @@
 
 use v5.10;
 use Time::HiRes qw (sleep);
+use Switch;
+
+use constant {
+  NO_ARG_VALUE => 0,
+  REQUIRED_ARG_VALUE => 1,
+  OPTIONAL_ARG_VALUE => 2
+};
 
 &CheckWeCanRunInThisEnvironment();
 
@@ -419,16 +426,33 @@ sub ParseOptionsAndRemoveMatchesFromARGV
     foreach $opt (@opts) {
       if ($arg eq $opt) {
         push(@optArgs, $arg);
-        if ($valFollows{$opt}) {
-          if (@ARGV == 0) {
-            &Usage();
+        switch($valFollows{$opt}) {
+          case NO_ARG_VALUE {
+            $opt{$opt} = 1;
+            next arg;
           }
-          $opt{$opt} = shift(@ARGV);
-          push(@optArgs, $opt{$opt});
-        } else {
-          $opt{$opt} = 1;
+          case REQUIRED_ARG_VALUE {
+            if (@ARGV == 0) {
+              &Usage();
+            }
+
+            $opt{$opt} = shift(@ARGV);
+            push(@optArgs, $opt{$opt});
+
+            next arg;
+          }
+          case OPTIONAL_ARG_VALUE {
+            if (scalar @ARGV == 0 || $ARGV[0] =~ /^-/) {
+              $opt{$opt} = 1;
+              next arg;
+            }
+
+            $opt{$opt} = shift(@ARGV);
+            push(@optArgs, $opt{$opt});
+
+            next arg;
+          }
         }
-        next arg;
       }
     }
     push(@newargs,$arg);
