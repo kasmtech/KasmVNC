@@ -46,6 +46,7 @@ use constant {
 &AllowXProgramsToConnectToXvnc();
 
 &EnsureAtLeastOneKasmUserExists();
+&AskUserToChooseDeOrManualXstartup();
 
 &PrepareDefaultsForPassingToXvnc();
 &StartXvncOrExit();
@@ -717,11 +718,18 @@ sub CreateDotVncDir {
   }
 }
 
+sub DeWasSelectedEarlier {
+  -e $de_was_selected_file;
+}
+
 sub AskUserToChooseDeOrManualXstartup {
-  $selectDeCmd = "builder/startup/deb/select-de.sh";
-  if (!$skipxstartup) {
-    system($selectDeCmd) == 0 || die("Failed to execute $selectDeCmd\n");
+  if (&DeWasSelectedEarlier() && !$opt{'-select-de'}) {
+    return;
   }
+
+  unlink $de_was_selected_file;
+
+  system($selectDeCmd) == 0 || die("Failed to execute $selectDeCmd\n");
 }
 
 sub DetectDisplayNumberFromCliArgs {
@@ -1007,6 +1015,9 @@ sub DefineFilePathsAndStuff {
   $vncUserConfig = "$vncUserDir/config";
   $kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
 
+  $selectDeCmd = "/src/builder/startup/deb/select-de.sh";
+  $de_was_selected_file="$ENV{HOME}/.vnc/.de-was-selected";
+
   $vncSystemConfigDir = "/etc/kasmvnc";
   $vncSystemConfigDefaultsFile = "$vncSystemConfigDir/vncserver-config-defaults";
   $vncSystemConfigMandatoryFile = "$vncSystemConfigDir/vncserver-config-mandatory";
@@ -1033,7 +1044,7 @@ sub DefineFilePathsAndStuff {
 }
 
 sub ParseAndProcessCliOptions {
-  my @supportedOptions = ("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,"-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1);
+  my @supportedOptions = ("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,"-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1,"-select-de",OPTIONAL_ARG_VALUE);
   &ParseOptionsAndRemoveMatchesFromARGV(@supportedOptions);
   &ProcessCliOptions();
   &CheckGeometryAndDepthAreSensible();
