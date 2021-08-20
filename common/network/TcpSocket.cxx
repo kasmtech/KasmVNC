@@ -40,6 +40,8 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <wordexp.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include "websocket.h"
 
 #include <network/GetAPI.h>
@@ -564,7 +566,7 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   if (bind(sock, &sa.u.sa, listenaddrlen) == -1) {
     int e = errorNumber;
     closesocket(sock);
-    throw SocketException("failed to bind socket", e);
+    throw SocketException("failed to bind socket, is someone else on our -websocketPort?", e);
   }
 
   listen(sock); // sets the internal fd
@@ -574,13 +576,16 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   //
   internalSocket = socket(AF_UNIX, SOCK_STREAM, 0);
 
+  char sockname[32];
+  sprintf(sockname, ".KasmVNCSock%u", getpid());
+
   struct sockaddr_un addr;
   addr.sun_family = AF_UNIX;
-  strcpy(addr.sun_path, ".KasmVNCSock");
+  strcpy(addr.sun_path, sockname);
   addr.sun_path[0] = '\0';
 
   if (bind(internalSocket, (struct sockaddr *) &addr,
-           sizeof(sa_family_t) + sizeof(".KasmVNCSock"))) {
+           sizeof(sa_family_t) + strlen(sockname))) {
     throw SocketException("failed to bind socket", errorNumber);
   }
 
