@@ -273,6 +273,11 @@ void VNCServerST::removeSocket(network::Socket* sock) {
   std::list<VNCSConnectionST*>::iterator ci;
   for (ci = clients.begin(); ci != clients.end(); ci++) {
     if ((*ci)->getSock() == sock) {
+
+      if (clipboardClient == *ci)
+        handleClipboardAnnounce(*ci, false);
+      clipboardRequestors.remove(*ci);
+
       // - Delete the per-Socket resources
       delete *ci;
 
