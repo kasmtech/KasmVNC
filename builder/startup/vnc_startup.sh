@@ -2,8 +2,6 @@
 ### every exit != 0 fails the script
 set -e
 
-export LD_LIBRARY_PATH="/opt/libjpeg-turbo/lib64/:$LD_LIBRARY_PATH"
-
 # should also source $STARTUPDIR/generate_container_user
 source $HOME/.bashrc
 

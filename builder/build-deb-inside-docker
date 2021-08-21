@@ -8,7 +8,6 @@ os=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
 os_codename=$(lsb_release -cs)
 os_dir="builder/build/${os_codename}"
 
-export LD_LIBRARY_PATH="/opt/libjpeg-turbo/lib64/:$LD_LIBRARY_PATH"
 dpkg-buildpackage -us -uc -b
 mkdir -p "$os_dir"
 cp ../*.deb "$os_dir"
