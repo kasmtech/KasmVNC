@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/extensions/Xrandr.h>
 #include <X11/extensions/XShm.h>
 #include <X11/extensions/XTest.h>
 
@@ -149,7 +150,46 @@ int main(int argc, char **argv) {
 			break;
 		if (resize && (appattr.width != vncattr.width ||
 				appattr.height != vncattr.height)) {
-			// TODO resize app display to VNC display size
+			// resize app display to VNC display size
+			XRRScreenConfiguration *config = XRRGetScreenInfo(appdisp, approot);
+
+			int nsizes, i, match = -1;
+			XRRScreenSize *sizes = XRRConfigSizes(config, &nsizes);
+			//printf("%u sizes\n", nsizes);
+			for (i = 0; i < nsizes; i++) {
+				if (sizes[i].width == vncattr.width &&
+					sizes[i].height == vncattr.height) {
+					//printf("match %u\n", i);
+					match = i;
+					break;
+				}
+			}
+
+			if (match >= 0) {
+				XRRSetScreenConfig(appdisp, config, approot, match,
+							RR_Rotate_0, CurrentTime);
+			} else {
+				/*XRRSetScreenSize(appdisp, approot,
+						vncattr.width, vncattr.height,
+						sizes[0].mwidth, sizes[0].mheight);*/
+				XRRScreenResources *res = XRRGetScreenResources(appdisp, approot);
+
+				char name[32];
+				sprintf(name, "%ux%u", vncattr.width, vncattr.height);
+				XRRModeInfo *mode = XRRAllocModeInfo(name, strlen(name));
+
+				mode->width = vncattr.width;
+				mode->height = vncattr.height;
+
+				RRMode rmode = XRRCreateMode(appdisp, approot, mode);
+				XRRAddOutputMode(appdisp,
+							res->outputs[0],
+							rmode);
+				XRRFreeModeInfo(mode);
+				XRRFreeScreenResources(res);
+			}
+
+			XRRFreeScreenConfigInfo(config);
 		}
 
 		const unsigned w = min(appattr.width, vncattr.width);
