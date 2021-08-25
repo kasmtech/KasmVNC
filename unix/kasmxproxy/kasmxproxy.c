@@ -27,6 +27,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
+#include <X11/extensions/XTest.h>
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
@@ -109,7 +110,7 @@ int main(int argc, char **argv) {
 	const int appscreen = DefaultScreen(appdisp);
 	const int vncscreen = DefaultScreen(vncdisp);
 	Visual *appvis = DefaultVisual(appdisp, appscreen);
-	Visual *vncvis = DefaultVisual(vncdisp, vncscreen);
+	//Visual *vncvis = DefaultVisual(vncdisp, vncscreen);
 	const int appdepth = DefaultDepth(appdisp, appscreen);
 	const int vncdepth = DefaultDepth(vncdisp, vncscreen);
 	if (appdepth != vncdepth) {
@@ -129,6 +130,15 @@ int main(int argc, char **argv) {
 	XImage *img = NULL;
 	XShmSegmentInfo shminfo;
 	unsigned imgw = 0, imgh = 0;
+
+	if (XGrabPointer(vncdisp, vncroot, False,
+				ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
+				GrabModeAsync, GrabModeAsync, None, None,
+				CurrentTime) != Success)
+		return 1;
+	if (XGrabKeyboard(vncdisp, vncroot, False, GrabModeAsync, GrabModeAsync,
+				CurrentTime) != Success)
+		return 1;
 
 	const unsigned sleeptime = 1000 * 1000 / fps;
 
@@ -174,8 +184,41 @@ int main(int argc, char **argv) {
 		XShmGetImage(appdisp, approot, img, 0, 0, 0xffffffff);
 		XPutImage(vncdisp, vncroot, gc, img, 0, 0, 0, 0, w, h);
 
+		// Handle events
+		while (XPending(vncdisp)) {
+			XEvent ev;
+			XNextEvent(vncdisp, &ev);
+
+			switch (ev.type) {
+				case KeyPress:
+				case KeyRelease:
+					XTestFakeKeyEvent(appdisp, ev.xkey.keycode,
+								ev.type == KeyPress,
+								CurrentTime);
+				break;
+				case ButtonPress:
+				case ButtonRelease:
+					XTestFakeButtonEvent(appdisp, ev.xbutton.button,
+								ev.type == ButtonPress,
+								CurrentTime);
+				break;
+				case MotionNotify:
+					XTestFakeMotionEvent(appdisp, appscreen,
+								ev.xmotion.x,
+								ev.xmotion.y,
+								CurrentTime);
+				break;
+				default:
+					printf("Unexpected event type %u\n", ev.type);
+				break;
+			}
+		}
+
 		usleep(sleeptime);
 	}
+
+	XCloseDisplay(appdisp);
+	XCloseDisplay(vncdisp);
 
 	return 0;
 }
