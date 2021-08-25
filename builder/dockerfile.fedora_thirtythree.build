@@ -18,7 +18,7 @@ RUN dnf install -y make
 RUN dnf group install -y "Development Tools"
 RUN dnf install -y xorg-x11-server-devel zlib-devel libjpeg-turbo-devel
 RUN dnf install -y libxkbfile-devel libXfont2-devel xorg-x11-font-utils \
-  xorg-x11-xtrans-devel xorg-x11-xkb-utils-devel
+  xorg-x11-xtrans-devel xorg-x11-xkb-utils-devel libXrandr-devel
 RUN dnf install -y mesa-dri-drivers
 RUN dnf install -y bzip2 redhat-lsb-core
 
