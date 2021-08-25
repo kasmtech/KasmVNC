@@ -1,5 +1,7 @@
 #!/bin/sh -e
 
+set -x
+
 detect_quilt() {
   if which quilt 1>/dev/null; then
     QUILT_PRESENT=1
@@ -80,7 +82,9 @@ cd /src
 detect_quilt
 if [ -n "$QUILT_PRESENT" ]; then
   quilt push -a
+  echo 'Patches applied!'
 fi
+
 make servertarball
 
 cp kasmvnc*.tar.gz /build/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_CODENAME}.tar.gz

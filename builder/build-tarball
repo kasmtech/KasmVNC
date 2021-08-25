@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -x
 
 build_www_dir() {
   local webpacked_www=$PWD/builder/www

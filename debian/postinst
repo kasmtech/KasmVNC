@@ -21,7 +21,7 @@ case "$1" in
     configure)
       bindir=/usr/bin
       mandir=/usr/share/man
-      commands="kasmvncserver kasmvncpasswd kasmvncconfig Xkasmvnc"
+      commands="kasmvncserver kasmvncpasswd kasmvncconfig Xkasmvnc kasmxproxy"
 
       for kasm_command in $commands; do
         generic_command=`echo "$kasm_command" | sed -e 's/kasm//'`;
