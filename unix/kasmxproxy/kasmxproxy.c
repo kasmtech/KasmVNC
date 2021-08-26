@@ -175,7 +175,8 @@ int main(int argc, char **argv) {
 				XRRScreenResources *res = XRRGetScreenResources(appdisp, approot);
 
 				char name[32];
-				sprintf(name, "%ux%u", vncattr.width, vncattr.height);
+				sprintf(name, "%ux%u_60", vncattr.width, vncattr.height);
+				printf("Creating new Mode %s\n", name);
 				XRRModeInfo *mode = XRRAllocModeInfo(name, strlen(name));
 
 				mode->width = vncattr.width;
