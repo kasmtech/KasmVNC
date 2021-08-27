@@ -26,9 +26,13 @@
 #include <unistd.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/Xcursor/Xcursor.h>
+#include <X11/extensions/Xfixes.h>
 #include <X11/extensions/Xrandr.h>
 #include <X11/extensions/XShm.h>
 #include <X11/extensions/XTest.h>
+
+#include "xxhash.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
@@ -140,6 +144,10 @@ int main(int argc, char **argv) {
 	if (XGrabKeyboard(vncdisp, vncroot, False, GrabModeAsync, GrabModeAsync,
 				CurrentTime) != Success)
 		return 1;
+
+	XFixesCursorImage *cursor = NULL;
+	uint64_t cursorhash = 0;
+	Cursor xcursor = None;
 
 	const unsigned sleeptime = 1000 * 1000 / fps;
 
@@ -253,6 +261,32 @@ int main(int argc, char **argv) {
 					printf("Unexpected event type %u\n", ev.type);
 				break;
 			}
+		}
+
+		// Cursors
+		cursor = XFixesGetCursorImage(appdisp);
+		uint64_t newhash = XXH64(cursor->pixels,
+						cursor->width * cursor->height * sizeof(unsigned long),
+						0);
+		if (cursorhash != newhash) {
+			if (cursorhash)
+				XFreeCursor(vncdisp, xcursor);
+
+			XcursorImage *converted = XcursorImageCreate(cursor->width, cursor->height);
+
+			converted->xhot = cursor->xhot;
+			converted->yhot = cursor->yhot;
+			unsigned i;
+			for (i = 0; i < cursor->width * cursor->height; i++) {
+				converted->pixels[i] = cursor->pixels[i];
+			}
+
+			xcursor = XcursorImageLoadCursor(vncdisp, converted);
+			XDefineCursor(vncdisp, vncroot, xcursor);
+
+			XcursorImageDestroy(converted);
+
+			cursorhash = newhash;
 		}
 
 		usleep(sleeptime);
