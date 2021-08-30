@@ -181,20 +181,64 @@ int main(int argc, char **argv) {
 						vncattr.width, vncattr.height,
 						sizes[0].mwidth, sizes[0].mheight);*/
 				XRRScreenResources *res = XRRGetScreenResources(appdisp, approot);
+				//printf("%u outputs, %u crtcs\n", res->noutput, res->ncrtc);
+				// Nvidia crap uses a *different* list for 1.0 and 1.2!
+				unsigned oldmode = 0xffff;
+				//printf("1.2 modes %u\n", res->nmode);
+				for (i = 0; i < res->nmode; i++) {
+					if (res->modes[i].width == vncattr.width &&
+						res->modes[i].height == vncattr.height) {
+						oldmode = i;
+						//printf("old mode %u matched\n", i);
+						break;
+					}
+				}
 
-				char name[32];
-				sprintf(name, "%ux%u_60", vncattr.width, vncattr.height);
-				printf("Creating new Mode %s\n", name);
-				XRRModeInfo *mode = XRRAllocModeInfo(name, strlen(name));
+				unsigned tgt = 0;
+				if (res->noutput > 1) {
+					for (i = 0; i < res->noutput; i++) {
+						XRROutputInfo *info = XRRGetOutputInfo(appdisp, res, res->outputs[i]);
+						if (info->connection == RR_Connected)
+							tgt = i;
+						//printf("%u %s %u\n", i, info->name, info->connection);
+						XRRFreeOutputInfo(info);
+					}
+				}
 
-				mode->width = vncattr.width;
-				mode->height = vncattr.height;
+				if (oldmode < 0xffff) {
+					Status s;
+					// nvidia needs this weird dance
+					s = XRRSetCrtcConfig(appdisp, res, res->crtcs[tgt],
+							CurrentTime,
+							0, 0,
+							None, RR_Rotate_0,
+							NULL, 0);
+					//printf("disable %u\n", s);
+					XRRSetScreenSize(appdisp, approot,
+							vncattr.width, vncattr.height,
+							sizes[0].mwidth, sizes[0].mheight);
+					s = XRRSetCrtcConfig(appdisp, res, res->crtcs[tgt],
+							CurrentTime,
+							0, 0,
+							res->modes[oldmode].id, RR_Rotate_0,
+							&res->outputs[tgt], 1);
+					//printf("set %u\n", s);
+				} else {
+					char name[32];
+					sprintf(name, "%ux%u_60", vncattr.width, vncattr.height);
+					printf("Creating new Mode %s\n", name);
+					XRRModeInfo *mode = XRRAllocModeInfo(name, strlen(name));
 
-				RRMode rmode = XRRCreateMode(appdisp, approot, mode);
-				XRRAddOutputMode(appdisp,
-							res->outputs[0],
-							rmode);
-				XRRFreeModeInfo(mode);
+					mode->width = vncattr.width;
+					mode->height = vncattr.height;
+
+					RRMode rmode = XRRCreateMode(appdisp, approot, mode);
+					XRRAddOutputMode(appdisp,
+								res->outputs[tgt],
+								rmode);
+					XRRFreeModeInfo(mode);
+				}
+
 				XRRFreeScreenResources(res);
 			}
 
