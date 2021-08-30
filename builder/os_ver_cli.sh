@@ -3,6 +3,10 @@ default_os_codename=bionic
 
 os=${1:-$default_os}
 os_codename=${2:-$default_os_codename}
+build_tag="${3:-}"
+if [[ -n "$build_tag" ]]; then
+   build_tag_for_images="_${build_tag#+}"
+fi
 os_image="$os:$os_codename"
 
 echo "Building for $os_image"

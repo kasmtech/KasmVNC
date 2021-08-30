@@ -8,6 +8,11 @@ os=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
 os_codename=$(lsb_release -cs)
 os_dir="builder/build/${os_codename}"
 
+if [ "$BUILD_TAG" = "+libjpeg-turbo_latest" ]; then
+   echo 'libjpeg 62 libjpeg-turbo (>= 2.1.1)' > debian/shlibs.local
+   trap 'rm -f debian/shlibs.local' EXIT
+fi
+
 dpkg-buildpackage -us -uc -b
 mkdir -p "$os_dir"
 cp ../*.deb "$os_dir"

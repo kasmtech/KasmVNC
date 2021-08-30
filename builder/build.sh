@@ -84,3 +84,7 @@ fi
 make servertarball
 
 cp kasmvnc*.tar.gz /build/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_CODENAME}.tar.gz
+if [ "$BUILD_TAG" = "+libjpeg-turbo_latest" ]; then
+	mkdir -p /build/${KASMVNC_BUILD_OS_CODENAME}/
+	cp /libjpeg-turbo/libjpeg*.deb /build/${KASMVNC_BUILD_OS_CODENAME}/
+fi

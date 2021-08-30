@@ -4,6 +4,7 @@ set -e
 
 os="$1"
 codename="$2"
+build_tag="$3"
 
 detect_package_format() {
   package_format=rpm
@@ -15,5 +16,5 @@ detect_package_format() {
 cd "$(dirname "$0")/.."
 
 detect_package_format
-builder/build-tarball "$os" "$codename"
-builder/build-${package_format} "$os" "$codename"
+builder/build-tarball "$os" "$codename" "$build_tag"
+builder/build-${package_format} "$os" "$codename" "$build_tag"
