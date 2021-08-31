@@ -45,7 +45,8 @@ ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/libjpeg-turbo_*.deb /tmp
 RUN apt-get install /tmp/libjpeg-turbo*deb
 
-COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp
+ARG BUILD_DEBIAN_REVISION
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*$BUILD_DEBIAN_REVISION*.deb /tmp
 RUN dpkg -i /tmp/*.deb; apt-get -yf install
 
 ### END CUSTOM STUFF ###
