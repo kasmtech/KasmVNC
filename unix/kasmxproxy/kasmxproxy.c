@@ -50,15 +50,65 @@ static void help(const char name[]) {
 	exit(1);
 }
 
+#define CUT_MAX (16 * 1024)
+static uint8_t cutbuf[CUT_MAX];
+
+static void supplyselection(Display *disp, const XEvent * const ev, const Atom xa_targets) {
+	XSelectionEvent sev;
+
+	sev.type = SelectionNotify;
+	sev.display = disp;
+	sev.requestor = ev->xselectionrequest.requestor;
+	sev.selection = ev->xselectionrequest.selection;
+	sev.target = ev->xselectionrequest.target;
+	sev.time = ev->xselectionrequest.time;
+	/*printf("someone wants our clipboard, sel %lu, tgt %lu, prop %lu\n",
+		sev.selection, sev.target,
+		ev.xselectionrequest.property);*/
+
+	if (ev->xselectionrequest.property == None)
+		sev.property = sev.target;
+	else
+		sev.property = ev->xselectionrequest.property;
+
+	const uint32_t len = strlen((char *) cutbuf);
+
+	if (xa_targets != None &&
+			sev.target == xa_targets) {
+		// Which formats can we do
+		Atom tgt[2] = {
+			xa_targets,
+			XA_STRING
+		};
+
+		XChangeProperty(disp, sev.requestor,
+				ev->xselectionrequest.property,
+				XA_ATOM, 32,
+				PropModeReplace,
+				(unsigned char *) tgt,
+				2);
+		//puts("sent targets");
+	} else {
+		// Data
+		XChangeProperty(disp, sev.requestor,
+				ev->xselectionrequest.property,
+				sev.target, 8,
+				PropModeReplace,
+				cutbuf, len);
+		//printf("sent data, of len %u\n", len);
+	}
+
+	// Send the notify event
+	XSendEvent(disp, sev.requestor, False, 0,
+			(XEvent *) &sev);
+}
+
 int main(int argc, char **argv) {
 
 	const char *appstr = ":0";
 	const char *vncstr = ":1";
 	uint8_t resize = 0;
 	uint8_t fps = 30;
-
-	#define CUT_MAX (16 * 1024)
-	uint8_t cutbuf[CUT_MAX];
 
 	const struct option longargs[] = {
 		{"app-display", 1, NULL, 'a'},
@@ -159,12 +209,8 @@ int main(int argc, char **argv) {
 	XFixesSelectSelectionInput(vncdisp, vncroot, XA_PRIMARY,
 					XFixesSetSelectionOwnerNotifyMask);
 
-	#ifndef XA_LENGTH
-	Atom XA_LENGTH = XInternAtom(vncdisp, "LENGTH", True);
-	#endif
-	static Atom xa_targets = None;
-	if (xa_targets == None)
-		xa_targets = XInternAtom(vncdisp, "TARGETS", False);
+	Atom xa_targets_vnc = XInternAtom(vncdisp, "TARGETS", False);
+	Atom xa_targets_app = XInternAtom(appdisp, "TARGETS", False);
 	Window selwin = XCreateSimpleWindow(appdisp, approot, 3, 2, 1, 1, 0, 0, 0);
 	Window vncselwin = XCreateSimpleWindow(vncdisp, vncroot, 3, 2, 1, 1, 0, 0, 0);
 
@@ -305,8 +351,6 @@ int main(int argc, char **argv) {
 			XEvent ev;
 			XNextEvent(vncdisp, &ev);
 
-			XSelectionEvent sev;
-
 			if (ev.type == xfixesbasevnc + XFixesSelectionNotify) {
 				XFixesSelectionNotifyEvent *xfe =
 					(XFixesSelectionNotifyEvent *) &ev;
@@ -337,61 +381,7 @@ int main(int argc, char **argv) {
 								CurrentTime);
 				break;
 				case SelectionRequest:
-					sev.type = SelectionNotify;
-					sev.display = vncdisp;
-					sev.requestor = ev.xselectionrequest.requestor;
-					sev.selection = ev.xselectionrequest.selection;
-					sev.target = ev.xselectionrequest.target;
-					sev.time = ev.xselectionrequest.time;
-					/*printf("vnc wants our clipboard, sel %lu, tgt %lu, prop %lu\n",
-						sev.selection, sev.target,
-						ev.xselectionrequest.property);*/
-
-					if (ev.xselectionrequest.property == None)
-						sev.property = sev.target;
-					else
-						sev.property = ev.xselectionrequest.property;
-
-					uint32_t len = strlen((char *) cutbuf);
-
-					if (ev.xselectionrequest.target == XA_LENGTH) {
-						// They're asking for the length
-						long llen = len;
-						XChangeProperty(vncdisp, sev.requestor,
-								ev.xselectionrequest.property,
-								sev.target, 32,
-								PropModeReplace,
-								(unsigned char *) &llen,
-								1);
-						//puts("sent len");
-					} else if (xa_targets != None &&
-							sev.target == xa_targets) {
-						// Which formats can we do
-						Atom tgt[2] = {
-							xa_targets,
-							XA_STRING
-						};
-
-						XChangeProperty(vncdisp, sev.requestor,
-								ev.xselectionrequest.property,
-								XA_ATOM, 32,
-								PropModeReplace,
-								(unsigned char *) tgt,
-								2);
-						//puts("sent targets");
-					} else {
-						// Data
-						XChangeProperty(vncdisp, sev.requestor,
-								ev.xselectionrequest.property,
-								sev.target, 8,
-								PropModeReplace,
-								cutbuf, len);
-						//printf("sent data, of len %u\n", len);
-					}
-
-					// Send the notify event
-					XSendEvent(vncdisp, sev.requestor, False, 0,
-							(XEvent *) &sev);
+					supplyselection(vncdisp, &ev, xa_targets_vnc);
 				break;
 				case SelectionNotify:
 				{
@@ -447,8 +437,6 @@ int main(int argc, char **argv) {
 			XEvent ev;
 			XNextEvent(appdisp, &ev);
 
-			XSelectionEvent sev;
-
 			if (ev.type == xfixesbase + XFixesSelectionNotify) {
 				XFixesSelectionNotifyEvent *xfe =
 					(XFixesSelectionNotifyEvent *) &ev;
@@ -498,65 +486,7 @@ int main(int argc, char **argv) {
 				}
 				break;
 				case SelectionRequest:
-/*					printf("app selreq, owner %lu requester %lu, approot %lu selwin %lu\n",
-						ev.xselectionrequest.owner,
-						ev.xselectionrequest.requestor,
-						approot, selwin);*/
-					sev.type = SelectionNotify;
-					sev.display = appdisp;
-					sev.requestor = ev.xselectionrequest.requestor;
-					sev.selection = ev.xselectionrequest.selection;
-					sev.target = ev.xselectionrequest.target;
-					sev.time = ev.xselectionrequest.time;
-					/*printf("app wants our clipboard, sel %lu, tgt %lu, prop %lu\n",
-						sev.selection, sev.target,
-						ev.xselectionrequest.property);*/
-
-					if (ev.xselectionrequest.property == None)
-						sev.property = sev.target;
-					else
-						sev.property = ev.xselectionrequest.property;
-
-					uint32_t len = strlen((char *) cutbuf);
-
-					if (ev.xselectionrequest.target == XA_LENGTH) {
-						// They're asking for the length
-						long llen = len;
-						XChangeProperty(appdisp, sev.requestor,
-								ev.xselectionrequest.property,
-								sev.target, 32,
-								PropModeReplace,
-								(unsigned char *) &llen,
-								1);
-						//puts("sent len");
-					} else if (xa_targets != None &&
-							sev.target == xa_targets) {
-						// Which formats can we do
-						Atom tgt[2] = {
-							xa_targets,
-							XA_STRING
-						};
-
-						XChangeProperty(appdisp, sev.requestor,
-								ev.xselectionrequest.property,
-								XA_ATOM, 32,
-								PropModeReplace,
-								(unsigned char *) tgt,
-								2);
-						//puts("sent targets");
-					} else {
-						// Data
-						XChangeProperty(appdisp, sev.requestor,
-								ev.xselectionrequest.property,
-								sev.target, 8,
-								PropModeReplace,
-								cutbuf, len);
-						//printf("sent data, of len %u\n", len);
-					}
-
-					// Send the notify event
-					XSendEvent(appdisp, sev.requestor, False, 0,
-							(XEvent *) &sev);
+					supplyselection(appdisp, &ev, xa_targets_app);
 				break;
 				default:
 					printf("Unexpected app event type %u\n", ev.type);
