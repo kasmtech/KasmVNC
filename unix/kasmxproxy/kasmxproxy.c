@@ -24,6 +24,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <unistd.h>
+#include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xcursor/Xcursor.h>
@@ -55,6 +56,9 @@ int main(int argc, char **argv) {
 	const char *vncstr = ":1";
 	uint8_t resize = 0;
 	uint8_t fps = 30;
+
+	#define CUT_MAX (16 * 1024)
+	uint8_t cutbuf[CUT_MAX];
 
 	const struct option longargs[] = {
 		{"app-display", 1, NULL, 'a'},
@@ -144,6 +148,19 @@ int main(int argc, char **argv) {
 	if (XGrabKeyboard(vncdisp, vncroot, False, GrabModeAsync, GrabModeAsync,
 				CurrentTime) != Success)
 		return 1;
+
+	int xfixesbase, xfixeserrbase;
+	XFixesQueryExtension(appdisp, &xfixesbase, &xfixeserrbase);
+	XFixesSelectSelectionInput(appdisp, approot, XA_PRIMARY,
+					XFixesSetSelectionOwnerNotifyMask);
+
+	#ifndef XA_LENGTH
+	Atom XA_LENGTH = XInternAtom(vncdisp, "LENGTH", True);
+	#endif
+	static Atom xa_targets = None;
+	if (xa_targets == None)
+		xa_targets = XInternAtom(vncdisp, "TARGETS", False);
+	Window selwin = XCreateSimpleWindow(appdisp, approot, 3, 2, 1, 1, 0, 0, 0);
 
 	XFixesCursorImage *cursor = NULL;
 	uint64_t cursorhash = 0;
@@ -282,6 +299,8 @@ int main(int argc, char **argv) {
 			XEvent ev;
 			XNextEvent(vncdisp, &ev);
 
+			XSelectionEvent sev;
+
 			switch (ev.type) {
 				case KeyPress:
 				case KeyRelease:
@@ -301,8 +320,124 @@ int main(int argc, char **argv) {
 								ev.xmotion.y,
 								CurrentTime);
 				break;
+				case SelectionRequest:
+					sev.type = SelectionNotify;
+					sev.display = vncdisp;
+					sev.requestor = ev.xselectionrequest.requestor;
+					sev.selection = ev.xselectionrequest.selection;
+					sev.target = ev.xselectionrequest.target;
+					sev.time = ev.xselectionrequest.time;
+					/*printf("vnc wants our clipboard, sel %lu, tgt %lu, prop %lu\n",
+						sev.selection, sev.target,
+						ev.xselectionrequest.property);*/
+
+					if (ev.xselectionrequest.property == None)
+						sev.property = sev.target;
+					else
+						sev.property = ev.xselectionrequest.property;
+
+					uint32_t len = strlen((char *) cutbuf);
+
+					if (ev.xselectionrequest.target == XA_LENGTH) {
+						// They're asking for the length
+						long llen = len;
+						XChangeProperty(vncdisp, sev.requestor,
+								ev.xselectionrequest.property,
+								sev.target, 32,
+								PropModeReplace,
+								(unsigned char *) &llen,
+								1);
+						//puts("sent len");
+					} else if (xa_targets != None &&
+							sev.target == xa_targets) {
+						// Which formats can we do
+						Atom tgt[2] = {
+							xa_targets,
+							XA_STRING
+						};
+
+						XChangeProperty(vncdisp, sev.requestor,
+								ev.xselectionrequest.property,
+								XA_ATOM, 32,
+								PropModeReplace,
+								(unsigned char *) tgt,
+								2);
+						//puts("sent targets");
+					} else {
+						// Data
+						XChangeProperty(vncdisp, sev.requestor,
+								ev.xselectionrequest.property,
+								sev.target, 8,
+								PropModeReplace,
+								cutbuf, len);
+						//printf("sent data, of len %u\n", len);
+					}
+
+					// Send the notify event
+					XSendEvent(vncdisp, sev.requestor, False, 0,
+							(XEvent *) &sev);
+				break;
 				default:
 					printf("Unexpected event type %u\n", ev.type);
+				break;
+			}
+		}
+
+		// App-side events
+		while (XPending(appdisp)) {
+			XEvent ev;
+			XNextEvent(appdisp, &ev);
+
+			if (ev.type == xfixesbase + XFixesSelectionNotify) {
+				XFixesSelectionNotifyEvent *xfe =
+					(XFixesSelectionNotifyEvent *) &ev;
+				//printf("app disp did a copy, owner %lu\n", xfe->owner);
+				if (xfe->owner == None)
+					continue;
+
+				XConvertSelection(appdisp, XA_PRIMARY, XA_STRING, XA_STRING,
+							selwin, CurrentTime);
+			} else switch (ev.type) {
+				case SelectionNotify:
+				{
+					Atom realtype;
+					int fmt;
+					unsigned long nitems, bytes_rem;
+					unsigned char *data;
+					if (XGetWindowProperty(appdisp, selwin,
+								XA_STRING,
+								0, CUT_MAX / 4,
+								False, AnyPropertyType,
+								&realtype, &fmt,
+								&nitems, &bytes_rem,
+								&data) == Success) {
+
+						if (bytes_rem) {
+							printf("Clipboard too large, ignoring\n");
+						} else {
+							const uint32_t len = nitems * (fmt / 8);
+							//printf("realtype %lu, fmt %u, nitems %lu\n",
+							//	realtype, fmt, nitems);
+							memcpy(cutbuf, data, len);
+							if (len < CUT_MAX)
+								cutbuf[len] = 0;
+							else
+								cutbuf[CUT_MAX - 1] = 0;
+
+							// Send it to the VNC screen
+							XSetSelectionOwner(vncdisp, XA_PRIMARY,
+										vncroot,
+										CurrentTime);
+						}
+
+						XFree(data);
+					} else {
+						printf("Failed to fetch app clipboard\n");
+					}
+				}
+				break;
+				default:
+					printf("Unexpected app event type %u\n", ev.type);
 				break;
 			}
 		}
