@@ -7,4 +7,6 @@ RUN apt-get update && \
 COPY ./debian/control /tmp
 RUN apt-get update && echo YYY | mk-build-deps --install --remove /tmp/control
 
+RUN useradd -m docker -u 1000
+
 USER 1000

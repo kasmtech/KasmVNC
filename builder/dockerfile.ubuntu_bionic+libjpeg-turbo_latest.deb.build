@@ -13,4 +13,6 @@ RUN apt-get update && echo YYY | mk-build-deps --install --remove /tmp/control
 
 ENV LD_LIBRARY_PATH="/opt/libjpeg-turbo/lib64/:$LD_LIBRARY_PATH"
 
+RUN useradd -m docker -u 1000
+
 USER 1000
