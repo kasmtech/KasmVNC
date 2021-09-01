@@ -5,14 +5,16 @@ set -e
 cd "$(dirname "$0")/.."
 . builder/os_ver_cli.sh
 
+L_UID=$(id -u) #Ubuntu already has UID env var, but this should work on all Linix systems
+L_GID=$(id -g)
+
 builder_image=debbuilder_${os}:${os_codename}${build_tag_for_images}
 docker build --build-arg KASMVNC_PACKAGE_DIR="builder/build/${os_codename}" \
+  --build-arg L_UID="$L_UID" \
   -t "$builder_image" -f \
   builder/dockerfile.${os}_${os_codename}${build_tag}.deb.build .
 
 deb_output_dir=$(cd .. && echo $PWD)
-L_UID=$(id -u) #Ubuntu already has UID env var, but this should work on all Linix systems
-L_GID=$(id -g)
 docker run --rm -v "$deb_output_dir":/src -e BUILD_TAG="$build_tag" \
   --user "$L_UID:$L_GID" \
   "$builder_image" /bin/bash -c \

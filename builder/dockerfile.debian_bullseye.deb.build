@@ -9,6 +9,11 @@ RUN apt-get update && \
 COPY ./debian/control /tmp
 RUN apt-get update && echo YYY | mk-build-deps --install --remove /tmp/control
 
-RUN useradd -m docker -u 1000
+ARG L_UID
+RUN if [ "$L_UID" -eq 0 ]; then \
+      useradd -m docker; \
+    else \
+      useradd -m docker -u $L_UID;\
+    fi
 
-USER 1000
+USER docker
