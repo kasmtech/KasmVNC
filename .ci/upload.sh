@@ -1,16 +1,32 @@
 #!/bin/bash
 
+is_kasmvnc() {
+  local package="$1";
+
+  echo "$package" | grep -q 'kasmvncserver_'
+}
+
 function prepare_upload_filename() {
   local package="$1";
+
+  if ! is_kasmvnc "$package"; then
+    export upload_filename="$package"
+    return
+  fi
 
   .ci/detect_os_arch_package_format "$package" > /tmp/os_arch_package_format;
   source /tmp/os_arch_package_format;
   detect_release_branch
+  detect_revision "$package"
+  if [ -n "$REVISION" ]; then
+    REVISION="_${REVISION}"
+  fi
+
   if [ -n "$RELEASE_BRANCH" ]; then
-    export upload_filename="kasmvncserver_${PACKAGE_OS}_${RELEASE_VERSION}_${OS_ARCH}.${PACKAGE_FORMAT}";
+    export upload_filename="kasmvncserver_${PACKAGE_OS}_${RELEASE_VERSION}${REVISION}_${OS_ARCH}.${PACKAGE_FORMAT}";
   else
     export SANITIZED_BRANCH="$(echo $CI_COMMIT_REF_NAME | sed 's/\//_/g')";
-    export upload_filename="kasmvncserver_${PACKAGE_OS}_${RELEASE_VERSION}_${SANITIZED_BRANCH}_${CI_COMMIT_SHA:0:6}_${OS_ARCH}.${PACKAGE_FORMAT}";
+    export upload_filename="kasmvncserver_${PACKAGE_OS}_${RELEASE_VERSION}_${SANITIZED_BRANCH}_${CI_COMMIT_SHA:0:6}${REVISION}_${OS_ARCH}.${PACKAGE_FORMAT}";
   fi
 };
 
@@ -25,6 +41,7 @@ function upload_to_s3() {
   export BUILD_STATUS="{\"key\":\"doc\", \"state\":\"SUCCESSFUL\", \"name\":\"${upload_filename}\", \"url\":\"${S3_URL}\"}";
   curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=build-url&target_url=${S3_URL}";
 };
+
 function prepare_to_run_scripts_and_s3_uploads() {
   export DEBIAN_FRONTEND=noninteractive;
   apt-get update;
@@ -37,4 +54,14 @@ detect_release_branch() {
   if echo $CI_COMMIT_REF_NAME | grep -Pq '^release/([\d.]+)$'; then
     export RELEASE_BRANCH=1;
   fi
+}
+
+detect_revision() {
+  local package="$1"
+
+  if ! echo "$package" | grep -q '+'; then
+    return
+  fi
+
+  REVISION=$(echo "$package" | sed 's/_amd64.\+//' | sed 's/.\++//')
 }
