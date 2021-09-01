@@ -24,7 +24,7 @@ if [ "$BUILD_TAG" = "+libjpeg-turbo_latest" ]; then
    echo 'libjpeg 62 libjpeg-turbo (>= 2.1.1)' > debian/shlibs.local
 
    debian_revision="$(echo $BUILD_TAG | tr _ -)"
-   sed -i -e "1 s/)/$debian_revision)/p" debian/changelog
+   sed -i -e "1 s/)/$debian_revision)/" debian/changelog
 fi
 
 dpkg-buildpackage -us -uc -b

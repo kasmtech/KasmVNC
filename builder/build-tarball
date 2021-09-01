@@ -12,6 +12,13 @@ build_www_dir() {
   fi
 }
 
+move_libjpeg_turbo_to_os_specific_dir() {
+  chown $L_UID:$L_GID $shared_with_docker_dir/${os_codename}/*
+  mkdir -p $PWD/builder/build/${os_codename}/
+  mv $shared_with_docker_dir/${os_codename}/libjpeg-turbo*.deb \
+    $PWD/builder/build/${os_codename}/
+}
+
 shared_with_docker_dir=${GITLAB_SHARED_DIND_DIR:-/tmp}
 
 cd "$(dirname "$0")/.."
@@ -35,7 +42,5 @@ mv $shared_with_docker_dir/$tarball_name \
   $PWD/builder/build/"$tarball_name_with_build_tag"
 
 if [ "$build_tag" = "+libjpeg-turbo_latest" ]; then
-  chown $L_UID:$L_GID $shared_with_docker_dir/${os_codename}/*
-  mv $shared_with_docker_dir/${os_codename}/*.deb \
-    $PWD/builder/build/${os_codename}/
+  move_libjpeg_turbo_to_os_specific_dir
 fi
