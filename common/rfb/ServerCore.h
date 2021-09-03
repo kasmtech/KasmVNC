@@ -74,6 +74,7 @@ namespace rfb {
     static BoolParameter detectScrolling;
     static BoolParameter detectHorizontal;
     static BoolParameter ignoreClientSettingsKasm;
+    static BoolParameter selfBench;
     static PresetParameter preferBandwidth;
 
   };

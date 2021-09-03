@@ -48,6 +48,7 @@ set(RFB_SOURCES
   Security.cxx
   SecurityServer.cxx
   SecurityClient.cxx
+  SelfBench.cxx
   SSecurityPlain.cxx
   SSecurityStack.cxx
   SSecurityVncAuth.cxx

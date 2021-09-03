@@ -215,6 +215,13 @@ namespace rfb {
       virtual rdr::U8* getBufferRW(const Rect& r, int* stride);
     };
   };
+
+  PixelBuffer *nearestScale(const PixelBuffer *pb, const uint16_t w, const uint16_t h,
+                            const float diff);
+  PixelBuffer *bilinearScale(const PixelBuffer *pb, const uint16_t w, const uint16_t h,
+                            const float diff);
+  PixelBuffer *progressiveBilinearScale(const PixelBuffer *pb, const uint16_t w, const uint16_t h,
+                            const float diff);
 }
 
 #endif
