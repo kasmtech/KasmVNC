@@ -2,8 +2,18 @@
 
 set -e
 
+warn_build_tag_not_supported_for_rpm_and_exit() {
+  local build_tag="$1"
+
+  if [[ -n "$build_tag" ]]; then
+    echo >&2 "<build_tag> isn't supported for rpm"
+    exit 1
+  fi
+}
+
 cd "$(dirname "$0")/.."
 . builder/os_ver_cli.sh
+warn_build_tag_not_supported_for_rpm_and_exit "$build_tag"
 
 docker build -t kasmvnc_rpmbuilder_${os}:${os_codename} -f \
   builder/dockerfile.${os}_${os_codename}.rpm.build .

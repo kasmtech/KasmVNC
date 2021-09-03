@@ -13,8 +13,17 @@ detect_package_format() {
   fi
 }
 
+warn_build_tag_not_supported_for_rpm_and_exit() {
+  if [[ "$package_format" = "rpm" ]]; then
+    echo >&2 "<build_tag> isn't supported for rpm"
+    exit 1
+  fi
+}
+
 cd "$(dirname "$0")/.."
 
 detect_package_format
+warn_build_tag_not_supported_for_rpm_and_exit
+
 builder/build-tarball "$os" "$codename" "$build_tag"
 builder/build-${package_format} "$os" "$codename" "$build_tag"
