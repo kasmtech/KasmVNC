@@ -17,7 +17,7 @@ function prepare_upload_filename() {
   .ci/detect_os_arch_package_format "$package" > /tmp/os_arch_package_format;
   source /tmp/os_arch_package_format;
   detect_release_branch
-  detect_revision "$package"
+  detect_revision "$package" "$OS_ARCH"
   if [ -n "$REVISION" ]; then
     REVISION="_${REVISION}"
   fi
@@ -58,10 +58,11 @@ detect_release_branch() {
 
 detect_revision() {
   local package="$1"
+  local arch="$2"
 
   if ! echo "$package" | grep -q '+'; then
     return
   fi
 
-  REVISION=$(echo "$package" | sed 's/_amd64.\+//' | sed 's/.\++//')
+  REVISION=$(echo "$package" | sed "s/_${arch}.\+//" | sed 's/.\++//')
 }
