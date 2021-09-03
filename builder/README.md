@@ -3,8 +3,16 @@ Docker CE
 
 # Build a deb/rpm package
 ```
-# builder/build-package <os> <os_codename>
+# builder/build-package <os> <os_codename> <build_tag>
 # os_codename is what "lsb_release -c" outputs, e.g. buster, focal.
+#
+# build_tag allows building multiple versions of deb package targeting a single
+# distro release (e.g. Ubuntu Bionic). If build_tag is given, the package name
+# will include build_tag as part of Debian revision. For example:
+# * with build_tag: kasmvncserver_0.9.1~beta-1+libjpeg-turbo-latest_amd64.deb
+# * without build_tag: kasmvncserver_0.9.1~beta-1_amd64.deb
+# You need to have .build and .deb.build for the build_tag.
+#
 # Packages will be placed under builder/build/
 
 builder/build-package ubuntu bionic
@@ -69,4 +77,15 @@ packages installed with XFCE.
 
 ```
 builder/test-deb-barebones ubuntu focal
+```
+# CI development
+
+S3 upload code is extracted to various files in `.ci`. It's possible to iterate
+locally by doing stuff like this:
+
+```
+bash -c '
+. .ci/upload.sh;
+prepare_upload_filename "bionic/kasmvncserver_0.9.1~beta-1+libjpeg-turbo-latest_amd64.deb";
+echo $upload_filename;'
 ```
