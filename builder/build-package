@@ -14,7 +14,7 @@ detect_package_format() {
 }
 
 warn_build_tag_not_supported_for_rpm_and_exit() {
-  if [[ "$package_format" = "rpm" ]]; then
+  if [[ "$build_tag" && "$package_format" = "rpm" ]]; then
     echo >&2 "<build_tag> isn't supported for rpm"
     exit 1
   fi
