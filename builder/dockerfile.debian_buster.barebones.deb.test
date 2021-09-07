@@ -1,8 +1,8 @@
 FROM debian:buster-slim
 
 ARG KASMVNC_PACKAGE_DIR
-COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp
-RUN apt-get update && dpkg -i /tmp/*.deb; apt-get -yf install
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp/
+RUN rm -f /tmp/kasmvncserver_*+*.deb; apt-get update && dpkg -i /tmp/*.deb; apt-get -yf install
 RUN apt-get update && apt-get -y install xterm
 
 COPY startup/deb/kasmvncserver-easy-start /usr/local/bin

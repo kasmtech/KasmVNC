@@ -12,6 +12,13 @@ build_www_dir() {
   fi
 }
 
+move_libjpeg_turbo_to_os_specific_dir() {
+  chown $L_UID:$L_GID $shared_with_docker_dir/${os_codename}/*
+  mkdir -p $PWD/builder/build/${os_codename}/
+  mv $shared_with_docker_dir/${os_codename}/libjpeg-turbo*.deb \
+    $PWD/builder/build/${os_codename}/
+}
+
 shared_with_docker_dir=${GITLAB_SHARED_DIND_DIR:-/tmp}
 
 cd "$(dirname "$0")/.."
@@ -19,13 +26,21 @@ cd "$(dirname "$0")/.."
 
 build_www_dir
 
-docker build -t kasmvncbuilder:$os_codename \
-  -f builder/dockerfile.${os}_${os_codename}.build .
+builder_image=kasmvncbuilder:$os_codename${build_tag_for_images}
+docker build -t "$builder_image" \
+  -f builder/dockerfile.${os}_${os_codename}${build_tag}.build .
 mkdir -p builder/build
-docker run -v $shared_with_docker_dir:/build --rm kasmvncbuilder:$os_codename
+docker run -v $shared_with_docker_dir:/build -e BUILD_TAG="$build_tag" \
+  --rm "$builder_image"
 
 L_GID=$(id -g)
 L_UID=$(id -u)
 tarball_name="kasmvnc.${os}_${os_codename}.tar.gz"
+tarball_name_with_build_tag="kasmvnc.${os}_${os_codename}${build_tag}.tar.gz"
 chown $L_UID:$L_GID $shared_with_docker_dir/$tarball_name
-mv $shared_with_docker_dir/$tarball_name $PWD/builder/build/
+mv $shared_with_docker_dir/$tarball_name \
+  $PWD/builder/build/"$tarball_name_with_build_tag"
+
+if [ "$build_tag" = "+libjpeg-turbo_latest" ]; then
+  move_libjpeg_turbo_to_os_specific_dir
+fi

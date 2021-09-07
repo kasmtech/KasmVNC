@@ -1,7 +1,7 @@
 TARGET_OS := $(shell lsb_release -is | tr '[:upper:]' '[:lower:]')
 TARGET_OS_CODENAME := $(shell lsb_release -cs | tr '[:upper:]' '[:lower:]')
 TARBALL_DIR := builder/build
-TARBALL := $(TARBALL_DIR)/kasmvnc.$(TARGET_OS)_$(TARGET_OS_CODENAME).tar.gz
+TARBALL := $(TARBALL_DIR)/kasmvnc.$(TARGET_OS)_$(TARGET_OS_CODENAME)$(BUILD_TAG).tar.gz
 TAR_DATA := $(shell mktemp -d)
 SRC := $(TAR_DATA)/usr/local
 SRC_BIN := $(SRC)/bin
