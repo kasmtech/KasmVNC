@@ -240,7 +240,7 @@ if user_asked_to_select_de || ! de_was_selected_on_previous_run; then
   detect_desktop_environments
   if user_specified_de; then
     check_de_installed "$selected_de"
-    # set DE as in ask_user_to_choose_de
+    de_name="$selected_de"
   else
     ask_user_to_choose_de
   fi
