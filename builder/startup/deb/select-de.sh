@@ -35,6 +35,7 @@ process_cli_options() {
         action=select-de
         if [[ -n "$1" && "${1:1}" != "-" ]]; then
           selected_de="$1"
+          assume_yes=1
           if [ "$selected_de" = "manual" ]; then
             selected_de="$manual_xstartup_choice"
           fi
