@@ -28,6 +28,9 @@ process_cli_options() {
       -d|--debug)
         enable_debug
         ;;
+      -y|--assume-yes)
+        assume_yes=1
+        ;;
       -s|--select-de)
         action=select-de
         if [[ "${1:1}" != "-" ]]; then
@@ -49,6 +52,7 @@ show_help() {
   cat >&2 <<-USAGE
 Usage: $(basename "$0") [options]
   -d, --debug      Debug output
+  -y, --assume-yes Automatic "yes" to prompts
   -s, --select-de  Select desktop environent to run
   --help           Show this help
 USAGE
@@ -159,6 +163,10 @@ de_name_from_number() {
 }
 
 warn_xstartup_will_be_overwriten() {
+  if [ -n "$assume_yes" ]; then
+    return 0
+  fi
+
   echo -n "WARNING: $xstartup_script will be overwritten y/N?"
   read -r do_overwrite_xstartup
   if [[ "$do_overwrite_xstartup" = "y" || "$do_overwrite_xstartup" = "Y" ]]; then
