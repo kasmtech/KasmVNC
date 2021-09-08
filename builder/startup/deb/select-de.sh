@@ -154,7 +154,7 @@ did_user_forbid_replacing_xstartup() {
 }
 
 de_cmd_from_name() {
-  de_cmd=${all_desktop_environments[$de_name]}
+  de_cmd=${all_desktop_environments[${de_name^^}]}
 }
 
 de_name_from_number() {
