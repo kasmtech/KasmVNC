@@ -19,7 +19,7 @@ RUN apt-get update && apt-get -y install net-tools
 # RUN mkdir -p /usr/share/man/man1
 # RUN apt-get update && apt-get install -y apt-utils openjdk-11-jre
 # RUN apt-get update && apt-get install -y task-lxde-desktop
-# RUN apt-get update && apt-get install -y task-mate-desktop
+RUN apt-get update && apt-get install -y ubuntu-mate-desktop
 # RUN apt-get update && apt-get install -y task-kde-desktop
 
 RUN useradd -m docker
