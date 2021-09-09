@@ -1,4 +1,4 @@
-FROM kalilinux/kali-rolling:latest
+FROM ubuntu:bionic
 
 ENV DISPLAY=:1 \
     VNC_PORT=8443 \
@@ -16,12 +16,12 @@ ENV DISPLAY=:1 \
     VNC_PW=vncpassword \
     VNC_USER=user \
     VNC_VIEW_ONLY_PW=vncviewonlypassword \
-    LD_LIBRARY_PATH=/usr/local/lib/ \
+    LD_LIBRARY_PATH=/opt/libjpeg-turbo/lib64/:/usr/local/lib/ \
     OMP_WAIT_POLICY=PASSIVE \
     SHELL=/bin/bash \
     SINGLE_APPLICATION=0 \
     KASMVNC_BUILD_OS=ubuntu \
-    KASMVNC_BUILD_OS_VER=18.04
+    KASMVNC_BUILD_OS_CODENAME=bionic
 
 EXPOSE $VNC_PORT
 
@@ -29,7 +29,7 @@ WORKDIR $HOME
 
 ### REQUIRED STUFF ###
 
-RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal dbus-x11 xterm libnss-wrapper gettext wget
+RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm libnss-wrapper gettext wget
 RUN apt-get purge -y pm-utils xscreensaver*
 RUN apt-get update && apt-get install -y vim less
 RUN apt-get update && apt-get -y install lsb-release
@@ -42,8 +42,12 @@ COPY startup/ $STARTUPDIR
 ### START CUSTOM STUFF ####
 
 ARG KASMVNC_PACKAGE_DIR
-COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp/
-RUN rm -f /tmp/kasmvncserver_*+*.deb; dpkg -i /tmp/*.deb; apt-get -yf install
+COPY $KASMVNC_PACKAGE_DIR/libjpeg-turbo_*.deb /tmp
+RUN apt-get install /tmp/libjpeg-turbo*deb
+
+ARG BUILD_DEBIAN_REVISION
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*$BUILD_DEBIAN_REVISION*.deb /tmp
+RUN dpkg -i /tmp/*.deb; apt-get -yf install
 
 ### END CUSTOM STUFF ###
 
