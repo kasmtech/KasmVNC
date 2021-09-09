@@ -35,7 +35,7 @@ process_cli_options() {
         action=select-de
         if [[ -n "$1" && "${1:0:1}" != "-" ]]; then
           selected_de="$1"
-          assume_yes=1
+          assume_yes_for_xstartup_overwrite=1
           if [ "$selected_de" = "manual" ]; then
             selected_de="$manual_xstartup_choice"
           fi
@@ -165,7 +165,7 @@ de_name_from_number() {
 }
 
 warn_xstartup_will_be_overwriten() {
-  if [ -n "$assume_yes" ]; then
+  if [[ -n "$assume_yes" || -n "$assume_yes_for_xstartup_overwrite" ]]; then
     return 0
   fi
 
