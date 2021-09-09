@@ -897,7 +897,7 @@ void EncodeManager::updateVideoStats(const std::vector<Rect> &rects, const Pixel
   }
 }
 
-static PixelBuffer *nearestScale(const PixelBuffer *pb, const uint16_t w, const uint16_t h,
+PixelBuffer *rfb::nearestScale(const PixelBuffer *pb, const uint16_t w, const uint16_t h,
                                  const float diff)
 {
   ManagedPixelBuffer *newpb = new ManagedPixelBuffer(pb->getPF(), w, h);
@@ -922,7 +922,7 @@ static PixelBuffer *nearestScale(const PixelBuffer *pb, const uint16_t w, const 
   return newpb;
 }
 
-static PixelBuffer *bilinearScale(const PixelBuffer *pb, const uint16_t w, const uint16_t h,
+PixelBuffer *rfb::bilinearScale(const PixelBuffer *pb, const uint16_t w, const uint16_t h,
                                  const float diff)
 {
   ManagedPixelBuffer *newpb = new ManagedPixelBuffer(pb->getPF(), w, h);
@@ -970,7 +970,7 @@ static PixelBuffer *bilinearScale(const PixelBuffer *pb, const uint16_t w, const
   return newpb;
 }
 
-PixelBuffer *progressiveBilinearScale(const PixelBuffer *pb,
+PixelBuffer *rfb::progressiveBilinearScale(const PixelBuffer *pb,
                                  const uint16_t tgtw, const uint16_t tgth,
                                  const float tgtdiff)
 {

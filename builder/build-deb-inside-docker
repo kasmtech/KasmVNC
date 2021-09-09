@@ -2,11 +2,30 @@
 
 set -e
 
-cd "$(dirname "$0")/.."
+prepare_docker_copy_of_debian_dir_and_cd_to_id() {
+   cd "$(dirname "$0")/.."
+
+   local mounted_src_dir="$PWD"
+   local docker_src_dir="$HOME/src"
+
+   mkdir "$docker_src_dir"
+   cd "$docker_src_dir"
+   cp -a "$mounted_src_dir/debian/" .
+   ln -s "$mounted_src_dir/builder" .
+}
+
+prepare_docker_copy_of_debian_dir_and_cd_to_id
 
 os=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
 os_codename=$(lsb_release -cs)
 os_dir="builder/build/${os_codename}"
+
+if [ "$BUILD_TAG" = "+libjpeg-turbo_latest" ]; then
+   echo 'libjpeg 62 libjpeg-turbo (>= 2.1.1)' > debian/shlibs.local
+
+   debian_revision="$(echo $BUILD_TAG | tr _ -)"
+   sed -i -e "1 s/)/$debian_revision)/" debian/changelog
+fi
 
 dpkg-buildpackage -us -uc -b
 mkdir -p "$os_dir"

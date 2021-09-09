@@ -317,6 +317,10 @@ Log clipboard and keyboard actions. Info logs just clipboard direction and size,
 verbose adds the contents for both.
 .
 .TP
+.B \-selfBench
+Run a set of self-benchmarks and exit.
+.
+.TP
 .B \-noWebsocket
 Disable websockets and expose a traditional VNC port (5901, etc.).
 .

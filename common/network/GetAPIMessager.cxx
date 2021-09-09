@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <network/GetAPI.h>
 #include <rfb/ConnParams.h>
+#include <rfb/EncodeManager.h>
 #include <rfb/LogWriter.h>
 #include <rfb/JpegCompressor.h>
 #include <rfb/xxhash.h>
@@ -31,10 +32,6 @@ using namespace network;
 using namespace rfb;
 
 static LogWriter vlog("GetAPIMessager");
-
-PixelBuffer *progressiveBilinearScale(const PixelBuffer *pb,
-					const uint16_t tgtw, const uint16_t tgth,
-					const float tgtdiff);
 
 struct TightJPEGConfiguration {
     int quality;
