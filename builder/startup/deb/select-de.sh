@@ -78,7 +78,7 @@ declare -A all_desktop_environments=(
   [Lxqt]="exec startlxqt"
   [KDE]="exec startkde"
   [Gnome]="XDG_CURRENT_DESKTOP=GNOME exec dbus-launch --exit-with-session /usr/bin/gnome-session"
-  [XFCE]=xfce4-session)
+  [XFCE]="exec xfce4-session")
 
 readarray -t sorted_desktop_environments < <(for de in "${!all_desktop_environments[@]}"; do echo "$de"; done | sort)
 
