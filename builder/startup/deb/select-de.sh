@@ -72,11 +72,12 @@ process_cli_options "$@"
 
 manual_xstartup_choice="Manually edit xstartup"
 declare -A all_desktop_environments=(
-  [Cinnamon]=cinnamon-session
-  [Mate]="XDG_CURRENT_DESKTOP=MATE dbus-launch --exit-with-session mate-session"
-  [LXDE]=lxsession [Lxqt]=startlxqt
-  [KDE]=startkde
-  [Gnome]="XDG_CURRENT_DESKTOP=GNOME dbus-launch --exit-with-session /usr/bin/gnome-session"
+  [Cinnamon]="exec cinnamon-session"
+  [Mate]="XDG_CURRENT_DESKTOP=MATE exec dbus-launch --exit-with-session mate-session"
+  [LXDE]="exec lxsession"
+  [Lxqt]="exec startlxqt"
+  [KDE]="exec startkde"
+  [Gnome]="XDG_CURRENT_DESKTOP=GNOME exec dbus-launch --exit-with-session /usr/bin/gnome-session"
   [XFCE]=xfce4-session)
 
 readarray -t sorted_desktop_environments < <(for de in "${!all_desktop_environments[@]}"; do echo "$de"; done | sort)
@@ -189,7 +190,7 @@ generate_xstartup() {
 
   cat <<-SCRIPT > "$xstartup_script"
     #!/bin/sh
-    exec $de_cmd
+    $de_cmd
 SCRIPT
   chmod +x "$xstartup_script"
 }
