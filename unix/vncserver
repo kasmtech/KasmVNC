@@ -727,9 +727,12 @@ sub AskUserToChooseDeOrManualXstartup {
     return;
   }
 
-  unlink $de_was_selected_file;
-
+  &ForgetSelectedDe();
   system($selectDeCmd) == 0 || die("Failed to execute $selectDeCmd\n");
+}
+
+sub ForgetSelectedDe {
+  unlink $de_was_selected_file;
 }
 
 sub DetectDisplayNumberFromCliArgs {
