@@ -728,7 +728,23 @@ sub AskUserToChooseDeOrManualXstartup {
   }
 
   &ForgetSelectedDe();
+
+  $selectDeCmd = &ConstructSelectDeCmd();
   system($selectDeCmd) == 0 || die("Failed to execute $selectDeCmd\n");
+}
+
+sub ConstructSelectDeCmd {
+  my $cmd = "$selectDeBin";
+  my $specifiedDe = $opt{'-select-de'};
+
+  if ($specifiedDe) {
+    $cmd .= " --select-de";
+    if ($specifiedDe != 1) {
+      $cmd .= " $specifiedDe";
+    }
+  }
+
+  $cmd;
 }
 
 sub ForgetSelectedDe {
@@ -1018,7 +1034,7 @@ sub DefineFilePathsAndStuff {
   $vncUserConfig = "$vncUserDir/config";
   $kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
 
-  $selectDeCmd = "/src/builder/startup/deb/select-de.sh";
+  $selectDeBin = "/src/builder/startup/deb/select-de.sh";
   $de_was_selected_file="$ENV{HOME}/.vnc/.de-was-selected";
 
   $vncSystemConfigDir = "/etc/kasmvnc";
