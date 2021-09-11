@@ -18,6 +18,7 @@ test_S3_dir_exists:
   stage: test_if_build_already_exists
   script:
     - apk add bash
+    - apk add curl
     - S3_URL="https://${S3_BUCKET}.s3.amazonaws.com/${S3_BUILD_DIRECTORY}/";
     - if ! curl --output /dev/null --silent --head --fail "$S3_URL"; then exit 1; fi
 
