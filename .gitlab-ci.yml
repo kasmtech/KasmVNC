@@ -17,7 +17,6 @@ stages:
 test_if_build_was_already_uploaded:
   stage: test_if_build_was_already_uploaded
   script:
-    - apk add bash
     - apk add curl
     - S3_URL="https://${S3_BUCKET}.s3.amazonaws.com/${S3_BUILD_DIRECTORY}/";
     - ! curl --output /dev/null --silent --head --fail "$S3_URL"
