@@ -6,10 +6,20 @@ variables:
   GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
   GIT_SUBMODULE_STRATEGY: normal
   GIT_FETCH_EXTRA_FLAGS: --tags
+  # S3_BUILD_DIRECTORY: kasmvnc/${CI_COMMIT_SHA}
+  S3_BUILD_DIRECTORY: kasmvnc/159d7527955f131e096cf1602b7f9f66cc5d66cb
 
 stages:
+  - test_if_build_already_exists
   - build
   - upload
+
+test_S3_dir_exists:
+  stage: test_if_build_already_exists
+  script:
+    - apk add bash
+    - S3_URL="https://${S3_BUCKET}.s3.amazonaws.com/${S3_BUILD_DIRECTORY}/";
+    - if ! curl --output /dev/null --silent --head --fail "$S3_URL"; then exit 1; fi
 
 .prepare_build: &prepare_build
   - ls -l
@@ -112,7 +122,6 @@ upload:
   before_script:
     - . .ci/upload.sh
   script:
-    - export S3_BUILD_DIRECTORY="kasmvnc/${CI_COMMIT_SHA}"
     - prepare_to_run_scripts_and_s3_uploads
     - export RELEASE_VERSION=$(.ci/next_release_version "$CI_COMMIT_REF_NAME")
     - for package in `find output/ -type f -name '*.deb' -or -name '*.rpm'`; do
