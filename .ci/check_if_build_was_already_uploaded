@@ -3,8 +3,10 @@
 check_directory_exists() {
   local remote_dir="$1"
 
-  ! curl --output /dev/null --silent --head --fail "$remote_dir"
+  curl --output /dev/null --silent --head --fail "$remote_dir"
 }
 
 S3_URL="https://${S3_BUCKET}.s3.amazonaws.com/${S3_BUILD_DIRECTORY}/";
-check_directory_exists "$S3_URL"
+if check_directory_exists "$S3_URL"; then
+  exit 1
+fi
