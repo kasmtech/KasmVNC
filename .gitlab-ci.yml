@@ -10,12 +10,12 @@ variables:
   S3_BUILD_DIRECTORY: kasmvnc/159d7527955f131e096cf1602b7f9f66cc5d66cb
 
 stages:
-  - test_if_build_was_already_uploaded
+  - check_if_build_was_already_uploaded
   - build
   - upload
 
-test_if_build_was_already_uploaded:
-  stage: test_if_build_was_already_uploaded
+check_if_build_was_already_uploaded:
+  stage: check_if_build_was_already_uploaded
   script:
     - apk add bash
     - apk add curl
