@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 check_directory_exists() {
   local remote_dir="$1"
 
