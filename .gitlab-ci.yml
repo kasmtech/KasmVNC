@@ -10,17 +10,17 @@ variables:
   S3_BUILD_DIRECTORY: kasmvnc/159d7527955f131e096cf1602b7f9f66cc5d66cb
 
 stages:
-  - test_if_build_already_exists
+  - test_if_build_was_already_uploaded
   - build
   - upload
 
-test_S3_dir_exists:
-  stage: test_if_build_already_exists
+test_if_build_was_already_uploaded:
+  stage: test_if_build_was_already_uploaded
   script:
     - apk add bash
     - apk add curl
     - S3_URL="https://${S3_BUCKET}.s3.amazonaws.com/${S3_BUILD_DIRECTORY}/";
-    - if ! curl --output /dev/null --silent --head --fail "$S3_URL"; then exit 1; fi
+    - ! curl --output /dev/null --silent --head --fail "$S3_URL"
 
 .prepare_build: &prepare_build
   - ls -l
