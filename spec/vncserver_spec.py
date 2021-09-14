@@ -1,7 +1,17 @@
 import os
+import shutil
 import subprocess
-from mamba import description, context, it
+from mamba import description, context, it, before
 from expects import expect, equal
+
+
+def clean_env():
+    home_dir = os.environ['HOME']
+    password_file = os.path.join(home_dir, ".kasmpasswd")
+    os.remove(password_file)
+
+    vnc_dir = os.path.join(home_dir, ".vnc")
+    shutil.rmtree(vnc_dir)
 
 
 def run_cmd(cmd, **kwargs):
@@ -30,6 +40,9 @@ def check_de_was_setup_to_run(de_name):
 
 
 with description('vncserver') as self:
+    with before.each:
+        clean_env()
+
     with it('selects passed DE with -s'):
         add_kasmvnc_user_docker()
 
