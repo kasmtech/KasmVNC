@@ -19,6 +19,7 @@ check_if_build_was_already_uploaded_for_the_commit:
   script:
     - apk add bash
     - apk add curl
+    # - TODO: Try uploading and fail if the file .lock exists.
     - .ci/check_if_build_was_already_uploaded
 
 .prepare_build: &prepare_build
