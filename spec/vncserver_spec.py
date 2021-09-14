@@ -20,6 +20,10 @@ def add_kasmvnc_user_docker():
     expect(completed_process.returncode).to(equal(0))
 
 
+def kill_xvnc():
+    run_cmd('vncserver -kill :1')
+
+
 with description('vncserver') as self:
     with it('selects passed DE with -s'):
         add_kasmvnc_user_docker()
@@ -32,7 +36,7 @@ with description('vncserver') as self:
             completed_process = run_cmd('grep -q mate ~/.vnc/xstartup')
             expect(completed_process.returncode).to(equal(0))
         finally:
-            run_cmd('vncserver -kill :1')
+            kill_xvnc()
 
     with it('asks to select a DE, when ran with -select-de'):
         add_kasmvnc_user_docker()
@@ -45,4 +49,4 @@ with description('vncserver') as self:
             completed_process = run_cmd('grep -q cinnamon ~/.vnc/xstartup')
             expect(completed_process.returncode).to(equal(0))
         finally:
-            run_cmd('vncserver -kill :1')
+            kill_xvnc()
