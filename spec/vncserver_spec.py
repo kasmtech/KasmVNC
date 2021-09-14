@@ -24,6 +24,11 @@ def kill_xvnc():
     run_cmd('vncserver -kill :1')
 
 
+def check_de_was_setup_to_run(de_name):
+    completed_process = run_cmd(f'grep -q {de_name} ~/.vnc/xstartup')
+    expect(completed_process.returncode).to(equal(0))
+
+
 with description('vncserver') as self:
     with it('selects passed DE with -s'):
         add_kasmvnc_user_docker()
@@ -33,8 +38,7 @@ with description('vncserver') as self:
             completed_process = run_cmd(cmd)
             expect(completed_process.returncode).to(equal(0))
 
-            completed_process = run_cmd('grep -q mate ~/.vnc/xstartup')
-            expect(completed_process.returncode).to(equal(0))
+            check_de_was_setup_to_run('mate')
         finally:
             kill_xvnc()
 
@@ -46,7 +50,6 @@ with description('vncserver') as self:
             completed_process = run_cmd(cmd, input="1\ny\n")
             expect(completed_process.returncode).to(equal(0))
 
-            completed_process = run_cmd('grep -q cinnamon ~/.vnc/xstartup')
-            expect(completed_process.returncode).to(equal(0))
+            check_de_was_setup_to_run('cinnamon')
         finally:
             kill_xvnc()
