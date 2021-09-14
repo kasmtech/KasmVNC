@@ -29,3 +29,17 @@ with description('vncserver') as self:
             expect(completed_process.returncode).to(equal(0))
         finally:
             run_cmd('vncserver -kill :1')
+
+    with it('asks to select a DE, when ran with -select-de'):
+        completed_process = run_cmd('echo -e "password\\npassword\\n" | vncpasswd -u docker')
+        expect(completed_process.returncode).to(equal(0))
+
+        cmd = 'vncserver :1 -select-de -cert /etc/ssl/certs/ssl-cert-snakeoil.pem -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www -depth 24 -geometry 1280x1050'
+        try:
+            completed_process = run_cmd(cmd, input="1\ny\n")
+            expect(completed_process.returncode).to(equal(0))
+
+            completed_process = run_cmd('grep -q cinnamon ~/.vnc/xstartup')
+            expect(completed_process.returncode).to(equal(0))
+        finally:
+            run_cmd('vncserver -kill :1')
