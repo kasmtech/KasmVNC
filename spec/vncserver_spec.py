@@ -4,10 +4,10 @@ from mamba import description, context, it
 from expects import expect, equal
 
 
-def run_cmd(cmd):
+def run_cmd(cmd, **kwargs):
     completed_process = subprocess.run(cmd, shell=True, text=True,
                                        capture_output=True,
-                                       executable='/bin/bash')
+                                       executable='/bin/bash', **kwargs)
     if completed_process.returncode != 0:
         print(completed_process.stdout)
         print(completed_process.stderr)
