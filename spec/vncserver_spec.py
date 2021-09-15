@@ -43,27 +43,23 @@ def check_de_was_setup_to_run(de_name):
 with description('vncserver') as self:
     with before.each:
         clean_env()
+    with after.each:
+        kill_xvnc()
 
     with it('selects passed DE with -s'):
         add_kasmvnc_user_docker()
 
         cmd = 'vncserver :1 -select-de mate -cert /etc/ssl/certs/ssl-cert-snakeoil.pem -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www -depth 24 -geometry 1280x1050'
-        try:
-            completed_process = run_cmd(cmd)
-            expect(completed_process.returncode).to(equal(0))
+        completed_process = run_cmd(cmd)
+        expect(completed_process.returncode).to(equal(0))
 
-            check_de_was_setup_to_run('mate')
-        finally:
-            kill_xvnc()
+        check_de_was_setup_to_run('mate')
 
     with it('asks to select a DE, when ran with -select-de'):
         add_kasmvnc_user_docker()
 
         cmd = 'vncserver :1 -select-de -cert /etc/ssl/certs/ssl-cert-snakeoil.pem -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www -depth 24 -geometry 1280x1050'
-        try:
-            completed_process = run_cmd(cmd, input="1\ny\n")
-            expect(completed_process.returncode).to(equal(0))
+        completed_process = run_cmd(cmd, input="1\ny\n")
+        expect(completed_process.returncode).to(equal(0))
 
-            check_de_was_setup_to_run('cinnamon')
-        finally:
-            kill_xvnc()
+        check_de_was_setup_to_run('cinnamon')
