@@ -71,8 +71,8 @@ with description('vncserver') as self:
             add_kasmvnc_user_docker()
 
             cmd = f'{vncserver_cmd} -select-de'
-            choose_cinnamon_and_answer_yes = "1\ny\n"
-            completed_process = run_cmd(cmd, input=choose_cinnamon_and_answer_yes)
+            choose_cinnamon = "1\n"
+            completed_process = run_cmd(cmd, input=choose_cinnamon)
             expect(completed_process.returncode).to(equal(0))
 
             check_de_was_setup_to_run('cinnamon')
