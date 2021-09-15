@@ -62,7 +62,9 @@ cp $SRC/man/man1/Xvnc.1 $DESTDIR/usr/share/man/man1/;
 cp $SRC/share/man/man1/vncserver.1 $DST_MAN;
 cp $SRC/share/man/man1/vncconfig.1 $DST_MAN;
 cp $SRC/share/man/man1/vncpasswd.1 $DST_MAN;
+cp $SRC/share/man/man1/kasmxpoxy.1 $DST_MAN;
 cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
+
 
 %files
 /usr/bin/*
