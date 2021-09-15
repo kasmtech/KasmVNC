@@ -58,7 +58,7 @@ with description('vncserver') as self:
         kill_xvnc()
 
     with context('on the first run'):
-        with it('asks user to select a DE on the first run'):
+        with it('asks user to select a DE'):
             add_kasmvnc_user_docker()
 
             choose_cinnamon = "1\n"
