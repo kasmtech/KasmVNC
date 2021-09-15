@@ -1,17 +1,18 @@
 import os
 import shutil
 import subprocess
-from mamba import description, context, it, before
+from path import Path
+from mamba import description, context, it, before, after
 from expects import expect, equal
 
 
 def clean_env():
     home_dir = os.environ['HOME']
     password_file = os.path.join(home_dir, ".kasmpasswd")
-    os.remove(password_file)
+    Path(password_file).remove_p()
 
     vnc_dir = os.path.join(home_dir, ".vnc")
-    shutil.rmtree(vnc_dir)
+    Path(vnc_dir).rmtree(ignore_errors=True)
 
 
 def run_cmd(cmd, **kwargs):
