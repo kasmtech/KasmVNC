@@ -37,6 +37,15 @@ def kill_xvnc():
     run_cmd('vncserver -kill :1')
 
 
+def select_de(de_name):
+    try:
+        cmd = f'{vncserver_cmd} -select-de {de_name}'
+        completed_process = run_cmd(cmd)
+        expect(completed_process.returncode).to(equal(0))
+    finally:
+        kill_xvnc()
+
+
 def check_de_was_setup_to_run(de_name):
     completed_process = run_cmd(f'grep -q {de_name} ~/.vnc/xstartup')
     expect(completed_process.returncode).to(equal(0))
