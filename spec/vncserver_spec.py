@@ -57,30 +57,31 @@ with description('vncserver') as self:
     with after.each:
         kill_xvnc()
 
-    with it('asks user to select a DE on the first run'):
-        add_kasmvnc_user_docker()
+    with context('on the first run'):
+        with it('asks user to select a DE on the first run'):
+            add_kasmvnc_user_docker()
 
-        choose_cinnamon = "1\n"
-        completed_process = run_cmd(vncserver_cmd, input=choose_cinnamon)
-        expect(completed_process.returncode).to(equal(0))
+            choose_cinnamon = "1\n"
+            completed_process = run_cmd(vncserver_cmd, input=choose_cinnamon)
+            expect(completed_process.returncode).to(equal(0))
 
-        check_de_was_setup_to_run('cinnamon')
+            check_de_was_setup_to_run('cinnamon')
 
-    with it('selects passed DE with -s'):
-        add_kasmvnc_user_docker()
+        with it('asks to select a DE, when ran with -select-de'):
+            add_kasmvnc_user_docker()
 
-        cmd = f'{vncserver_cmd} -select-de mate'
-        completed_process = run_cmd(cmd)
-        expect(completed_process.returncode).to(equal(0))
+            cmd = f'{vncserver_cmd} -select-de'
+            choose_cinnamon_and_answer_yes = "1\ny\n"
+            completed_process = run_cmd(cmd, input=choose_cinnamon_and_answer_yes)
+            expect(completed_process.returncode).to(equal(0))
 
-        check_de_was_setup_to_run('mate')
+            check_de_was_setup_to_run('cinnamon')
 
-    with it('asks to select a DE, when ran with -select-de'):
-        add_kasmvnc_user_docker()
+        with it('selects passed DE with -s'):
+            add_kasmvnc_user_docker()
 
-        cmd = f'{vncserver_cmd} -select-de'
-        choose_cinnamon_and_answer_yes = "1\ny\n"
-        completed_process = run_cmd(cmd, input=choose_cinnamon_and_answer_yes)
-        expect(completed_process.returncode).to(equal(0))
+            cmd = f'{vncserver_cmd} -select-de mate'
+            completed_process = run_cmd(cmd)
+            expect(completed_process.returncode).to(equal(0))
 
-        check_de_was_setup_to_run('cinnamon')
+            check_de_was_setup_to_run('mate')
