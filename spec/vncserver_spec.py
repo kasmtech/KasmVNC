@@ -2,10 +2,11 @@ import os
 import shutil
 import subprocess
 from path import Path
-from mamba import description, context, it, before, after
+from mamba import description, context, it, fit, before, after
 from expects import expect, equal
 
 vncserver_cmd = 'vncserver :1 -cert /etc/ssl/certs/ssl-cert-snakeoil.pem -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www -depth 24 -geometry 1280x1050'
+running_xvnc = False
 
 
 def clean_env():
@@ -15,6 +16,15 @@ def clean_env():
 
     vnc_dir = os.path.join(home_dir, ".vnc")
     Path(vnc_dir).rmtree(ignore_errors=True)
+
+
+def start_xvnc(extra_args="", **kwargs):
+    global running_xvnc
+    completed_process = run_cmd(f'{vncserver_cmd} {extra_args}', **kwargs)
+    if completed_process.returncode == 0:
+        running_xvnc = True
+
+    return completed_process
 
 
 def run_cmd(cmd, **kwargs):
@@ -34,13 +44,18 @@ def add_kasmvnc_user_docker():
 
 
 def kill_xvnc():
+    global running_xvnc
+    if not running_xvnc:
+        return
+
     run_cmd('vncserver -kill :1')
+    running_xvnc = False
 
 
 def select_de(de_name):
     try:
-        cmd = f'{vncserver_cmd} -select-de {de_name}'
-        completed_process = run_cmd(cmd)
+        extra_args = f'-select-de {de_name}'
+        completed_process = start_xvnc(extra_args)
         expect(completed_process.returncode).to(equal(0))
     finally:
         kill_xvnc()
@@ -62,7 +77,7 @@ with description('vncserver') as self:
             add_kasmvnc_user_docker()
 
             choose_cinnamon = "1\n"
-            completed_process = run_cmd(vncserver_cmd, input=choose_cinnamon)
+            completed_process = start_xvnc(input=choose_cinnamon)
             expect(completed_process.returncode).to(equal(0))
 
             check_de_was_setup_to_run('cinnamon')
@@ -70,9 +85,8 @@ with description('vncserver') as self:
         with it('asks to select a DE, when ran with -select-de'):
             add_kasmvnc_user_docker()
 
-            cmd = f'{vncserver_cmd} -select-de'
             choose_cinnamon = "1\n"
-            completed_process = run_cmd(cmd, input=choose_cinnamon)
+            completed_process = start_xvnc('-select-de', input=choose_cinnamon)
             expect(completed_process.returncode).to(equal(0))
 
             check_de_was_setup_to_run('cinnamon')
@@ -80,10 +94,7 @@ with description('vncserver') as self:
         with it('selects passed DE with -s'):
             add_kasmvnc_user_docker()
 
-            cmd = f'{vncserver_cmd} -select-de mate'
-            completed_process = run_cmd(cmd)
-            expect(completed_process.returncode).to(equal(0))
-
+            select_de('mate')
             check_de_was_setup_to_run('mate')
 
     with context('after DE was selected'):
@@ -91,7 +102,7 @@ with description('vncserver') as self:
             add_kasmvnc_user_docker()
             select_de('mate')
 
-            completed_process = run_cmd(vncserver_cmd)
+            completed_process = start_xvnc()
             expect(completed_process.returncode).to(equal(0))
 
             check_de_was_setup_to_run('mate')
@@ -100,9 +111,9 @@ with description('vncserver') as self:
             add_kasmvnc_user_docker()
             select_de('mate')
 
-            cmd = f'{vncserver_cmd} -select-de'
             choose_cinnamon_and_answer_yes = "1\ny\n"
-            completed_process = run_cmd(cmd, input=choose_cinnamon_and_answer_yes)
+            completed_process = start_xvnc('-select-de',
+                                           input=choose_cinnamon_and_answer_yes)
             expect(completed_process.returncode).to(equal(0))
 
             check_de_was_setup_to_run('cinnamon')
@@ -111,8 +122,7 @@ with description('vncserver') as self:
             add_kasmvnc_user_docker()
             select_de('mate')
 
-            cmd = f'{vncserver_cmd} -select-de cinnamon'
-            completed_process = run_cmd(cmd)
+            completed_process = start_xvnc('-select-de cinnamon')
             expect(completed_process.returncode).to(equal(0))
 
             check_de_was_setup_to_run('cinnamon')
