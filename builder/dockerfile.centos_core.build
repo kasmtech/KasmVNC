@@ -11,7 +11,7 @@ RUN yum group install -y "Development Tools"
 RUN yum install -y xorg-x11-server-devel zlib-devel libjpeg-turbo-devel
 RUN yum install -y libxkbfile-devel libXfont2-devel xorg-x11-font-utils \
   xorg-x11-xtrans-devel xorg-x11-xkb-utils-devel libXrandr-devel pam-devel \
-  gnutls-devel libX11-devel libXtst-devel
+  gnutls-devel libX11-devel libXtst-devel libXcursor-devel
 RUN yum install -y mesa-dri-drivers
 
 # Additions for webp
