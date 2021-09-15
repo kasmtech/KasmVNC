@@ -5,6 +5,8 @@ from path import Path
 from mamba import description, context, it, before, after
 from expects import expect, equal
 
+vncserver_cmd = 'vncserver :1 -cert /etc/ssl/certs/ssl-cert-snakeoil.pem -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www -depth 24 -geometry 1280x1050'
+
 
 def clean_env():
     home_dir = os.environ['HOME']
@@ -49,7 +51,7 @@ with description('vncserver') as self:
     with it('selects passed DE with -s'):
         add_kasmvnc_user_docker()
 
-        cmd = 'vncserver :1 -select-de mate -cert /etc/ssl/certs/ssl-cert-snakeoil.pem -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www -depth 24 -geometry 1280x1050'
+        cmd = f'{vncserver_cmd} -select-de mate'
         completed_process = run_cmd(cmd)
         expect(completed_process.returncode).to(equal(0))
 
@@ -58,7 +60,7 @@ with description('vncserver') as self:
     with it('asks to select a DE, when ran with -select-de'):
         add_kasmvnc_user_docker()
 
-        cmd = 'vncserver :1 -select-de -cert /etc/ssl/certs/ssl-cert-snakeoil.pem -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www -depth 24 -geometry 1280x1050'
+        cmd = f'{vncserver_cmd} -select-de'
         completed_process = run_cmd(cmd, input="1\ny\n")
         expect(completed_process.returncode).to(equal(0))
 
