@@ -169,6 +169,10 @@ warn_xstartup_will_be_overwriten() {
     return 0
   fi
 
+  if [ ! -f "$xstartup_script" ]; then
+    return 0
+  fi
+
   echo -n "WARNING: $xstartup_script will be overwritten y/N?"
   read -r do_overwrite_xstartup
   if [[ "$do_overwrite_xstartup" = "y" || "$do_overwrite_xstartup" = "Y" ]]; then

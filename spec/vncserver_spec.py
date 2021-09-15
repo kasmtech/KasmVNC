@@ -51,7 +51,7 @@ with description('vncserver') as self:
     with it('asks user to select a DE on the first run'):
         add_kasmvnc_user_docker()
 
-        completed_process = run_cmd(vncserver_cmd, input="1\ny\n")
+        completed_process = run_cmd(vncserver_cmd, input="1\n")
         expect(completed_process.returncode).to(equal(0))
 
         check_de_was_setup_to_run('cinnamon')
