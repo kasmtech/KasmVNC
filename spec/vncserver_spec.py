@@ -85,3 +85,34 @@ with description('vncserver') as self:
             expect(completed_process.returncode).to(equal(0))
 
             check_de_was_setup_to_run('mate')
+
+    with context('after DE was selected'):
+        with it("don't ask to choose DE by default"):
+            add_kasmvnc_user_docker()
+            select_de('mate')
+
+            completed_process = run_cmd(vncserver_cmd)
+            expect(completed_process.returncode).to(equal(0))
+
+            check_de_was_setup_to_run('mate')
+
+        with it('asks to select a DE, when ran with -select-de'):
+            add_kasmvnc_user_docker()
+            select_de('mate')
+
+            cmd = f'{vncserver_cmd} -select-de'
+            choose_cinnamon_and_answer_yes = "1\ny\n"
+            completed_process = run_cmd(cmd, input=choose_cinnamon_and_answer_yes)
+            expect(completed_process.returncode).to(equal(0))
+
+            check_de_was_setup_to_run('cinnamon')
+
+        with it('selects passed DE with -s'):
+            add_kasmvnc_user_docker()
+            select_de('mate')
+
+            cmd = f'{vncserver_cmd} -select-de cinnamon'
+            completed_process = run_cmd(cmd)
+            expect(completed_process.returncode).to(equal(0))
+
+            check_de_was_setup_to_run('cinnamon')
