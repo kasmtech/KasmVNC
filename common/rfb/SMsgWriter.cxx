@@ -200,6 +200,24 @@ void SMsgWriter::writeClipboardProvide(rdr::U32 flags,
   endMsg();
 }
 
+void SMsgWriter::writeBinaryClipboard(const std::vector<SConnection::binaryClipboard_t> &b)
+{
+  startMsg(msgTypeBinaryClipboard);
+
+  os->writeU8(b.size());
+  rdr::U8 i;
+  for (i = 0; i < b.size(); i++) {
+    const rdr::U8 mimelen = strlen(b[i].mime);
+    os->writeU8(mimelen);
+    os->writeBytes(b[i].mime, mimelen);
+
+    os->writeU32(b[i].data.size());
+    os->writeBytes(&b[i].data[0], b[i].data.size());
+  }
+
+  endMsg();
+}
+
 void SMsgWriter::writeStats(const char* str, int len)
 {
   startMsg(msgTypeStats);

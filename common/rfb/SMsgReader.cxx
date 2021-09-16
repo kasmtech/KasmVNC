@@ -83,6 +83,9 @@ void SMsgReader::readMsg()
   case msgTypeFrameStats:
     readFrameStats();
     break;
+  case msgTypeBinaryClipboard:
+    readBinaryClipboard();
+    break;
   case msgTypeKeyEvent:
     readKeyEvent();
     break;
@@ -247,6 +250,44 @@ void SMsgReader::readClientCutText()
   ca.buf[len] = 0;
   is->readBytes(ca.buf, len);
   handler->clientCutText(ca.buf, len);
+}
+
+void SMsgReader::readBinaryClipboard()
+{
+  const rdr::U8 num = is->readU8();
+  rdr::U8 i, valid = 0;
+  char tmpmimes[num][32];
+
+  handler->clearBinaryClipboard();
+  for (i = 0; i < num; i++) {
+    const rdr::U8 mimelen = is->readU8();
+    if (mimelen > 32 - 1) {
+      vlog.error("Mime too long (%u)", mimelen);
+    }
+
+    char mime[mimelen + 1];
+    mime[mimelen] = '\0';
+    is->readBytes(mime, mimelen);
+
+    strncpy(tmpmimes[valid], mime, 32);
+    tmpmimes[valid][31] = '\0';
+
+    const rdr::U32 len = is->readU32();
+    CharArray ca(len);
+    is->readBytes(ca.buf, len);
+
+    if (rfb::Server::DLP_ClipAcceptMax && len > (unsigned) rfb::Server::DLP_ClipAcceptMax) {
+      vlog.info("DLP: refused to receive binary clipboard, too large");
+      continue;
+    }
+
+    vlog.debug("Received binary clipboard, type %s, %u bytes", mime, len);
+
+    handler->addBinaryClipboard(mime, (rdr::U8 *) ca.buf, len);
+    valid++;
+  }
+
+  handler->handleClipboardAnnounceBinary(valid, tmpmimes);
 }
 
 void SMsgReader::readExtendedClipboard(rdr::S32 len)

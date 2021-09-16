@@ -63,6 +63,11 @@ public:
   void requestClipboard();
   void announceClipboard(bool available);
   void sendClipboardData(const char* data);
+  void clearBinaryClipboardData();
+  void sendBinaryClipboardData(const char* mime, const unsigned char *data,
+                               const unsigned len);
+  void getBinaryClipboardData(const char *mime, const unsigned char **ptr,
+                              unsigned *len);
   void bell();
   void setLEDState(unsigned int state);
   void setDesktopName(const char* name);
@@ -96,6 +101,7 @@ public:
                                        const rfb::ScreenSet& layout);
   virtual void handleClipboardRequest();
   virtual void handleClipboardAnnounce(bool available);
+  virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
   virtual void handleClipboardData(const char* data, int len);
 
   // rfb::PixelBuffer callbacks

@@ -557,6 +557,33 @@ void VNCServerST::sendClipboardData(const char* data)
   clipboardRequestors.clear();
 }
 
+void VNCServerST::sendBinaryClipboardData(const char* mime, const unsigned char *data,
+                                          const unsigned len)
+{
+  std::list<VNCSConnectionST*>::iterator ci, ci_next;
+  for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
+    ci_next = ci; ci_next++;
+    (*ci)->sendBinaryClipboardDataOrClose(mime, data, len);
+  }
+}
+
+void VNCServerST::getBinaryClipboardData(const char* mime, const unsigned char **data,
+                                         unsigned *len)
+{
+  if (!clipboardClient)
+    return;
+  clipboardClient->getBinaryClipboardData(mime, data, len);
+}
+
+void VNCServerST::clearBinaryClipboardData()
+{
+  std::list<VNCSConnectionST*>::iterator ci, ci_next;
+  for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
+    ci_next = ci; ci_next++;
+    (*ci)->clearBinaryClipboardData();
+  }
+}
+
 void VNCServerST::bell()
 {
   std::list<VNCSConnectionST*>::iterator ci, ci_next;
@@ -1216,6 +1243,14 @@ void VNCServerST::handleClipboardAnnounce(VNCSConnectionST* client,
     clipboardClient = NULL;
   }
   desktop->handleClipboardAnnounce(available);
+}
+
+void VNCServerST::handleClipboardAnnounceBinary(VNCSConnectionST* client,
+                                                 const unsigned num,
+                                                 const char mimes[][32])
+{
+  clipboardClient = client;
+  desktop->handleClipboardAnnounceBinary(num, mimes);
 }
 
 void VNCServerST::handleClipboardData(VNCSConnectionST* client,

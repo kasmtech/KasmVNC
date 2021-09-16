@@ -28,6 +28,7 @@
 #include <rdr/OutStream.h>
 #include <rfb/SMsgHandler.h>
 #include <rfb/SecurityServer.h>
+#include <vector>
 
 namespace rfb {
 
@@ -81,6 +82,9 @@ namespace rfb {
     virtual void handleClipboardProvide(rdr::U32 flags,
                                         const size_t* lengths,
                                         const rdr::U8* const* data);
+    virtual void clearBinaryClipboard();
+    virtual void addBinaryClipboard(const char mime[], const rdr::U8 *data,
+                                    const rdr::U32 len);
 
     virtual void supportsQEMUKeyEvent();
 
@@ -221,11 +225,18 @@ namespace rfb {
 
     rdr::S32 getPreferredEncoding() { return preferredEncoding; }
 
+    struct binaryClipboard_t {
+        char mime[32];
+        std::vector<unsigned char> data;
+    };
+
   protected:
     void setState(stateEnum s) { state_ = s; }
 
     void setReader(SMsgReader *r) { reader_ = r; }
     void setWriter(SMsgWriter *w) { writer_ = w; }
+
+    std::vector<binaryClipboard_t> binaryClipboard;
 
   private:
     void writeFakeColourMap(void);

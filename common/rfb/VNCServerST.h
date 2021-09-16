@@ -99,6 +99,11 @@ namespace rfb {
     virtual void requestClipboard();
     virtual void announceClipboard(bool available);
     virtual void sendClipboardData(const char* data);
+    virtual void clearBinaryClipboardData();
+    virtual void sendBinaryClipboardData(const char* mime, const unsigned char *data,
+                                         const unsigned len);
+    virtual void getBinaryClipboardData(const char *mime, const unsigned char **ptr,
+                                        unsigned *len);
     virtual void add_changed(const Region &region);
     virtual void add_copied(const Region &dest, const Point &delta);
     virtual void setCursor(int width, int height, const Point& hotspot,
@@ -193,6 +198,8 @@ namespace rfb {
 
     void handleClipboardRequest(VNCSConnectionST* client);
     void handleClipboardAnnounce(VNCSConnectionST* client, bool available);
+    void handleClipboardAnnounceBinary(VNCSConnectionST* client, const unsigned num,
+                                       const char mimes[][32]);
     void handleClipboardData(VNCSConnectionST* client, const char* data, int len);
 
   protected:

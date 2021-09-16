@@ -353,6 +353,25 @@ void SConnection::handleClipboardProvide(rdr::U32 flags,
   handleClipboardData(clientClipboard, strlen(clientClipboard));
 }
 
+void SConnection::clearBinaryClipboard()
+{
+  binaryClipboard.clear();
+}
+
+void SConnection::addBinaryClipboard(const char mime[], const rdr::U8 *data,
+                                     const rdr::U32 len)
+{
+  binaryClipboard_t bin;
+  strncpy(bin.mime, mime, sizeof(bin.mime));
+  bin.mime[sizeof(bin.mime) - 1] = '\0';
+
+  bin.data.resize(len);
+  memcpy(&bin.data[0], data, len);
+
+  binaryClipboard.push_back(bin);
+}
+
+
 void SConnection::supportsQEMUKeyEvent()
 {
   writer()->writeQEMUKeyEvent();

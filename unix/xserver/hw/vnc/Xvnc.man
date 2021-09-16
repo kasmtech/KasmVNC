@@ -308,6 +308,11 @@ Limit clipboard bytes to receive from clients in one transaction. Default 10,000
 This many milliseconds must pass between clipboard actions. Default 1000.
 .
 .TP
+.B \-DLP_Clip_types \fIa,b\fP
+Allowed binary clipboard mimetypes, separated by commas. Default
+chromium/x-web-custom-data,text/html,image/png
+.
+.TP
 .B \-DLP_KeyRateLimit \fIkeys-per-second\fP
 Reject keyboard presses over this many per second. Default 0 (disabled).
 .

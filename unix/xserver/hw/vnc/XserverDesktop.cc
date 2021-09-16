@@ -203,6 +203,37 @@ void XserverDesktop::sendClipboardData(const char* data)
   }
 }
 
+void XserverDesktop::clearBinaryClipboardData()
+{
+  try {
+    server->clearBinaryClipboardData();
+  } catch (rdr::Exception& e) {
+    vlog.error("XserverDesktop::clearBinaryClipboardData: %s",e.str());
+  }
+}
+
+void XserverDesktop::sendBinaryClipboardData(const char* mime,
+                                             const unsigned char *data,
+                                             const unsigned len)
+{
+  try {
+    server->sendBinaryClipboardData(mime, data, len);
+  } catch (rdr::Exception& e) {
+    vlog.error("XserverDesktop::sendBinaryClipboardData: %s",e.str());
+  }
+}
+
+void XserverDesktop::getBinaryClipboardData(const char* mime,
+                                            const unsigned char **data,
+                                            unsigned *len)
+{
+  try {
+    server->getBinaryClipboardData(mime, data, len);
+  } catch (rdr::Exception& e) {
+    vlog.error("XserverDesktop::getBinaryClipboardData: %s",e.str());
+  }
+}
+
 void XserverDesktop::bell()
 {
   server->bell();
@@ -477,6 +508,11 @@ void XserverDesktop::handleClipboardRequest()
 void XserverDesktop::handleClipboardAnnounce(bool available)
 {
   vncHandleClipboardAnnounce(available);
+}
+
+void XserverDesktop::handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32])
+{
+  vncHandleClipboardAnnounceBinary(num, mimes);
 }
 
 void XserverDesktop::handleClipboardData(const char* data_, int len)

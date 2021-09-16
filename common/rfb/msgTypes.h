@@ -31,6 +31,7 @@ namespace rfb {
   // kasm
   const int msgTypeStats = 178;
   const int msgTypeRequestFrameStats = 179;
+  const int msgTypeBinaryClipboard = 180;
 
   const int msgTypeServerFence = 248;
 
@@ -49,6 +50,7 @@ namespace rfb {
   // kasm
   const int msgTypeRequestStats = 178;
   const int msgTypeFrameStats = 179;
+  //const int msgTypeBinaryClipboard = 180;
 
   const int msgTypeClientFence = 248;
 

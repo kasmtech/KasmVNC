@@ -57,7 +57,8 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
     inProcessMessages(false),
     pendingSyncFence(false), syncFence(false), fenceFlags(0),
     fenceDataLen(0), fenceData(NULL), congestionTimer(this),
-    losslessTimer(this), kbdLogTimer(this), server(server_), updates(false),
+    losslessTimer(this), kbdLogTimer(this), binclipTimer(this),
+    server(server_), updates(false),
     updateRenderedCursor(false), removeRenderedCursor(false),
     continuousUpdates(false), encodeManager(this, &server_->encCache),
     needsPermCheck(false), pointerEventTime(0),
@@ -458,6 +459,58 @@ void VNCSConnectionST::sendClipboardDataOrClose(const char* data)
   } catch(rdr::Exception& e) {
     close(e.str());
   }
+}
+
+void VNCSConnectionST::clearBinaryClipboardData()
+{
+  clearBinaryClipboard();
+}
+
+void VNCSConnectionST::sendBinaryClipboardDataOrClose(const char* mime,
+                                                      const unsigned char *data,
+                                                      const unsigned len)
+{
+  try {
+    if (!(accessRights & AccessCutText)) return;
+    if (!rfb::Server::sendCutText) return;
+    if (msSince(&lastClipboardOp) < (unsigned) rfb::Server::DLP_ClipDelay) {
+      vlog.info("DLP: client %s: refused to send binary clipboard, too soon",
+                sock->getPeerAddress());
+      return;
+    }
+    if (rfb::Server::DLP_ClipSendMax && len > (unsigned) rfb::Server::DLP_ClipSendMax) {
+      vlog.info("DLP: client %s: refused to send binary clipboard, too large",
+                sock->getPeerAddress());
+      return;
+    }
+
+    cliplog((const char *) data, len, len, "sent", sock->getPeerAddress());
+    if (state() != RFBSTATE_NORMAL) return;
+
+    addBinaryClipboard(mime, data, len);
+    binclipTimer.start(100);
+
+    gettimeofday(&lastClipboardOp, NULL);
+  } catch(rdr::Exception& e) {
+    close(e.str());
+  }
+}
+
+void VNCSConnectionST::getBinaryClipboardData(const char* mime, const unsigned char **data,
+                                              unsigned *len)
+{
+  unsigned i;
+  for (i = 0; i < binaryClipboard.size(); i++) {
+    if (!strcmp(binaryClipboard[i].mime, mime)) {
+      *data = &binaryClipboard[i].data[0];
+      *len = binaryClipboard[i].data.size();
+      return;
+    }
+  }
+
+  vlog.error("Binary clipboard data for mime %s not found", mime);
+  *data = (const unsigned char *) "";
+  *len = 1;
 }
 
 void VNCSConnectionST::setDesktopNameOrClose(const char *name)
@@ -1027,6 +1080,13 @@ void VNCSConnectionST::handleClipboardAnnounce(bool available)
   server->handleClipboardAnnounce(this, available);
 }
 
+void VNCSConnectionST::handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32])
+{
+  if (!(accessRights & AccessCutText)) return;
+  if (!rfb::Server::acceptCutText) return;
+  server->handleClipboardAnnounceBinary(this, num, mimes);
+}
+
 void VNCSConnectionST::handleClipboardData(const char* data, int len)
 {
   if (!(accessRights & AccessCutText)) return;
@@ -1089,6 +1149,8 @@ bool VNCSConnectionST::handleTimeout(Timer* t)
       writeFramebufferUpdate();
     else if (t == &kbdLogTimer)
       flushKeylog(sock->getPeerAddress());
+    else if (t == &binclipTimer)
+      writeBinaryClipboard();
   } catch (rdr::Exception& e) {
     close(e.str());
   }
@@ -1446,6 +1508,10 @@ void VNCSConnectionST::writeDataUpdate()
   requested.clear();
 }
 
+void VNCSConnectionST::writeBinaryClipboard()
+{
+  writer()->writeBinaryClipboard(binaryClipboard);
+}
 
 void VNCSConnectionST::screenLayoutChange(rdr::U16 reason)
 {

@@ -26,6 +26,8 @@
 #include <rdr/types.h>
 #include <rfb/encodings.h>
 #include <rfb/ScreenSet.h>
+#include <rfb/SConnection.h>
+#include <vector>
 
 namespace rdr { class OutStream; }
 
@@ -62,6 +64,7 @@ namespace rfb {
     void writeClipboardNotify(rdr::U32 flags);
     void writeClipboardProvide(rdr::U32 flags, const size_t* lengths,
                                const rdr::U8* const* data);
+    void writeBinaryClipboard(const std::vector<SConnection::binaryClipboard_t> &b);
 
     void writeStats(const char* str, int len);
 

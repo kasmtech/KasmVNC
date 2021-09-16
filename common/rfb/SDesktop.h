@@ -89,6 +89,9 @@ namespace rfb {
     // access the actual data.
     virtual void handleClipboardAnnounce(bool __unused_attr available) {}
 
+    virtual void handleClipboardAnnounceBinary(const unsigned __unused_attr num,
+                                               const char __unused_attr mimes[][32]) {}
+
     // handleClipboardData() is called when a client has sent over
     // the clipboard data as a result of a previous call to
     // VNCServer::requestClipboard(). Note that this function might
