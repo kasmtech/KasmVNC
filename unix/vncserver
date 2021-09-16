@@ -543,6 +543,23 @@ sub CheckRequiredDependenciesArePresent
     $AF_INET = &AF_INET;
     $SOCK_STREAM = &SOCK_STREAM;
   }
+
+  &CheckUserHasSslCertGroupOnDebian();
+}
+
+sub CheckUserHasSslCertGroupOnDebian {
+  if (! -f "/etc/debian_version") {
+    return;
+  }
+
+  my $certGroup = 'ssl-cert';
+  if (system("groups | grep -qw $certGroup") != 0) {
+    say <<EOF;
+      Can't access TLS certificate.
+      Please add your user to $certGroup via 'addgroup <user> $certGroup'
+EOF
+    exit(1);
+  }
 }
 
 sub CreateXstartupIfNeeded
