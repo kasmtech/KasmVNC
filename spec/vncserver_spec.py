@@ -1,4 +1,5 @@
 import os
+import sys
 import pexpect
 import shutil
 import subprocess
@@ -144,10 +145,11 @@ with description('vncserver') as self:
             completed_process = run_cmd(f'grep -qw {user} {home_dir}/.kasmpasswd')
             expect(completed_process.returncode).to(equal(0))
 
-        with it('specify custom username'):
+        with fit('specify custom username'):
             custom_username = 'custom_username'
             child = pexpect.spawn(f'{vncserver_cmd} -select-de cinnamon',
                                   timeout=2)
+            # child.logfile = sys.stdout.buffer
             child.expect('Enter username')
             child.sendline(custom_username)
             child.expect('Password:')
@@ -158,6 +160,10 @@ with description('vncserver') as self:
             child.close()
             expect(child.exitstatus).to(equal(0))
 
+            # TOOD: Xvnc won't bind to a port under pexpect, and its output is
+            # invisible.
             home_dir = os.environ['HOME']
             completed_process = run_cmd(f'grep -qw {custom_username} {home_dir}/.kasmpasswd')
             expect(completed_process.returncode).to(equal(0))
+
+            os.system(f'pgrep Xvnc >/dev/null || cat {home_dir}/.vnc/*.log')
