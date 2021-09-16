@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y cinnamon
 RUN apt-get update && apt-get install -y ubuntu-gnome-desktop
 
 RUN apt-get update && apt-get install -y python3-pip
+RUN apt-get update && apt-get install -y strace
 
 RUN useradd -m docker
 ENV USER docker
