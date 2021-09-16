@@ -141,7 +141,7 @@ with description('vncserver') as self:
 
             home_dir = os.environ['HOME']
             user = os.environ['USER']
-            completed_process = run_cmd(f'grep -q {user} {home_dir}/.kasmpasswd')
+            completed_process = run_cmd(f'grep -qw {user} {home_dir}/.kasmpasswd')
             expect(completed_process.returncode).to(equal(0))
 
         with fit('specify custom username'):
