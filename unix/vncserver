@@ -554,10 +554,10 @@ sub CheckUserHasSslCertGroupOnDebian {
 
   my $certGroup = 'ssl-cert';
   if (system("groups | grep -qw $certGroup") != 0) {
-    say <<EOF;
+    say <<~EOF;
       Can't access TLS certificate.
       Please add your user to $certGroup via 'addgroup <user> $certGroup'
-EOF
+    EOF
     exit(1);
   }
 }
