@@ -143,3 +143,21 @@ with description('vncserver') as self:
             user = os.environ['USER']
             completed_process = run_cmd(f'grep -q {user} {home_dir}/.kasmpasswd')
             expect(completed_process.returncode).to(equal(0))
+
+        with fit('specify custom username'):
+            custom_username = 'custom_username'
+            child = pexpect.spawn(f'{vncserver_cmd} -select-de cinnamon',
+                                  timeout=2)
+            child.expect('Enter username')
+            child.sendline(custom_username)
+            child.expect('Password:')
+            child.sendline('password')
+            child.expect('Verify:')
+            child.sendline('password')
+            child.expect(pexpect.EOF)
+            child.close()
+            expect(child.exitstatus).to(equal(0))
+
+            home_dir = os.environ['HOME']
+            completed_process = run_cmd(f'grep -qw {custom_username} {home_dir}/.kasmpasswd')
+            expect(completed_process.returncode).to(equal(0))
