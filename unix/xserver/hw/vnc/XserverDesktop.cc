@@ -446,11 +446,14 @@ void XserverDesktop::approveConnection(uint32_t opaqueId, bool accept,
 
 
 void XserverDesktop::pointerEvent(const Point& pos, int buttonMask,
-                                  const bool skipClick, const bool skipRelease)
+                                  const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
-  vncPointerMove(pos.x + vncGetScreenX(screenIndex),
-                 pos.y + vncGetScreenY(screenIndex));
-  vncPointerButtonAction(buttonMask, skipClick, skipRelease);
+  if (scrollX == 0 && scrollY == 0) {
+    vncPointerMove(pos.x + vncGetScreenX(screenIndex), pos.y + vncGetScreenY(screenIndex));
+    vncPointerButtonAction(buttonMask, skipClick, skipRelease);
+  } else {
+    vncScroll(scrollX, scrollY);
+  }
 }
 
 unsigned int XserverDesktop::setScreenLayout(int fb_width, int fb_height,
