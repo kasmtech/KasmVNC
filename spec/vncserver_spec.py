@@ -73,9 +73,10 @@ with description('vncserver') as self:
         kill_xvnc()
 
     with context('on the first run'):
-        with it('asks user to select a DE'):
+        with before.each:
             add_kasmvnc_user_docker()
 
+        with it('asks user to select a DE'):
             choose_cinnamon = "1\n"
             completed_process = start_xvnc(input=choose_cinnamon)
             expect(completed_process.returncode).to(equal(0))
@@ -83,8 +84,6 @@ with description('vncserver') as self:
             check_de_was_setup_to_run('cinnamon')
 
         with it('asks to select a DE, when ran with -select-de'):
-            add_kasmvnc_user_docker()
-
             choose_cinnamon = "1\n"
             completed_process = start_xvnc('-select-de', input=choose_cinnamon)
             expect(completed_process.returncode).to(equal(0))
@@ -92,14 +91,14 @@ with description('vncserver') as self:
             check_de_was_setup_to_run('cinnamon')
 
         with it('selects passed DE with -s'):
-            add_kasmvnc_user_docker()
-
             select_de('mate')
             check_de_was_setup_to_run('mate')
 
     with context('after DE was selected'):
-        with it("don't ask to choose DE by default"):
+        with before.each:
             add_kasmvnc_user_docker()
+
+        with it("don't ask to choose DE by default"):
             select_de('mate')
 
             completed_process = start_xvnc()
@@ -108,7 +107,6 @@ with description('vncserver') as self:
             check_de_was_setup_to_run('mate')
 
         with it('asks to select a DE, when ran with -select-de'):
-            add_kasmvnc_user_docker()
             select_de('mate')
 
             choose_cinnamon_and_answer_yes = "1\ny\n"
@@ -119,7 +117,6 @@ with description('vncserver') as self:
             check_de_was_setup_to_run('cinnamon')
 
         with it('selects passed DE with -s'):
-            add_kasmvnc_user_docker()
             select_de('mate')
 
             completed_process = start_xvnc('-select-de cinnamon')
