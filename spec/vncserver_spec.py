@@ -126,7 +126,7 @@ with description('vncserver') as self:
             check_de_was_setup_to_run('cinnamon')
 
     with context('guided user creation'):
-        with fit('asks to create a user if none exist'):
+        with it('asks to create a user if none exist'):
             child = pexpect.spawn(f'{vncserver_cmd} -select-de cinnamon',
                                   timeout=2)
             child.expect('Enter username')
@@ -144,7 +144,7 @@ with description('vncserver') as self:
             completed_process = run_cmd(f'grep -qw {user} {home_dir}/.kasmpasswd')
             expect(completed_process.returncode).to(equal(0))
 
-        with fit('specify custom username'):
+        with it('specify custom username'):
             custom_username = 'custom_username'
             child = pexpect.spawn(f'{vncserver_cmd} -select-de cinnamon',
                                   timeout=2)
