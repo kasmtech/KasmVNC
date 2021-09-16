@@ -193,8 +193,8 @@ generate_xstartup() {
   de_cmd_from_name
 
   cat <<-SCRIPT > "$xstartup_script"
-    #!/bin/sh
-    $de_cmd
+#!/bin/sh
+$de_cmd
 SCRIPT
   chmod +x "$xstartup_script"
 }
