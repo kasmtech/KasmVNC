@@ -172,7 +172,7 @@ rfb::StringParameter rfb::Server::DLP_Region
  "Black out anything outside this region",
  "");
 rfb::StringParameter rfb::Server::DLP_Clip_Types
-("DLP_Clip_Types",
+("DLP_ClipTypes",
  "Allowed binary clipboard mimetypes",
  "chromium/x-web-custom-data,text/html,image/png");
 
