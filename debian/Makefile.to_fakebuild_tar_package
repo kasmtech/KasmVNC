@@ -11,11 +11,12 @@ install: unpack_tarball
 	echo "TAR_DATA: $(TAR_DATA)"
 	echo "installing files"
 	mkdir -p $(DESTDIR)/usr/bin $(DESTDIR)/usr/share/man/man1 \
-	  $(DESTDIR)/usr/share/doc/kasmvncserver
+	  $(DESTDIR)/usr/share/doc/kasmvncserver $(DESTDIR)/usr/lib
 	cp $(SRC_BIN)/Xvnc $(DESTDIR)/usr/bin/Xkasmvnc
 	cp $(SRC_BIN)/vncserver $(DESTDIR)/usr/bin/kasmvncserver
 	cp $(SRC_BIN)/vncconfig $(DESTDIR)/usr/bin/kasmvncconfig
 	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
+	cp -r $(SRC)/lib/kasmvnc/ $(DESTDIR)/usr/lib/kasmvncserver
 	cp -r $(SRC)/share/doc/kasmvnc*/* $(DESTDIR)/usr/share/doc/kasmvncserver/
 	rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
 	  --exclude www/utils/ --exclude .eslintrc \

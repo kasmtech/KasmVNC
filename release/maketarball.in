@@ -50,6 +50,8 @@ if [ $SERVER = 1 ]; then
 	install -m 644 ./xorg.build/man/man1/Xserver.1 $OUTDIR/man/man1/Xserver.1
 	mkdir -p $OUTDIR/lib/dri/
 	install -m 755 ./xorg.build/lib/dri/swrast_dri.so $OUTDIR/lib/dri/
+	mkdir -p $OUTDIR/lib/kasmvnc
+	install -m 755 $SRCDIR/builder/startup/deb/select-de.sh $OUTDIR/lib/kasmvnc
 	mkdir -p $OUTDIR/share/kasmvnc
 	cp -r $SRCDIR/builder/www $OUTDIR/share/kasmvnc/www
 fi
