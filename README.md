@@ -51,9 +51,9 @@ sudo addgroup $USER ssl-cert
 # You will need to re-connect in order to pick up the group change
 
 # Run KasmVNC on display :10 and on interface 0.0.0.0:
-KASMVNC_OPTIONS=':10 -depth 24 -geometry 1280x1050  \
-  -cert /etc/ssl/certs/ssl-cert-snakeoil.pem \
-  -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 \
+KASMVNC_OPTIONS=':10 -depth 24 -geometry 1280x1050
+  -cert /etc/ssl/certs/ssl-cert-snakeoil.pem
+  -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24
   -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www'
 vncserver $KASMVNC_OPTIONS
 
