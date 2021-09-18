@@ -544,14 +544,14 @@ sub CheckRequiredDependenciesArePresent
     $SOCK_STREAM = &SOCK_STREAM;
   }
 
-  &CheckUserHasSslCertGroupOnDebian();
+  &CheckUserHasAccessToDefaultCertOnDebian();
 }
 
 sub IsDebian {
   return -f "/etc/debian_version";
 }
 
-sub CheckUserHasSslCertGroupOnDebian {
+sub CheckUserHasAccessToDefaultCertOnDebian {
   if (!&IsDebian()) {
     return;
   }
