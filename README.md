@@ -62,7 +62,7 @@ vncserver $KASMVNC_OPTIONS
 # XFCE. You can also choose to manually edit xstartup.
 # After you chose a desktop environment or to manually edit xstartup,
 # vncserver won't ask you again, unless you run it as:
-vncserver $KASMVNC_OPTIONS-select-de
+vncserver $KASMVNC_OPTIONS -select-de
 
 # You can select a specific Desktop Environment like this:
 vncserver $KASMVNC_OPTIONS -select-de mate
