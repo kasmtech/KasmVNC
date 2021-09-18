@@ -51,20 +51,21 @@ sudo addgroup $USER ssl-cert
 # You will need to re-connect in order to pick up the group change
 
 # Run KasmVNC on display :10 and on interface 0.0.0.0:
-vncserver :10 -depth 24 -geometry 1280x1050  \
+KASMVNC_OPTIONS=':10 -depth 24 -geometry 1280x1050  \
   -cert /etc/ssl/certs/ssl-cert-snakeoil.pem \
   -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 \
-  -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www
+  -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www'
+vncserver $KASMVNC_OPTIONS
 
 # On the first run, vncserver will ask you to create a KasmVNC user and choose a desktop
 # environment you want to run. It can detect Cinnamon, Mate, LXDE, KDE, Gnome,
 # XFCE. You can also choose to manually edit xstartup.
 # After you chose a desktop environment or to manually edit xstartup,
 # vncserver won't ask you again, unless you run it as:
-vncserver -select-de
+vncserver $KASMVNC_OPTIONS-select-de
 
 # You can select a specific Desktop Environment like this:
-vncserver -select-de mate
+vncserver $KASMVNC_OPTIONS -select-de mate
 
 # Tail the logs
 tail -f ~/.vnc/`hostname`:10.log
