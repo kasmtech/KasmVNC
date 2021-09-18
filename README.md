@@ -61,13 +61,10 @@ vncserver :10 -fp /bin -depth 24 -geometry 1280x1050  \
 # XFCE. You can also choose to manually edit xstartup.
 # After you chose a desktop environment or to manually edit xstartup,
 # vncserver won't ask you again, unless you run it as:
-vncserver --select-de
+vncserver -select-de
 
 # You can select a specific Desktop Environment like this:
-vncserver --select-de mate
-
-# Stop KasmVNC you started on display :10:
-vncserver -kill :10
+vncserver -select-de mate
 
 # Tail the logs
 tail -f ~/.vnc/`hostname`:10.log
@@ -75,10 +72,10 @@ tail -f ~/.vnc/`hostname`:10.log
 
 Now navigate to your system at https://[ip-address]:8443/
 
-To stop a running KasmVNC:
+To stop the KasmVNC you started earlier on display 10:
 
 ```sh
-kasmvncserver-easy-start --kill
+vncserver -kill :10
 ```
 
 The options for vncserver:
