@@ -547,8 +547,12 @@ sub CheckRequiredDependenciesArePresent
   &CheckUserHasSslCertGroupOnDebian();
 }
 
+sub IsDebian {
+  return -f "/etc/debian_version";
+}
+
 sub CheckUserHasSslCertGroupOnDebian {
-  if (! -f "/etc/debian_version") {
+  if (!&IsDebian()) {
     return;
   }
 
