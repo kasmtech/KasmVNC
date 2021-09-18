@@ -4,52 +4,8 @@ set -e
 
 display=:10
 interface=0.0.0.0
-cert_group=ssl-cert
 
-action=start
-
-get_lib_path() {
-  local lib="$1"
-  local script_dir=$(dirname "$0")
-  local system_dir=/usr/share/kasmvnc
-
-  if [[ -f "$script_dir/$lib" ]]; then
-    echo "$script_dir/$lib"
-    return
-  fi
-
-  if [[ -f "$system_dir/$lib" ]]; then
-    echo "$system_dir/$lib"
-    return
-  fi
-}
-
-. $(get_lib_path cli-processing.sh)
-. $(get_lib_path select-de.sh)
-
-process_cli_options "$@"
-
-if groups | grep -qvw ssl-cert; then
-  cat <<-EOF
-    Can't access TLS certificate.
-    Please add your user to $cert_group via 'addgroup <user> ssl-cert'
-EOF
-  exit 1
-fi
-
-if user_asked_to_select_de || ! de_was_selected_on_previous_run; then
-  detect_desktop_environments
-  ask_user_to_choose_de
-  debug "You selected $de_name desktop environment"
-  if [[ "$de_name" != "$manual_xstartup_choice" ]]; then
-    setup_de_to_run_via_xstartup
-  fi
-  remember_de_choice
-fi
-
-vncserver $display -interface $interface
-vncserver -kill $display
 vncserver $display -depth 24 -geometry 1280x1050 -websocketPort 8443 \
   -cert /etc/ssl/certs/ssl-cert-snakeoil.pem \
   -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 \
-  -interface $interface -httpd /usr/share/kasmvnc/www $log_option
+  -interface $interface -httpd /usr/share/kasmvnc/www
