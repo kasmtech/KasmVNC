@@ -1170,11 +1170,19 @@ sub PrintLogFilenameAndConfiguredUsersAndStuff {
   warn "Log file is $desktopLog\n\n";
 }
 
+sub IsThisSystemBinary {
+  $0 =~ m!^/usr!;
+}
+
 sub DetectSelectDeBin {
-  if ($0 =~ m!^/usr!) {
+  if (&IsThisSystemBinary()) {
     "/usr/lib/kasmvncserver/select-de.sh";
   } else {
-    my $dirname = dirname($0);
-    "$dirname/../builder/startup/deb/select-de.sh";
+    &LocalSelectDePath();
   }
+}
+
+sub LocalSelectDePath {
+  my $dirname = dirname($0);
+  "$dirname/../builder/startup/deb/select-de.sh";
 }
