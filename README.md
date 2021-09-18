@@ -44,38 +44,30 @@ Future Goals:
 ```sh
 wget -qO- https://github.com/kasmtech/KasmVNC/releases/download/v0.9.1-beta/kasmvncserver_0.9.1~beta-1_amd64.deb
 
-sudo dpkg -i kasmvncserver_0.9.1~beta-1_amd64.deb
-sudo apt-get -f install
-
-# We provide an example script to run KasmVNC at #
-# /usr/share/doc/kasmvncserver/examples/kasmvncserver-easy-start. It runs a VNC
-# server on display :10 and on interface 0.0.0.0. If you're happy with those
-# defaults you can just use it as is:
-sudo ln -s /usr/share/doc/kasmvncserver/examples/kasmvncserver-easy-start /usr/bin/
+sudo apt-get install ./kasmvncserver_0.9.1~beta-1_amd64.deb
 
 # Add your user to the ssl-cert group
 sudo addgroup $USER ssl-cert
 # You will need to re-connect in order to pick up the group change
 
-# Create ~/.vnc directory and corresponding files.
-kasmvncserver-easy-start --debug && kasmvncserver-easy-start --kill
+# Run KasmVNC on display :10 and on interface 0.0.0.0:
+vncserver :10 -fp /bin -depth 24 -geometry 1280x1050  \
+  -cert /etc/ssl/certs/ssl-cert-snakeoil.pem \
+  -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 \
+  -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www
 
-# On the first run, kasmvncserver-easy-start will ask you to choose a desktop
+# On the first run, vncserver will ask you to create a KasmVNC user and choose a desktop
 # environment you want to run. It can detect Cinnamon, Mate, LXDE, KDE, Gnome,
 # XFCE. You can also choose to manually edit xstartup.
 # After you chose a desktop environment or to manually edit xstartup,
-# kasmvncserver-easy-start won't ask you again, unless you run it as:
-kasmvncserver-easy-start --select-de
+# vncserver won't ask you again, unless you run it as:
+vncserver --select-de
 
-# Overwrite xstartup to launch your environment of choice, in this example LXDE
-# This may be optional depending on your system configuration
-echo -e '#!/bin/sh'"\n/usr/bin/lxsession -s LXDE &" > ~/.vnc/xstartup
+# You can select a specific Desktop Environment like this:
+vncserver --select-de mate
 
-# Start KasmVNC with debug logging:
-kasmvncserver-easy-start -d
-
-# Get usage information of the easy start script:
-kasmvncserver-easy-start --help
+# Stop KasmVNC you started on display :10:
+vncserver -kill :10
 
 # Tail the logs
 tail -f ~/.vnc/`hostname`:10.log
