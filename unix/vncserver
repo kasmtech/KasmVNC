@@ -28,6 +28,7 @@
 use v5.10;
 use Time::HiRes qw (sleep);
 use Switch;
+use File::Basename;
 
 use constant {
   NO_ARG_VALUE => 0,
@@ -1055,7 +1056,7 @@ sub DefineFilePathsAndStuff {
   $vncUserConfig = "$vncUserDir/config";
   $kasmPasswdFile = "$ENV{HOME}/.kasmpasswd";
 
-  $selectDeBin = "/src/builder/startup/deb/select-de.sh";
+  $selectDeBin = &DetectSelectDeBin();
   $de_was_selected_file="$ENV{HOME}/.vnc/.de-was-selected";
 
   $vncSystemConfigDir = "/etc/kasmvnc";
@@ -1167,4 +1168,13 @@ sub PrintLogFilenameAndConfiguredUsersAndStuff {
   warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
   &PrintKasmUsers();
   warn "Log file is $desktopLog\n\n";
+}
+
+sub DetectSelectDeBin {
+  if ($0 =~ m!^/usr!) {
+    "/usr/lib/kasmvncserver/select-de.sh";
+  } else {
+    my $dirname = dirname($0);
+    "$dirname/../builder/startup/deb/select-de.sh";
+  }
 }
