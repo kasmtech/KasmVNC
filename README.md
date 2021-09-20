@@ -60,9 +60,16 @@ sudo addgroup $USER ssl-cert
 # Create ~/.vnc directory and corresponding files.
 kasmvncserver-easy-start -d && kasmvncserver-easy-start -kill
 
-# Modify vncstartup to launch your environment of choice, in this example LXDE
+# Modify vncstartup to launch your environment of choice
 # This may be optional depending on your system configuration
+# Example: LXDE
 echo '/usr/bin/lxsession -s LXDE &' >> ~/.vnc/xstartup
+  
+# Example: GNOME
+# Add the folowing to ~/.vnc/xstartup
+#!/bin/sh
+dbus-launch --exit-with-session gnome-session
+
 
 # Start KasmVNC with debug logging:
 kasmvncserver-easy-start -d
