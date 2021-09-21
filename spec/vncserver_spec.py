@@ -12,6 +12,14 @@ running_xvnc = False
 
 
 def clean_env():
+    clean_kasm_users()
+
+    home_dir = os.environ['HOME']
+    vnc_dir = os.path.join(home_dir, ".vnc")
+    Path(vnc_dir).rmtree(ignore_errors=True)
+
+
+def clean_kasm_users():
     home_dir = os.environ['HOME']
     password_file = os.path.join(home_dir, ".kasmpasswd")
     Path(password_file).remove_p()
