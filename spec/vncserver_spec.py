@@ -24,8 +24,12 @@ def clean_kasm_users():
     password_file = os.path.join(home_dir, ".kasmpasswd")
     Path(password_file).remove_p()
 
-    vnc_dir = os.path.join(home_dir, ".vnc")
-    Path(vnc_dir).rmtree(ignore_errors=True)
+
+def start_xvnc_pexpect(extra_args="", **kwargs):
+    child = pexpect.spawn('/bin/bash',
+                          ['-ic', f':;{vncserver_cmd} {extra_args}'],
+                          timeout=5, encoding='utf-8', **kwargs)
+    return child
 
 
 def start_xvnc(extra_args="", **kwargs):
@@ -135,9 +139,12 @@ with description('vncserver') as self:
             check_de_was_setup_to_run('cinnamon')
 
     with context('guided user creation'):
-        with it('asks to create a user if none exist'):
-            child = pexpect.spawn(f'{vncserver_cmd} -select-de cinnamon',
-                                  timeout=2)
+        with fit('asks to create a user if none exist'):
+            global running_xvnc
+            clean_kasm_users()
+
+            child = start_xvnc_pexpect('-select-de cinnamon')
+            running_xvnc = True
             child.expect('Enter username')
             child.sendline()
             child.expect('Password:')
@@ -153,11 +160,11 @@ with description('vncserver') as self:
             completed_process = run_cmd(f'grep -qw {user} {home_dir}/.kasmpasswd')
             expect(completed_process.returncode).to(equal(0))
 
-        with fit('specify custom username'):
+        with it('specify custom username'):
+            global running_xvnc
+
             custom_username = 'custom_username'
-            child = pexpect.spawn('/bin/bash',
-                                  ['-ic', f':;{vncserver_cmd} -select-de cinnamon'],
-                                  timeout=5, encoding='utf-8')
+            child = start_xvnc_pexpect('-select-de cinnamon')
             running_xvnc = True
             child.logfile_read = sys.stderr
             child.expect('Enter username')
