@@ -26,9 +26,13 @@ def clean_kasm_users():
 
 
 def start_xvnc_pexpect(extra_args="", **kwargs):
+    global running_xvnc
+
     child = pexpect.spawn('/bin/bash',
                           ['-ic', f':;{vncserver_cmd} {extra_args}'],
                           timeout=5, encoding='utf-8', **kwargs)
+    running_xvnc = True
+
     return child
 
 
@@ -140,11 +144,9 @@ with description('vncserver') as self:
 
     with context('guided user creation'):
         with fit('asks to create a user if none exist'):
-            global running_xvnc
             clean_kasm_users()
 
             child = start_xvnc_pexpect('-select-de cinnamon')
-            running_xvnc = True
             child.expect('Enter username')
             child.sendline()
             child.expect('Password:')
@@ -160,12 +162,9 @@ with description('vncserver') as self:
             completed_process = run_cmd(f'grep -qw {user} {home_dir}/.kasmpasswd')
             expect(completed_process.returncode).to(equal(0))
 
-        with it('specify custom username'):
-            global running_xvnc
-
+        with fit('specify custom username'):
             custom_username = 'custom_username'
             child = start_xvnc_pexpect('-select-de cinnamon')
-            running_xvnc = True
             child.logfile_read = sys.stderr
             child.expect('Enter username')
             child.sendline(custom_username)
