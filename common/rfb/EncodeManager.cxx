@@ -1024,7 +1024,7 @@ PixelBuffer *rfb::progressiveBilinearScale(const PixelBuffer *pb,
       rdr::U8 *newpx = ((ManagedPixelBuffer *) newpb)->getBufferRW(newpb->getRect(),
                                                                    &newstride);
 
-      SSE2_scale(oldpx, tgtw, tgth, newpx, oldstride, newstride, tgtdiff);
+      SSE2_scale(oldpx, tgtw, tgth, newpx, oldstride, newstride, tgtw / (float) oldw);
       if (del)
         delete pb;
     }
