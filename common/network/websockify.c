@@ -44,11 +44,11 @@ static void do_proxy(ws_ctx_t *ws_ctx, int target) {
     int maxfd, client = ws_ctx->sockfd;
     unsigned int opcode, left, ret;
     unsigned int tout_start, tout_end, cout_start, cout_end;
-    unsigned int tin_start, tin_end;
+    unsigned int tin_end;
     ssize_t len, bytes;
 
     tout_start = tout_end = cout_start = cout_end =
-    tin_start = tin_end = 0;
+    tin_end = 0;
     maxfd = client > target ? client+1 : target+1;
 
     while (1) {
@@ -165,7 +165,7 @@ static void do_proxy(ws_ctx_t *ws_ctx, int target) {
         }
 
         if (FD_ISSET(client, &rlist)) {
-            bytes = ws_recv(ws_ctx, ws_ctx->tin_buf + tin_end, BUFSIZE-1);
+            bytes = ws_recv(ws_ctx, ws_ctx->tin_buf + tin_end, BUFSIZE-1-tin_end);
             if (pipe_error) { break; }
             if (bytes <= 0) {
                 handler_emsg("client closed connection\n");
@@ -180,13 +180,13 @@ static void do_proxy(ws_ctx_t *ws_ctx, int target) {
             printf("\n");
             */
             if (ws_ctx->hybi) {
-                len = decode_hybi(ws_ctx->tin_buf + tin_start,
-                                  tin_end-tin_start,
+                len = decode_hybi(ws_ctx->tin_buf,
+                                  tin_end,
                                   ws_ctx->tout_buf, BUFSIZE-1,
                                   &opcode, &left);
             } else {
-                len = decode_hixie(ws_ctx->tin_buf + tin_start,
-                                   tin_end-tin_start,
+                len = decode_hixie(ws_ctx->tin_buf,
+                                   tin_end,
                                    ws_ctx->tout_buf, BUFSIZE-1,
                                    &opcode, &left);
             }
@@ -208,10 +208,13 @@ static void do_proxy(ws_ctx_t *ws_ctx, int target) {
                 break;
             }
             if (left) {
-                tin_start = tin_end - left;
-                //printf("partial frame from client");
+                const unsigned tin_start = tin_end - left;
+                //handler_emsg("partial frame from client, %u left, start %u end %u, lens %lu %lu\n",
+                //             left, tin_start, tin_end, bytes, len);
+                memmove(ws_ctx->tin_buf, ws_ctx->tin_buf + tin_start, left);
+                tin_end = left;
             } else {
-                tin_start = 0;
+                //handler_emsg("handled %lu/%lu bytes\n", bytes, len);
                 tin_end = 0;
             }
 
