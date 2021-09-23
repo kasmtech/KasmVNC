@@ -24,6 +24,7 @@ stages:
 
 build_ubuntu_bionic:
   stage: build
+  allow_failure: true
   before_script:
     - *prepare_build
   after_script:
@@ -36,6 +37,7 @@ build_ubuntu_bionic:
 
 build_ubuntu_bionic_libjpeg_turbo:
   stage: build
+  allow_failure: false
   before_script:
     - *prepare_build
   after_script:
@@ -48,6 +50,7 @@ build_ubuntu_bionic_libjpeg_turbo:
 
 build_ubuntu_focal:
   stage: build
+  allow_failure: true
   before_script:
     - *prepare_build
   after_script:
@@ -60,6 +63,7 @@ build_ubuntu_focal:
 
 build_debian_buster:
   stage: build
+  allow_failure: true
   before_script:
     - *prepare_build
   after_script:
@@ -72,6 +76,7 @@ build_debian_buster:
 
 build_debian_bullseye:
   stage: build
+  allow_failure: true
   before_script:
     - *prepare_build
   after_script:
@@ -84,6 +89,7 @@ build_debian_bullseye:
 
 build_kali_rolling:
   stage: build
+  allow_failure: true
   before_script:
     - *prepare_build
   after_script:
@@ -96,6 +102,7 @@ build_kali_rolling:
 
 build_centos7:
   stage: build
+  allow_failure: true
   before_script:
     - *prepare_build
   after_script:
