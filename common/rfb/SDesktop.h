@@ -78,12 +78,6 @@ namespace rfb {
     // the relevant RFB protocol messages from clients.
     // See InputHandler for method signatures.
 
-    // handleClipboardRequest() is called whenever a client requests
-    // the server to send over its clipboard data. It will only be
-    // called after the server has first announced a clipboard change
-    // via VNCServer::announceClipboard().
-    virtual void handleClipboardRequest() {}
-
     // handleClipboardAnnounce() is called to indicate a change in the
     // clipboard on a client. Call VNCServer::requestClipboard() to
     // access the actual data.
@@ -91,13 +85,6 @@ namespace rfb {
 
     virtual void handleClipboardAnnounceBinary(const unsigned __unused_attr num,
                                                const char __unused_attr mimes[][32]) {}
-
-    // handleClipboardData() is called when a client has sent over
-    // the clipboard data as a result of a previous call to
-    // VNCServer::requestClipboard(). Note that this function might
-    // never be called if the clipboard data was no longer available
-    // when the client received the request.
-    virtual void handleClipboardData(const char* __unused_attr data, int len __unused_attr) {}
 
   protected:
     virtual ~SDesktop() {}

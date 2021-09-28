@@ -176,30 +176,12 @@ XserverDesktop::queryConnection(network::Socket* sock,
   return rfb::VNCServerST::PENDING;
 }
 
-void XserverDesktop::requestClipboard()
-{
-  try {
-    server->requestClipboard();
-  } catch (rdr::Exception& e) {
-    vlog.error("XserverDesktop::requestClipboard: %s",e.str());
-  }
-}
-
 void XserverDesktop::announceClipboard(bool available)
 {
   try {
     server->announceClipboard(available);
   } catch (rdr::Exception& e) {
     vlog.error("XserverDesktop::announceClipboard: %s",e.str());
-  }
-}
-
-void XserverDesktop::sendClipboardData(const char* data)
-{
-  try {
-    server->sendClipboardData(data);
-  } catch (rdr::Exception& e) {
-    vlog.error("XserverDesktop::sendClipboardData: %s",e.str());
   }
 }
 
@@ -500,11 +482,6 @@ unsigned int XserverDesktop::setScreenLayout(int fb_width, int fb_height,
   return ret;
 }
 
-void XserverDesktop::handleClipboardRequest()
-{
-  vncHandleClipboardRequest();
-}
-
 void XserverDesktop::handleClipboardAnnounce(bool available)
 {
   vncHandleClipboardAnnounce(available);
@@ -513,11 +490,6 @@ void XserverDesktop::handleClipboardAnnounce(bool available)
 void XserverDesktop::handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32])
 {
   vncHandleClipboardAnnounceBinary(num, mimes);
-}
-
-void XserverDesktop::handleClipboardData(const char* data_, int len)
-{
-  vncHandleClipboardData(data_, len);
 }
 
 void XserverDesktop::grabRegion(const rfb::Region& region)

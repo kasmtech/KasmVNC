@@ -62,7 +62,6 @@ public:
   void refreshScreenLayout();
   void requestClipboard();
   void announceClipboard(bool available);
-  void sendClipboardData(const char* data);
   void clearBinaryClipboardData();
   void sendBinaryClipboardData(const char* mime, const unsigned char *data,
                                const unsigned len);
@@ -99,10 +98,8 @@ public:
   virtual void keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down);
   virtual unsigned int setScreenLayout(int fb_width, int fb_height,
                                        const rfb::ScreenSet& layout);
-  virtual void handleClipboardRequest();
   virtual void handleClipboardAnnounce(bool available);
   virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
-  virtual void handleClipboardData(const char* data, int len);
 
   // rfb::PixelBuffer callbacks
   virtual void grabRegion(const rfb::Region& r);

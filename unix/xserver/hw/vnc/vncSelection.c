@@ -477,7 +477,7 @@ static int vncConvertSelection(ClientPtr client, Atom selection,
 
       LOG_DEBUG("Requesting clipboard data from client");
 
-      vncRequestClipboard();
+      //vncRequestClipboard();
 
       return Success;
     } else {
@@ -700,7 +700,7 @@ static void vncHandleSelection(Atom selection, Atom target,
     LOG_DEBUG("Sending clipboard to clients (%d bytes)",
               (int)strlen(utf8));
 
-    vncSendClipboardData(utf8);
+    //vncSendClipboardData(utf8);
 
     vncStrFree(utf8);
   } else if (target == xaUTF8_STRING) {
@@ -718,7 +718,7 @@ static void vncHandleSelection(Atom selection, Atom target,
     LOG_DEBUG("Sending clipboard to clients (%d bytes)",
               (int)strlen(filtered));
 
-    vncSendClipboardData(filtered);
+    //vncSendClipboardData(filtered);
 
     vncStrFree(filtered);
   } else {

@@ -96,9 +96,7 @@ namespace rfb {
     virtual void setPixelBuffer(PixelBuffer* pb);
     virtual void setScreenLayout(const ScreenSet& layout);
     virtual PixelBuffer* getPixelBuffer() const { if (DLPRegion.enabled && blackedpb) return blackedpb; else return pb; }
-    virtual void requestClipboard();
     virtual void announceClipboard(bool available);
-    virtual void sendClipboardData(const char* data);
     virtual void clearBinaryClipboardData();
     virtual void sendBinaryClipboardData(const char* mime, const unsigned char *data,
                                          const unsigned len);
@@ -196,11 +194,9 @@ namespace rfb {
 
     void setAPIMessager(network::GetAPIMessager *msgr) { apimessager = msgr; }
 
-    void handleClipboardRequest(VNCSConnectionST* client);
     void handleClipboardAnnounce(VNCSConnectionST* client, bool available);
     void handleClipboardAnnounceBinary(VNCSConnectionST* client, const unsigned num,
                                        const char mimes[][32]);
-    void handleClipboardData(VNCSConnectionST* client, const char* data, int len);
 
   protected:
 

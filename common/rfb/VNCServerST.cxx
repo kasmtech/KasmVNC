@@ -518,14 +518,6 @@ void VNCServerST::setScreenLayout(const ScreenSet& layout)
   }
 }
 
-void VNCServerST::requestClipboard()
-{
-  if (clipboardClient == NULL)
-    return;
-
-  clipboardClient->requestClipboard();
-}
-
 void VNCServerST::announceClipboard(bool available)
 {
   std::list<VNCSConnectionST*>::iterator ci, ci_next;
@@ -539,22 +531,6 @@ void VNCServerST::announceClipboard(bool available)
     ci_next = ci; ci_next++;
     (*ci)->announceClipboard(available);
   }
-}
-
-void VNCServerST::sendClipboardData(const char* data)
-{
-  std::list<VNCSConnectionST*>::iterator ci, ci_next;
-
-  if (strchr(data, '\r') != NULL)
-    throw Exception("Invalid carriage return in clipboard data");
-
-  for (ci = clipboardRequestors.begin();
-       ci != clipboardRequestors.end(); ci = ci_next) {
-    ci_next = ci; ci_next++;
-    (*ci)->sendClipboardDataOrClose(data);
-  }
-
-  clipboardRequestors.clear();
 }
 
 void VNCServerST::sendBinaryClipboardData(const char* mime, const unsigned char *data,
@@ -1225,13 +1201,6 @@ bool VNCServerST::getComparerState()
   return false;
 }
 
-void VNCServerST::handleClipboardRequest(VNCSConnectionST* client)
-{
-  clipboardRequestors.push_back(client);
-  if (clipboardRequestors.size() == 1)
-    desktop->handleClipboardRequest();
-}
-
 void VNCServerST::handleClipboardAnnounce(VNCSConnectionST* client,
                                           bool available)
 {
@@ -1252,12 +1221,3 @@ void VNCServerST::handleClipboardAnnounceBinary(VNCSConnectionST* client,
   clipboardClient = client;
   desktop->handleClipboardAnnounceBinary(num, mimes);
 }
-
-void VNCServerST::handleClipboardData(VNCSConnectionST* client,
-                                      const char* data, int len)
-{
-  if (client != clipboardClient)
-    return;
-  desktop->handleClipboardData(data, len);
-}
-

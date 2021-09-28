@@ -67,9 +67,7 @@ int vncGetSendPrimary(void);
 
 void vncUpdateDesktopName(void);
 
-void vncRequestClipboard(void);
 void vncAnnounceClipboard(int available);
-void vncSendClipboardData(const char* data);
 void vncClearBinaryClipboardData();
 void vncSendBinaryClipboardData(const char* mime, const unsigned char *data,
                                 const unsigned len);

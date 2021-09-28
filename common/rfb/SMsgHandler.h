@@ -55,14 +55,6 @@ namespace rfb {
                                          int x, int y, int w, int h) = 0;
 
     virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
-    virtual void handleClipboardCaps(rdr::U32 flags,
-                                     const rdr::U32* lengths);
-    virtual void handleClipboardRequest(rdr::U32 flags);
-    virtual void handleClipboardPeek(rdr::U32 flags);
-    virtual void handleClipboardNotify(rdr::U32 flags);
-    virtual void handleClipboardProvide(rdr::U32 flags,
-                                        const size_t* lengths,
-                                        const rdr::U8* const* data);
     virtual void clearBinaryClipboard();
     virtual void addBinaryClipboard(const char mime[], const rdr::U8 *data,
                                     const rdr::U32 len);

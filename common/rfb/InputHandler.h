@@ -39,8 +39,6 @@ namespace rfb {
 		              int __unused_attr buttonMask,
                               const bool __unused_attr skipClick,
                               const bool __unused_attr skipRelease) { }
-    virtual void clientCutText(const char* __unused_attr str,
-                               int __unused_attr len) { }
   };
 
 }

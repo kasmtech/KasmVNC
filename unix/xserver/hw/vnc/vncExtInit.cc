@@ -352,22 +352,10 @@ void vncUpdateDesktopName(void)
     desktop[scr]->setDesktopName(desktopName);
 }
 
-void vncRequestClipboard(void)
-{
-  for (int scr = 0; scr < vncGetScreenCount(); scr++)
-    desktop[scr]->requestClipboard();
-}
-
 void vncAnnounceClipboard(int available)
 {
   for (int scr = 0; scr < vncGetScreenCount(); scr++)
     desktop[scr]->announceClipboard(available);
-}
-
-void vncSendClipboardData(const char* data)
-{
-  for (int scr = 0; scr < vncGetScreenCount(); scr++)
-    desktop[scr]->sendClipboardData(data);
 }
 
 void vncSendBinaryClipboardData(const char* mime, const unsigned char *data,

@@ -77,9 +77,7 @@ namespace rfb {
     void bellOrClose();
     void setDesktopNameOrClose(const char *name);
     void setLEDStateOrClose(unsigned int state);
-    void requestClipboardOrClose();
     void announceClipboardOrClose(bool available);
-    void sendClipboardDataOrClose(const char* data);
     void clearBinaryClipboardData();
     void sendBinaryClipboardDataOrClose(const char* mime, const unsigned char *data,
                                         const unsigned len);
@@ -217,10 +215,8 @@ namespace rfb {
     virtual void fence(rdr::U32 flags, unsigned len, const char data[]);
     virtual void enableContinuousUpdates(bool enable,
                                          int x, int y, int w, int h);
-    virtual void handleClipboardRequest();
     virtual void handleClipboardAnnounce(bool available);
     virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
-    virtual void handleClipboardData(const char* data, int len);
     virtual void supportsLocalCursor();
     virtual void supportsFence();
     virtual void supportsContinuousUpdates();
