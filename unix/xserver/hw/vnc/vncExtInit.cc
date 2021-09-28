@@ -166,6 +166,7 @@ static void parseClipTypes()
     // Hardcoded filters
     if (!strcmp(cur, "TEXT") ||
         !strcmp(cur, "STRING") ||
+        strstr(cur, "text/plain") ||
         !strcmp(cur, "UTF8_STRING"))
       continue;
 

@@ -438,11 +438,6 @@ void VNCSConnectionST::sendBinaryClipboardDataOrClose(const char* mime,
   try {
     if (!(accessRights & AccessCutText)) return;
     if (!rfb::Server::sendCutText) return;
-    if (msSince(&lastClipboardOp) < (unsigned) rfb::Server::DLP_ClipDelay) {
-      vlog.info("DLP: client %s: refused to send binary clipboard, too soon",
-                sock->getPeerAddress());
-      return;
-    }
     if (rfb::Server::DLP_ClipSendMax && len > (unsigned) rfb::Server::DLP_ClipSendMax) {
       vlog.info("DLP: client %s: refused to send binary clipboard, too large",
                 sock->getPeerAddress());
@@ -454,8 +449,6 @@ void VNCSConnectionST::sendBinaryClipboardDataOrClose(const char* mime,
 
     addBinaryClipboard(mime, data, len);
     binclipTimer.start(100);
-
-    gettimeofday(&lastClipboardOp, NULL);
   } catch(rdr::Exception& e) {
     close(e.str());
   }
@@ -1450,7 +1443,15 @@ void VNCSConnectionST::writeDataUpdate()
 
 void VNCSConnectionST::writeBinaryClipboard()
 {
+  if (msSince(&lastClipboardOp) < (unsigned) rfb::Server::DLP_ClipDelay) {
+    vlog.info("DLP: client %s: refused to send binary clipboard, too soon",
+              sock->getPeerAddress());
+    return;
+  }
+
   writer()->writeBinaryClipboard(binaryClipboard);
+
+  gettimeofday(&lastClipboardOp, NULL);
 }
 
 void VNCSConnectionST::screenLayoutChange(rdr::U16 reason)
