@@ -44,7 +44,7 @@ Future Goals:
 ```sh
 wget -qO- https://github.com/kasmtech/KasmVNC/releases/download/v0.9.2-beta/kasmvncserver_ubuntu_bionic_0.9.2_amd64.deb
 
-sudo dpkg -i kasmvncserver_0.9.1~beta-1_amd64.deb
+sudo dpkg -i kasmvncserver_*.deb
 sudo apt-get -f install
 
 # We provide an example script to run KasmVNC at #
