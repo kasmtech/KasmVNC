@@ -10,7 +10,7 @@ Homepage: https://github.com/kasmtech/KasmVNC
 #Vcs-Git: https://salsa.debian.org/debian/kasmvnc.git
 
 Package: kasmvncserver
-Architecture: amd64
+Architecture: amd64 arm64
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, ssl-cert, xauth,
   x11-xkb-utils, xkb-data, procps
 Provides: vnc-server

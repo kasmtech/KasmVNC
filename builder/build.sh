@@ -30,7 +30,7 @@ sed -i -e '/find_package(FLTK/s@^@#@' \
 	-e '/add_subdirectory(tests/s@^@#@' \
 	CMakeLists.txt
 
-cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo .
+cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF
 make -j5
 
 tar -C unix/xserver -xvf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=1
@@ -72,6 +72,8 @@ mkdir lib
 cd lib
 if [ -d /usr/lib/x86_64-linux-gnu/dri ]; then
   ln -s /usr/lib/x86_64-linux-gnu/dri dri
+elif [ -d /usr/lib/aarch64-linux-gnu/dri ]; then
+  ln -s /usr/lib/aarch64-linux-gnu/dri dri
 else
   ln -s /usr/lib64/dri dri
 fi
