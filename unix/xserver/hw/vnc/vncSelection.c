@@ -593,6 +593,7 @@ static void vncHandleSelection(Atom selection, Atom target,
           vncHasAtom(xaUTF8_STRING, (const Atom*)prop->data, prop->size) ||
           vncHasBinaryClipboardAtom((const Atom*)prop->data, prop->size)) {
         LOG_DEBUG("Compatible format found, notifying clients");
+        vncClearBinaryClipboardData();
         activeSelection = selection;
         vncAnnounceClipboard(TRUE);
         vncHandleClipboardRequest();
@@ -606,7 +607,6 @@ static void vncHandleSelection(Atom selection, Atom target,
       unsigned i;
 
       Bool skiphtml = FALSE;
-      Bool cleared = FALSE;
       if (htmlPngPresent &&
           vncHasAtom(xaBinclips[xaHtmlIndex], (const Atom*)prop->data, prop->size) &&
           vncHasAtom(xaBinclips[xaPngIndex], (const Atom*)prop->data, prop->size))
@@ -616,10 +616,6 @@ static void vncHandleSelection(Atom selection, Atom target,
         if (skiphtml && i == xaHtmlIndex)
           continue;
         if (vncHasAtom(xaBinclips[i], (const Atom*)prop->data, prop->size)) {
-          if (!cleared) {
-            vncClearBinaryClipboardData();
-            cleared = TRUE;
-          }
           vncSelectionRequest(selection, xaBinclips[i]);
           //break;
         }
