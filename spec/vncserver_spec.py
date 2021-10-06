@@ -7,6 +7,10 @@ from path import Path
 from mamba import description, context, it, fit, before, after
 from expects import expect, equal
 
+# WIP. Plan to move to start_xvnc_pexpect(), because pexpect provides a way to
+# wait for vncserver output. start_xvnc() just blindly prints input to vncserver
+# without knowing what it prints back.
+
 vncserver_cmd = 'vncserver :1 -cert /etc/ssl/certs/ssl-cert-snakeoil.pem -key /etc/ssl/private/ssl-cert-snakeoil.key -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www -depth 24 -geometry 1280x1050 -log *:stderr:100'
 running_xvnc = False
 
@@ -28,6 +32,8 @@ def clean_kasm_users():
 def start_xvnc_pexpect(extra_args="", **kwargs):
     global running_xvnc
 
+    # ":;" is a hack. Without it, Xvnc doesn't run. No idea what happens, but
+    # when I run top, Xvnc just isn't there. I suspect a race.
     child = pexpect.spawn('/bin/bash',
                           ['-ic', f':;{vncserver_cmd} {extra_args}'],
                           timeout=5, encoding='utf-8', **kwargs)
