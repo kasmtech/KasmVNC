@@ -61,6 +61,8 @@ if (! $skipxstartup) {
   &RunXstartup();
 }
 
+PrintBrowserUrl();
+
 exit;
 
 ###############################################################################
@@ -817,6 +819,7 @@ sub SetReasonabeDefaults {
   $default_opts{websocketPort} = $websocketPort;
   $default_opts{fp} = $fontPath if ($fontPath);
   $default_opts{pn} = "";
+  $default_opts{interface} = "0.0.0.0";
 }
 
 sub LoadSystemThenUserThenMandatoryConfigs {
@@ -1107,6 +1110,11 @@ sub ParseAndProcessCliOptions {
   &CheckCliOptionsForBeingValid();
 }
 
+sub CheckBrowserHostDefined {
+  DeduceBrowserHost() || \
+    die "-interface has no default value and wasn't passed by user";
+}
+
 sub PrepareDefaultsForPassingToXvnc {
   # We set some reasonable defaults. Config file settings
   # override these where present.
@@ -1118,6 +1126,7 @@ sub PrepareDefaultsForPassingToXvnc {
 
   &SetReasonabeDefaults();
   &LoadSystemThenUserThenMandatoryConfigs();
+  CheckBrowserHostDefined();
 }
 
 sub EnsureAtLeastOneKasmUserExists {
@@ -1181,6 +1190,37 @@ sub PrintLogFilenameAndConfiguredUsersAndStuff {
   warn "\nNew '$desktopName' desktop is $host:$displayNumber\n";
   &PrintKasmUsers();
   warn "Log file is $desktopLog\n\n";
+}
+
+sub PrintBrowserUrl {
+  my $browserUrl = ConstructBrowserUrl();
+  warn "\nPaste this url in your browser: $browserUrl\n"
+}
+
+sub IsAllInterfaces {
+  my $interface = shift;
+
+  $interface eq "0.0.0.0";
+}
+
+sub DeduceBrowserHost {
+  my $browserHost = $host;
+  my $interface = $opt{"-interface"} || $default_opts{interface};
+
+  if (IsAllInterfaces($interface)) {
+    $browserHost = $host;
+  } else {
+    $browserHost = $interface;
+  }
+
+  $browserHost;
+}
+
+sub ConstructBrowserUrl {
+  my $browserHost = DeduceBrowserHost();
+  my $browserPort = $websocketPort;
+
+  "https://$browserHost:$browserPort";
 }
 
 sub IsThisSystemBinary {
