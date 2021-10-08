@@ -90,3 +90,32 @@ bash -c '
 prepare_upload_filename "bionic/kasmvncserver_0.9.1~beta-1+libjpeg-turbo-latest_amd64.deb";
 echo $upload_filename;'
 ```
+
+# ARM
+
+KasmVNC is supported on ARM, however, the build process needs to be broken into two parts with one occuring on a x64 system and the other on an ARM system. All our testing and official builds are done on AWS Graviton instances.
+
+### Build www code on x86 System
+The www code is webpacked for performance and thus requires building. There are NPM packages, phantomjs, which do not have an ARM build. Therefore, this must be built on x86 and then copied over to the ARM system for final packaging.
+
+```
+cd ~/KasmVNC
+mkdir builder/www
+sudo docker build -t kasmweb/www -f builder/dockerfile.www.build .
+sudo docker run --rm -v $PWD/builder/www:/build kasmweb/www:latest
+cd builder
+tar -zcvf /tmp/kasm_www.tar.gz www
+```
+
+Now transfer kasm_www.tar.gz to the ARM system.
+
+### Build KasmVNC ARM
+These instructions assume KasmVNC has been cloned at $HOME and kasm_www.tar.gz has been placed at $HOME as well, adjust for your environment.
+
+```
+cd ~
+tar -zxf kasm_www.tar.gz -C KasmVNC/builder/
+cd KasmVNC
+sudo builder/build-package ubuntu bionic
+```
+The resulting deb package can be found under ~/KasmVNC/builder/build/bionic
