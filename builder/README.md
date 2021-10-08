@@ -107,10 +107,10 @@ cd builder
 tar -zcvf /tmp/kasm_www.tar.gz www
 ```
 
-Now transfer kasm_www.tar.gz to the ARM system.
+Now transfer ```kasm_www.tar.gz``` to the ARM system.
 
 ### Build KasmVNC ARM
-These instructions assume KasmVNC has been cloned at $HOME and kasm_www.tar.gz has been placed at $HOME as well, adjust for your environment.
+These instructions assume KasmVNC has been cloned at $HOME and ```kasm_www.tar.gz``` has been placed at $HOME as well, adjust for your environment.
 
 ```
 cd ~
@@ -119,3 +119,4 @@ cd KasmVNC
 sudo builder/build-package ubuntu bionic
 ```
 The resulting deb package can be found under ~/KasmVNC/builder/build/bionic
+Replace ```bionic``` with ```focal``` to build for Ubuntu 20.04LTS. At this time, only Ubuntu Bionic has been tested, however, other Debian based builds we support should also work.
