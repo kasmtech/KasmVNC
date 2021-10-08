@@ -1320,6 +1320,8 @@ ws_ctx_t *do_handshake(int sock) {
             } else {
                 // Client tried an empty password, just fail them
                 response[0] = '\0';
+                authbuf[0] = 'a';
+                authbuf[1] = '\0';
             }
         }
 
