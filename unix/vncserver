@@ -1096,6 +1096,7 @@ sub DefineFilePathsAndStuff {
     "# alwaysshared\n");
 
   chop($host = `uname -n`);
+  chop($hostIP = `hostname -i`);
 
   &DetectFontPath();
 }
@@ -1204,11 +1205,11 @@ sub IsAllInterfaces {
 }
 
 sub DeduceBrowserHost {
-  my $browserHost = $host;
+  my $browserHost;
   my $interface = $opt{"-interface"} || $default_opts{interface};
 
   if (IsAllInterfaces($interface)) {
-    $browserHost = $host;
+    $browserHost = $hostIP;
   } else {
     $browserHost = $interface;
   }
