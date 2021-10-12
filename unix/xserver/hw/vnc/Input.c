@@ -234,6 +234,14 @@ void vncPointerMove(int x, int y)
 	cursorPosY = y;
 }
 
+void vncScroll(int x, int y) {
+	ValuatorMask mask;
+	valuator_mask_zero(&mask);
+	valuator_mask_set(&mask, 2, x);
+	valuator_mask_set(&mask, 3, y);
+	QueuePointerEvents(vncPointerDev, MotionNotify, 0, POINTER_RELATIVE, &mask);
+}
+
 void vncGetPointerPos(int *x, int *y)
 {
 	if (vncPointerDev != NULL) {
@@ -261,7 +269,7 @@ static int vncPointerProc(DeviceIntPtr pDevice, int onoff)
 	 * is not a bug.
 	 */
 	Atom btn_labels[BUTTONS];
-	Atom axes_labels[2];
+	Atom axes_labels[4];
 
 	switch (onoff) {
 	case DEVICE_INIT:
@@ -278,11 +286,29 @@ static int vncPointerProc(DeviceIntPtr pDevice, int onoff)
 
 		axes_labels[0] = XIGetKnownProperty(AXIS_LABEL_PROP_REL_X);
 		axes_labels[1] = XIGetKnownProperty(AXIS_LABEL_PROP_REL_Y);
+		axes_labels[2] = XIGetKnownProperty(AXIS_LABEL_PROP_REL_HSCROLL);
+		axes_labels[3] = XIGetKnownProperty(AXIS_LABEL_PROP_REL_VSCROLL);
+
 
 		InitPointerDeviceStruct(pDev, map, BUTTONS, btn_labels,
 					(PtrCtrlProcPtr)NoopDDA,
 					GetMotionHistorySize(),
-					2, axes_labels);
+					4, axes_labels);
+
+		InitValuatorAxisStruct(pDevice, 2, axes_labels[2], NO_AXIS_LIMITS, NO_AXIS_LIMITS, 0, 0, 0, Relative);
+        InitValuatorAxisStruct(pDevice, 3, axes_labels[3], NO_AXIS_LIMITS, NO_AXIS_LIMITS, 0, 0, 0, Relative);
+
+		char* envScrollFactorH = getenv("SCROLL_FACTOR_H"); 
+		char* envScrollFactorV = getenv("SCROLL_FACTOR_V"); 
+
+		float scrollFactorH = envScrollFactorH ? atof(envScrollFactorH) : 50.0;
+		float scrollFactorV = envScrollFactorV ? atof(envScrollFactorV) : 50.0;
+
+		LOG_INFO("Mouse horizonatl scroll factor: %f", scrollFactorH);
+		LOG_INFO("Mouse vertical scroll factor: %f", scrollFactorV);
+
+        SetScrollValuator(pDevice, 2, SCROLL_TYPE_HORIZONTAL, scrollFactorH, SCROLL_FLAG_NONE);
+        SetScrollValuator(pDevice, 3, SCROLL_TYPE_VERTICAL, scrollFactorV, SCROLL_FLAG_PREFERRED);
 		break;
 	case DEVICE_ON:
 		pDev->on = TRUE;
