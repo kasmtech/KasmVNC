@@ -43,6 +43,7 @@
 
 static Atom xaPRIMARY, xaCLIPBOARD;
 static Atom xaTARGETS, xaTIMESTAMP, xaSTRING, xaTEXT, xaUTF8_STRING;
+static Atom xaINCR;
 static Atom *xaBinclips;
 static unsigned xaHtmlIndex, xaPngIndex;
 static Bool htmlPngPresent;
@@ -95,6 +96,8 @@ void vncSelectionInit(void)
   xaSTRING = MakeAtom("STRING", 6, TRUE);
   xaTEXT = MakeAtom("TEXT", 4, TRUE);
   xaUTF8_STRING = MakeAtom("UTF8_STRING", 11, TRUE);
+
+  xaINCR = MakeAtom("INCR", 4, TRUE);
 
   unsigned i;
   mimeIndexesFromClient = calloc(dlp_num_mimetypes(), sizeof(unsigned));
@@ -581,6 +584,9 @@ static void vncHandleSelection(Atom selection, Atom target,
 
   if (target != property)
     return;
+
+  if (prop->type == xaINCR)
+    LOG_INFO("Incremental clipboard transfer denied, too large");
 
   if (target == xaTARGETS) {
     if (prop->format != 32)
