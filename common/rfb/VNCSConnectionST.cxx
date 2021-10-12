@@ -703,7 +703,7 @@ void VNCSConnectionST::setPixelFormat(const PixelFormat& pf)
   setCursor();
 }
 
-void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease)
+void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
   pointerEventTime = lastEventTime = time(0);
   server->lastUserInputTime = lastEventTime;
@@ -731,7 +731,7 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool
       }
     }
 
-    server->desktop->pointerEvent(pointerEventPos, buttonMask, skipclick, skiprelease);
+    server->desktop->pointerEvent(pointerEventPos, buttonMask, skipclick, skiprelease, scrollX, scrollY);
   }
 }
 

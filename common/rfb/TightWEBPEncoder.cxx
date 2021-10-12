@@ -71,12 +71,12 @@ static const struct TightWEBPConfiguration conf[10] = {
   {  24, 0 }, // 1
   {  30, 0 }, // 2
   {  37, 0 }, // 3
-  {  42, 1 }, // 4
-  {  65, 1 }, // 5
-  {  78, 1 }, // 6
-  {  85, 2 }, // 7
-  {  88, 3 }, // 8
-  { 100, 4 }  // 9
+  {  42, 0 }, // 4
+  {  65, 0 }, // 5
+  {  78, 0 }, // 6
+  {  85, 0 }, // 7
+  {  88, 0 }, // 8
+  { 100, 0 }  // 9
 };
 
 
@@ -143,7 +143,7 @@ void TightWEBPEncoder::compressOnly(const PixelBuffer* pb, const uint8_t quality
     method = conf[qualityIn].method;
   } else {
     quality = 8;
-    method = 4;
+    method = 0;
   }
 
   WebPConfigInit(&cfg);
@@ -214,7 +214,7 @@ void TightWEBPEncoder::writeRect(const PixelBuffer* pb, const Palette& palette)
     method = conf[qualityLevel].method;
   } else {
     quality = 8;
-    method = 4;
+    method = 0;
   }
 
   WebPConfigInit(&cfg);
@@ -265,7 +265,7 @@ rdr::U32 TightWEBPEncoder::benchmark() const
   rdr::U8* buffer;
   struct timeval start;
   int stride, i;
-  const uint8_t quality = 8, method = 4;
+  const uint8_t quality = 8, method = 2;
   WebPConfig cfg;
   WebPPicture pic;
   WebPMemoryWriter wrt;
