@@ -406,10 +406,11 @@ sub Kill
 
 
 #
-# ParseOptionsAndRemoveMatchesFromARGV takes a list of possible options and a
-# boolean indicating whether the option has a value following, and sets up an
-# associative array %opt of the values of the options given on the command line.
-# It removes all the arguments it uses from @ARGV and returns them in @optArgs.
+# ParseOptionsAndRemoveMatchesFromARGV takes a list of possible options. Each
+# option has a matching argument, indicating whether the option has a value
+# following (can be required or optional), and sets up an associative array %opt
+# of the values of the options given on the command line.  It removes all the
+# arguments it uses from @ARGV and returns them in @optArgs.
 #
 
 sub ParseOptionsAndRemoveMatchesFromARGV
