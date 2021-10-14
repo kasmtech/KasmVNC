@@ -42,7 +42,7 @@ Future Goals:
 #### Debian-based
 
 ```sh
-wget -qO- https://github.com/kasmtech/KasmVNC/releases/download/v0.9.2-beta/kasmvncserver_ubuntu_bionic_0.9.2_amd64.deb
+wget https://github.com/kasmtech/KasmVNC/releases/download/v0.9.2-beta/kasmvncserver_ubuntu_bionic_0.9.2_amd64.deb
 
 sudo dpkg -i kasmvncserver_*.deb
 sudo apt-get -f install
