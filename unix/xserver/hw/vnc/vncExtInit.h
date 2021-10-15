@@ -45,6 +45,13 @@ int vncNotifyQueryConnect(void);
 extern void* vncFbptr[];
 extern int vncFbstride[];
 
+struct dlp_mimetype_t {
+  char mime[32];
+};
+
+unsigned dlp_num_mimetypes();
+const char *dlp_get_mimetype(const unsigned i);
+
 extern int vncInetdSock;
 
 void vncExtensionInit(void);
@@ -60,9 +67,12 @@ int vncGetSendPrimary(void);
 
 void vncUpdateDesktopName(void);
 
-void vncRequestClipboard(void);
 void vncAnnounceClipboard(int available);
-void vncSendClipboardData(const char* data);
+void vncClearBinaryClipboardData();
+void vncSendBinaryClipboardData(const char* mime, const unsigned char *data,
+                                const unsigned len);
+void vncGetBinaryClipboardData(const char *mime, const unsigned char **ptr,
+                               unsigned *len);
 
 int vncConnectClient(const char *addr);
 

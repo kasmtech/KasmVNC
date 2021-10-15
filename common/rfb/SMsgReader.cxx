@@ -35,8 +35,6 @@ using namespace rfb;
 
 static LogWriter vlog("SMsgReader");
 
-static IntParameter maxCutText("MaxCutText", "Maximum permitted length of an incoming clipboard update", 256*1024);
-
 SMsgReader::SMsgReader(SMsgHandler* handler_, rdr::InStream* is_)
   : handler(handler_), is(is_)
 {
@@ -82,6 +80,9 @@ void SMsgReader::readMsg()
     break;
   case msgTypeFrameStats:
     readFrameStats();
+    break;
+  case msgTypeBinaryClipboard:
+    readBinaryClipboard();
     break;
   case msgTypeKeyEvent:
     readKeyEvent();
@@ -240,109 +241,54 @@ void SMsgReader::readClientCutText()
     readExtendedClipboard(slen);
     return;
   }
-  if (len > (size_t)maxCutText) {
-    is->skip(len);
-    vlog.error("Cut text too long (%d bytes) - ignoring", len);
-    return;
+  is->skip(len);
+  vlog.error("Client sent old cuttext msg, ignoring");
+}
+
+void SMsgReader::readBinaryClipboard()
+{
+  const rdr::U8 num = is->readU8();
+  rdr::U8 i, valid = 0;
+  char tmpmimes[num][32];
+
+  handler->clearBinaryClipboard();
+  for (i = 0; i < num; i++) {
+    const rdr::U8 mimelen = is->readU8();
+    if (mimelen > 32 - 1) {
+      vlog.error("Mime too long (%u)", mimelen);
+    }
+
+    char mime[mimelen + 1];
+    mime[mimelen] = '\0';
+    is->readBytes(mime, mimelen);
+
+    strncpy(tmpmimes[valid], mime, 32);
+    tmpmimes[valid][31] = '\0';
+
+    const rdr::U32 len = is->readU32();
+    CharArray ca(len);
+    is->readBytes(ca.buf, len);
+
+    if (rfb::Server::DLP_ClipAcceptMax && len > (unsigned) rfb::Server::DLP_ClipAcceptMax) {
+      vlog.info("DLP: refused to receive binary clipboard, too large");
+      continue;
+    }
+
+    vlog.debug("Received binary clipboard, type %s, %u bytes", mime, len);
+
+    handler->addBinaryClipboard(mime, (rdr::U8 *) ca.buf, len);
+    valid++;
   }
-  CharArray ca(len+1);
-  ca.buf[len] = 0;
-  is->readBytes(ca.buf, len);
-  handler->clientCutText(ca.buf, len);
+
+  handler->handleClipboardAnnounceBinary(valid, tmpmimes);
 }
 
 void SMsgReader::readExtendedClipboard(rdr::S32 len)
 {
-  rdr::U32 flags;
-  rdr::U32 action;
-
   if (len < 4)
     throw Exception("Invalid extended clipboard message");
-  if (len > maxCutText) {
-    vlog.error("Extended clipboard message too long (%d bytes) - ignoring", len);
-    is->skip(len);
-    return;
-  }
-
-  flags = is->readU32();
-  action = flags & clipboardActionMask;
-
-  if (action & clipboardCaps) {
-    int i;
-    size_t num;
-    rdr::U32 lengths[16];
-
-    num = 0;
-    for (i = 0;i < 16;i++) {
-      if (flags & (1 << i))
-        num++;
-    }
-
-    if (len < (rdr::S32)(4 + 4*num))
-      throw Exception("Invalid extended clipboard message");
-
-    num = 0;
-    for (i = 0;i < 16;i++) {
-      if (flags & (1 << i))
-        lengths[num++] = is->readU32();
-    }
-
-    handler->handleClipboardCaps(flags, lengths);
-  } else if (action == clipboardProvide) {
-    rdr::ZlibInStream zis;
-
-    int i;
-    size_t num;
-    size_t lengths[16];
-    rdr::U8* buffers[16];
-
-    zis.setUnderlying(is, len - 4);
-
-    num = 0;
-    for (i = 0;i < 16;i++) {
-      if (!(flags & 1 << i))
-        continue;
-
-      lengths[num] = zis.readU32();
-      if (lengths[num] > (size_t)maxCutText) {
-        vlog.error("Extended clipboard data too long (%d bytes) - ignoring",
-                   (unsigned)lengths[num]);
-        zis.skip(lengths[num]);
-        flags &= ~(1 << i);
-        continue;
-      }
-
-      buffers[num] = new rdr::U8[lengths[num]];
-      zis.readBytes(buffers[num], lengths[num]);
-      num++;
-    }
-
-    zis.flushUnderlying();
-    zis.setUnderlying(NULL, 0);
-
-    handler->handleClipboardProvide(flags, lengths, buffers);
-
-    num = 0;
-    for (i = 0;i < 16;i++) {
-      if (!(flags & 1 << i))
-        continue;
-      delete [] buffers[num++];
-    }
-  } else {
-    switch (action) {
-    case clipboardRequest:
-      handler->handleClipboardRequest(flags);
-      break;
-    case clipboardPeek:
-      handler->handleClipboardPeek(flags);
-      break;
-    case clipboardNotify:
-      handler->handleClipboardNotify(flags);
-      break;
-    default:
-      throw Exception("Invalid extended clipboard action");
-    }
-  }
+  vlog.error("Client sent old cuttext msg, ignoring");
+  is->skip(len);
 }
 
 void SMsgReader::readRequestStats()

@@ -77,9 +77,12 @@ namespace rfb {
     void bellOrClose();
     void setDesktopNameOrClose(const char *name);
     void setLEDStateOrClose(unsigned int state);
-    void requestClipboardOrClose();
     void announceClipboardOrClose(bool available);
-    void sendClipboardDataOrClose(const char* data);
+    void clearBinaryClipboardData();
+    void sendBinaryClipboardDataOrClose(const char* mime, const unsigned char *data,
+                                        const unsigned len);
+    void getBinaryClipboardData(const char* mime, const unsigned char **data,
+                                unsigned *len);
 
     // checkIdleTimeout() returns the number of milliseconds left until the
     // idle timeout expires.  If it has expired, the connection is closed and
@@ -212,9 +215,8 @@ namespace rfb {
     virtual void fence(rdr::U32 flags, unsigned len, const char data[]);
     virtual void enableContinuousUpdates(bool enable,
                                          int x, int y, int w, int h);
-    virtual void handleClipboardRequest();
     virtual void handleClipboardAnnounce(bool available);
-    virtual void handleClipboardData(const char* data, int len);
+    virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
     virtual void supportsLocalCursor();
     virtual void supportsFence();
     virtual void supportsContinuousUpdates();
@@ -260,6 +262,8 @@ namespace rfb {
     void writeNoDataUpdate();
     void writeDataUpdate();
 
+    void writeBinaryClipboard();
+
     void screenLayoutChange(rdr::U16 reason);
     void setCursor();
     void setCursorPos();
@@ -282,6 +286,7 @@ namespace rfb {
     Timer congestionTimer;
     Timer losslessTimer;
     Timer kbdLogTimer;
+    Timer binclipTimer;
 
     VNCServerST* server;
     SimpleUpdateTracker updates;

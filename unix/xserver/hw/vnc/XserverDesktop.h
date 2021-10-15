@@ -62,7 +62,11 @@ public:
   void refreshScreenLayout();
   void requestClipboard();
   void announceClipboard(bool available);
-  void sendClipboardData(const char* data);
+  void clearBinaryClipboardData();
+  void sendBinaryClipboardData(const char* mime, const unsigned char *data,
+                               const unsigned len);
+  void getBinaryClipboardData(const char *mime, const unsigned char **ptr,
+                              unsigned *len);
   void bell();
   void setLEDState(unsigned int state);
   void setDesktopName(const char* name);
@@ -94,9 +98,8 @@ public:
   virtual void keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down);
   virtual unsigned int setScreenLayout(int fb_width, int fb_height,
                                        const rfb::ScreenSet& layout);
-  virtual void handleClipboardRequest();
   virtual void handleClipboardAnnounce(bool available);
-  virtual void handleClipboardData(const char* data, int len);
+  virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
 
   // rfb::PixelBuffer callbacks
   virtual void grabRegion(const rfb::Region& r);

@@ -24,9 +24,8 @@ extern "C" {
 
 void vncSelectionInit(void);
 
-void vncHandleClipboardRequest(void);
 void vncHandleClipboardAnnounce(int available);
-void vncHandleClipboardData(const char* data, int len);
+void vncHandleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
 
 #ifdef __cplusplus
 }

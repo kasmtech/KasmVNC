@@ -64,26 +64,16 @@ void SMsgHandler::setEncodings(int nEncodings, const rdr::S32* encodings)
     supportsQEMUKeyEvent();
 }
 
-void SMsgHandler::handleClipboardCaps(rdr::U32 flags, const rdr::U32* lengths)
-{
-  cp.setClipboardCaps(flags, lengths);
-}
-
-void SMsgHandler::handleClipboardRequest(rdr::U32 flags)
+void SMsgHandler::handleClipboardAnnounceBinary(const unsigned, const char mimes[][32])
 {
 }
 
-void SMsgHandler::handleClipboardPeek(rdr::U32 flags)
+void SMsgHandler::clearBinaryClipboard()
 {
 }
 
-void SMsgHandler::handleClipboardNotify(rdr::U32 flags)
-{
-}
-
-void SMsgHandler::handleClipboardProvide(rdr::U32 flags,
-                                         const size_t* lengths,
-                                         const rdr::U8* const* data)
+void SMsgHandler::addBinaryClipboard(const char mime[], const rdr::U8 *data,
+                                     const rdr::U32 len)
 {
 }
 

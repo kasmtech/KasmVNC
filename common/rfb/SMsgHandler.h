@@ -54,14 +54,10 @@ namespace rfb {
     virtual void enableContinuousUpdates(bool enable,
                                          int x, int y, int w, int h) = 0;
 
-    virtual void handleClipboardCaps(rdr::U32 flags,
-                                     const rdr::U32* lengths);
-    virtual void handleClipboardRequest(rdr::U32 flags);
-    virtual void handleClipboardPeek(rdr::U32 flags);
-    virtual void handleClipboardNotify(rdr::U32 flags);
-    virtual void handleClipboardProvide(rdr::U32 flags,
-                                        const size_t* lengths,
-                                        const rdr::U8* const* data);
+    virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
+    virtual void clearBinaryClipboard();
+    virtual void addBinaryClipboard(const char mime[], const rdr::U8 *data,
+                                    const rdr::U32 len);
 
     virtual void sendStats(const bool toClient = true) = 0;
     virtual void handleFrameStats(rdr::U32 all, rdr::U32 render) = 0;

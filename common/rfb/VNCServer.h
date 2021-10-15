@@ -52,21 +52,10 @@ namespace rfb {
     // getPixelBuffer() returns a pointer to the PixelBuffer object.
     virtual PixelBuffer* getPixelBuffer() const = 0;
 
-    // requestClipboard() will result in a request to a client to
-    // transfer its clipboard data. A call to
-    // SDesktop::handleClipboardData() will be made once the data is
-    // available.
-    virtual void requestClipboard() = 0;
-
     // announceClipboard() informs all clients of changes to the
     // clipboard on the server. A client may later request the
     // clipboard data via SDesktop::handleClipboardRequest().
     virtual void announceClipboard(bool available) = 0;
-
-    // sendClipboardData() transfers the clipboard data to a client
-    // and should be called whenever a client has requested the
-    // clipboard via SDesktop::handleClipboardRequest().
-    virtual void sendClipboardData(const char* data) = 0;
 
     // bell() tells the server that it should make all clients make a bell sound.
     virtual void bell() = 0;
