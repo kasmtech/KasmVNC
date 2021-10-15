@@ -134,6 +134,23 @@ static void percent_decode(const char *src, char *dst) {
 	*dst = '\0';
 }
 
+static void percent_encode(const char *src, char *dst) {
+	while (1) {
+		if (!*src)
+			break;
+		if (isalnum(*src) || *src == '.' || *src == ',') {
+			*dst++ = *src++;
+		} else {
+			*dst++ = '%';
+			sprintf(dst, "%02X", *src);
+			dst += 2;
+			src++;
+		}
+	}
+
+	*dst = '\0';
+}
+
 /*
  * SSL Wrapper Code
  */
@@ -746,6 +763,7 @@ def:
 
 static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[]) {
     char buf[4096];
+    char enc[PATH_MAX * 3 + 1];
     unsigned i;
 
     // Redirect?
@@ -779,11 +797,13 @@ static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[
         if (!strcmp(names[i]->d_name, ".") || !strcmp(names[i]->d_name, ".."))
             continue;
 
+        percent_encode(names[i]->d_name, enc);
+
         if (names[i]->d_type == DT_DIR)
-	        sprintf(buf, "<li><a href=\"%s/\">%s/</a></li>", names[i]->d_name,
+	        sprintf(buf, "<li><a href=\"%s/\">%s/</a></li>", enc,
 	                names[i]->d_name);
         else
-	        sprintf(buf, "<li><a href=\"%s\">%s</a></li>", names[i]->d_name,
+	        sprintf(buf, "<li><a href=\"%s\">%s</a></li>", enc,
 	                names[i]->d_name);
 
         ws_send(ws_ctx, buf, strlen(buf));
@@ -822,13 +842,15 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in) {
         len = strlen(path);
     }
 
-    wserr("Requested file '%s'\n", path);
-    sprintf(fullpath, "%s/%s", settings.httpdir, path);
+    percent_decode(path, buf);
+
+    wserr("Requested file '%s'\n", buf);
+    sprintf(fullpath, "%s/%s", settings.httpdir, buf);
 
     DIR *dir = opendir(fullpath);
     if (dir) {
         closedir(dir);
-        dirlisting(ws_ctx, fullpath, path);
+        dirlisting(ws_ctx, fullpath, buf);
         return;
     }
 
