@@ -20,6 +20,8 @@ move_libjpeg_turbo_to_os_specific_dir() {
 }
 
 shared_with_docker_dir=${GITLAB_SHARED_DIND_DIR:-/tmp}
+# some gitlab runners may not have a shared dind configured
+if [ ! -w "$GITLAB_SHARED_DIND_DIR" ]; then GITLAB_SHARED_DIND_DIR="/tmp"; fi
 
 cd "$(dirname "$0")/.."
 . builder/os_ver_cli.sh
