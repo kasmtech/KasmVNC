@@ -18,8 +18,10 @@ stages:
   - apk add bash
   - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
 
+.prepare_www: &prepare_www
+  - tar -zxf output/www/kasm_www.tar.gz -C builder/
+
 .prepare_artfacts: &prepare_artfacts
-  - mkdir output
   - cp -r builder/build/* output/
   - rm output/*.tar.gz
 
@@ -60,8 +62,7 @@ build_ubuntu_bionic_arm:
     - arm
   before_script:
     - *prepare_build
-    - tar -zxf output/www/kasm_www.tar.gz -C builder/
-    - ls builder/www
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -75,6 +76,7 @@ build_ubuntu_bionic_libjpeg_turbo:
   allow_failure: false
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -88,6 +90,7 @@ build_ubuntu_focal:
   allow_failure: true
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -101,6 +104,7 @@ build_debian_buster:
   allow_failure: true
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -114,6 +118,7 @@ build_debian_bullseye:
   allow_failure: true
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -127,6 +132,7 @@ build_kali_rolling:
   allow_failure: true
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -140,6 +146,7 @@ build_centos7:
   allow_failure: true
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -162,4 +169,5 @@ upload:
         echo;
         echo "File to upload $upload_filename";
         upload_to_s3 "$package" "$upload_filename";
+        curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=$upload_filename&target_url=${S3_URL}"
       done
