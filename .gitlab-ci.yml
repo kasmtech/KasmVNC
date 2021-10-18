@@ -35,6 +35,21 @@ build_ubuntu_bionic:
     paths:
       - output/
 
+build_ubuntu_bionic_arm:
+  stage: build
+  allow_failure: false
+  tags:
+    - arm
+  before_script:
+    - *prepare_build
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package ubuntu bionic
+  artifacts:
+    paths:
+      - output/
+
 build_ubuntu_bionic_libjpeg_turbo:
   stage: build
   allow_failure: false
