@@ -37,9 +37,10 @@ tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=
 
 cd unix/xserver
 patch -Np1 -i ../xserver${XORG_PATCH}.patch
-if [[ $XORG_VER =~ ^1\.20\..*$ ]]; then
-  patch -Np1 -i ../xserver120.7.patch
-fi
+case "$XORG_VER" in
+	echo "PATCHING XORG WITH 120.7"
+  1.20.*) patch -Np1 -i ../xserver120.7.patch ;;
+esac
 
 autoreconf -i
 # Configuring Xorg is long and has many distro-specific paths.
