@@ -176,15 +176,6 @@ XserverDesktop::queryConnection(network::Socket* sock,
   return rfb::VNCServerST::PENDING;
 }
 
-void XserverDesktop::requestClipboard()
-{
-  try {
-    server->requestClipboard();
-  } catch (rdr::Exception& e) {
-    vlog.error("XserverDesktop::requestClipboard: %s",e.str());
-  }
-}
-
 void XserverDesktop::announceClipboard(bool available)
 {
   try {
@@ -194,12 +185,34 @@ void XserverDesktop::announceClipboard(bool available)
   }
 }
 
-void XserverDesktop::sendClipboardData(const char* data)
+void XserverDesktop::clearBinaryClipboardData()
 {
   try {
-    server->sendClipboardData(data);
+    server->clearBinaryClipboardData();
   } catch (rdr::Exception& e) {
-    vlog.error("XserverDesktop::sendClipboardData: %s",e.str());
+    vlog.error("XserverDesktop::clearBinaryClipboardData: %s",e.str());
+  }
+}
+
+void XserverDesktop::sendBinaryClipboardData(const char* mime,
+                                             const unsigned char *data,
+                                             const unsigned len)
+{
+  try {
+    server->sendBinaryClipboardData(mime, data, len);
+  } catch (rdr::Exception& e) {
+    vlog.error("XserverDesktop::sendBinaryClipboardData: %s",e.str());
+  }
+}
+
+void XserverDesktop::getBinaryClipboardData(const char* mime,
+                                            const unsigned char **data,
+                                            unsigned *len)
+{
+  try {
+    server->getBinaryClipboardData(mime, data, len);
+  } catch (rdr::Exception& e) {
+    vlog.error("XserverDesktop::getBinaryClipboardData: %s",e.str());
   }
 }
 
@@ -446,11 +459,14 @@ void XserverDesktop::approveConnection(uint32_t opaqueId, bool accept,
 
 
 void XserverDesktop::pointerEvent(const Point& pos, int buttonMask,
-                                  const bool skipClick, const bool skipRelease)
+                                  const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
-  vncPointerMove(pos.x + vncGetScreenX(screenIndex),
-                 pos.y + vncGetScreenY(screenIndex));
-  vncPointerButtonAction(buttonMask, skipClick, skipRelease);
+  if (scrollX == 0 && scrollY == 0) {
+    vncPointerMove(pos.x + vncGetScreenX(screenIndex), pos.y + vncGetScreenY(screenIndex));
+    vncPointerButtonAction(buttonMask, skipClick, skipRelease);
+  } else {
+    vncScroll(scrollX, scrollY);
+  }
 }
 
 unsigned int XserverDesktop::setScreenLayout(int fb_width, int fb_height,
@@ -469,19 +485,14 @@ unsigned int XserverDesktop::setScreenLayout(int fb_width, int fb_height,
   return ret;
 }
 
-void XserverDesktop::handleClipboardRequest()
-{
-  vncHandleClipboardRequest();
-}
-
 void XserverDesktop::handleClipboardAnnounce(bool available)
 {
   vncHandleClipboardAnnounce(available);
 }
 
-void XserverDesktop::handleClipboardData(const char* data_, int len)
+void XserverDesktop::handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32])
 {
-  vncHandleClipboardData(data_, len);
+  vncHandleClipboardAnnounceBinary(num, mimes);
 }
 
 void XserverDesktop::grabRegion(const rfb::Region& region)

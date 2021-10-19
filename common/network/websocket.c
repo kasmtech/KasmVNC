@@ -111,7 +111,7 @@ static const char *parse_get(const char * const in, const char * const opt, unsi
 	return "";
 }
 
-static void percent_decode(const char *src, char *dst) {
+static void percent_decode(const char *src, char *dst, const uint8_t filter) {
 	while (1) {
 		if (!*src)
 			break;
@@ -127,7 +127,32 @@ static void percent_decode(const char *src, char *dst) {
 			hex[2] = '\0';
 
 			src += 2;
-			*dst++ = strtol(hex, NULL, 16);
+			*dst = strtol(hex, NULL, 16);
+
+			if (filter) {
+				// Avoid directory traversal
+				if (*dst == '/')
+					*dst = '_';
+			}
+
+			dst++;
+		}
+	}
+
+	*dst = '\0';
+}
+
+static void percent_encode(const char *src, char *dst) {
+	while (1) {
+		if (!*src)
+			break;
+		if (isalnum(*src) || *src == '.' || *src == ',') {
+			*dst++ = *src++;
+		} else {
+			*dst++ = '%';
+			sprintf(dst, "%02X", *src);
+			dst += 2;
+			src++;
 		}
 	}
 
@@ -746,6 +771,7 @@ def:
 
 static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[]) {
     char buf[4096];
+    char enc[PATH_MAX * 3 + 1];
     unsigned i;
 
     // Redirect?
@@ -779,11 +805,13 @@ static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[
         if (!strcmp(names[i]->d_name, ".") || !strcmp(names[i]->d_name, ".."))
             continue;
 
+        percent_encode(names[i]->d_name, enc);
+
         if (names[i]->d_type == DT_DIR)
-	        sprintf(buf, "<li><a href=\"%s/\">%s/</a></li>", names[i]->d_name,
+	        sprintf(buf, "<li><a href=\"%s/\">%s/</a></li>", enc,
 	                names[i]->d_name);
         else
-	        sprintf(buf, "<li><a href=\"%s\">%s</a></li>", names[i]->d_name,
+	        sprintf(buf, "<li><a href=\"%s\">%s</a></li>", enc,
 	                names[i]->d_name);
 
         ws_send(ws_ctx, buf, strlen(buf));
@@ -822,13 +850,15 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in) {
         len = strlen(path);
     }
 
-    wserr("Requested file '%s'\n", path);
-    sprintf(fullpath, "%s/%s", settings.httpdir, path);
+    percent_decode(path, buf, 1);
+
+    wserr("Requested file '%s'\n", buf);
+    sprintf(fullpath, "%s/%s", settings.httpdir, buf);
 
     DIR *dir = opendir(fullpath);
     if (dir) {
         closedir(dir);
-        dirlisting(ws_ctx, fullpath, path);
+        dirlisting(ws_ctx, fullpath, buf);
         return;
     }
 
@@ -976,14 +1006,14 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
         if (len) {
             memcpy(buf, param, len);
             buf[len] = '\0';
-            percent_decode(buf, decname);
+            percent_decode(buf, decname, 0);
         }
 
         param = parse_get(args, "password", &len);
         if (len) {
             memcpy(buf, param, len);
             buf[len] = '\0';
-            percent_decode(buf, decpw);
+            percent_decode(buf, decpw, 0);
 
             struct crypt_data cdata;
             cdata.initialized = 0;
@@ -1023,7 +1053,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
         if (len) {
             memcpy(buf, param, len);
             buf[len] = '\0';
-            percent_decode(buf, decname);
+            percent_decode(buf, decname, 0);
         }
 
         if (!decname[0])
@@ -1052,7 +1082,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
         if (len) {
             memcpy(buf, param, len);
             buf[len] = '\0';
-            percent_decode(buf, decname);
+            percent_decode(buf, decname, 0);
         }
 
         if (!decname[0])
@@ -1097,7 +1127,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
         if (len) {
             memcpy(buf, param, len);
             buf[len] = '\0';
-            percent_decode(buf, decname);
+            percent_decode(buf, decname, 0);
         } else {
             wserr("client param required\n");
             goto nope;
@@ -1320,6 +1350,8 @@ ws_ctx_t *do_handshake(int sock) {
             } else {
                 // Client tried an empty password, just fail them
                 response[0] = '\0';
+                authbuf[0] = 'a';
+                authbuf[1] = '\0';
             }
         }
 

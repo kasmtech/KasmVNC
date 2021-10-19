@@ -69,7 +69,7 @@ void SSE2_halve(const uint8_t *oldpx,
 
 		uint8_t * const dst = newpx + newstride * (y / 2) * 4;
 
-		for (x = 0; x < srcw; x += 4) {
+		for (x = 0; x < srcw - 3; x += 4) {
 			__m128i lo, hi, a, b, c, d;
 			lo = _mm_loadu_si128((__m128i *) &row0[x * 4]);
 			hi = _mm_loadu_si128((__m128i *) &row1[x * 4]);
@@ -141,7 +141,7 @@ void SSE2_scale(const uint8_t *oldpx,
 		const __m128i vertmul = _mm_set1_epi16(top);
 		const __m128i vertmul2 = _mm_set1_epi16(bot);
 
-		for (x = 0; x < tgtw; x += 2) {
+		for (x = 0; x < tgtw - 1; x += 2) {
 			const float nx[2] = {
 				x * invdiff,
 				(x + 1) * invdiff,

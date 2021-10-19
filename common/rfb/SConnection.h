@@ -28,6 +28,7 @@
 #include <rdr/OutStream.h>
 #include <rfb/SMsgHandler.h>
 #include <rfb/SecurityServer.h>
+#include <vector>
 
 namespace rfb {
 
@@ -73,14 +74,9 @@ namespace rfb {
 
     virtual void setEncodings(int nEncodings, const rdr::S32* encodings);
 
-    virtual void clientCutText(const char* str, int len);
-
-    virtual void handleClipboardRequest(rdr::U32 flags);
-    virtual void handleClipboardPeek(rdr::U32 flags);
-    virtual void handleClipboardNotify(rdr::U32 flags);
-    virtual void handleClipboardProvide(rdr::U32 flags,
-                                        const size_t* lengths,
-                                        const rdr::U8* const* data);
+    virtual void clearBinaryClipboard();
+    virtual void addBinaryClipboard(const char mime[], const rdr::U8 *data,
+                                    const rdr::U32 len);
 
     virtual void supportsQEMUKeyEvent();
 
@@ -127,24 +123,10 @@ namespace rfb {
     virtual void enableContinuousUpdates(bool enable,
                                          int x, int y, int w, int h);
 
-    // handleClipboardRequest() is called whenever the client requests
-    // the server to send over its clipboard data. It will only be
-    // called after the server has first announced a clipboard change
-    // via announceClipboard().
-    virtual void handleClipboardRequest();
-
     // handleClipboardAnnounce() is called to indicate a change in the
     // clipboard on the client. Call requestClipboard() to access the
     // actual data.
     virtual void handleClipboardAnnounce(bool available);
-
-    // handleClipboardData() is called when the client has sent over
-    // the clipboard data as a result of a previous call to
-    // requestClipboard(). Note that this function might never be
-    // called if the clipboard data was no longer available when the
-    // client received the request.
-    virtual void handleClipboardData(const char* data, int len);
-
 
     virtual void add_changed_all() {}
 
@@ -166,21 +148,10 @@ namespace rfb {
 
     // Other methods
 
-    // requestClipboard() will result in a request to the client to
-    // transfer its clipboard data. A call to handleClipboardData()
-    // will be made once the data is available.
-    virtual void requestClipboard();
-
     // announceClipboard() informs the client of changes to the
     // clipboard on the server. The client may later request the
     // clipboard data via handleClipboardRequest().
     virtual void announceClipboard(bool available);
-
-    // sendClipboardData() transfers the clipboard data to the client
-    // and should be called whenever the client has requested the
-    // clipboard via handleClipboardRequest().
-    virtual void sendClipboardData(const char* data, int len);
-
 
     // authenticated() returns true if the client has authenticated
     // successfully.
@@ -221,11 +192,18 @@ namespace rfb {
 
     rdr::S32 getPreferredEncoding() { return preferredEncoding; }
 
+    struct binaryClipboard_t {
+        char mime[32];
+        std::vector<unsigned char> data;
+    };
+
   protected:
     void setState(stateEnum s) { state_ = s; }
 
     void setReader(SMsgReader *r) { reader_ = r; }
     void setWriter(SMsgWriter *w) { writer_ = w; }
+
+    std::vector<binaryClipboard_t> binaryClipboard;
 
   private:
     void writeFakeColourMap(void);
