@@ -46,6 +46,7 @@ build_ubuntu_bionic:
   allow_failure: true
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -98,6 +99,22 @@ build_ubuntu_focal:
     paths:
       - output/
 
+build_ubuntu_focal_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - arm
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package ubuntu focal;
+  artifacts:
+    paths:
+      - output/
+
 build_debian_buster:
   stage: build
   allow_failure: true
@@ -112,9 +129,41 @@ build_debian_buster:
     paths:
       - output/
 
+build_debian_buster_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - arm
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package debian buster;
+  artifacts:
+    paths:
+      - output/
+
 build_debian_bullseye:
   stage: build
   allow_failure: true
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package debian bullseye;
+  artifacts:
+    paths:
+      - output/
+
+build_debian_bullseye_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - arm
   before_script:
     - *prepare_build
     - *prepare_www
@@ -143,6 +192,22 @@ build_kali_rolling:
 build_centos7:
   stage: build
   allow_failure: true
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package centos core
+  artifacts:
+    paths:
+      - output/
+
+build_centos7_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - arm
   before_script:
     - *prepare_build
     - *prepare_www
