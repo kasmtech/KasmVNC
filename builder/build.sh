@@ -38,7 +38,10 @@ tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=
 cd unix/xserver
 patch -Np1 -i ../xserver${XORG_PATCH}.patch
 case "$XORG_VER" in
-  1.20.*) patch -Np1 -i ../xserver120.7.patch ;;
+  1.20.*) 
+      if [ -f ../xserver120.7.patch ]; then
+        patch -Np1 -i ../xserver120.7.patch
+      fi ;;
 esac
 
 autoreconf -i
