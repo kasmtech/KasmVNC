@@ -203,22 +203,6 @@ build_centos7:
     paths:
       - output/
 
-build_centos7_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package centos core
-  artifacts:
-    paths:
-      - output/
-
 upload:
   stage: upload
   image: ubuntu:focal
