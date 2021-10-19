@@ -65,7 +65,7 @@ build_ubuntu_bionic_arm:
   after_script:
     - *prepare_artfacts
   script:
-    - bash GITLAB_SHARED_DIND_DIR=/tmp builder/build-package ubuntu bionic
+    - bash builder/build-package ubuntu bionic
   artifacts:
     paths:
       - output/
