@@ -19,11 +19,7 @@ move_libjpeg_turbo_to_os_specific_dir() {
     $PWD/builder/build/${os_codename}/
 }
 
-echo "GITLAB_SHARED_DIND_DIR= ${GITLAB_SHARED_DIND_DIR}"
-shared_with_docker_dir="/tmp"
-# fall back to /tmp if not writable
-#if [ ! -w "$GITLAB_SHARED_DIND_DIR" ]; then shared_with_docker_dir="/tmp"; fi
-echo "SHARED_WITH_DOCKER_DIR= ${shared_with_docker_dir}"
+shared_with_docker_dir=${GITLAB_SHARED_DIND_DIR:-/tmp}
 
 cd "$(dirname "$0")/.."
 . builder/os_ver_cli.sh

@@ -168,5 +168,5 @@ upload:
         echo;
         echo "File to upload $upload_filename";
         upload_to_s3 "$package" "$upload_filename";
-        curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=$upload_filename&target_url=${S3_URL}"
+        curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=$upload_filename&target_url=${S3_URL}";
       done
