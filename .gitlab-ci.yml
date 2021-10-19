@@ -13,7 +13,6 @@ stages:
   - upload
 
 .prepare_build: &prepare_build
-  - ls -l
   - pwd
   - apk add bash
   - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
@@ -66,7 +65,7 @@ build_ubuntu_bionic_arm:
   after_script:
     - *prepare_artfacts
   script:
-    - bash builder/build-package ubuntu bionic
+    - bash GITLAB_SHARED_DIND_DIR=/tmp builder/build-package ubuntu bionic
   artifacts:
     paths:
       - output/

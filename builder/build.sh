@@ -33,7 +33,7 @@ sed -i -e '/find_package(FLTK/s@^@#@' \
 cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF
 make -j5
 
-tar -C unix/xserver -xvf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=1
+tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=1
 
 cd unix/xserver
 patch -Np1 -i ../xserver${XORG_PATCH}.patch
