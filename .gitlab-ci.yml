@@ -97,7 +97,7 @@ build_ubuntu_focal:
     - bash builder/build-package ubuntu focal;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full ci\]/
+      - $CI_COMMIT_MESSAGE =~ /\[full [Cc][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -116,7 +116,7 @@ build_ubuntu_focal_arm:
     - bash builder/build-package ubuntu focal;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full ci\]/
+      - $CI_COMMIT_MESSAGE =~ /\[full [Cc][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -133,7 +133,7 @@ build_debian_buster:
     - bash builder/build-package debian buster;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full ci\]/
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -152,7 +152,7 @@ build_debian_buster_arm:
     - bash builder/build-package debian buster;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full ci\]/
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -169,7 +169,7 @@ build_debian_bullseye:
     - bash builder/build-package debian bullseye;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full ci\]/
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -188,7 +188,7 @@ build_debian_bullseye_arm:
     - bash builder/build-package debian bullseye;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full ci\]/
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
   artifacts:
     paths:
       - output/
