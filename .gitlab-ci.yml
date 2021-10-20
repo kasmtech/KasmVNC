@@ -95,6 +95,9 @@ build_ubuntu_focal:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu focal;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [Cc][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -111,6 +114,9 @@ build_ubuntu_focal_arm:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu focal;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [Cc][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -125,6 +131,9 @@ build_debian_buster:
     - *prepare_artfacts
   script:
     - bash builder/build-package debian buster;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -141,6 +150,9 @@ build_debian_buster_arm:
     - *prepare_artfacts
   script:
     - bash builder/build-package debian buster;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -155,6 +167,9 @@ build_debian_bullseye:
     - *prepare_artfacts
   script:
     - bash builder/build-package debian bullseye;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -171,6 +186,9 @@ build_debian_bullseye_arm:
     - *prepare_artfacts
   script:
     - bash builder/build-package debian bullseye;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -217,5 +235,6 @@ upload:
         echo;
         echo "File to upload $upload_filename";
         upload_to_s3 "$package" "$upload_filename";
-        curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=$upload_filename&target_url=${S3_URL}";
+        UPLOAD_NAME=$(echo $upload_filename | sed 's#kasmvncserver_##' | sed -r 's#_([0-9]{1,3}\.){2}[0-9]{1,2}_\S+?([a-f0-9]{6})##' | sed -r 's#\.(deb|rpm)##');
+        curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=${UPLOAD_NAME}&target_url=${S3_URL}";
       done
