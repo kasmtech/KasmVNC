@@ -107,7 +107,7 @@ rfb::BoolParameter setPrimary("SetPrimary", "Set the PRIMARY as well "
                               "as the CLIPBOARD selection", true);
 rfb::BoolParameter sendPrimary("SendPrimary",
                                "Send the PRIMARY as well as the CLIPBOARD selection",
-                               true);
+                               false);
 
 static PixelFormat vncGetPixelFormat(int scrIdx)
 {
