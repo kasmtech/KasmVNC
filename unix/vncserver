@@ -984,6 +984,9 @@ sub SwallowedArgs {
   if ($opt{"-interface"}) {
     $cmd .= " " . "-interface " . quotedString($opt{"-interface"});
   }
+  if ($opt{"-log"}) {
+    $cmd .= " " . "-log " . quotedString($opt{"-log"});
+  }
 
   $cmd;
 }
