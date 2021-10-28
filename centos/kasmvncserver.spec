@@ -7,7 +7,7 @@ License: GPLv2+
 URL: https://github.com/kasmtech/KasmVNC
 
 BuildRequires: rsync
-Requires: xorg-x11-xauth, xorg-x11-xkb-utils, xkeyboard-config, xorg-x11-server-utils, openssl, perl, perl-Switch
+Requires: xorg-x11-xauth, xorg-x11-xkb-utils, xkeyboard-config, xorg-x11-server-utils, openssl, perl, perl-Switch, rpmfusion-free-release, perl-Hash-Merge-Simple
 Conflicts: tigervnc-server, tigervnc-server-minimal
 
 %description
@@ -48,11 +48,12 @@ DESTDIR=$RPM_BUILD_ROOT
 DST_MAN=$DESTDIR/usr/share/man/man1
 
 mkdir -p $DESTDIR/usr/bin $DESTDIR/usr/share/man/man1 \
-  $DESTDIR/usr/share/doc/kasmvncserver
+  $DESTDIR/usr/share/doc/kasmvncserver $DESTDIR/usr/lib
 cp $SRC_BIN/Xvnc $DESTDIR/usr/bin;
 cp $SRC_BIN/vncserver $DESTDIR/usr/bin;
 cp $SRC_BIN/vncconfig $DESTDIR/usr/bin;
 cp $SRC_BIN/kasmvncpasswd $DESTDIR/usr/bin;
+cp -r $SRC/lib/kasmvnc/ $DESTDIR/usr/lib/kasmvncserver
 cd $DESTDIR/usr/bin && ln -s kasmvncpasswd vncpasswd;
 cp -r $SRC/share/doc/kasmvnc*/* $DESTDIR/usr/share/doc/kasmvncserver/
 rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
@@ -66,6 +67,7 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 
 %files
 /usr/bin/*
+/usr/lib/kasmvncserver
 /usr/share/man/man1/*
 /usr/share/kasmvnc/www
 

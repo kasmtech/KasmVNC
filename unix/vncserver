@@ -29,6 +29,9 @@ use v5.10;
 use Time::HiRes qw (sleep);
 use Switch;
 use File::Basename;
+use YAML::Tiny;
+
+use Hash::Merge::Simple;
 
 use constant {
   NO_ARG_VALUE => 0,
@@ -39,6 +42,8 @@ use constant {
 CheckWeCanRunInThisEnvironment();
 
 DefineFilePathsAndStuff();
+LoadYAMLConfig();
+exit;
 
 ParseAndProcessCliOptions();
 
@@ -1081,6 +1086,8 @@ sub DefineFilePathsAndStuff {
   $de_was_selected_file="$ENV{HOME}/.vnc/.de-was-selected";
 
   $vncSystemConfigDir = "/etc/kasmvnc";
+  $vncDefaultsConfig = "/src/unix/vncserver_defaults.yaml";
+  $vncSystemConfig = "/src/unix/vncserver.yaml";
   $vncSystemConfigDefaultsFile = "$vncSystemConfigDir/vncserver-config-defaults";
   $vncSystemConfigMandatoryFile = "$vncSystemConfigDir/vncserver-config-mandatory";
   $defaultWebsocketPort = 8443;
@@ -1244,4 +1251,13 @@ sub DetectSelectDeBin {
 sub LocalSelectDePath {
   my $dirname = dirname($0);
   "$dirname/../builder/startup/deb/select-de.sh";
+}
+
+sub LoadYAMLConfig {
+  my $defaultsConfig = YAML::Tiny->read($vncDefaultsConfig)->[0];
+  my $systemConfig = YAML::Tiny->read($vncSystemConfig)->[0];
+  my %mergedConfig = %{ Hash::Merge::Simple::merge($defaultsConfig, $systemConfig) };
+
+  say $mergedConfig{framerate};
+  say $mergedConfig{dlp}{region}{x1};
 }

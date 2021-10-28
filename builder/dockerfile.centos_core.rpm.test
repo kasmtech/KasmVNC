@@ -37,6 +37,7 @@ RUN yum install -y epel-release && yum groupinstall xfce -y
 RUN yum erase -y pm-utils xscreensaver*
 RUN yum install -y redhat-lsb-core
 RUN yum install -y vim less
+RUN yum localinstall -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-7.noarch.rpm https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-7.noarch.rpm
 
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
