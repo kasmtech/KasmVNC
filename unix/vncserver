@@ -1111,8 +1111,11 @@ sub ParseAndProcessCliOptions {
   ParseOptionsAndRemoveMatchesFromARGV(@supportedOptions);
   ProcessCliOptions();
   CheckGeometryAndDepthAreSensible();
-  $displayNumber = DetectDisplayNumberFromCliArgs() ||
-  GetLowestAvailableDisplayNumber();
+
+  $displayNumber = DetectDisplayNumberFromCliArgs();
+  if (!defined($displayNumber)) {
+    $displayNumber = GetLowestAvailableDisplayNumber();
+  }
   CheckCliOptionsForBeingValid();
 }
 
