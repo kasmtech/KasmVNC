@@ -567,10 +567,10 @@ sub CheckUserHasAccessToDefaultCertOnDebian {
 
   my $certGroup = 'ssl-cert';
   if (system("groups | grep -qw $certGroup") != 0) {
-    say <<~EOF;
-      Can't access TLS certificate.
-      Please add your user to $certGroup via 'addgroup <user> $certGroup'
-    EOF
+    say <<EOF;
+  Can't access TLS certificate.
+  Please add your user to $certGroup via 'addgroup <user> $certGroup'
+EOF
     exit(1);
   }
 }
