@@ -61,8 +61,6 @@ kasmvncpasswd -d -u "$VNC_USER-to-delete" $HOME/.kasmpasswd
 chmod 0600 $HOME/.kasmpasswd
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout $HOME/.vnc/self.pem -out $HOME/.vnc/self.pem -subj "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
 
-exec /bin/bash
-
 vncserver :1 -interface 0.0.0.0
 vncserver -kill :1
 
