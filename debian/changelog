@@ -1,3 +1,9 @@
+kasmvnc (0.9.3~beta-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Dmitry Maksyoma <ledestin@gmail.com>  Fri, 29 Oct 2021 19:16:33 +1300
+
 kasmvnc (0.9.1~beta-1) unstable; urgency=medium
 
   * Initial release of the Debian package.
