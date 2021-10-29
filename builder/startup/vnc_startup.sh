@@ -61,9 +61,6 @@ kasmvncpasswd -d -u "$VNC_USER-to-delete" $HOME/.kasmpasswd
 chmod 0600 $HOME/.kasmpasswd
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout $HOME/.vnc/self.pem -out $HOME/.vnc/self.pem -subj "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
 
-vncserver :1 -interface 0.0.0.0
-vncserver -kill :1
-
 if [[ -f $PASSWD_PATH ]]; then
     rm -f $PASSWD_PATH
 fi
@@ -89,7 +86,7 @@ detect_cert_location
 [ -n "$KASMVNC_VERBOSE_LOGGING" ] && verbose_logging_option="-log *:stderr:100"
 
 echo -e "start vncserver with param: VNC_COL_DEPTH=$VNC_COL_DEPTH, VNC_RESOLUTION=$VNC_RESOLUTION\n..."
-vncserver $DISPLAY -depth $VNC_COL_DEPTH -geometry $VNC_RESOLUTION -FrameRate=$MAX_FRAME_RATE -websocketPort $VNC_PORT $cert_option -sslOnly -interface 0.0.0.0 $VNCOPTIONS $package_www_dir_option $verbose_logging_option #&> $STARTUPDIR/no_vnc_startup.log
+vncserver $DISPLAY -select-de xfce -depth $VNC_COL_DEPTH -geometry $VNC_RESOLUTION -FrameRate=$MAX_FRAME_RATE -websocketPort $VNC_PORT $cert_option -sslOnly -interface 0.0.0.0 $VNCOPTIONS $package_www_dir_option $verbose_logging_option #&> $STARTUPDIR/no_vnc_startup.log
 
 PID_SUN=$!
 
