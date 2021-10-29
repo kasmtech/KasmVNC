@@ -1133,7 +1133,7 @@ sub PrepareDefaultsForPassingToXvnc {
   %default_opts;
   %config;
 
-  $websocketPort = $opt{"-websocketPort"} || \
+  $websocketPort = $opt{"-websocketPort"} ||
     GenerateWebsocketPortFromDisplayNumber();
   $desktopName = $opt{'-name'} || "$host:$displayNumber ($ENV{USER})";
 
