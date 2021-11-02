@@ -29,10 +29,9 @@ dlp:
     delay: 1000
   keyboard:
     ratelimit: 30
+  logging:
+    level: verbose
 
 # Mouse, trackpad, etc.
 pointer:
   allow_clicks_and_cursor_movement: false
-
-logging:
-  level: verbose
