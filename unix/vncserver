@@ -30,6 +30,8 @@ use Time::HiRes qw (sleep);
 use Switch;
 use File::Basename;
 use YAML::Tiny;
+use List::Util qw(first);
+use Data::Dumper;
 
 use Hash::Merge::Simple;
 
@@ -43,7 +45,6 @@ CheckWeCanRunInThisEnvironment();
 
 DefineFilePathsAndStuff();
 LoadYAMLConfig();
-exit;
 
 ParseAndProcessCliOptions();
 
@@ -972,6 +973,7 @@ sub ConstructXvncCmd {
   }
 
   $cmd .= SwallowedArgs();
+  $cmd .= ConvertConfigToXvncArgs();
 
   $cmd .= " >> " . quotedString($desktopLog) . " 2>&1";
 
@@ -1114,6 +1116,15 @@ sub DefineFilePathsAndStuff {
   chop($hostIP = `hostname -i`);
 
   DetectFontPath();
+
+  %configToXvncArgsMap = ( interface => "-interface" );
+  $configToXvncArgsMap{dlp}{clipboard}{max_paste_size} = '-MaxCutText';
+  $configToXvncArgsMap{pointer}{allow_clicks_and_cursor_movement} =
+    '-AcceptPointerEvents';
+
+  %xvncArgsToConfigAliases = ();
+  $xvncArgsToConfigAliases{'-MaxCutText'} = [qw(dlp.clipboard.max_paste_size dlp.clipboard.delay)];
+  $xvncArgsToConfigAliases{'-httpd'} = [qw(httpd_directory)];
 }
 
 sub ParseAndProcessCliOptions {
@@ -1163,6 +1174,7 @@ sub EnsureAtLeastOneKasmUserExists {
 
 sub StartXvncOrExit {
   $cmd = ConstructXvncCmd();
+  say $cmd;
 
   DeleteLogLeftFromPreviousXvncRun();
   StartXvncAndRecordPID();
@@ -1265,10 +1277,65 @@ sub LocalSelectDePath {
 }
 
 sub LoadYAMLConfig {
+  if (! -f $vncDefaultsConfig) {
+    die "Couldn't load config: $vncDefaultsConfig";
+  }
+
   my $defaultsConfig = YAML::Tiny->read($vncDefaultsConfig)->[0];
   my $systemConfig = YAML::Tiny->read($vncSystemConfig)->[0];
-  my %mergedConfig = %{ Hash::Merge::Simple::merge($defaultsConfig, $systemConfig) };
+  %mergedConfig = %{ Hash::Merge::Simple::merge($defaultsConfig, $systemConfig) };
 
   say $mergedConfig{framerate};
   say $mergedConfig{dlp}{region}{x1};
+  say ConvertConfigToXvncArgs();
+}
+
+sub ConvertConfigToXvncArgs {
+  # my $result = "";
+
+  foreach my $cliArg (keys %xvncArgsToConfigAliases) {
+    ComplementCliArgWithValue($cliArg);
+  }
+  exit;
+
+  # $result .= " $key $value";
+}
+
+sub ComplementCliArgWithValue {
+  my $cliArg = $_[0];
+
+  my $firstDefinedConfigKey = FirstDefinedConfigKey($cliArg);
+  my $cliValue = ConfigValue($firstDefinedConfigKey);
+  if ($cliValue eq "default") {
+    say "default value for $cliArg, skipping";
+    next;
+  }
+
+  say "$cliArg $cliValue";
+}
+
+sub FirstDefinedConfigKey {
+  my $cliArg = $_[0];
+  my @configAliases = @{ $xvncArgsToConfigAliases{$cliArg} };
+
+  first { ConfigValue($_) } @configAliases;
+}
+
+sub ConfigValue {
+  my $absoluteKey = $_[0];
+  my @keyParts = split(/\./, $absoluteKey);
+  my %configPart = %mergedConfig;
+
+  foreach my $keyPart (@keyParts) {
+    if (!defined($configPart{$keyPart})) {
+      return;
+    }
+
+    if (ref $configPart{$keyPart} eq "HASH") {
+      %configPart = % { $configPart{$keyPart} };
+      next;
+    }
+
+    return $configPart{$keyPart};
+  }
 }

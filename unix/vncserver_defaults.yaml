@@ -1,6 +1,13 @@
 ---
 geometry: 1024x768
-interface: 192.168.0.1
+depth: 24
+network:
+  interface: 0.0.0.0
+  use_ipv4: true
+  use_ipv6: true
+httpd_directory: /usr/share/kasmvnc/www
+display_title: default
+password_file: ~/.kasmpasswd
 framerate: 30
 dynamic_quality:
   min: 7
@@ -16,10 +23,16 @@ dlp:
     y1: 10
     allow_click: false
   clipboard:
+    max_paste_size: 262144
     send_max: 10000
     accept_max: 10000
     delay: 1000
   keyboard:
     ratelimit: 30
-  logging:
-    level: verbose
+
+# Mouse, trackpad, etc.
+pointer:
+  allow_clicks_and_cursor_movement: false
+
+logging:
+  level: verbose
