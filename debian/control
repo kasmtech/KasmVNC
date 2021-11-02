@@ -13,7 +13,7 @@ Package: kasmvncserver
 Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, ssl-cert, xauth,
   x11-xkb-utils, xkb-data, procps, libswitch-perl, libyaml-tiny-perl,
-  libhash-merge-simple-perl
+  libhash-merge-simple-perl, libscalar-list-utils-perl
 Provides: vnc-server
 Description: VNC server accessible from a web browser
  VNC stands for Virtual Network Computing. It is, in essence, a remote
