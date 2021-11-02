@@ -1117,12 +1117,9 @@ sub DefineFilePathsAndStuff {
 
   DetectFontPath();
 
-  %configToXvncArgsMap = ( interface => "-interface" );
-  $configToXvncArgsMap{dlp}{clipboard}{max_paste_size} = '-MaxCutText';
-  $configToXvncArgsMap{pointer}{allow_clicks_and_cursor_movement} =
-    '-AcceptPointerEvents';
-
-  %xvncArgsToConfigAliases = ();
+  %xvncArgsToConfigAliases = (
+    '-AcceptPointerEvents' => [qw(pointer.allow_clicks_and_cursor_movement)]
+  );
   $xvncArgsToConfigAliases{'-MaxCutText'} = [qw(dlp.clipboard.max_paste_size dlp.clipboard.delay)];
   $xvncArgsToConfigAliases{'-httpd'} = [qw(httpd_directory)];
 }
@@ -1291,27 +1288,41 @@ sub LoadYAMLConfig {
 }
 
 sub ConvertConfigToXvncArgs {
-  # my $result = "";
+  my $result = "";
 
   foreach my $cliArg (keys %xvncArgsToConfigAliases) {
-    ComplementCliArgWithValue($cliArg);
-  }
-  exit;
+    my $xvncCliArgWithValue = ComplementCliArgWithValue($cliArg);
+    next unless defined($xvncCliArgWithValue);
 
-  # $result .= " $key $value";
+    $result .= " $xvncCliArgWithValue";
+  }
+
+  $result;
 }
 
 sub ComplementCliArgWithValue {
   my $cliArg = $_[0];
 
   my $firstDefinedConfigKey = FirstDefinedConfigKey($cliArg);
+  return unless defined($firstDefinedConfigKey);
+
   my $cliValue = ConfigValue($firstDefinedConfigKey);
-  if ($cliValue eq "default") {
-    say "default value for $cliArg, skipping";
-    next;
+  return unless defined($cliValue);
+
+  switch($cliValue) {
+    case "default" {
+      say "default value for $cliArg, skipping";
+      next;
+    }
+    case "true" {
+      $cliValue = "1";
+    }
+    case "false" {
+      $cliValue = "0";
+    }
   }
 
-  say "$cliArg $cliValue";
+  "$cliArg $cliValue";
 }
 
 sub FirstDefinedConfigKey {
