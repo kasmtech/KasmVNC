@@ -9,7 +9,6 @@ EXPOSE $VNC_PORT2
 EXPOSE $VNC_PORT3
 
 RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm libnss-wrapper gettext wget
-RUN apt-get purge -y pm-utils xscreensaver*
 RUN apt-get update && apt-get install -y vim less
 RUN apt-get update && apt-get -y install lsb-release
 RUN apt-get update && apt-get -y install net-tools
@@ -22,6 +21,7 @@ RUN apt-get update && apt-get install -y lxqt
 RUN apt-get update && apt-get install -y kde-full
 RUN apt-get update && apt-get install -y cinnamon
 RUN apt-get update && apt-get install -y ubuntu-gnome-desktop
+RUN apt-get purge -y pm-utils xscreensaver*
 
 RUN apt-get update && apt-get install -y python3-pip
 RUN apt-get update && apt-get install -y strace
