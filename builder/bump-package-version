@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+update_version_to_meet_packaging_standards() {
+  new_version=$(echo "$new_version" |
+    sed -e 's/\([0-9]\)-\([a-zA-Z]\)/\1~\2/')
+}
+
+add_debian_revision_to_new_version() {
+  echo "$new_version-1"
+}
+
+bump_rpm() {
+  sed -i "s/^Version:.\+/Version:        $new_version/" centos/kasmvncserver.spec
+}
+
+bump_deb() {
+  local image="debbump_package_version:dev"
+  local L_UID=$(id -u)
+  local L_GID=$(id -g)
+  local debian_version=$(add_debian_revision_to_new_version)
+
+  docker build -t "$image" -f builder/dockerfile.bump-package-version .
+  docker run --rm -v "$PWD":/src --user "$L_UID:$L_GID" \
+    "$image" /bin/bash -c \
+    "cd /src && builder/bump-package-version-inside-docker-deb $debian_version"
+}
+
+new_version="$1"
+
+if [[ -z "$new_version" ]]; then
+  echo >&2 "Usage: $(basename "$0") <new_version>"
+  exit 1
+fi
+
+cd "$(dirname "$0")/.."
+
+update_version_to_meet_packaging_standards
+bump_rpm
+bump_deb

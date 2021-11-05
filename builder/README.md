@@ -79,6 +79,25 @@ packages installed with XFCE.
 ```
 builder/test-deb-barebones ubuntu focal
 ```
+
+# Preparing a release
+
+Deb and rpm packages need their versions bumped to the new release version. It
+can be done with:
+
+```
+builder/bump-package-version 0.9.4-beta
+```
+
+This will update corresponding package files, use `git diff` to see changes.
+
+If you've ran the command and curious about Debian version specifics, here's an
+explanation:
+Deb version will be `0.9.4~beta-1`. `~` (and not `-`) is required by packaging
+guidelines, and `-1` is Debian package revision for `0.9.4` upstream release. If
+a Debian-specific patch was later added on top of `0.9.4`, it'd be `-2` for the
+next Debian version. Rpm has a corresponding revision in its .spec file.
+
 # CI development
 
 S3 upload code is extracted to various files in `.ci`. It's possible to iterate
