@@ -1118,10 +1118,26 @@ sub DefineFilePathsAndStuff {
   DetectFontPath();
 
   %xvncArgsToConfigAliases = (
-    '-AcceptPointerEvents' => [qw(pointer.allow_clicks_and_cursor_movement)]
+    '-AcceptPointerEvents' => [qw(pointer.allow_clicks_and_cursor_movement)],
+    '-AcceptKeyEvents' => [qw(keyboard.allow_input)],
+    '-AcceptSetDesktopSize' => [qw(desktop.allow_resize)],
+    '-FrameRate' => [qw(framerate)],
+    '-DynamicQualityMin' => [qw(dynamic_quality.min)],
+    '-DynamicQualityMax' => [qw(dynamic_quality.max)],
+    '-TreatLossless' => [qw(treat_lossless)],
+    '-PreferBandwidth' => [qw(prefer_bandwidth)],
+    '-JpegVideoQuality' => [qw(video.jpeg_quality)],
+    '-WebpVideoQuality' => [qw(video.webp_quality)],
+    '-VideoScaling' => [qw(video.scaling_method)],
+    '-SendCutText' => [qw(dlp.clipboard.allow_copy_to_client_clipboard)],
+    '-DLP_ClipSendMax' => [qw(dlp.clipboard.limit_bytes_copied_to_client_clipboard)],
+    '-AcceptCutText' => [qw(dlp.clipboard.allow_paste_to_server)],
+    '-DLP_ClipAcceptMax' => [qw(dlp.clipboard.limit_bytes_pasted_to_server_clipboard)],
+    '-MaxCutText' => [qw(dlp.clipboard.max_paste_size dlp.clipboard.delay)],
+    '-DLP_ClipDelay' => [qw(dlp.clipboard.delay)],
+    '-DLP_KeyRateLimit' => [qw(dlp.keyboard.limit_keypress_rate_per_second)],
+    '-httpd' => [qw(httpd_directory)],
   );
-  $xvncArgsToConfigAliases{'-MaxCutText'} = [qw(dlp.clipboard.max_paste_size dlp.clipboard.delay)];
-  $xvncArgsToConfigAliases{'-httpd'} = [qw(httpd_directory)];
 }
 
 sub ParseAndProcessCliOptions {

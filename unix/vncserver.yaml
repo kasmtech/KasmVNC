@@ -1,7 +1,7 @@
 ---
 # geometry: 1024x768
 # interface: 192.168.0.1
-framerate: 40
+framerate: 10
 # dynamic_quality:
 #   min: 7
 #   max: 8

@@ -14,24 +14,38 @@ dynamic_quality:
   max: 8
 treat_lossless: 10
 prefer_bandwidth: true
+video:
+  jpeg_quality: -1
+  webp_quality: -1
+  scaling_method: 2
 max_video_resolution:
   width: 640
   height: 480
 dlp:
   region:
-    x1: 10
-    y1: 10
+    top_left_point: 10,10
+    bottom_right_point: 40,40
     allow_click: false
   clipboard:
+    allow_copy_to_client_clipboard: true
+    limit_bytes_copied_to_client_clipboard: 10000
+    allow_paste_to_server: true
+    limit_bytes_pasted_to_server_clipboard: 10000
     max_paste_size: 262144
     send_max: 10000
     accept_max: 10000
     delay: 1000
   keyboard:
     ratelimit: 30
+    # Set to a positive number. To disable, set to "no_limit" or 0.
+    limit_keypress_rate_per_second: no_limit
   logging:
     level: verbose
 
 # Mouse, trackpad, etc.
 pointer:
-  allow_clicks_and_cursor_movement: false
+  allow_clicks_and_cursor_movement: true
+keyboard:
+  allow_input: true
+desktop:
+  allow_resize: true
