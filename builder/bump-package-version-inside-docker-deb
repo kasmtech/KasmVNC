@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+new_version="$1"
+
+update_version() {
+  dch --newversion $new_version 'New upstream release.'
+}
+
+mark_as_released() {
+  dch --release ""
+}
+
+update_version
+mark_as_released
