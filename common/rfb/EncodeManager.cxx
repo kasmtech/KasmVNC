@@ -356,6 +356,13 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
     if (conn->cp.kasmPassed[ConnParams::KASM_MAX_VIDEO_RESOLUTION])
         updateMaxVideoRes(&maxVideoX, &maxVideoY);
 
+    // The dynamic quality params may have changed
+    if (Server::dynamicQualityMax && Server::dynamicQualityMax <= 9 &&
+        Server::dynamicQualityMax > Server::dynamicQualityMin) {
+      dynamicQualityMin = Server::dynamicQualityMin;
+      dynamicQualityOff = Server::dynamicQualityMax - Server::dynamicQualityMin;
+    }
+
     prepareEncoders(allowLossy);
 
     changed = changed_;
