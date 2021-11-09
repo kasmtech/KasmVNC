@@ -210,7 +210,13 @@ endif()
 set(HAVE_PAM ${ENABLE_PAM})
 
 # Check for SSE2
-check_cxx_compiler_flag(-msse2 COMPILER_SUPPORTS_SSE2)
+# Arm is not SSE2 but say it is and use sse2neon.h to convert to neon
+check_cxx_compiler_flag("-march=armv8-a" COMPILER_ARM)
+if(COMPILER_ARM)
+  set(COMPILER_SUPPORTS_SSE2 1)
+else()
+  check_cxx_compiler_flag(-msse2 COMPILER_SUPPORTS_SSE2)
+endif()
 
 # Generate config.h and make sure the source finds it
 configure_file(config.h.in config.h)
