@@ -51,7 +51,9 @@ namespace rfb {
 
 bool supportsSSE2() {
 	getcpuid();
-#if defined(__x86_64__) || defined(__i386__)
+#if defined(__aarch64__)
+        return true;
+#elif defined(__x86_64__) || defined(__i386__)
 	#define bit_SSE2        (1 << 26)
 	return cpuid[3] & bit_SSE2;
 #endif

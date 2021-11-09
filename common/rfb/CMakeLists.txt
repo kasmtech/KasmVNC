@@ -107,7 +107,12 @@ set(SCALE_DUMMY_SOURCES
   scale_dummy.cxx)
 
 if(COMPILER_SUPPORTS_SSE2)
-  set_source_files_properties(${SSE2_SOURCES} PROPERTIES COMPILE_FLAGS ${COMPILE_FLAGS} -msse2)
+  if(COMPILER_ARM)
+    # This is for Graviton2, adjust for other CPUs: -march=armv8-a+crc+crypto
+    set_source_files_properties(${SSE2_SOURCES} PROPERTIES COMPILE_FLAGS ${COMPILE_FLAGS} -march=armv8.2-a+fp16+rcpc+dotprod+crypto)
+  else()
+    set_source_files_properties(${SSE2_SOURCES} PROPERTIES COMPILE_FLAGS ${COMPILE_FLAGS} -msse2)
+  endif()
   set(RFB_SOURCES
     ${RFB_SOURCES}
     ${SSE2_SOURCES}

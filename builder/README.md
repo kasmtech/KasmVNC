@@ -135,6 +135,7 @@ These instructions assume KasmVNC has been cloned at $HOME and ```kasm_www.tar.g
 cd ~
 tar -zxf kasm_www.tar.gz -C KasmVNC/builder/
 cd KasmVNC
+sed -i 's/^build_www_dir$/#build_www_dir/' builder/build-tarball
 sudo builder/build-package ubuntu bionic
 ```
 The resulting deb package can be found under ~/KasmVNC/builder/build/bionic
