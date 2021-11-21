@@ -16,6 +16,7 @@ include(CheckLibraryExists)
 include(CheckTypeSize)
 include(CheckCSourceCompiles)
 include(CheckCXXSourceCompiles)
+include(CheckCXXCompilerFlag)
 include(CheckCSourceRuns)
 
 include(CMakeMacroLibtoolFile)
@@ -207,6 +208,9 @@ if(ENABLE_PAM)
   endif()
 endif()
 set(HAVE_PAM ${ENABLE_PAM})
+
+# Check for SSE2
+check_cxx_compiler_flag(-msse2 COMPILER_SUPPORTS_SSE2)
 
 # Generate config.h and make sure the source finds it
 configure_file(config.h.in config.h)

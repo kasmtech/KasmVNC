@@ -113,6 +113,10 @@ rfb::BoolParameter rfb::Server::ignoreClientSettingsKasm
 ("IgnoreClientSettingsKasm",
  "Ignore the additional client settings exposed in Kasm.",
  false);
+rfb::BoolParameter rfb::Server::selfBench
+("SelfBench",
+ "Run self-benchmarks and exit.",
+ false);
 rfb::IntParameter rfb::Server::dynamicQualityMin
 ("DynamicQualityMin",
  "The minimum dynamic JPEG quality, 0 = low, 9 = high",
@@ -145,15 +149,15 @@ rfb::IntParameter rfb::Server::webpVideoQuality
 rfb::IntParameter rfb::Server::DLP_ClipSendMax
 ("DLP_ClipSendMax",
  "Limit clipboard bytes to send to clients in one transaction",
- 10000, 0, INT_MAX);
+ 0, 0, INT_MAX);
 rfb::IntParameter rfb::Server::DLP_ClipAcceptMax
 ("DLP_ClipAcceptMax",
  "Limit clipboard bytes to receive from clients in one transaction",
- 10000, 0, INT_MAX);
+ 0, 0, INT_MAX);
 rfb::IntParameter rfb::Server::DLP_ClipDelay
 ("DLP_ClipDelay",
  "This many milliseconds must pass between clipboard actions",
- 1000, 0, INT_MAX);
+ 0, 0, INT_MAX);
 rfb::IntParameter rfb::Server::DLP_KeyRateLimit
 ("DLP_KeyRateLimit",
  "Reject keyboard presses over this many per second",
@@ -167,6 +171,10 @@ rfb::StringParameter rfb::Server::DLP_Region
 ("DLP_Region",
  "Black out anything outside this region",
  "");
+rfb::StringParameter rfb::Server::DLP_Clip_Types
+("DLP_ClipTypes",
+ "Allowed binary clipboard mimetypes",
+ "text/html,image/png");
 
 rfb::BoolParameter rfb::Server::DLP_RegionAllowClick
 ("DLP_RegionAllowClick",

@@ -79,6 +79,25 @@ packages installed with XFCE.
 ```
 builder/test-deb-barebones ubuntu focal
 ```
+
+# Preparing a release
+
+Deb and rpm packages need their versions bumped to the new release version. It
+can be done with:
+
+```
+builder/bump-package-version 0.9.4-beta
+```
+
+This will update corresponding package files, use `git diff` to see changes.
+
+If you've ran the command and curious about Debian version specifics, here's an
+explanation:
+Deb version will be `0.9.4~beta-1`. `~` (and not `-`) is required by packaging
+guidelines, and `-1` is Debian package revision for `0.9.4` upstream release. If
+a Debian-specific patch was later added on top of `0.9.4`, it'd be `-2` for the
+next Debian version. Rpm has a corresponding revision in its .spec file.
+
 # CI development
 
 S3 upload code is extracted to various files in `.ci`. It's possible to iterate
@@ -90,3 +109,33 @@ bash -c '
 prepare_upload_filename "bionic/kasmvncserver_0.9.1~beta-1+libjpeg-turbo-latest_amd64.deb";
 echo $upload_filename;'
 ```
+
+# ARM
+
+KasmVNC is supported on ARM, however, the build process needs to be broken into two parts with one occuring on a x64 system and the other on an ARM system. All our testing and official builds are done on AWS Graviton instances.
+
+### Build www code on x86 System
+The www code is webpacked for performance and thus requires building. There are NPM packages, phantomjs, which do not have an ARM build. Therefore, this must be built on x86 and then copied over to the ARM system for final packaging.
+
+```
+cd ~/KasmVNC
+mkdir builder/www
+sudo docker build -t kasmweb/www -f builder/dockerfile.www.build .
+sudo docker run --rm -v $PWD/builder/www:/build kasmweb/www:latest
+cd builder
+tar -zcvf /tmp/kasm_www.tar.gz www
+```
+
+Now transfer ```kasm_www.tar.gz``` to the ARM system.
+
+### Build KasmVNC ARM
+These instructions assume KasmVNC has been cloned at $HOME and ```kasm_www.tar.gz``` has been placed at $HOME as well, adjust for your environment.
+
+```
+cd ~
+tar -zxf kasm_www.tar.gz -C KasmVNC/builder/
+cd KasmVNC
+sudo builder/build-package ubuntu bionic
+```
+The resulting deb package can be found under ~/KasmVNC/builder/build/bionic
+Replace ```bionic``` with ```focal``` to build for Ubuntu 20.04LTS. At this time, only Ubuntu Bionic has been tested, however, other Debian based builds we support should also work.

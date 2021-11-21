@@ -8,24 +8,61 @@ variables:
   GIT_FETCH_EXTRA_FLAGS: --tags
 
 stages:
+  - www
   - build
   - upload
 
 .prepare_build: &prepare_build
-  - ls -l
   - pwd
   - apk add bash
   - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
 
+.prepare_www: &prepare_www
+  - tar -zxf output/www/kasm_www.tar.gz -C builder/
+
 .prepare_artfacts: &prepare_artfacts
-  - mkdir output
   - cp -r builder/build/* output/
   - rm output/*.tar.gz
 
-build_ubuntu_bionic:
-  stage: build
+build_www:
+  stage: www
+  allow_failure: false
   before_script:
     - *prepare_build
+  script:
+    - webpacked_www=$PWD/builder/www
+    - src_www=kasmweb
+    - docker build -t kasmweb/www -f builder/dockerfile.www.build .
+    - docker run --rm -v $PWD/builder/www:/build kasmweb/www:latest
+    - mkdir -p output/www
+    - cd builder
+    - tar -zcvf ../output/www/kasm_www.tar.gz www
+  artifacts:
+    paths:
+      - output/
+
+build_ubuntu_bionic:
+  stage: build
+  allow_failure: true
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package ubuntu bionic
+  artifacts:
+    paths:
+      - output/
+
+build_ubuntu_bionic_arm:
+  stage: build
+  allow_failure: false
+  tags:
+    - arm
+  before_script:
+    - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -36,8 +73,10 @@ build_ubuntu_bionic:
 
 build_ubuntu_bionic_libjpeg_turbo:
   stage: build
+  allow_failure: false
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -48,44 +87,118 @@ build_ubuntu_bionic_libjpeg_turbo:
 
 build_ubuntu_focal:
   stage: build
+  allow_failure: true
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu focal;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [Cc][Ii]\]/
+  artifacts:
+    paths:
+      - output/
+
+build_ubuntu_focal_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - arm
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package ubuntu focal;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [Cc][Ii]\]/
   artifacts:
     paths:
       - output/
 
 build_debian_buster:
   stage: build
+  allow_failure: true
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
     - bash builder/build-package debian buster;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
+  artifacts:
+    paths:
+      - output/
+
+build_debian_buster_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - arm
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package debian buster;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
   artifacts:
     paths:
       - output/
 
 build_debian_bullseye:
   stage: build
+  allow_failure: true
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
     - bash builder/build-package debian bullseye;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
+  artifacts:
+    paths:
+      - output/
+
+build_debian_bullseye_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - arm
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package debian bullseye;
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
   artifacts:
     paths:
       - output/
 
 build_kali_rolling:
   stage: build
+  allow_failure: true
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -96,8 +209,10 @@ build_kali_rolling:
 
 build_centos7:
   stage: build
+  allow_failure: true
   before_script:
     - *prepare_build
+    - *prepare_www
   after_script:
     - *prepare_artfacts
   script:
@@ -120,4 +235,6 @@ upload:
         echo;
         echo "File to upload $upload_filename";
         upload_to_s3 "$package" "$upload_filename";
+        UPLOAD_NAME=$(echo $upload_filename | sed 's#kasmvncserver_##' | sed -r 's#_([0-9]{1,3}\.){2}[0-9]{1,2}_\S+?([a-f0-9]{6})##' | sed -r 's#\.(deb|rpm)##');
+        curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=${UPLOAD_NAME}&target_url=${S3_URL}";
       done

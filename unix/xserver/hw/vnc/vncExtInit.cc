@@ -18,10 +18,12 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 
 #include <set>
 #include <string>
+#include <vector>
 
 #include <rfb/Configuration.h>
 #include <rfb/Logger_stdio.h>
@@ -64,6 +66,8 @@ int vncFbstride[MAXSCREENS];
 
 int vncInetdSock = -1;
 
+static std::vector<dlp_mimetype_t> dlp_mimetypes;
+
 struct CaseInsensitiveCompare {
   bool operator() (const std::string &a, const std::string &b) const {
     return strcasecmp(a.c_str(), b.c_str()) < 0;
@@ -103,7 +107,7 @@ rfb::BoolParameter setPrimary("SetPrimary", "Set the PRIMARY as well "
                               "as the CLIPBOARD selection", true);
 rfb::BoolParameter sendPrimary("SendPrimary",
                                "Send the PRIMARY as well as the CLIPBOARD selection",
-                               true);
+                               false);
 
 static PixelFormat vncGetPixelFormat(int scrIdx)
 {
@@ -147,6 +151,38 @@ static void parseOverrideList(const char *text, ParamSet &out)
   }
 }
 
+static void parseClipTypes()
+{
+  char *str = strdup(Server::DLP_Clip_Types);
+  char * const origstr = str;
+
+  while (1) {
+    char *cur = strsep(&str, ",");
+    if (!cur)
+      break;
+    if (!cur[0])
+      continue;
+
+    // Hardcoded filters
+    if (!strcmp(cur, "TEXT") ||
+        !strcmp(cur, "STRING") ||
+        strstr(cur, "text/plain") ||
+        !strcmp(cur, "UTF8_STRING"))
+      continue;
+
+    struct dlp_mimetype_t m;
+    strncpy(m.mime, cur, sizeof(m.mime));
+    m.mime[sizeof(m.mime) - 1] = '\0';
+
+    dlp_mimetypes.push_back(m);
+
+    vlog.debug("Adding DLP binary mime type %s", m.mime);
+  }
+  vlog.debug("Total %u binary mime types", dlp_mimetypes.size());
+
+  free(origstr);
+}
+
 void vncExtensionInit(void)
 {
   if (vncExtGeneration == vncGetServerGeneration()) {
@@ -163,6 +199,8 @@ void vncExtensionInit(void)
 
   vncAddExtension();
 
+  if (!initialised)
+    parseClipTypes();
   vncSelectionInit();
 
   vlog.info("VNC extension running!");
@@ -315,22 +353,30 @@ void vncUpdateDesktopName(void)
     desktop[scr]->setDesktopName(desktopName);
 }
 
-void vncRequestClipboard(void)
-{
-  for (int scr = 0; scr < vncGetScreenCount(); scr++)
-    desktop[scr]->requestClipboard();
-}
-
 void vncAnnounceClipboard(int available)
 {
   for (int scr = 0; scr < vncGetScreenCount(); scr++)
     desktop[scr]->announceClipboard(available);
 }
 
-void vncSendClipboardData(const char* data)
+void vncSendBinaryClipboardData(const char* mime, const unsigned char *data,
+                                const unsigned len)
 {
   for (int scr = 0; scr < vncGetScreenCount(); scr++)
-    desktop[scr]->sendClipboardData(data);
+    desktop[scr]->sendBinaryClipboardData(mime, data, len);
+}
+
+void vncGetBinaryClipboardData(const char *mime, const unsigned char **ptr,
+                               unsigned *len)
+{
+  for (int scr = 0; scr < vncGetScreenCount(); scr++)
+    desktop[scr]->getBinaryClipboardData(mime, ptr, len);
+}
+
+void vncClearBinaryClipboardData()
+{
+  for (int scr = 0; scr < vncGetScreenCount(); scr++)
+    desktop[scr]->clearBinaryClipboardData();
 }
 
 int vncConnectClient(const char *addr)
@@ -485,4 +531,14 @@ int vncOverrideParam(const char *nameAndValue)
     return 0;
 
   return rfb::Configuration::setParam(nameAndValue);
+}
+
+unsigned dlp_num_mimetypes()
+{
+  return dlp_mimetypes.size();
+}
+
+const char *dlp_get_mimetype(const unsigned i)
+{
+  return dlp_mimetypes[i].mime;
 }

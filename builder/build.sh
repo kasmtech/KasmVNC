@@ -30,16 +30,19 @@ sed -i -e '/find_package(FLTK/s@^@#@' \
 	-e '/add_subdirectory(tests/s@^@#@' \
 	CMakeLists.txt
 
-cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo .
+cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF
 make -j5
 
-tar -C unix/xserver -xvf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=1
+tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=1
 
 cd unix/xserver
 patch -Np1 -i ../xserver${XORG_PATCH}.patch
-if [[ $XORG_VER =~ ^1\.20\..*$ ]]; then
-  patch -Np1 -i ../xserver120.7.patch
-fi
+case "$XORG_VER" in
+  1.20.*) 
+      if [ -f ../xserver120.7.patch ]; then
+        patch -Np1 -i ../xserver120.7.patch
+      fi ;;
+esac
 
 autoreconf -i
 # Configuring Xorg is long and has many distro-specific paths.
@@ -72,6 +75,8 @@ mkdir lib
 cd lib
 if [ -d /usr/lib/x86_64-linux-gnu/dri ]; then
   ln -s /usr/lib/x86_64-linux-gnu/dri dri
+elif [ -d /usr/lib/aarch64-linux-gnu/dri ]; then
+  ln -s /usr/lib/aarch64-linux-gnu/dri dri
 else
   ln -s /usr/lib64/dri dri
 fi

@@ -48,6 +48,7 @@ set(RFB_SOURCES
   Security.cxx
   SecurityServer.cxx
   SecurityClient.cxx
+  SelfBench.cxx
   SSecurityPlain.cxx
   SSecurityStack.cxx
   SSecurityVncAuth.cxx
@@ -63,6 +64,7 @@ set(RFB_SOURCES
   VNCServerST.cxx
   ZRLEEncoder.cxx
   ZRLEDecoder.cxx
+  cpuid.cxx
   encodings.cxx
   util.cxx
   xxhash.c)
@@ -93,6 +95,27 @@ if(GNUTLS_FOUND)
   set(RFB_LIBRARIES
     ${RFB_LIBRARIES}
     ${GNUTLS_LIBRARIES}
+  )
+endif()
+
+# SSE2
+
+set(SSE2_SOURCES
+  scale_sse2.cxx)
+
+set(SCALE_DUMMY_SOURCES
+  scale_dummy.cxx)
+
+if(COMPILER_SUPPORTS_SSE2)
+  set_source_files_properties(${SSE2_SOURCES} PROPERTIES COMPILE_FLAGS ${COMPILE_FLAGS} -msse2)
+  set(RFB_SOURCES
+    ${RFB_SOURCES}
+    ${SSE2_SOURCES}
+  )
+else()
+  set(RFB_SOURCES
+    ${RFB_SOURCES}
+    ${SCALE_DUMMY_SOURCES}
   )
 endif()
 

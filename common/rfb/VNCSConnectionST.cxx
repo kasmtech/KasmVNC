@@ -57,7 +57,8 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
     inProcessMessages(false),
     pendingSyncFence(false), syncFence(false), fenceFlags(0),
     fenceDataLen(0), fenceData(NULL), congestionTimer(this),
-    losslessTimer(this), kbdLogTimer(this), server(server_), updates(false),
+    losslessTimer(this), kbdLogTimer(this), binclipTimer(this),
+    server(server_), updates(false),
     updateRenderedCursor(false), removeRenderedCursor(false),
     continuousUpdates(false), encodeManager(this, &server_->encCache),
     needsPermCheck(false), pointerEventTime(0),
@@ -413,18 +414,6 @@ static void keylog(unsigned keysym, const char *client) {
     flushKeylog(client);
 }
 
-void VNCSConnectionST::requestClipboardOrClose()
-{
-  try {
-    if (!(accessRights & AccessCutText)) return;
-    if (!rfb::Server::acceptCutText) return;
-    if (state() != RFBSTATE_NORMAL) return;
-    requestClipboard();
-  } catch(rdr::Exception& e) {
-    close(e.str());
-  }
-}
-
 void VNCSConnectionST::announceClipboardOrClose(bool available)
 {
   try {
@@ -437,27 +426,49 @@ void VNCSConnectionST::announceClipboardOrClose(bool available)
   }
 }
 
-void VNCSConnectionST::sendClipboardDataOrClose(const char* data)
+void VNCSConnectionST::clearBinaryClipboardData()
+{
+  clearBinaryClipboard();
+}
+
+void VNCSConnectionST::sendBinaryClipboardDataOrClose(const char* mime,
+                                                      const unsigned char *data,
+                                                      const unsigned len)
 {
   try {
     if (!(accessRights & AccessCutText)) return;
     if (!rfb::Server::sendCutText) return;
-    if (msSince(&lastClipboardOp) < (unsigned) rfb::Server::DLP_ClipDelay) {
-      vlog.info("DLP: client %s: refused to send clipboard, too soon",
+    if (rfb::Server::DLP_ClipSendMax && len > (unsigned) rfb::Server::DLP_ClipSendMax) {
+      vlog.info("DLP: client %s: refused to send binary clipboard, too large",
                 sock->getPeerAddress());
       return;
     }
-    int len = strlen(data);
-    const int origlen = len;
-    if (rfb::Server::DLP_ClipSendMax && len > rfb::Server::DLP_ClipSendMax)
-      len = rfb::Server::DLP_ClipSendMax;
-    cliplog(data, len, origlen, "sent", sock->getPeerAddress());
+
+    cliplog((const char *) data, len, len, "sent", sock->getPeerAddress());
     if (state() != RFBSTATE_NORMAL) return;
-    sendClipboardData(data, len);
-    gettimeofday(&lastClipboardOp, NULL);
+
+    addBinaryClipboard(mime, data, len);
+    binclipTimer.start(100);
   } catch(rdr::Exception& e) {
     close(e.str());
   }
+}
+
+void VNCSConnectionST::getBinaryClipboardData(const char* mime, const unsigned char **data,
+                                              unsigned *len)
+{
+  unsigned i;
+  for (i = 0; i < binaryClipboard.size(); i++) {
+    if (!strcmp(binaryClipboard[i].mime, mime)) {
+      *data = &binaryClipboard[i].data[0];
+      *len = binaryClipboard[i].data.size();
+      return;
+    }
+  }
+
+  vlog.error("Binary clipboard data for mime %s not found", mime);
+  *data = (const unsigned char *) "";
+  *len = 1;
 }
 
 void VNCSConnectionST::setDesktopNameOrClose(const char *name)
@@ -692,7 +703,7 @@ void VNCSConnectionST::setPixelFormat(const PixelFormat& pf)
   setCursor();
 }
 
-void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease)
+void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
   pointerEventTime = lastEventTime = time(0);
   server->lastUserInputTime = lastEventTime;
@@ -720,7 +731,7 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool
       }
     }
 
-    server->desktop->pointerEvent(pointerEventPos, buttonMask, skipclick, skiprelease);
+    server->desktop->pointerEvent(pointerEventPos, buttonMask, skipclick, skiprelease, scrollX, scrollY);
   }
 }
 
@@ -1014,12 +1025,6 @@ void VNCSConnectionST::enableContinuousUpdates(bool enable,
   }
 }
 
-void VNCSConnectionST::handleClipboardRequest()
-{
-  if (!(accessRights & AccessCutText)) return;
-  server->handleClipboardRequest(this);
-}
-
 void VNCSConnectionST::handleClipboardAnnounce(bool available)
 {
   if (!(accessRights & AccessCutText)) return;
@@ -1027,24 +1032,12 @@ void VNCSConnectionST::handleClipboardAnnounce(bool available)
   server->handleClipboardAnnounce(this, available);
 }
 
-void VNCSConnectionST::handleClipboardData(const char* data, int len)
+void VNCSConnectionST::handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32])
 {
   if (!(accessRights & AccessCutText)) return;
   if (!rfb::Server::acceptCutText) return;
-  if (msSince(&lastClipboardOp) < (unsigned) rfb::Server::DLP_ClipDelay) {
-    vlog.info("DLP: client %s: refused to receive clipboard, too soon",
-              sock->getPeerAddress());
-    return;
-  }
-  const int origlen = len;
-  if (rfb::Server::DLP_ClipAcceptMax && len > rfb::Server::DLP_ClipAcceptMax)
-    len = rfb::Server::DLP_ClipAcceptMax;
-  cliplog(data, len, origlen, "received", sock->getPeerAddress());
-
-  gettimeofday(&lastClipboardOp, NULL);
-  server->handleClipboardData(this, data, len);
+  server->handleClipboardAnnounceBinary(this, num, mimes);
 }
-
 
 // supportsLocalCursor() is called whenever the status of
 // cp.supportsLocalCursor has changed.  If the client does now support local
@@ -1089,6 +1082,8 @@ bool VNCSConnectionST::handleTimeout(Timer* t)
       writeFramebufferUpdate();
     else if (t == &kbdLogTimer)
       flushKeylog(sock->getPeerAddress());
+    else if (t == &binclipTimer)
+      writeBinaryClipboard();
   } catch (rdr::Exception& e) {
     close(e.str());
   }
@@ -1446,6 +1441,18 @@ void VNCSConnectionST::writeDataUpdate()
   requested.clear();
 }
 
+void VNCSConnectionST::writeBinaryClipboard()
+{
+  if (msSince(&lastClipboardOp) < (unsigned) rfb::Server::DLP_ClipDelay) {
+    vlog.info("DLP: client %s: refused to send binary clipboard, too soon",
+              sock->getPeerAddress());
+    return;
+  }
+
+  writer()->writeBinaryClipboard(binaryClipboard);
+
+  gettimeofday(&lastClipboardOp, NULL);
+}
 
 void VNCSConnectionST::screenLayoutChange(rdr::U16 reason)
 {

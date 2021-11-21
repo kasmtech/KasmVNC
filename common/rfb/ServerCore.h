@@ -50,6 +50,7 @@ namespace rfb {
     static IntParameter DLP_KeyRateLimit;
     static StringParameter DLP_ClipLog;
     static StringParameter DLP_Region;
+    static StringParameter DLP_Clip_Types;
     static BoolParameter DLP_RegionAllowClick;
     static BoolParameter DLP_RegionAllowRelease;
     static IntParameter jpegVideoQuality;
@@ -74,6 +75,7 @@ namespace rfb {
     static BoolParameter detectScrolling;
     static BoolParameter detectHorizontal;
     static BoolParameter ignoreClientSettingsKasm;
+    static BoolParameter selfBench;
     static PresetParameter preferBandwidth;
 
   };

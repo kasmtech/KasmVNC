@@ -1,0 +1,6 @@
+FROM debian:buster
+
+ENV DEBEMAIL="Kasm Technologies LLC <info@kasmweb.com>"
+
+RUN apt-get update && \
+      apt-get -y install vim devscripts

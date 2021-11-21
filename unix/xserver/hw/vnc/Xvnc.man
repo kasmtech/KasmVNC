@@ -137,7 +137,7 @@ Send clipboard changes to clients. Default is on.
 .TP
 .B \-SendPrimary
 Send the primary selection and cut buffer to the server as well as the
-clipboard selection. Default is on.
+clipboard selection. Default is off.
 .
 .TP
 .B \-AcceptPointerEvents
@@ -295,17 +295,22 @@ Allow click releases inside the blacked-out region.
 .
 .TP
 .B \-DLP_ClipSendMax \fIbytes\fP
-Limit clipboard bytes to send to clients in one transaction. Default 10,000.
+Limit clipboard bytes to send to clients in one transaction. Default 0.
 0 disables the limit, use \fBSendCutText\fP to disable clipboard sending entirely.
 .
 .TP
 .B \-DLP_ClipAcceptMax \fIbytes\fP
-Limit clipboard bytes to receive from clients in one transaction. Default 10,000.
+Limit clipboard bytes to receive from clients in one transaction. Default 0.
 0 disables the limit, use \fBAcceptCutText\fP to disable clipboard receiving entirely.
 .
 .TP
 .B \-DLP_ClipDelay \fIms\fP
-This many milliseconds must pass between clipboard actions. Default 1000.
+This many milliseconds must pass between clipboard actions. Default 0, 0 disables the limit.
+.
+.TP
+.B \-DLP_ClipTypes \fIa,b\fP
+Allowed binary clipboard mimetypes, separated by commas. Default
+chromium/x-web-custom-data,text/html,image/png
 .
 .TP
 .B \-DLP_KeyRateLimit \fIkeys-per-second\fP
@@ -315,6 +320,10 @@ Reject keyboard presses over this many per second. Default 0 (disabled).
 .B \-DLP_Log \fIoff/info/verbose\fP
 Log clipboard and keyboard actions. Info logs just clipboard direction and size,
 verbose adds the contents for both.
+.
+.TP
+.B \-selfBench
+Run a set of self-benchmarks and exit.
 .
 .TP
 .B \-noWebsocket

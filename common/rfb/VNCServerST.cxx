@@ -53,6 +53,7 @@
 
 #include <network/GetAPI.h>
 
+#include <rfb/cpuid.h>
 #include <rfb/ComparingUpdateTracker.h>
 #include <rfb/KeyRemapper.h>
 #include <rfb/ListConnInfo.h>
@@ -75,6 +76,8 @@ using namespace rfb;
 static LogWriter slog("VNCServerST");
 LogWriter VNCServerST::connectionsLog("Connections");
 EncCache VNCServerST::encCache;
+
+void SelfBench();
 
 //
 // -=- VNCServerST Implementation
@@ -132,6 +135,9 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
 {
   lastUserInputTime = lastDisconnectTime = time(0);
   slog.debug("creating single-threaded server %s", name.buf);
+  slog.info("CPU capability: SSE2 %s, AVX512f %s",
+            supportsSSE2() ? "yes" : "no",
+            supportsAVX512f() ? "yes" : "no");
 
   DLPRegion.enabled = DLPRegion.percents = false;
 
@@ -212,6 +218,9 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
   }
 
   trackingClient[0] = 0;
+
+  if (Server::selfBench)
+    SelfBench();
 }
 
 VNCServerST::~VNCServerST()
@@ -509,14 +518,6 @@ void VNCServerST::setScreenLayout(const ScreenSet& layout)
   }
 }
 
-void VNCServerST::requestClipboard()
-{
-  if (clipboardClient == NULL)
-    return;
-
-  clipboardClient->requestClipboard();
-}
-
 void VNCServerST::announceClipboard(bool available)
 {
   std::list<VNCSConnectionST*>::iterator ci, ci_next;
@@ -532,20 +533,31 @@ void VNCServerST::announceClipboard(bool available)
   }
 }
 
-void VNCServerST::sendClipboardData(const char* data)
+void VNCServerST::sendBinaryClipboardData(const char* mime, const unsigned char *data,
+                                          const unsigned len)
 {
   std::list<VNCSConnectionST*>::iterator ci, ci_next;
-
-  if (strchr(data, '\r') != NULL)
-    throw Exception("Invalid carriage return in clipboard data");
-
-  for (ci = clipboardRequestors.begin();
-       ci != clipboardRequestors.end(); ci = ci_next) {
+  for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
     ci_next = ci; ci_next++;
-    (*ci)->sendClipboardDataOrClose(data);
+    (*ci)->sendBinaryClipboardDataOrClose(mime, data, len);
   }
+}
 
-  clipboardRequestors.clear();
+void VNCServerST::getBinaryClipboardData(const char* mime, const unsigned char **data,
+                                         unsigned *len)
+{
+  if (!clipboardClient)
+    return;
+  clipboardClient->getBinaryClipboardData(mime, data, len);
+}
+
+void VNCServerST::clearBinaryClipboardData()
+{
+  std::list<VNCSConnectionST*>::iterator ci, ci_next;
+  for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
+    ci_next = ci; ci_next++;
+    (*ci)->clearBinaryClipboardData();
+  }
 }
 
 void VNCServerST::bell()
@@ -1189,13 +1201,6 @@ bool VNCServerST::getComparerState()
   return false;
 }
 
-void VNCServerST::handleClipboardRequest(VNCSConnectionST* client)
-{
-  clipboardRequestors.push_back(client);
-  if (clipboardRequestors.size() == 1)
-    desktop->handleClipboardRequest();
-}
-
 void VNCServerST::handleClipboardAnnounce(VNCSConnectionST* client,
                                           bool available)
 {
@@ -1209,11 +1214,10 @@ void VNCServerST::handleClipboardAnnounce(VNCSConnectionST* client,
   desktop->handleClipboardAnnounce(available);
 }
 
-void VNCServerST::handleClipboardData(VNCSConnectionST* client,
-                                      const char* data, int len)
+void VNCServerST::handleClipboardAnnounceBinary(VNCSConnectionST* client,
+                                                 const unsigned num,
+                                                 const char mimes[][32])
 {
-  if (client != clipboardClient)
-    return;
-  desktop->handleClipboardData(data, len);
+  clipboardClient = client;
+  desktop->handleClipboardAnnounceBinary(num, mimes);
 }
-
