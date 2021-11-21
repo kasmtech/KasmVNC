@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y kde-full
 RUN apt-get update && apt-get install -y cinnamon
 RUN apt-get update && apt-get install -y ubuntu-gnome-desktop
 RUN apt-get purge -y pm-utils xscreensaver*
+RUN apt-get purge -y clipit magnus kgpg
 
 RUN apt-get update && apt-get install -y python3-pip
 RUN apt-get update && apt-get install -y strace
