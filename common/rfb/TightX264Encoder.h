@@ -58,11 +58,14 @@ namespace rfb {
 
   protected:
     bool keyframe;
+    x264_t *enc;
+    x264_param_t *params;
     Mp4Context *mux;
     Mp4State *muxstate;
     unsigned framectr;
 
     bool nvidia_init_done;
+    bool using_nvidia;
 
     EncCache *encCache;
     uint8_t cacheType;
