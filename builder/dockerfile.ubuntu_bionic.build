@@ -11,7 +11,7 @@ RUN apt-get update && \
 
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
 RUN apt-get update && apt-get -y install cmake git libjpeg-dev libgnutls28-dev vim wget tightvncserver
-RUN apt-get update && apt-get -y install libjpeg-dev libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev
+RUN apt-get update && apt-get -y install libjpeg-dev libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libx264-dev
 
 # Additions for webp
 RUN cd /tmp && wget https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.0.2.tar.gz

@@ -3,7 +3,8 @@ Section: x11
 Priority: optional
 Maintainer: Kasm Technologies LLC <info@kasmweb.com>
 Build-Depends: debhelper (>= 11), rsync, libjpeg-dev, libjpeg-dev, libpng-dev,
-  libtiff-dev, libgif-dev, libavcodec-dev, libssl-dev, libgl1, libxfont2, libsm6
+  libtiff-dev, libgif-dev, libavcodec-dev, libssl-dev, libgl1, libxfont2, libsm6,
+  libx264-dev
 Standards-Version: 4.1.3
 Homepage: https://github.com/kasmtech/KasmVNC
 #Vcs-Browser: https://salsa.debian.org/debian/kasmvnc
@@ -12,7 +13,7 @@ Homepage: https://github.com/kasmtech/KasmVNC
 Package: kasmvncserver
 Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, ssl-cert, xauth,
-  x11-xkb-utils, xkb-data, procps
+  x11-xkb-utils, xkb-data, procps, x264
 Provides: vnc-server
 Description: VNC server accessible from a web browser
  VNC stands for Virtual Network Computing. It is, in essence, a remote
