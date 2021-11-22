@@ -66,6 +66,7 @@ namespace rfb {
 
     bool nvidia_init_done;
     bool using_nvidia;
+    static bool skip_nvidia;
 
     EncCache *encCache;
     uint8_t cacheType;

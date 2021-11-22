@@ -41,6 +41,8 @@ static LogWriter vlog("x264");
 static const PixelFormat pfRGBX(32, 24, false, true, 255, 255, 255, 0, 8, 16);
 static const PixelFormat pfBGRX(32, 24, false, true, 255, 255, 255, 16, 8, 0);
 
+bool TightX264Encoder::skip_nvidia = false;
+
 TightX264Encoder::TightX264Encoder(SConnection* conn, EncCache *cache_, uint8_t cacheType_) :
   Encoder(conn, encodingTight, (EncoderFlags)(EncoderUseNativePF | EncoderLossy), -1),
   keyframe(true), enc(NULL), params(NULL), mux(NULL), muxstate(NULL), framectr(0),
@@ -485,11 +487,13 @@ bool TightX264Encoder::tryInit(const PixelBuffer* pb) {
   w = pb->width();
   h = pb->height();
 
-  if (nvidia_init(w, h, rfb::Server::x264Bitrate,
+  if (skip_nvidia || nvidia_init(w, h, rfb::Server::x264Bitrate,
               rfb::Server::frameRate) != 0) {
-    vlog.error("nvidia init failed, falling back to x264");
+    if (!skip_nvidia)
+      vlog.error("nvidia init failed, falling back to x264");
     using_nvidia = false;
     nvidia_init_done = true;
+    skip_nvidia = true;
     myw = w;
     myh = h;
     return true;
