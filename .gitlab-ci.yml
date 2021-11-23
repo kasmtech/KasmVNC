@@ -51,6 +51,9 @@ build_ubuntu_bionic:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu bionic
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [Cc][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -67,6 +70,9 @@ build_ubuntu_bionic_arm:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu bionic
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[full [Cc][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -80,7 +86,7 @@ build_ubuntu_bionic_libjpeg_turbo:
   after_script:
     - *prepare_artfacts
   script:
-    - bash builder/build-package ubuntu bionic +libjpeg-turbo_latest
+    - bash builder/build-package ubuntu focal +libjpeg-turbo_latest
   artifacts:
     paths:
       - output/
@@ -114,9 +120,6 @@ build_ubuntu_focal_arm:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu focal;
-  only:
-    variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [Cc][Ii]\]/
   artifacts:
     paths:
       - output/
