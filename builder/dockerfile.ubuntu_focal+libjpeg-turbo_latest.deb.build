@@ -1,0 +1,25 @@
+FROM ubuntu:20.04
+
+RUN apt-get update && \
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+RUN apt-get update && \
+      apt-get -y install vim build-essential devscripts equivs
+
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/libjpeg-turbo*deb /tmp
+RUN apt-get install /tmp/libjpeg-turbo*deb
+
+# Install build-deps for the package.
+COPY ./debian/control /tmp
+RUN apt-get update && echo YYY | mk-build-deps --install --remove /tmp/control
+
+ENV LD_LIBRARY_PATH="/opt/libjpeg-turbo/lib64/:$LD_LIBRARY_PATH"
+
+ARG L_UID
+RUN if [ "$L_UID" -eq 0 ]; then \
+      useradd -m docker; \
+    else \
+      useradd -m docker -u $L_UID;\
+    fi
+
+USER docker
