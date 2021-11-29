@@ -758,6 +758,8 @@ sub DeWasSelectedEarlier {
 }
 
 sub AskUserToChooseDeOrManualXstartup {
+  return if (IsDryRun());
+
   if (DeWasSelectedEarlier() && !$opt{'-select-de'}) {
     return;
   }
@@ -1150,7 +1152,7 @@ sub DefineFilePathsAndStuff {
 }
 
 sub ParseAndProcessCliOptions {
-  my @supportedOptions = ("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,"-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1,"-select-de",OPTIONAL_ARG_VALUE, "-interface", REQUIRED_ARG_VALUE, '-debug', NO_ARG_VALUE, '-websocketPort', REQUIRED_ARG_VALUE);
+  my @supportedOptions = ("-geometry",1,"-depth",1,"-pixelformat",1,"-name",1,"-kill",1,"-help",0,"-h",0,"--help",0,"-fp",1,"-list",0,"-fg",0,"-autokill",0,"-noxstartup",0,"-xstartup",1,"-select-de",OPTIONAL_ARG_VALUE, "-interface", REQUIRED_ARG_VALUE, '-debug', NO_ARG_VALUE, '-websocketPort', REQUIRED_ARG_VALUE, "-dry-run", NO_ARG_VALUE);
   ParseOptionsAndRemoveMatchesFromARGV(@supportedOptions);
   ProcessCliOptions();
   CheckGeometryAndDepthAreSensible();
@@ -1187,6 +1189,8 @@ sub GenerateWebsocketPortFromDisplayNumber {
 }
 
 sub EnsureAtLeastOneKasmUserExists {
+  return if (IsDryRun());
+
   @kasmPasswdUsers = LoadKasmPasswdUsers();
   if (!AtLeastOneUserConfigured()) {
     GuideUserToSetupKasmPasswdUser();
@@ -1196,7 +1200,10 @@ sub EnsureAtLeastOneKasmUserExists {
 
 sub StartXvncOrExit {
   $cmd = ConstructXvncCmd();
-  say $cmd;
+  if (IsDryRun()) {
+    say $cmd;
+    exit(0);
+  }
 
   DeleteLogLeftFromPreviousXvncRun();
   StartXvncAndRecordPID();
@@ -1298,6 +1305,10 @@ sub LocalSelectDePath {
   "$dirname/../builder/startup/deb/select-de.sh";
 }
 
+sub IsDryRun {
+  $opt{"-dry-run"};
+}
+
 sub LoadYAMLConfig {
   if (! -f $vncDefaultsConfig) {
     die "Couldn't load config: $vncDefaultsConfig";
@@ -1307,9 +1318,9 @@ sub LoadYAMLConfig {
   my $systemConfig = YAML::Tiny->read($vncSystemConfig)->[0];
   %mergedConfig = %{ Hash::Merge::Simple::merge($defaultsConfig, $systemConfig) };
 
-  say $mergedConfig{framerate};
-  say $mergedConfig{data_loss_prevention}{region}{x1};
-  say ConvertConfigToXvncArgs();
+  # say $mergedConfig{framerate};
+  # say $mergedConfig{data_loss_prevention}{region}{x1};
+  # say ConvertConfigToXvncArgs();
 }
 
 sub ConvertConfigToXvncArgs {
