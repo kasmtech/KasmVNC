@@ -1119,7 +1119,7 @@ sub DefineFilePathsAndStuff {
 
   %xvncArgsToConfigAliases = (
     '-AcceptPointerEvents' => [qw(pointer.allow_clicks_and_cursor_movement)],
-    '-AcceptKeyEvents' => [qw(keyboard.allow_input)],
+    '-AcceptKeyEvents' => [qw(data_loss_prevention.keyboard.allow_input)],
     '-AcceptSetDesktopSize' => [qw(desktop.allow_resize)],
     '-FrameRate' => [qw(framerate)],
     '-DynamicQualityMin' => [qw(dynamic_quality.min)],
@@ -1129,14 +1129,23 @@ sub DefineFilePathsAndStuff {
     '-JpegVideoQuality' => [qw(video.jpeg_quality)],
     '-WebpVideoQuality' => [qw(video.webp_quality)],
     '-VideoScaling' => [qw(video.scaling_method)],
-    '-SendCutText' => [qw(dlp.clipboard.allow_copy_to_client_clipboard)],
-    '-DLP_ClipSendMax' => [qw(dlp.clipboard.limit_bytes_copied_to_client_clipboard)],
-    '-AcceptCutText' => [qw(dlp.clipboard.allow_paste_to_server)],
-    '-DLP_ClipAcceptMax' => [qw(dlp.clipboard.limit_bytes_pasted_to_server_clipboard)],
-    '-MaxCutText' => [qw(dlp.clipboard.max_paste_size dlp.clipboard.delay)],
-    '-DLP_ClipDelay' => [qw(dlp.clipboard.delay)],
-    '-DLP_KeyRateLimit' => [qw(dlp.keyboard.limit_keypress_rate_per_second)],
+    '-PrintVideoArea' => [qw(video.print_video_area)],
+    # Clipboard
+    '-SendCutText' => [qw(data_loss_prevention.clipboard.allow_copy_to_client_clipboard)],
+    '-AcceptCutText' => [qw(data_loss_prevention.clipboard.allow_paste_to_server)],
+    '-SendPrimary' => [qw(data_loss_prevention.clipboard.allow_copy_primary_selection_to_client_clipboard)],
+    '-DLP_ClipSendMax' => [qw(data_loss_prevention.clipboard.limit_bytes_copied_to_client_clipboard)],
+    '-DLP_ClipAcceptMax' => [qw(data_loss_prevention.clipboard.limit_bytes_pasted_to_server_clipboard)],
+    '-DLP_Region' => [qw(data_loss_prevention.region.coords)],
+    '-DLP_ClipDelay' => [qw(data_loss_prevention.clipboard.delay_in_milliseconds)],
+    # '-DLP_KeyRateLimit' => [qw(data_loss_prevention.keyboard.limit_keypress_rate_per_second)],
     '-httpd' => [qw(httpd_directory)],
+    '-disableBasicAuth' => [qw(disable_basic_auth)],
+    '-IdleTimeout' => [qw(idle_timeout)],
+    '-MaxDisconnectionTime' => [qw(max_disconnection_time)],
+    '-localhost' => [qw(allow_localhost_only)],
+    '-QueryConnect' => [qw(query_connect)],
+    '-DLP_Log' => [qw(data_loss_prevention_log)],
   );
 }
 
@@ -1299,7 +1308,7 @@ sub LoadYAMLConfig {
   %mergedConfig = %{ Hash::Merge::Simple::merge($defaultsConfig, $systemConfig) };
 
   say $mergedConfig{framerate};
-  say $mergedConfig{dlp}{region}{x1};
+  say $mergedConfig{data_loss_prevention}{region}{x1};
   say ConvertConfigToXvncArgs();
 }
 

@@ -1,11 +1,124 @@
 ---
-geometry: 1024x768
-depth: 24
+desktop:
+  resolution:
+    width: 1024
+    height: 768
+  allow_resize: true
+  pixel_depth: 16|24|32
+
 network:
+  protocol: http|vnc
   interface: 0.0.0.0
   use_ipv4: true
   use_ipv6: true
+  ssl:
+    pem_certificate: [/etc/...]
+    pem_key: [/etc/...]
+    force_ssl: false
+
+user_session:
+  force_session_type: shared|exclusive
+  new_session_disconnects_existing_exlusive_session: true
+  ask_user_to_vet_new_sessions: false
+  vetting_dialog_duration: 10
+
+save_resources:
+  user_session:
+    idle_user_session_timeout: never
+  server_process:
+    no_user_session_timeout: never
+    active_user_session_timeout: never
+    inactive_user_session_timeout: never
+
+keyboard:
+  remap_keys:
+    - 0x22->0x40
+    - 0x24->0x40
+  # If NumLock is on (as it usually is), then pressing a key on the numeric
+  # keypad while holding the shift key overrides NumLock and instead generates
+  # the arrow key (or other navigation key) printed in small print under the big
+  # digits.
+  ignore_numlock: false
+  raw_keyboard: false
+
+# Mouse, trackpad, etc.
+pointer:
+  allow_clicks_and_cursor_movement: true
+
+runtime_configuration:
+  allow_client_to_override_server_settings: true
+  allow_override_list:
+    - pointer.allow_client_to_override_server_settings
+
+logging:
+  log_writer_name: all|*|<string>
+  log_to: stderr|stdout|syslog
+  # 0 - silent(?), 100 - most verbose
+  log_level: 0..100
+
+performance:
+  compare_framebuffer: off|always|auto
+  zrle_zlib_level: 0..9
+  hextile_improved_compression: true
+
+password_cracking_protection:
+  # Blacklist after N login attempts.
+  blacklist_threshold: 5
+  blacklist_timeout: 10
+
+data_loss_prevention:
+  visible_region:
+    top: 10
+    left: 10
+    right: 40
+    bottom: 40
+    allow_click_within_blacked_out_region: false
+    allow_click_release_within_blacked_out_region: false
+  clipboard:
+    # Cut buffers and CLIPBOARD selection.
+    allow_copy_to_client_clipboard: true
+    limit_copied_bytes_to_client_clipboard: 10000|no_limit
+    allow_copy_primary_selection_to_client_clipboard: true
+    allow_paste_to_server: true
+    limit_bytes_pasted_to_server_clipboard: 10000|no_limit
+    # This many milliseconds must pass between clipboard actions. In
+    # milliseconds.
+    delay_betwwen_operations: 1000
+  keyboard:
+    allow_input: true
+    # Set to a positive number. To disable, set to "no_limit" or 0.
+    limit_keypress_rate_per_second: 1|no_limit
+  log_clipboard_and_keyboard_actions:
+    level: off|info|verbose
+
+# legacy:
+#   pixel_format: 16|24|32
+#   inetd: false
+#   desktop_name: default
+#   rfb_port: 5900
+#   rfb_unix_socket_path:
+#   rfb_unix_mode: 0600
+#   password_file:
+#   password:
+#   plain_user_list:
+#     - foo
+#     - bar
+#   pam_service: vnc
+#   use_protocol_3.3: false
+#   x509_certificate:
+#   x509_key:
+#   gnu_tls_priority: NORMAL
+
+picture:
+  max_frame_rate: 60
+  low_rate_of_change:
+    min_quality: 7
+    max_quality: 8
+    treat_this_quality_level_as_lossless: 10
+    prefer_bandwidth_over_quality: false
+
 httpd_directory: /usr/share/kasmvnc/www
+disable_basic_auth: false
 display_title: default
 password_file: ~/.kasmpasswd
 framerate: 30
@@ -18,34 +131,14 @@ video:
   jpeg_quality: -1
   webp_quality: -1
   scaling_method: 2
+  print_video_area: true
 max_video_resolution:
   width: 640
   height: 480
-dlp:
-  region:
-    top_left_point: 10,10
-    bottom_right_point: 40,40
-    allow_click: false
-  clipboard:
-    allow_copy_to_client_clipboard: true
-    limit_bytes_copied_to_client_clipboard: 10000
-    allow_paste_to_server: true
-    limit_bytes_pasted_to_server_clipboard: 10000
-    max_paste_size: 262144
-    send_max: 10000
-    accept_max: 10000
-    delay: 1000
-  keyboard:
-    ratelimit: 30
-    # Set to a positive number. To disable, set to "no_limit" or 0.
-    limit_keypress_rate_per_second: no_limit
-  logging:
-    level: verbose
 
-# Mouse, trackpad, etc.
-pointer:
-  allow_clicks_and_cursor_movement: true
-keyboard:
-  allow_input: true
-desktop:
-  allow_resize: true
+# in seconds
+# idle_timeout: 0
+# max_disconnection_time: 3
+# allow_localhost_only: true
+# query_connect: true
+dlp_log: info
