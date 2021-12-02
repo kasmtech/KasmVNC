@@ -109,36 +109,32 @@ data_loss_prevention:
 #   x509_key:
 #   gnu_tls_priority: NORMAL
 
-picture:
+image:
   max_frame_rate: 60
-  low_rate_of_change:
+  native_resolution_mode:
     min_quality: 7
     max_quality: 8
     treat_this_quality_level_as_lossless: 10
     prefer_bandwidth_over_quality: false
+    rectangle_compress_threads: auto|number
+  downscaled_resolution_mode:
+    jpeg_quality: auto
+    webp_quality: auto
+    max_resolution:
+      width: 1920
+      height: 1080
+    switch_to_downscaled_resolution_mode_threshold: 5
+    switch_to_native_resolution_mode_threshold: 3
+    high_rate_of_change_area_threshold_to_trigger_downscaled_mode: 45
+    print_high_rate_of_change_area_percentage: false
+    scaling_algorithm: nearest|bilinear|progressive_bilinear
 
-httpd_directory: /usr/share/kasmvnc/www
-disable_basic_auth: false
-display_title: default
-password_file: ~/.kasmpasswd
-framerate: 30
-dynamic_quality:
-  min: 7
-  max: 8
-treat_lossless: 10
-prefer_bandwidth: true
-video:
-  jpeg_quality: -1
-  webp_quality: -1
-  scaling_method: 2
-  print_video_area: true
-max_video_resolution:
-  width: 640
-  height: 480
+auth:
+  disable_basic_auth: false
 
-# in seconds
-# idle_timeout: 0
-# max_disconnection_time: 3
-# allow_localhost_only: true
-# query_connect: true
-dlp_log: info
+# Expert-level settings. No need to change for regular users.
+omakase:
+  x_font_path: default
+  httpd_directory: /usr/share/kasmvnc/www
+  kasm_password_file: ~/.kasmpasswd
+  x_authtority_file: default
