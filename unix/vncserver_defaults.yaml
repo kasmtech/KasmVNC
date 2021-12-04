@@ -14,21 +14,17 @@ network:
   ssl:
     pem_certificate: [/etc/...]
     pem_key: [/etc/...]
-    force_ssl: false
+    require_ssl: true
 
 user_session:
+  concurrent_connections_mode: always-allow|prompt|disconnect-new|disconnect-current
+  approval_dialog_timeout: 10
+
   force_session_type: shared|exclusive
   new_session_disconnects_existing_exlusive_session: true
   ask_user_to_vet_new_sessions: false
   vetting_dialog_duration: 10
-
-save_resources:
-  user_session:
-    idle_user_session_timeout: never
-  server_process:
-    no_user_session_timeout: never
-    active_user_session_timeout: never
-    inactive_user_session_timeout: never
+  idle_timeout: never
 
 keyboard:
   remap_keys:
@@ -43,7 +39,7 @@ keyboard:
 
 # Mouse, trackpad, etc.
 pointer:
-  allow_clicks_and_cursor_movement: true
+  enabled: true
 
 runtime_configuration:
   allow_client_to_override_server_settings: true
@@ -56,15 +52,10 @@ logging:
   # 0 - silent(?), 100 - most verbose
   log_level: 0..100
 
-performance:
-  compare_framebuffer: off|always|auto
-  zrle_zlib_level: 0..9
-  hextile_improved_compression: true
-
-password_cracking_protection:
-  # Blacklist after N login attempts.
-  blacklist_threshold: 5
-  blacklist_timeout: 10
+security:
+  brute_force_protection:
+    blacklist_threshold: 5
+    blacklist_timeout: 10
 
 data_loss_prevention:
   visible_region:
@@ -72,23 +63,23 @@ data_loss_prevention:
     left: 10
     right: 40
     bottom: 40
-    allow_click_within_blacked_out_region: false
-    allow_click_release_within_blacked_out_region: false
+    non_visible_region:
+      allow_click_down: false
+      allow_click_release: false
   clipboard:
+    delay_between_operations: none
     # Cut buffers and CLIPBOARD selection.
-    allow_copy_to_client_clipboard: true
-    limit_copied_bytes_to_client_clipboard: 10000|no_limit
-    allow_copy_primary_selection_to_client_clipboard: true
-    allow_paste_to_server: true
-    limit_bytes_pasted_to_server_clipboard: 10000|no_limit
-    # This many milliseconds must pass between clipboard actions. In
-    # milliseconds.
-    delay_betwwen_operations: 1000
+    server_to_client:
+      enabled: true
+      size: 10000|unlimited
+      primary_clipboard_enabled: false
+    client_to_server:
+      enabled: true
+      size: 10000|unlimited
   keyboard:
-    allow_input: true
-    # Set to a positive number. To disable, set to "no_limit" or 0.
-    limit_keypress_rate_per_second: 1|no_limit
-  log_clipboard_and_keyboard_actions:
+    enabled: true
+    rate_limit: 1|unlimited
+  logging:
     level: off|info|verbose
 
 # legacy:
@@ -109,7 +100,7 @@ data_loss_prevention:
 #   x509_key:
 #   gnu_tls_priority: NORMAL
 
-image:
+encoding:
   max_frame_rate: 60
   native_resolution_mode:
     min_quality: 7
@@ -117,24 +108,32 @@ image:
     treat_this_quality_level_as_lossless: 10
     prefer_bandwidth_over_quality: false
     rectangle_compress_threads: auto|number
-  downscaled_resolution_mode:
+
+  video_mode:
     jpeg_quality: auto
     webp_quality: auto
     max_resolution:
       width: 1920
       height: 1080
-    switch_to_downscaled_resolution_mode_threshold: 5
-    switch_to_native_resolution_mode_threshold: 3
-    high_rate_of_change_area_threshold_to_trigger_downscaled_mode: 45
-    print_high_rate_of_change_area_percentage: false
+    enter_video_mode:
+      time_threshold: 5
+      area_threshold: 45
+    exit_video_mode:
+      time_threshold: 3
+    logging: disabled
     scaling_algorithm: nearest|bilinear|progressive_bilinear
 
-auth:
-  disable_basic_auth: false
+    compare_framebuffer: off|always|auto
+    zrle_zlib_level: 0..9
+    hextile_improved_compression: true
 
-# Expert-level settings. No need to change for regular users.
-omakase:
-  x_font_path: default
-  httpd_directory: /usr/share/kasmvnc/www
-  kasm_password_file: ~/.kasmpasswd
-  x_authtority_file: default
+server:
+  advanced:
+    x_font_path: default
+    httpd_directory: /usr/share/kasmvnc/www
+    kasm_password_file: ~/.kasmpasswd
+    x_authtority_file: default
+  auto_shutdown:
+    no_user_session_timeout: never
+    active_user_session_timeout: never
+    inactive_user_session_timeout: never
