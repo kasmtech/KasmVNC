@@ -1,25 +1,4 @@
 ---
-# geometry: 1024x768
-# interface: 192.168.0.1
-framerate: 10
-# dynamic_quality:
-#   min: 7
-#   max: 8
-# treat_lossless: 10
-# prefer_bandwidth: true
-# max_video_resolution:
-#   width: 640
-#   height: 480
-dlp:
-  region:
-    x1: 11
-    y1: 11
-    allow_click: false
-#   clipboard:
-#     send_max: 10000
-#     accept_max: 10000
-#     delay: 1000
-#   keyboard:
-#     ratelimit: 30
-#   logging:
-#     level: verbose
+network:
+  ssl:
+    pem_certificate: lol
