@@ -9,6 +9,7 @@ desktop:
 network:
   protocol: http|vnc
   interface: 0.0.0.0
+  websocket_port: default
   use_ipv4: true
   use_ipv6: true
   ssl:
