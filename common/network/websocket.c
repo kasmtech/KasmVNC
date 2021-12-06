@@ -32,6 +32,7 @@
 #include <openssl/sha.h> /* sha1 hash */
 #include "websocket.h"
 #include "kasmpasswd.h"
+#include <network/Blacklist.h>
 
 /*
  * Global state
@@ -1203,7 +1204,7 @@ nope:
     return 1;
 }
 
-ws_ctx_t *do_handshake(int sock) {
+ws_ctx_t *do_handshake(int sock, const char *ip) {
     char handshake[4096], response[4096], sha1[29], trailer[17];
     char *scheme, *pre;
     headers_t *headers;
@@ -1271,10 +1272,20 @@ ws_ctx_t *do_handshake(int sock) {
         usleep(10);
     }
 
+    if (bl_isBlacklisted(ip)) {
+        wserr("IP %s is blacklisted, dropping\n", ip);
+        sprintf(response, "HTTP/1.1 401 Forbidden\r\n"
+                          "\r\n");
+        ws_send(ws_ctx, response, strlen(response));
+        free_ws_ctx(ws_ctx);
+        return NULL;
+    }
+
     unsigned char owner = 0;
     if (!settings.disablebasicauth) {
         const char *hdr = strstr(handshake, "Authorization: Basic ");
         if (!hdr) {
+            bl_addFailure(ip);
             handler_emsg("BasicAuth required, but client didn't send any. 401 Unauth\n");
             sprintf(response, "HTTP/1.1 401 Unauthorized\r\n"
                               "WWW-Authenticate: Basic realm=\"Websockify\"\r\n"
@@ -1288,6 +1299,7 @@ ws_ctx_t *do_handshake(int sock) {
         const char *end = strchr(hdr, '\r');
         if (!end || end - hdr > 256) {
             handler_emsg("Client sent invalid BasicAuth, dropping connection\n");
+            bl_addFailure(ip);
             free_ws_ctx(ws_ctx);
             return NULL;
         }
@@ -1357,6 +1369,7 @@ ws_ctx_t *do_handshake(int sock) {
 
         if (len <= 0 || strcmp(authbuf, response)) {
             handler_emsg("BasicAuth user/pw did not match\n");
+            bl_addFailure(ip);
             sprintf(response, "HTTP/1.1 401 Forbidden\r\n"
                               "\r\n");
             ws_send(ws_ctx, response, strlen(response));
@@ -1445,7 +1458,7 @@ void *subthread(void *ptr) {
 
     ws_ctx_t *ws_ctx;
 
-    ws_ctx = do_handshake(csock);
+    ws_ctx = do_handshake(csock, pass->ip);
     if (ws_ctx == NULL) {
         handler_msg("No connection after handshake\n");
         goto out;   // Child process exits

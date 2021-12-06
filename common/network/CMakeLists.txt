@@ -2,6 +2,7 @@ include_directories(${CMAKE_SOURCE_DIR}/common ${CMAKE_SOURCE_DIR}/unix/kasmvncp
 
 set(NETWORK_SOURCES
   GetAPIMessager.cxx
+  Blacklist.cxx
   Socket.cxx
   TcpSocket.cxx
   websocket.c
