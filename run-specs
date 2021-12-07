@@ -1,8 +1,12 @@
 #!/bin/bash
 
 set -e
-
 export PYTHONPATH=${PWD}/spec
 
-cd spec/
-pipenv run mamba *_spec.py
+RUN_CMD="pipenv run mamba"
+
+if [[ -n "$1" ]]; then
+  $RUN_CMD "$1"
+else
+  $RUN_CMD spec/*_spec.py
+fi
