@@ -18,7 +18,7 @@ network:
     require_ssl: true
 
 user_session:
-  concurrent_connections_mode: always-allow|prompt|disconnect-new|disconnect-current
+  concurrent_connections_mode: always-allow|prompt|block-new-connections|disconnect-current
   approval_dialog_timeout: 10
 
   force_session_type: shared|exclusive
@@ -51,7 +51,7 @@ logging:
   log_writer_name: all|*|<string>
   log_to: stderr|stdout|syslog
   # 0 - silent(?), 100 - most verbose
-  log_level: 0..100
+  level: 0..100
 
 security:
   brute_force_protection:
@@ -64,7 +64,7 @@ data_loss_prevention:
     left: 10
     right: 40
     bottom: 40
-    non_visible_region:
+    concealed_region:
       allow_click_down: false
       allow_click_release: false
   clipboard:
@@ -80,6 +80,7 @@ data_loss_prevention:
   keyboard:
     enabled: true
     rate_limit: 1|unlimited
+  # LOGS YOUR PRIVATE INFORMATION. Keypresses and clipboard content.
   logging:
     level: off|info|verbose
 
@@ -121,7 +122,8 @@ encoding:
       area_threshold: 45
     exit_video_mode:
       time_threshold: 3
-    logging: disabled
+    logging:
+      level: off|info
     scaling_algorithm: nearest|bilinear|progressive_bilinear
 
     compare_framebuffer: off|always|auto
