@@ -1,3 +1,8 @@
 #!/bin/bash
 
-pipenv run mamba spec/*
+set -e
+
+export PYTHONPATH=${PWD}/spec
+
+cd spec/
+pipenv run mamba *_spec.py
