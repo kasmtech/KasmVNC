@@ -95,9 +95,6 @@ build_ubuntu_focal:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu focal;
-  only:
-    variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [Cc][Ii]\]/
   artifacts:
     paths:
       - output/
@@ -114,9 +111,6 @@ build_ubuntu_focal_arm:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu focal;
-  only:
-    variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [Cc][Ii]\]/
   artifacts:
     paths:
       - output/
