@@ -1074,7 +1074,51 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                  "200 OK");
         ws_send(ws_ctx, buf, strlen(buf));
 
-        wserr("Passed remove_user request to main thread\n");
+        ret = 1;
+    } else entry("/api/update_user") {
+        char decname[1024] = "";
+
+        param = parse_get(args, "name", &len);
+        if (len) {
+            memcpy(buf, param, len);
+            buf[len] = '\0';
+            percent_decode(buf, decname, 0);
+        }
+
+        if (!decname[0])
+            goto nope;
+
+	uint64_t mask = 0;
+        uint8_t mywrite = 0;
+        param = parse_get(args, "write", &len);
+        if (len && isalpha(param[0])) {
+            mask |= USER_UPDATE_WRITE_MASK;
+            if (!strncmp(param, "true", len))
+                mywrite = 1;
+        }
+
+        uint8_t myowner = 0;
+        param = parse_get(args, "owner", &len);
+        if (len && isalpha(param[0])) {
+            mask |= USER_UPDATE_OWNER_MASK;
+            if (!strncmp(param, "true", len))
+                myowner = 1;
+        }
+
+        if (!settings.updateUserCb(settings.messager, decname, mask, mywrite, myowner)) {
+            wserr("Invalid params to update_user\n");
+            goto nope;
+        }
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: 6\r\n"
+                 "\r\n"
+                 "200 OK");
+        ws_send(ws_ctx, buf, strlen(buf));
+
         ret = 1;
     } else entry("/api/give_control") {
         char decname[1024] = "";
@@ -1103,7 +1147,6 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                  "200 OK");
         ws_send(ws_ctx, buf, strlen(buf));
 
-        wserr("Passed give_control request to main thread\n");
         ret = 1;
     } else entry("/api/get_bottleneck_stats") {
         char statbuf[4096];
@@ -1119,6 +1162,23 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
         ws_send(ws_ctx, statbuf, strlen(statbuf));
 
         wserr("Sent bottleneck stats to API caller\n");
+        ret = 1;
+    } else entry("/api/get_users") {
+        const char *ptr;
+        settings.getUsersCb(settings.messager, &ptr);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: %lu\r\n"
+                 "\r\n", strlen(ptr));
+        ws_send(ws_ctx, buf, strlen(buf));
+        ws_send(ws_ctx, ptr, strlen(ptr));
+
+        free((char *) ptr);
+
+        wserr("Sent user list to API caller\n");
         ret = 1;
     } else entry("/api/get_frame_stats") {
         char statbuf[4096], decname[1024];

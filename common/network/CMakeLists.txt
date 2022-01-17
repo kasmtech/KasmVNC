@@ -5,6 +5,7 @@ set(NETWORK_SOURCES
   Blacklist.cxx
   Socket.cxx
   TcpSocket.cxx
+  jsonescape.c
   websocket.c
   websockify.c
   ${CMAKE_SOURCE_DIR}/unix/kasmvncpasswd/kasmpasswd.c)

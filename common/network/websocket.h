@@ -1,5 +1,6 @@
 #include <openssl/ssl.h>
 #include <stdint.h>
+#include "GetAPIEnums.h"
 
 #define BUFSIZE 65536
 #define DBUFSIZE (BUFSIZE * 3) / 4 - 20
@@ -83,6 +84,8 @@ typedef struct {
     uint8_t (*adduserCb)(void *messager, const char name[], const char pw[],
                           const uint8_t write);
     uint8_t (*removeCb)(void *messager, const char name[]);
+    uint8_t (*updateUserCb)(void *messager, const char name[], const uint64_t mask,
+                           const uint8_t write, const uint8_t owner);
     uint8_t (*givecontrolCb)(void *messager, const char name[]);
     void (*bottleneckStatsCb)(void *messager, char *buf, uint32_t len);
     void (*frameStatsCb)(void *messager, char *buf, uint32_t len);
@@ -94,6 +97,7 @@ typedef struct {
 
     uint8_t (*ownerConnectedCb)(void *messager);
     uint8_t (*numActiveUsersCb)(void *messager);
+    void (*getUsersCb)(void *messager, const char **buf);
     uint8_t (*getClientFrameStatsNumCb)(void *messager);
     uint8_t (*serverFrameStatsReadyCb)(void *messager);
 } settings_t;
