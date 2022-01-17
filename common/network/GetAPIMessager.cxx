@@ -20,6 +20,7 @@
 
 #include <inttypes.h>
 #include <network/GetAPI.h>
+#include <network/jsonescape.h>
 #include <rfb/ConnParams.h>
 #include <rfb/EncodeManager.h>
 #include <rfb/LogWriter.h>
@@ -282,8 +283,6 @@ uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[], const boo
 
 	action_data act;
 
-	memcpy(act.data.user, name, USERNAME_LEN);
-	act.data.user[USERNAME_LEN - 1] = '\0';
 	memcpy(act.data.password, pw, PASSWORD_LEN);
 	act.data.password[PASSWORD_LEN - 1] = '\0';
 	act.data.owner = 0;
@@ -299,8 +298,8 @@ uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[], const boo
         struct kasmpasswd_t *set = readkasmpasswd(passwdfile);
         unsigned s;
         for (s = 0; s < set->num; s++) {
-          if (!strcmp(set->entries[s].user, act.data.user)) {
-            vlog.error("Can't create user %s, already exists", act.data.user);
+          if (!strcmp(set->entries[s].user, name)) {
+            vlog.error("Can't create user %s, already exists", name);
             goto out;
           }
         }
@@ -311,9 +310,12 @@ uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[], const boo
         set->entries[s] = act.data;
 
         writekasmpasswd(passwdfile, set);
-        vlog.info("User %s created", act.data.user);
+        vlog.info("User %s created", name);
 out:
 	pthread_mutex_unlock(&userMutex);
+
+	free(set->entries);
+	free(set);
 
 	return 1;
 }
@@ -324,18 +326,89 @@ uint8_t GetAPIMessager::netRemoveUser(const char name[]) {
 		return 0;
 	}
 
-	action_data act;
-	act.action = USER_REMOVE;
+	if (pthread_mutex_lock(&userMutex))
+		return 0;
 
-	memcpy(act.data.user, name, USERNAME_LEN);
-	act.data.user[USERNAME_LEN - 1] = '\0';
+	struct kasmpasswd_t *set = readkasmpasswd(passwdfile);
+	bool found = false;
+	unsigned s;
+	for (s = 0; s < set->num; s++) {
+		if (!strcmp(set->entries[s].user, name)) {
+			set->entries[s].user[0] = '\0';
+			found = true;
+			break;
+		}
+	}
+
+	if (found) {
+		writekasmpasswd(passwdfile, set);
+		vlog.info("User %s removed", name);
+	} else {
+		vlog.error("Tried to remove nonexistent user %s", name);
+
+		pthread_mutex_unlock(&userMutex);
+
+		free(set->entries);
+		free(set);
+
+		return 0;
+	}
+
+	pthread_mutex_unlock(&userMutex);
+
+	free(set->entries);
+	free(set);
+
+	return 1;
+}
+
+uint8_t GetAPIMessager::netUpdateUser(const char name[], const uint64_t mask,
+	                              const bool write, const bool owner) {
+	if (strlen(name) >= USERNAME_LEN) {
+		vlog.error("Username too long");
+		return 0;
+	}
+
+	if (!mask) {
+		vlog.error("Update_user without any updates?");
+		return 0;
+	}
 
 	if (pthread_mutex_lock(&userMutex))
 		return 0;
 
-	actionQueue.push_back(act);
+	struct kasmpasswd_t *set = readkasmpasswd(passwdfile);
+	bool found = false;
+	unsigned s;
+	for (s = 0; s < set->num; s++) {
+		if (!strcmp(set->entries[s].user, name)) {
+			if (mask & USER_UPDATE_WRITE_MASK)
+				set->entries[s].write = write;
+			if (mask & USER_UPDATE_OWNER_MASK)
+				set->entries[s].owner = owner;
+			found = true;
+			break;
+		}
+	}
+
+	if (found) {
+		writekasmpasswd(passwdfile, set);
+		vlog.info("User %s permissions updated", name);
+	} else {
+		vlog.error("Tried to update nonexistent user %s", name);
+
+		pthread_mutex_unlock(&userMutex);
+
+		free(set->entries);
+		free(set);
+
+		return 0;
+	}
 
 	pthread_mutex_unlock(&userMutex);
+
+	free(set->entries);
+	free(set);
 
 	return 1;
 }
@@ -346,20 +419,89 @@ uint8_t GetAPIMessager::netGiveControlTo(const char name[]) {
 		return 0;
 	}
 
-	action_data act;
-	act.action = USER_GIVE_CONTROL;
-
-	memcpy(act.data.user, name, USERNAME_LEN);
-	act.data.user[USERNAME_LEN - 1] = '\0';
-
 	if (pthread_mutex_lock(&userMutex))
 		return 0;
 
-	actionQueue.push_back(act);
+	struct kasmpasswd_t *set = readkasmpasswd(passwdfile);
+	bool found = false;
+	unsigned s;
+	for (s = 0; s < set->num; s++) {
+		if (!strcmp(set->entries[s].user, name)) {
+			set->entries[s].write = 1;
+			found = true;
+		} else {
+			set->entries[s].write = 0;
+		}
+	}
+
+	if (found) {
+		writekasmpasswd(passwdfile, set);
+		vlog.info("User %s given control", name);
+	} else {
+		vlog.error("Tried to give control to nonexistent user %s", name);
+
+		pthread_mutex_unlock(&userMutex);
+
+		free(set->entries);
+		free(set);
+
+		return 0;
+	}
 
 	pthread_mutex_unlock(&userMutex);
 
+	free(set->entries);
+	free(set);
+
 	return 1;
+}
+
+void GetAPIMessager::netGetUsers(const char **outptr) {
+/*
+[
+    { "user": "username", "write": true, "owner": true },
+    { "user": "username", "write": true, "owner": true }
+]
+*/
+	char *buf;
+	char escapeduser[USERNAME_LEN * 2];
+
+	if (pthread_mutex_lock(&userMutex)) {
+		*outptr = (char *) calloc(1, 1);
+		return;
+	}
+
+	struct kasmpasswd_t *set = readkasmpasswd(passwdfile);
+
+	buf = (char *) calloc(set->num, 80);
+	FILE *f = fmemopen(buf, set->num * 80, "w");
+
+	fprintf(f, "[\n");
+
+	unsigned s;
+	for (s = 0; s < set->num; s++) {
+		JSON_escape(set->entries[s].user, escapeduser);
+
+		fprintf(f, "    { \"user\": \"%s\", \"write\": %s, \"owner\": %s }",
+			escapeduser,
+			set->entries[s].write ? "true" : "false",
+			set->entries[s].owner ? "true" : "false");
+
+		if (s == set->num - 1)
+			fprintf(f, "\n");
+		else
+			fprintf(f, ",\n");
+	}
+
+	free(set->entries);
+	free(set);
+
+	fprintf(f, "]\n");
+
+	fclose(f);
+
+	pthread_mutex_unlock(&userMutex);
+	*outptr = buf;
 }
 
 void GetAPIMessager::netGetBottleneckStats(char *buf, uint32_t len) {

@@ -455,10 +455,23 @@ static uint8_t removeCb(void *messager, const char name[])
   return msgr->netRemoveUser(name);
 }
 
+static uint8_t updateUserCb(void *messager, const char name[], const uint64_t mask,
+                            const uint8_t write, const uint8_t owner)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  return msgr->netUpdateUser(name, mask, write, owner);
+}
+
 static uint8_t givecontrolCb(void *messager, const char name[])
 {
   GetAPIMessager *msgr = (GetAPIMessager *) messager;
   return msgr->netGiveControlTo(name);
+}
+
+static void getUsersCb(void *messager, const char **ptr)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  msgr->netGetUsers(ptr);
 }
 
 static void bottleneckStatsCb(void *messager, char *buf, uint32_t len)
@@ -613,7 +626,9 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   settings.screenshotCb = screenshotCb;
   settings.adduserCb = adduserCb;
   settings.removeCb = removeCb;
+  settings.updateUserCb = updateUserCb;
   settings.givecontrolCb = givecontrolCb;
+  settings.getUsersCb = getUsersCb;
   settings.bottleneckStatsCb = bottleneckStatsCb;
   settings.frameStatsCb = frameStatsCb;
 
