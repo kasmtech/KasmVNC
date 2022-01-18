@@ -283,6 +283,8 @@ uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[], const boo
 
 	action_data act;
 
+	memcpy(act.data.user, name, USERNAME_LEN);
+	act.data.user[USERNAME_LEN - 1] = '\0';
 	memcpy(act.data.password, pw, PASSWORD_LEN);
 	act.data.password[PASSWORD_LEN - 1] = '\0';
 	act.data.owner = 0;
