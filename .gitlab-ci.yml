@@ -201,6 +201,22 @@ build_kali_rolling:
     paths:
       - output/
 
+build_kali_rolling_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - arm
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package kali kali-rolling;
+  artifacts:
+    paths:
+      - output/
+
 build_centos7:
   stage: build
   allow_failure: true
