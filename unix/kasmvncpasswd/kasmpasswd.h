@@ -12,6 +12,9 @@ struct kasmpasswd_entry_t {
 	unsigned char owner : 1;
 };
 
+#define USERNAME_LEN sizeof(((struct kasmpasswd_entry_t *)0)->user)
+#define PASSWORD_LEN sizeof(((struct kasmpasswd_entry_t *)0)->password)
+
 struct kasmpasswd_t {
 	struct kasmpasswd_entry_t *entries;
 	unsigned num;

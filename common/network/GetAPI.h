@@ -53,11 +53,12 @@ namespace network {
     uint8_t *netGetScreenshot(uint16_t w, uint16_t h,
                               const uint8_t q, const bool dedup,
                               uint32_t &len, uint8_t *staging);
-    uint8_t netAddUser(const char name[], const char pw[], const bool write);
+    uint8_t netAddUser(const char name[], const char pw[], const bool write, const bool owner);
     uint8_t netRemoveUser(const char name[]);
-    uint8_t netUpdateUser(const char name[], const uint64_t mask, const bool write,
-                          const bool owner);
-    uint8_t netGiveControlTo(const char name[]);
+    uint8_t netUpdateUser(const char name[], const uint64_t mask,
+                          const char password[],
+                          const bool write, const bool owner);
+    uint8_t netAddOrUpdateUser(const struct kasmpasswd_entry_t *entry);
     void netGetUsers(const char **ptr);
     void netGetBottleneckStats(char *buf, uint32_t len);
     void netGetFrameStats(char *buf, uint32_t len);

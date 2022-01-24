@@ -31,6 +31,7 @@
 #include <openssl/md5.h> /* md5 hash */
 #include <openssl/sha.h> /* sha1 hash */
 #include "websocket.h"
+#include "jsonescape.h"
 #include "kasmpasswd.h"
 #include <network/Blacklist.h>
 
@@ -901,12 +902,183 @@ nope:
     ws_send(ws_ctx, buf, strlen(buf));
 }
 
+static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
+    char buf[4096], path[4096];
+    uint8_t ret = 0; // 0 = continue checking
+
+    in += 5;
+    const char *end = strchr(in, ' ');
+    unsigned len = end - in;
+
+    if (len < 1 || len > 1024 || strstr(in, "../")) {
+        wserr("Request too long (%u) or attempted dir traversal attack, rejecting\n", len);
+        return 0;
+    }
+
+    end = memchr(in, '?', len);
+    if (end) {
+        wserr("Attempted GET params in a POST request, rejecting\n");
+        return 0;
+    }
+
+    memcpy(path, in, len);
+    path[len] = '\0';
+
+    wserr("Requested owner POST api '%s'\n", path);
+
+    in = strstr(in, "\r\n\r\n");
+    if (!in) {
+        wserr("No content\n");
+        return 0;
+    }
+    in += 4;
+
+    #define entry(x) if (!strcmp(path, x))
+
+    struct kasmpasswd_t *set = NULL;
+    unsigned s;
+
+    entry("/api/create_user") {
+        set = parseJsonUsers(in);
+        if (!set) {
+            wserr("JSON parse error\n");
+            goto nope;
+        }
+
+        for (s = 0; s < set->num; s++) {
+            if (!set->entries[s].user[0] || !set->entries[s].password[0]) {
+                wserr("Username or password missing\n");
+                goto nope;
+            }
+
+            struct crypt_data cdata;
+            cdata.initialized = 0;
+
+            const char *encrypted = crypt_r(set->entries[s].password, "$5$kasm$", &cdata);
+            strcpy(set->entries[s].password, encrypted);
+
+            if (!settings.addOrUpdateUserCb(settings.messager, &set->entries[s])) {
+                wserr("Couldn't add or update user\n");
+                goto nope;
+            }
+        }
+
+        free(set->entries);
+        free(set);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: 6\r\n"
+                 "\r\n"
+                 "200 OK");
+        ws_send(ws_ctx, buf, strlen(buf));
+
+        ret = 1;
+    } else entry("/api/remove_user") {
+        set = parseJsonUsers(in);
+        if (!set) {
+            wserr("JSON parse error\n");
+            goto nope;
+        }
+
+        for (s = 0; s < set->num; s++) {
+            if (!set->entries[s].user[0]) {
+                wserr("Username missing\n");
+                goto nope;
+            }
+
+            if (!settings.removeCb(settings.messager, set->entries[s].user)) {
+                wserr("Invalid params to remove_user\n");
+                goto nope;
+            }
+        }
+
+        free(set->entries);
+        free(set);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: 6\r\n"
+                 "\r\n"
+                 "200 OK");
+        ws_send(ws_ctx, buf, strlen(buf));
+
+        ret = 1;
+    } else entry("/api/update_user") {
+        set = parseJsonUsers(in);
+        if (!set) {
+            wserr("JSON parse error\n");
+            goto nope;
+        }
+
+        for (s = 0; s < set->num; s++) {
+            if (!set->entries[s].user[0]) {
+                wserr("Username missing\n");
+                goto nope;
+            }
+
+            uint64_t mask = USER_UPDATE_WRITE_MASK | USER_UPDATE_OWNER_MASK;
+
+            if (set->entries[s].password[0]) {
+                struct crypt_data cdata;
+                cdata.initialized = 0;
+
+                const char *encrypted = crypt_r(set->entries[s].password, "$5$kasm$", &cdata);
+                strcpy(set->entries[s].password, encrypted);
+
+                mask |= USER_UPDATE_PASSWORD_MASK;
+            }
+
+            if (!settings.updateUserCb(settings.messager, set->entries[s].user, mask,
+                                       set->entries[s].password,
+                                       set->entries[s].write, set->entries[s].owner)) {
+                wserr("Invalid params to update_user\n");
+                goto nope;
+            }
+        }
+
+        free(set->entries);
+        free(set);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: 6\r\n"
+                 "\r\n"
+                 "200 OK");
+        ws_send(ws_ctx, buf, strlen(buf));
+
+        ret = 1;
+    }
+
+    #undef entry
+
+    return ret;
+nope:
+    sprintf(buf, "HTTP/1.1 400 Bad Request\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "\r\n"
+                 "400 Bad Request");
+    ws_send(ws_ctx, buf, strlen(buf));
+    return 1;
+}
+
 static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
     char buf[4096], path[4096], args[4096] = "";
     uint8_t ret = 0; // 0 = continue checking
 
     if (strncmp(in, "GET ", 4)) {
-        wserr("non-GET request, rejecting\n");
+        if (!strncmp(in, "POST ", 5))
+            return ownerapi_post(ws_ctx, in);
+
+        wserr("non-GET, non-POST request, rejecting\n");
         return 0;
     }
     in += 4;
@@ -1001,7 +1173,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
         }
     } else entry("/api/create_user") {
         char decname[1024] = "", decpw[1024] = "";
-        uint8_t write = 0;
+        uint8_t write = 0, owner = 0;
 
         param = parse_get(args, "name", &len);
         if (len) {
@@ -1029,10 +1201,16 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                 write = 1;
         }
 
+        param = parse_get(args, "owner", &len);
+        if (len && isalpha(param[0])) {
+            if (!strncmp(param, "true", len))
+                owner = 1;
+        }
+
         if (!decname[0] || !decpw[0])
             goto nope;
 
-        if (!settings.adduserCb(settings.messager, decname, decpw, write)) {
+        if (!settings.adduserCb(settings.messager, decname, decpw, write, owner)) {
             wserr("Invalid params to create_user\n");
             goto nope;
         }
@@ -1105,36 +1283,8 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                 myowner = 1;
         }
 
-        if (!settings.updateUserCb(settings.messager, decname, mask, mywrite, myowner)) {
+        if (!settings.updateUserCb(settings.messager, decname, mask, "", mywrite, myowner)) {
             wserr("Invalid params to update_user\n");
-            goto nope;
-        }
-
-        sprintf(buf, "HTTP/1.1 200 OK\r\n"
-                 "Server: KasmVNC/4.0\r\n"
-                 "Connection: close\r\n"
-                 "Content-type: text/plain\r\n"
-                 "Content-length: 6\r\n"
-                 "\r\n"
-                 "200 OK");
-        ws_send(ws_ctx, buf, strlen(buf));
-
-        ret = 1;
-    } else entry("/api/give_control") {
-        char decname[1024] = "";
-
-        param = parse_get(args, "name", &len);
-        if (len) {
-            memcpy(buf, param, len);
-            buf[len] = '\0';
-            percent_decode(buf, decname, 0);
-        }
-
-        if (!decname[0])
-            goto nope;
-
-        if (!settings.givecontrolCb(settings.messager, decname)) {
-            wserr("Invalid params to give_control\n");
             goto nope;
         }
 

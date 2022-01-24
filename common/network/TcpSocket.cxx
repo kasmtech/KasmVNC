@@ -443,10 +443,10 @@ static uint8_t *screenshotCb(void *messager, uint16_t w, uint16_t h, const uint8
 }
 
 static uint8_t adduserCb(void *messager, const char name[], const char pw[],
-                          const uint8_t write)
+                          const uint8_t write, const uint8_t owner)
 {
   GetAPIMessager *msgr = (GetAPIMessager *) messager;
-  return msgr->netAddUser(name, pw, write);
+  return msgr->netAddUser(name, pw, write, owner);
 }
 
 static uint8_t removeCb(void *messager, const char name[])
@@ -456,16 +456,17 @@ static uint8_t removeCb(void *messager, const char name[])
 }
 
 static uint8_t updateUserCb(void *messager, const char name[], const uint64_t mask,
+                            const char password[],
                             const uint8_t write, const uint8_t owner)
 {
   GetAPIMessager *msgr = (GetAPIMessager *) messager;
-  return msgr->netUpdateUser(name, mask, write, owner);
+  return msgr->netUpdateUser(name, mask, password, write, owner);
 }
 
-static uint8_t givecontrolCb(void *messager, const char name[])
+static uint8_t addOrUpdateUserCb(void *messager, const struct kasmpasswd_entry_t *entry)
 {
   GetAPIMessager *msgr = (GetAPIMessager *) messager;
-  return msgr->netGiveControlTo(name);
+  return msgr->netAddOrUpdateUser(entry);
 }
 
 static void getUsersCb(void *messager, const char **ptr)
@@ -627,7 +628,7 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   settings.adduserCb = adduserCb;
   settings.removeCb = removeCb;
   settings.updateUserCb = updateUserCb;
-  settings.givecontrolCb = givecontrolCb;
+  settings.addOrUpdateUserCb = addOrUpdateUserCb;
   settings.getUsersCb = getUsersCb;
   settings.bottleneckStatsCb = bottleneckStatsCb;
   settings.frameStatsCb = frameStatsCb;

@@ -264,10 +264,8 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 	return ret;
 }
 
-#define USERNAME_LEN sizeof(((struct kasmpasswd_entry_t *)0)->user)
-#define PASSWORD_LEN sizeof(((struct kasmpasswd_entry_t *)0)->password)
-
-uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[], const bool write) {
+uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[], const bool write,
+					const bool owner) {
 	if (strlen(name) >= USERNAME_LEN) {
 		vlog.error("Username too long");
 		return 0;
@@ -281,13 +279,15 @@ uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[], const boo
 	if (!passwdfile)
 		return 0;
 
+	uint8_t ret = 1;
+
 	action_data act;
 
 	memcpy(act.data.user, name, USERNAME_LEN);
 	act.data.user[USERNAME_LEN - 1] = '\0';
 	memcpy(act.data.password, pw, PASSWORD_LEN);
 	act.data.password[PASSWORD_LEN - 1] = '\0';
-	act.data.owner = 0;
+	act.data.owner = owner;
 	act.data.write = write;
 
 	if (pthread_mutex_lock(&userMutex))
@@ -302,6 +302,7 @@ uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[], const boo
         for (s = 0; s < set->num; s++) {
           if (!strcmp(set->entries[s].user, name)) {
             vlog.error("Can't create user %s, already exists", name);
+            ret = 0;
             goto out;
           }
         }
@@ -319,7 +320,7 @@ out:
 	free(set->entries);
 	free(set);
 
-	return 1;
+	return ret;
 }
 
 uint8_t GetAPIMessager::netRemoveUser(const char name[]) {
@@ -365,9 +366,15 @@ uint8_t GetAPIMessager::netRemoveUser(const char name[]) {
 }
 
 uint8_t GetAPIMessager::netUpdateUser(const char name[], const uint64_t mask,
+	                              const char password[],
 	                              const bool write, const bool owner) {
 	if (strlen(name) >= USERNAME_LEN) {
 		vlog.error("Username too long");
+		return 0;
+	}
+
+	if (strlen(password) >= PASSWORD_LEN) {
+		vlog.error("Password too long");
 		return 0;
 	}
 
@@ -388,6 +395,9 @@ uint8_t GetAPIMessager::netUpdateUser(const char name[], const uint64_t mask,
 				set->entries[s].write = write;
 			if (mask & USER_UPDATE_OWNER_MASK)
 				set->entries[s].owner = owner;
+
+			if (mask & USER_UPDATE_PASSWORD_MASK)
+				strcpy(set->entries[s].password, password);
 			found = true;
 			break;
 		}
@@ -415,40 +425,32 @@ uint8_t GetAPIMessager::netUpdateUser(const char name[], const uint64_t mask,
 	return 1;
 }
 
-uint8_t GetAPIMessager::netGiveControlTo(const char name[]) {
-	if (strlen(name) >= USERNAME_LEN) {
-		vlog.error("Username too long");
-		return 0;
-	}
+uint8_t GetAPIMessager::netAddOrUpdateUser(const struct kasmpasswd_entry_t *entry) {
 
 	if (pthread_mutex_lock(&userMutex))
 		return 0;
 
-	struct kasmpasswd_t *set = readkasmpasswd(passwdfile);
-	bool found = false;
-	unsigned s;
-	for (s = 0; s < set->num; s++) {
-		if (!strcmp(set->entries[s].user, name)) {
-			set->entries[s].write = 1;
-			found = true;
-		} else {
-			set->entries[s].write = 0;
+        struct kasmpasswd_t *set = readkasmpasswd(passwdfile);
+        unsigned s;
+        bool updated = false;
+        for (s = 0; s < set->num; s++) {
+		if (!strcmp(set->entries[s].user, entry->user)) {
+			set->entries[s] = *entry;
+			updated = true;
+			vlog.info("User %s updated", entry->user);
+			break;
 		}
-	}
+        }
 
-	if (found) {
-		writekasmpasswd(passwdfile, set);
-		vlog.info("User %s given control", name);
-	} else {
-		vlog.error("Tried to give control to nonexistent user %s", name);
+	if (!updated) {
+	        s = set->num++;
+		set->entries = (struct kasmpasswd_entry_t *) realloc(set->entries,
+									set->num * sizeof(struct kasmpasswd_entry_t));
+		set->entries[s] = *entry;
+	        vlog.info("User %s created", entry->user);
+        }
 
-		pthread_mutex_unlock(&userMutex);
-
-		free(set->entries);
-		free(set);
-
-		return 0;
-	}
+	writekasmpasswd(passwdfile, set);
 
 	pthread_mutex_unlock(&userMutex);
 
@@ -456,6 +458,7 @@ uint8_t GetAPIMessager::netGiveControlTo(const char name[]) {
 	free(set);
 
 	return 1;
+
 }
 
 void GetAPIMessager::netGetUsers(const char **outptr) {
