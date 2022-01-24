@@ -5,6 +5,7 @@ set(NETWORK_SOURCES
   Blacklist.cxx
   Socket.cxx
   TcpSocket.cxx
+  cJSON.c
   jsonescape.c
   websocket.c
   websockify.c

@@ -66,6 +66,8 @@ struct wspass_t {
     char ip[64];
 };
 
+struct kasmpasswd_entry_t;
+
 typedef struct {
     int verbose;
     int listen_sock;
@@ -82,11 +84,12 @@ typedef struct {
                              const uint8_t dedup,
                              uint32_t *len, uint8_t *staging);
     uint8_t (*adduserCb)(void *messager, const char name[], const char pw[],
-                          const uint8_t write);
+                          const uint8_t write, const uint8_t owner);
     uint8_t (*removeCb)(void *messager, const char name[]);
     uint8_t (*updateUserCb)(void *messager, const char name[], const uint64_t mask,
+                           const char password[],
                            const uint8_t write, const uint8_t owner);
-    uint8_t (*givecontrolCb)(void *messager, const char name[]);
+    uint8_t (*addOrUpdateUserCb)(void *messager, const struct kasmpasswd_entry_t *entry);
     void (*bottleneckStatsCb)(void *messager, char *buf, uint32_t len);
     void (*frameStatsCb)(void *messager, char *buf, uint32_t len);
 

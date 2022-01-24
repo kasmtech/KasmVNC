@@ -19,12 +19,17 @@
 #ifndef __NETWORK_JSON_ESCAPE_H__
 #define __NETWORK_JSON_ESCAPE_H__
 
+#include <kasmpasswd.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void JSON_escape(const char *in, char *out);
 void JSON_unescape(const char *in, char *out);
+
+struct kasmpasswd_t *parseJsonUsers(const char *data);
 
 #ifdef __cplusplus
 } // extern C
