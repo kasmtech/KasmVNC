@@ -144,7 +144,6 @@ namespace rfb {
     static const AccessRights AccessDefault;        // The default rights, INCLUDING FUTURE ONES
     static const AccessRights AccessNoQuery;        // Connect without local user accepting
     static const AccessRights AccessFull;           // All of the available AND FUTURE rights
-    virtual void setAccessRights(AccessRights ar) = 0;
 
     // Other methods
 

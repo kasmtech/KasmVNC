@@ -807,6 +807,9 @@ static void checkAPIMessages(network::GetAPIMessager *apimessager,
     const network::GetAPIMessager::action_data &act = apimessager->actionQueue[i];
 
     switch (act.action) {
+      case network::GetAPIMessager::NONE:
+        slog.info("Empty request (bug!)");
+      break;
       case network::GetAPIMessager::WANT_FRAME_STATS_SERVERONLY:
         trackingFrameStats = act.action;
       break;

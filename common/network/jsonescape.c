@@ -150,14 +150,13 @@ struct kasmpasswd_t *parseJsonUsers(const char *data) {
 
 				if (e->type & cJSON_True)
 					entry->owner = 1;
-/*			} else field("read") {
-				start = end + 3;
+			} else field("read") {
 				if (!(e->type & (cJSON_False | cJSON_True)))
 					goto fail;
 
 				if (e->type & cJSON_True)
 					entry->read = 1;
-*/
+
 			} else {
 				//printf("Unknown field '%.*s'\n", len, start);
 				goto fail;

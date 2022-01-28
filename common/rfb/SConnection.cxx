@@ -216,7 +216,7 @@ void SConnection::processSecurityMsg()
     bool done = ssecurity->processMsg(this);
     if (done) {
       state_ = RFBSTATE_QUERYING;
-      setAccessRights(ssecurity->getAccessRights());
+      //setAccessRights(ssecurity->getAccessRights());
       queryConnection(ssecurity->getUserName());
     }
   } catch (AuthFailureException& e) {

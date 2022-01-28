@@ -8,6 +8,7 @@ extern "C" {
 struct kasmpasswd_entry_t {
 	char user[32];
 	char password[128];
+	unsigned char read : 1;
 	unsigned char write : 1;
 	unsigned char owner : 1;
 };

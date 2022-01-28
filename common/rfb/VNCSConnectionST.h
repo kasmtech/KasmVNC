@@ -171,8 +171,8 @@ namespace rfb {
     virtual void handleFrameStats(rdr::U32 all, rdr::U32 render);
 
     bool is_owner() const {
-      bool write, owner;
-      if (getPerms(write, owner) && owner)
+      bool read, write, owner;
+      if (getPerms(read, write, owner) && owner)
         return true;
       return false;
     }
@@ -227,19 +227,6 @@ namespace rfb {
                (AccessPtrEvents | AccessKeyEvents);
     }
 
-    // setAccessRights() allows a security package to limit the access rights
-    // of a VNCSConnectioST to the server.  These access rights are applied
-    // such that the actual rights granted are the minimum of the server's
-    // default access settings and the connection's access settings.
-    virtual void setAccessRights(AccessRights ar) {
-        accessRights = ar;
-
-        bool write, owner;
-        if (!getPerms(write, owner) || !write)
-            accessRights &= ~WRITER_PERMS;
-        needsPermCheck = false;
-    }
-
     // Timer callbacks
     virtual bool handleTimeout(Timer* t);
 
@@ -247,7 +234,7 @@ namespace rfb {
 
     bool isShiftPressed();
 
-    bool getPerms(bool &write, bool &owner) const;
+    bool getPerms(bool &read, bool &write, bool &owner) const;
 
     bool checkOwnerConn() const;
 

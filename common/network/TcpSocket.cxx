@@ -443,10 +443,10 @@ static uint8_t *screenshotCb(void *messager, uint16_t w, uint16_t h, const uint8
 }
 
 static uint8_t adduserCb(void *messager, const char name[], const char pw[],
-                          const uint8_t write, const uint8_t owner)
+                          const uint8_t read, const uint8_t write, const uint8_t owner)
 {
   GetAPIMessager *msgr = (GetAPIMessager *) messager;
-  return msgr->netAddUser(name, pw, write, owner);
+  return msgr->netAddUser(name, pw, read, write, owner);
 }
 
 static uint8_t removeCb(void *messager, const char name[])
@@ -457,10 +457,10 @@ static uint8_t removeCb(void *messager, const char name[])
 
 static uint8_t updateUserCb(void *messager, const char name[], const uint64_t mask,
                             const char password[],
-                            const uint8_t write, const uint8_t owner)
+                            const uint8_t read, const uint8_t write, const uint8_t owner)
 {
   GetAPIMessager *msgr = (GetAPIMessager *) messager;
-  return msgr->netUpdateUser(name, mask, password, write, owner);
+  return msgr->netUpdateUser(name, mask, password, read, write, owner);
 }
 
 static uint8_t addOrUpdateUserCb(void *messager, const struct kasmpasswd_entry_t *entry)
@@ -485,6 +485,12 @@ static void frameStatsCb(void *messager, char *buf, uint32_t len)
 {
   GetAPIMessager *msgr = (GetAPIMessager *) messager;
   msgr->netGetFrameStats(buf, len);
+}
+
+static void resetFrameStatsCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  msgr->netResetFrameStatsCall();
 }
 
 static uint8_t requestFrameStatsNoneCb(void *messager)
@@ -632,6 +638,7 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   settings.getUsersCb = getUsersCb;
   settings.bottleneckStatsCb = bottleneckStatsCb;
   settings.frameStatsCb = frameStatsCb;
+  settings.resetFrameStatsCb = resetFrameStatsCb;
 
   settings.requestFrameStatsNoneCb = requestFrameStatsNoneCb;
   settings.requestFrameStatsOwnerCb = requestFrameStatsOwnerCb;

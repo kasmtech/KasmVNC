@@ -216,10 +216,10 @@ ws_ctx_t *ws_socket(ws_ctx_t *ctx, int socket) {
     return ctx;
 }
 
-ws_ctx_t *ws_socket_ssl(ws_ctx_t *ctx, int socket, char * certfile, char * keyfile) {
+ws_ctx_t *ws_socket_ssl(ws_ctx_t *ctx, int socket, const char * certfile, const char * keyfile) {
     int ret;
     char msg[1024];
-    char * use_keyfile;
+    const char * use_keyfile;
     ws_socket(ctx, socket);
 
     if (keyfile && (keyfile[0] != '\0')) {
@@ -292,7 +292,7 @@ void ws_socket_free(ws_ctx_t *ctx) {
     }
 }
 
-int ws_b64_ntop(const unsigned char const * src, size_t srclen, char * dst, size_t dstlen) {
+int ws_b64_ntop(const unsigned char * const src, size_t srclen, char * dst, size_t dstlen) {
     int len = 0;
     int total_len = 0;
 
@@ -327,7 +327,7 @@ int ws_b64_ntop(const unsigned char const * src, size_t srclen, char * dst, size
     return len;
 }
 
-int ws_b64_pton(const char const * src, unsigned char * dst, size_t dstlen) {
+int ws_b64_pton(const char * const src, unsigned char * dst, size_t dstlen) {
     int len = 0;
     int total_len = 0;
     int pending = 0;
@@ -724,14 +724,14 @@ int gen_md5(headers_t *headers, char *target) {
 static void gen_sha1(headers_t *headers, char *target) {
     SHA_CTX c;
     unsigned char hash[SHA_DIGEST_LENGTH];
-    int r;
+    //int r;
 
     SHA1_Init(&c);
     SHA1_Update(&c, headers->key1, strlen(headers->key1));
     SHA1_Update(&c, HYBI_GUID, 36);
     SHA1_Final(hash, &c);
 
-    r = ws_b64_ntop(hash, sizeof hash, target, HYBI10_ACCEPTHDRLEN);
+    /*r =*/ ws_b64_ntop(hash, sizeof hash, target, HYBI10_ACCEPTHDRLEN);
     //assert(r == HYBI10_ACCEPTHDRLEN - 1);
 }
 
@@ -1021,7 +1021,8 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
                 goto nope;
             }
 
-            uint64_t mask = USER_UPDATE_WRITE_MASK | USER_UPDATE_OWNER_MASK;
+            uint64_t mask = USER_UPDATE_READ_MASK | USER_UPDATE_WRITE_MASK |
+                            USER_UPDATE_OWNER_MASK;
 
             if (set->entries[s].password[0]) {
                 struct crypt_data cdata;
@@ -1035,6 +1036,7 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
 
             if (!settings.updateUserCb(settings.messager, set->entries[s].user, mask,
                                        set->entries[s].password,
+                                       set->entries[s].read,
                                        set->entries[s].write, set->entries[s].owner)) {
                 wserr("Invalid params to update_user\n");
                 goto nope;
@@ -1173,7 +1175,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
         }
     } else entry("/api/create_user") {
         char decname[1024] = "", decpw[1024] = "";
-        uint8_t write = 0, owner = 0;
+        uint8_t read = 0, write = 0, owner = 0;
 
         param = parse_get(args, "name", &len);
         if (len) {
@@ -1195,6 +1197,12 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
             strcpy(decpw, encrypted);
         }
 
+        param = parse_get(args, "read", &len);
+        if (len && isalpha(param[0])) {
+            if (!strncmp(param, "true", len))
+                read = 1;
+        }
+
         param = parse_get(args, "write", &len);
         if (len && isalpha(param[0])) {
             if (!strncmp(param, "true", len))
@@ -1210,7 +1218,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
         if (!decname[0] || !decpw[0])
             goto nope;
 
-        if (!settings.adduserCb(settings.messager, decname, decpw, write, owner)) {
+        if (!settings.adduserCb(settings.messager, decname, decpw, read, write, owner)) {
             wserr("Invalid params to create_user\n");
             goto nope;
         }
@@ -1267,6 +1275,14 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
             goto nope;
 
 	uint64_t mask = 0;
+        uint8_t myread = 0;
+        param = parse_get(args, "read", &len);
+        if (len && isalpha(param[0])) {
+            mask |= USER_UPDATE_READ_MASK;
+            if (!strncmp(param, "true", len))
+                myread = 1;
+        }
+
         uint8_t mywrite = 0;
         param = parse_get(args, "write", &len);
         if (len && isalpha(param[0])) {
@@ -1283,7 +1299,8 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                 myowner = 1;
         }
 
-        if (!settings.updateUserCb(settings.messager, decname, mask, "", mywrite, myowner)) {
+        if (!settings.updateUserCb(settings.messager, decname, mask, "",
+                                   myread, mywrite, myowner)) {
             wserr("Invalid params to update_user\n");
             goto nope;
         }
@@ -1370,14 +1387,25 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                 goto nope;
         }
 
-        while (1) {
-            usleep(10 * 1000);
-            if (settings.serverFrameStatsReadyCb(settings.messager))
-                break;
+        unsigned waits;
+        {
+            uint8_t failed = 1;
+            for (waits = 0; waits < 500; waits++) { // wait up to 10s
+                usleep(20 * 1000);
+                if (settings.serverFrameStatsReadyCb(settings.messager)) {
+                    failed = 0;
+                    break;
+                }
+            }
+
+            if (failed) {
+                wserr("Main thread didn't respond, aborting (bug!)\n");
+                settings.resetFrameStatsCb(settings.messager);
+                goto timeout;
+            }
         }
 
         if (waitfor) {
-            unsigned waits;
             for (waits = 0; waits < 20; waits++) { // wait up to 2s
                 if (settings.getClientFrameStatsNumCb(settings.messager) >= waitfor)
                     break;
@@ -1403,6 +1431,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
     #undef entry
 
     return ret;
+
 nope:
     sprintf(buf, "HTTP/1.1 400 Bad Request\r\n"
                  "Server: KasmVNC/4.0\r\n"
@@ -1410,6 +1439,16 @@ nope:
                  "Content-type: text/plain\r\n"
                  "\r\n"
                  "400 Bad Request");
+    ws_send(ws_ctx, buf, strlen(buf));
+    return 1;
+
+timeout:
+    sprintf(buf, "HTTP/1.1 503 Service Unavailable\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "\r\n"
+                 "503 Service Unavailable");
     ws_send(ws_ctx, buf, strlen(buf));
     return 1;
 }
@@ -1696,7 +1735,7 @@ out:
 }
 
 void *start_server(void *unused) {
-    int csock, pid;
+    int csock;
     struct sockaddr_in cli_addr;
     socklen_t clilen;
 
@@ -1706,7 +1745,6 @@ void *start_server(void *unused) {
     while (1) {
         clilen = sizeof(cli_addr);
         pipe_error = 0;
-        pid = 0;
         do {
             csock = accept(settings.listen_sock,
                            (struct sockaddr *) &cli_addr,

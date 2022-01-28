@@ -87,9 +87,15 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
     user[at - peerEndpoint.buf] = '\0';
   }
 
-  bool write, owner;
-  if (!getPerms(write, owner) || !write) {
+  bool read, write, owner;
+  if (!getPerms(read, write, owner)) {
+    accessRights &= ~(WRITER_PERMS | AccessView);
+  }
+  if (!write) {
     accessRights &= ~WRITER_PERMS;
+  }
+  if (!read) {
+    accessRights &= ~AccessView;
   }
 
   // Configure the socket
@@ -707,7 +713,13 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool
 {
   pointerEventTime = lastEventTime = time(0);
   server->lastUserInputTime = lastEventTime;
-  if (!(accessRights & AccessPtrEvents)) return;
+  if (!(accessRights & AccessPtrEvents)) {
+    // This particular event is lost, but it's a corner case - you removed write access
+    // from yourself, then added it back. The intended use is for multiple clients,
+    // where the leader removes and adds back access for others, not himself.
+    recheckPerms();
+    return;
+  }
   if (!rfb::Server::acceptPointerEvents) return;
   if (!server->pointerClient || server->pointerClient == this) {
     pointerEventPos = pos;
@@ -1105,11 +1117,12 @@ bool VNCSConnectionST::isShiftPressed()
   return false;
 }
 
-bool VNCSConnectionST::getPerms(bool &write, bool &owner) const
+bool VNCSConnectionST::getPerms(bool &read, bool &write, bool &owner) const
 {
   bool found = false;
   if (disablebasicauth) {
     // We're running without basicauth
+    read = true;
     write = true;
     return true;
   }
@@ -1118,8 +1131,14 @@ bool VNCSConnectionST::getPerms(bool &write, bool &owner) const
     unsigned i;
     for (i = 0; i < set->num; i++) {
       if (!strcmp(set->entries[i].user, user)) {
+        read = set->entries[i].read;
         write = set->entries[i].write;
         owner = set->entries[i].owner;
+
+        // Writer can always read
+        if (write)
+          read = true;
+
         found = true;
         break;
       }
@@ -1217,17 +1236,28 @@ void VNCSConnectionST::writeFramebufferUpdate()
   if (needsPermCheck) {
     needsPermCheck = false;
 
-    bool write, owner, ret;
-    ret = getPerms(write, owner);
+    bool read, write, owner, ret;
+    ret = getPerms(read, write, owner);
     if (!ret) {
       close("User was deleted");
       return;
-    } else if (!write) {
+    }
+
+    if (!write) {
       accessRights &= ~WRITER_PERMS;
     } else {
       accessRights |= WRITER_PERMS;
     }
+
+    if (!read) {
+      accessRights &= ~AccessView;
+    } else {
+      accessRights |= AccessView;
+    }
   }
+
+  if (!(accessRights & AccessView))
+    return;
 
   // Updates often consists of many small writes, and in continuous
   // mode, we will also have small fence messages around the update. We
@@ -1659,8 +1689,8 @@ bool VNCSConnectionST::checkOwnerConn() const
   std::list<VNCSConnectionST*>::const_iterator it;
 
   for (it = server->clients.begin(); it != server->clients.end(); it++) {
-    bool write, owner;
-    if ((*it)->getPerms(write, owner) && owner)
+    bool read, write, owner;
+    if ((*it)->getPerms(read, write, owner) && owner)
       return true;
   }
 
