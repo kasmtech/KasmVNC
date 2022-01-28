@@ -264,7 +264,8 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 	return ret;
 }
 
-uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[], const bool write,
+uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[],
+					const bool read, const bool write,
 					const bool owner) {
 	if (strlen(name) >= USERNAME_LEN) {
 		vlog.error("Username too long");
@@ -289,6 +290,7 @@ uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[], const boo
 	act.data.password[PASSWORD_LEN - 1] = '\0';
 	act.data.owner = owner;
 	act.data.write = write;
+	act.data.read = read;
 
 	if (pthread_mutex_lock(&userMutex))
 		return 0;
@@ -367,7 +369,7 @@ uint8_t GetAPIMessager::netRemoveUser(const char name[]) {
 
 uint8_t GetAPIMessager::netUpdateUser(const char name[], const uint64_t mask,
 	                              const char password[],
-	                              const bool write, const bool owner) {
+	                              const bool read, const bool write, const bool owner) {
 	if (strlen(name) >= USERNAME_LEN) {
 		vlog.error("Username too long");
 		return 0;
@@ -391,6 +393,8 @@ uint8_t GetAPIMessager::netUpdateUser(const char name[], const uint64_t mask,
 	unsigned s;
 	for (s = 0; s < set->num; s++) {
 		if (!strcmp(set->entries[s].user, name)) {
+			if (mask & USER_UPDATE_READ_MASK)
+				set->entries[s].read = read;
 			if (mask & USER_UPDATE_WRITE_MASK)
 				set->entries[s].write = write;
 			if (mask & USER_UPDATE_OWNER_MASK)
@@ -487,8 +491,9 @@ void GetAPIMessager::netGetUsers(const char **outptr) {
 	for (s = 0; s < set->num; s++) {
 		JSON_escape(set->entries[s].user, escapeduser);
 
-		fprintf(f, "    { \"user\": \"%s\", \"write\": %s, \"owner\": %s }",
+		fprintf(f, "    { \"user\": \"%s\", \"read\": %s, \"write\": %s, \"owner\": %s }",
 			escapeduser,
+			set->entries[s].read ? "true" : "false",
 			set->entries[s].write ? "true" : "false",
 			set->entries[s].owner ? "true" : "false");
 
@@ -684,6 +689,15 @@ void GetAPIMessager::netGetFrameStats(char *buf, uint32_t len) {
 	serverFrameStats.inprogress = 0;
 
 out:
+	pthread_mutex_unlock(&frameStatMutex);
+}
+
+void GetAPIMessager::netResetFrameStatsCall() {
+	if (pthread_mutex_lock(&frameStatMutex))
+		return;
+
+	serverFrameStats.inprogress = 0;
+
 	pthread_mutex_unlock(&frameStatMutex);
 }
 

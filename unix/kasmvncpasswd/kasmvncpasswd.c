@@ -34,6 +34,7 @@
 static void usage(const char *prog)
 {
   fprintf(stderr, "Usage: %s -u username [-wnod] [file]\n"
+                  "-r	Read permission\n"
                   "-w	Write permission\n"
                   "-o	Owner\n"
                   "-n	Don't change password, change permissions only\n"
@@ -118,10 +119,10 @@ int main(int argc, char** argv)
 {
   const char *fname = NULL;
   const char *user = NULL;
-  const char args[] = "u:wnod";
+  const char args[] = "u:rwnod";
   int opt;
 
-  unsigned char nopass = 0, writer = 0, owner = 0, deleting = 0;
+  unsigned char nopass = 0, reader = 0, writer = 0, owner = 0, deleting = 0;
 
   while ((opt = getopt(argc, argv, args)) != -1) {
     switch (opt) {
@@ -134,6 +135,9 @@ int main(int argc, char** argv)
       break;
       case 'n':
         nopass = 1;
+      break;
+      case 'r':
+        reader = 1;
       break;
       case 'w':
         writer = 1;
@@ -150,7 +154,7 @@ int main(int argc, char** argv)
     }
   }
 
-  if (deleting && (nopass || writer || owner))
+  if (deleting && (nopass || reader || writer || owner))
     usage(argv[0]);
 
   if (!user)
@@ -175,6 +179,7 @@ int main(int argc, char** argv)
   if (nopass) {
     for (i = 0; i < set->num; i++) {
       if (!strcmp(set->entries[i].user, user)) {
+        set->entries[i].read = reader;
         set->entries[i].write = writer;
         set->entries[i].owner = owner;
 
@@ -211,6 +216,7 @@ int main(int argc, char** argv)
 
     strcpy(set->entries[i].user, user);
     strcpy(set->entries[i].password, encrypted);
+    set->entries[i].read = reader;
     set->entries[i].write = writer;
     set->entries[i].owner = owner;
 

@@ -60,6 +60,8 @@ struct kasmpasswd_t *readkasmpasswd(const char path[]) {
 		strcpy(set->entries[cur].user, buf);
 		strcpy(set->entries[cur].password, pw);
 
+		if (strchr(perms, 'r'))
+			set->entries[cur].read = 1;
 		if (strchr(perms, 'w'))
 			set->entries[cur].write = 1;
 		if (strchr(perms, 'o'))
@@ -90,22 +92,17 @@ void writekasmpasswd(const char path[], const struct kasmpasswd_t *set) {
 		return;
 	}
 
-	static const char * const perms[] = {
-		"",
-		"w",
-		"o",
-		"ow"
-	};
-
 	unsigned i;
 	for (i = 0; i < set->num; i++) {
 		if (!set->entries[i].user[0])
 			continue;
 
-		fprintf(f, "%s:%s:%s\n",
+		fprintf(f, "%s:%s:%s%s%s\n",
 			set->entries[i].user,
 			set->entries[i].password,
-			perms[set->entries[i].owner * 2 + set->entries[i].write]);
+			set->entries[i].read ? "r" : "",
+			set->entries[i].write ? "w" : "",
+			set->entries[i].owner ? "o" : "");
 	}
 
 	fsync(fileno(f));
