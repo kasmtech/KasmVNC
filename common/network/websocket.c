@@ -902,6 +902,40 @@ nope:
     ws_send(ws_ctx, buf, strlen(buf));
 }
 
+static uint8_t allUsersPresent(const struct kasmpasswd_t * const inset) {
+    struct kasmpasswd_t *fullset = readkasmpasswd(settings.passwdfile);
+    if (!fullset->num) {
+        free(fullset);
+        return 0;
+    }
+
+    unsigned f, i;
+    for (i = 0; i < inset->num; i++) {
+        uint8_t found = 0;
+        for (f = 0; f < fullset->num; f++) {
+            if (!strcmp(inset->entries[i].user, fullset->entries[f].user)) {
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found)
+            goto notfound;
+    }
+
+    free(fullset->entries);
+    free(fullset);
+
+    return 1;
+
+notfound:
+
+    free(fullset->entries);
+    free(fullset);
+
+    return 0;
+}
+
 static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
     char buf[4096], path[4096];
     uint8_t ret = 0; // 0 = continue checking
@@ -983,6 +1017,11 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
             goto nope;
         }
 
+        if (!allUsersPresent(set)) {
+            wserr("One or more users didn't exist\n");
+            goto nope;
+        }
+
         for (s = 0; s < set->num; s++) {
             if (!set->entries[s].user[0]) {
                 wserr("Username missing\n");
@@ -1012,6 +1051,11 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
         set = parseJsonUsers(in);
         if (!set) {
             wserr("JSON parse error\n");
+            goto nope;
+        }
+
+        if (!allUsersPresent(set)) {
+            wserr("One or more users didn't exist\n");
             goto nope;
         }
 
