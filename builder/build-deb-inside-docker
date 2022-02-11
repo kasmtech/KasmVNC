@@ -29,5 +29,6 @@ fi
 
 dpkg-buildpackage -us -uc -b
 mkdir -p "$os_dir"
+cp ../*dbgsym*deb "$os_dir"
 cp ../*.deb "$os_dir"
 lintian ../*.deb || true

@@ -3,9 +3,14 @@ services:
   - docker:dind
 
 variables:
+  KASMVNC_COMMIT_ID: $CI_COMMIT_SHA
   GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
   GIT_SUBMODULE_STRATEGY: normal
   GIT_FETCH_EXTRA_FLAGS: --tags
+  # E.g. BUILD_JOBS: build_debian_buster,build_ubuntu_bionic. This will include
+  # arm builds, because build_debian_buster_arm matches build_debian_buster.
+  # "BUILD_JOBS: none" won't build any build jobs, nor www.
+  BUILD_JOBS: all
 
 stages:
   - www
@@ -37,6 +42,9 @@ build_www:
     - mkdir -p output/www
     - cd builder
     - tar -zcvf ../output/www/kasm_www.tar.gz www
+  only:
+    variables:
+      - $BUILD_JOBS !~ /^none$/
   artifacts:
     paths:
       - output/
@@ -51,6 +59,9 @@ build_ubuntu_bionic:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu bionic
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -67,6 +78,9 @@ build_ubuntu_bionic_arm:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu bionic
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -81,6 +95,9 @@ build_ubuntu_bionic_libjpeg_turbo:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu bionic +libjpeg-turbo_latest
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -95,6 +112,9 @@ build_ubuntu_focal:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu focal;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -111,6 +131,9 @@ build_ubuntu_focal_arm:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu focal;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -127,7 +150,7 @@ build_debian_buster:
     - bash builder/build-package debian buster;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -146,7 +169,7 @@ build_debian_buster_arm:
     - bash builder/build-package debian buster;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -163,7 +186,7 @@ build_debian_bullseye:
     - bash builder/build-package debian bullseye;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -182,7 +205,7 @@ build_debian_bullseye_arm:
     - bash builder/build-package debian bullseye;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/
+      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -197,6 +220,9 @@ build_kali_rolling:
     - *prepare_artfacts
   script:
     - bash builder/build-package kali kali-rolling;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -213,6 +239,9 @@ build_kali_rolling_arm:
     - *prepare_artfacts
   script:
     - bash builder/build-package kali kali-rolling;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -227,6 +256,9 @@ build_centos7:
     - *prepare_artfacts
   script:
     - bash builder/build-package centos core
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -237,14 +269,25 @@ upload:
   before_script:
     - . .ci/upload.sh
   script:
-    - export S3_BUILD_DIRECTORY="kasmvnc/${CI_COMMIT_SHA}"
     - prepare_to_run_scripts_and_s3_uploads
+    - S3_CRASHPAD_BUILD_DIRECTORY="kasmvnc/crashpad/${CI_COMMIT_SHA}"
+    - for dbgsym_package in `find output/ -type f -name '*dbgsym*deb'`; do
+        deb_package=$(find_deb_package "$dbgsym_package");
+        xvnc_md5sum=$(fetch_xvnc_md5sum "$deb_package");
+        upload_filename="${S3_CRASHPAD_BUILD_DIRECTORY}/${xvnc_md5sum}/kasmvncserver-dbgsym.deb";
+        echo;
+        echo "File to upload $upload_filename";
+        upload_to_s3 "$dbgsym_package" "$upload_filename" "$S3_BUCKET";
+        rm "$dbgsym_package";
+      done
+    - export S3_BUILD_DIRECTORY="kasmvnc/${CI_COMMIT_SHA}"
     - export RELEASE_VERSION=$(.ci/next_release_version "$CI_COMMIT_REF_NAME")
     - for package in `find output/ -type f -name '*.deb' -or -name '*.rpm'`; do
         prepare_upload_filename "$package";
+        upload_filename="${S3_BUILD_DIRECTORY}/$upload_filename";
         echo;
         echo "File to upload $upload_filename";
-        upload_to_s3 "$package" "$upload_filename";
-        UPLOAD_NAME=$(echo $upload_filename | sed 's#kasmvncserver_##' | sed -r 's#_([0-9]{1,3}\.){2}[0-9]{1,2}_\S+?([a-f0-9]{6})##' | sed -r 's#\.(deb|rpm)##');
+        upload_to_s3 "$package" "$upload_filename" "$S3_BUCKET";
+        UPLOAD_NAME=$(basename $upload_filename | sed 's#kasmvncserver_##' | sed -r 's#_([0-9]{1,3}\.){2}[0-9]{1,2}_\S+?([a-f0-9]{6})##' | sed -r 's#\.(deb|rpm)##');
         curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=${UPLOAD_NAME}&target_url=${S3_URL}";
       done

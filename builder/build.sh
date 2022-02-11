@@ -7,6 +7,12 @@ detect_quilt() {
   fi
 }
 
+ensure_crashpad_can_fetch_line_number_by_address() {
+  if [ ! -f /etc/centos-release ]; then
+    export LDFLAGS="$LDFLAGS -no-pie"
+  fi
+}
+
 # For build-dep to work, the apt sources need to have the source server
 #sudo apt-get build-dep xorg-server
 
@@ -38,7 +44,7 @@ tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=
 cd unix/xserver
 patch -Np1 -i ../xserver${XORG_PATCH}.patch
 case "$XORG_VER" in
-  1.20.*) 
+  1.20.*)
       if [ -f ../xserver120.7.patch ]; then
         patch -Np1 -i ../xserver120.7.patch
       fi ;;
@@ -49,12 +55,13 @@ autoreconf -i
 # The distro paths start after prefix and end with the font path,
 # everything after that is based on BUILDING.txt to remove unneeded
 # components.
+ensure_crashpad_can_fetch_line_number_by_address
 ./configure --prefix=/opt/kasmweb \
 	--with-xkb-path=/usr/share/X11/xkb \
 	--with-xkb-output=/var/lib/xkb \
 	--with-xkb-bin-directory=/usr/bin \
 	--with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/100dpi/:unscaled,/usr/share/fonts/X11/75dpi/:unscaled,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi,/usr/share/fonts/X11/75dpi,built-ins" \
-	--with-pic --without-dtrace --disable-dri \
+	--without-dtrace --disable-dri \
         --disable-static \
 	--disable-xinerama --disable-xvfb --disable-xnest --disable-xorg \
 	--disable-dmx --disable-xwin --disable-xephyr --disable-kdrive \
