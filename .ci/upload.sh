@@ -6,6 +6,27 @@ is_kasmvnc() {
   echo "$package" | grep -q 'kasmvncserver_'
 }
 
+detect_deb_package_arch() {
+  local deb_package="$1"
+  echo "$deb_package" | sed -e 's/.\+_\([^.]\+\)\.\(d\?\)deb/\1/'
+}
+
+find_deb_package() {
+  local dbgsym_package="$1"
+
+  echo "$dbgsym_package" | sed -e 's/-dbgsym//; s/ddeb/deb/'
+}
+
+fetch_xvnc_md5sum() {
+  local deb_package="$1"
+  deb_package=$(realpath "$deb_package")
+
+  local tmpdir=$(mktemp -d)
+  cd "$tmpdir"
+  dpkg-deb -e "$deb_package"
+  cat DEBIAN/md5sums | grep bin/Xkasmvnc | cut -d' ' -f 1
+}
+
 function prepare_upload_filename() {
   local package="$1";
 
@@ -34,19 +55,18 @@ function prepare_upload_filename() {
 function upload_to_s3() {
   local package="$1";
   local upload_filename="$2";
+  local s3_bucket="$3";
 
   # Transfer to S3
-  python3 amazon-s3-bitbucket-pipelines-python/s3_upload.py "${S3_BUCKET}" "$package" "${S3_BUILD_DIRECTORY}/${upload_filename}";
+  python3 amazon-s3-bitbucket-pipelines-python/s3_upload.py "${s3_bucket}" "$package" "${upload_filename}";
   # Use the Gitlab API to tell Gitlab where the artifact was stored
-  export S3_URL="https://${S3_BUCKET}.s3.amazonaws.com/${S3_BUILD_DIRECTORY}/${upload_filename}";
-  export BUILD_STATUS="{\"key\":\"doc\", \"state\":\"SUCCESSFUL\", \"name\":\"${upload_filename}\", \"url\":\"${S3_URL}\"}";
-  curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=build-url&target_url=${S3_URL}";
+  export S3_URL="https://${s3_bucket}.s3.amazonaws.com/${upload_filename}";
 };
 
 function prepare_to_run_scripts_and_s3_uploads() {
   export DEBIAN_FRONTEND=noninteractive;
   apt-get update;
-  apt-get install -y ruby2.7 git;
+  apt-get install -y ruby2.7 git wget;
   apt-get install -y python3 python3-pip python3-boto3 curl pkg-config libxmlsec1-dev;
   git clone https://bitbucket.org/awslabs/amazon-s3-bitbucket-pipelines-python.git;
 };

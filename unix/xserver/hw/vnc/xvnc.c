@@ -159,7 +159,9 @@ static int vncVerbose = DEFAULT_LOG_VERBOSITY;
 static void
 vncPrintBanner(void)
 {
-    ErrorF("\nXvnc %s - built %s\n%s", XVNCVERSION, buildtime, XVNCCOPYRIGHT);
+    ErrorF("\nXvnc %s%s - built %s\n%s", XVNCVERSION,
+           sizeof(XVNCEXTRAVERSION) > 2 ? XVNCEXTRAVERSION : "",
+           buildtime, XVNCCOPYRIGHT);
     ErrorF("Underlying X server release %d, %s\n\n", VENDOR_RELEASE,
            VENDOR_STRING);
 }

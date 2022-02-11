@@ -31,6 +31,7 @@ docker build -t "$builder_image" \
   -f builder/dockerfile.${os}_${os_codename}${build_tag}.build .
 mkdir -p builder/build
 docker run -v $shared_with_docker_dir:/build -e BUILD_TAG="$build_tag" \
+  -e KASMVNC_COMMIT_ID="$KASMVNC_COMMIT_ID" \
   --rm "$builder_image"
 
 L_GID=$(id -g)
