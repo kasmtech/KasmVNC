@@ -68,6 +68,9 @@ unsigned char bl_isBlacklisted(const char *addr) {
 }
 
 void bl_addFailure(const char *addr) {
+	if (!rfb::Blacklist::threshold)
+		return;
+
 	if (pthread_mutex_lock(&hitmutex))
 		abort();
 	const unsigned num = ++hits[addr];
