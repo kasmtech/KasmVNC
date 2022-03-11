@@ -42,10 +42,11 @@ Future Goals:
 #### Debian-based
 
 ```sh
-wget https://github.com/kasmtech/KasmVNC/releases/download/v0.9.2-beta/kasmvncserver_ubuntu_bionic_0.9.2_amd64.deb
+# Please choose the package for your distro here (under Assets):
+# https://github.com/kasmtech/KasmVNC/releases
+wget <package_url>
 
-sudo dpkg -i kasmvncserver_*.deb
-sudo apt-get -f install
+sudo apt-get install ./kasmvncserver_*.deb
 
 # We provide an example script to run KasmVNC at #
 # /usr/share/doc/kasmvncserver/examples/kasmvncserver-easy-start. It runs a VNC
