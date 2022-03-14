@@ -1295,6 +1295,19 @@ Code    Vendor      Signature       Description
                                     Pseudo-encoding`_
 -768    "``TRBO``"  "``SSAMPLVL``"  `JPEG Subsampling Level
                                     Pseudo-encoding`_
+-870    "``KASM``"  "``VIDEOTIM``"  `Video time level`
+-971    "``KASM``"  "``VIDEOARE``"  `Video area level`
+-981    "``KASM``"  "``DYNMAX__``"  `Dynamic quality max level`
+-991    "``KASM``"  "``DYNMIN__``"  `Dynamic quality min level`
+-992    "``KASM``"  "``PREFERBW``"  `Prefer bandwidth over quality`
+-1003   "``KASM``"  "``TREATLOS``"  `Treat lossless level`
+-1013   "``KASM``"  "``WEBPVIDQ``"  `WEBP video quality level`
+-1023   "``KASM``"  "``JPEGVIDQ``"  `JPEG video quality level`
+-1024   "``KASM``"  "``WEBP____``"  `WEBP support`
+-1986   "``KASM``"  "``VIDEOOTI``"  `Video out time level`
+-1996   "``KASM``"  "``VIDEOSCA``"  `Video scaling level`
+-1997   "``KASM``"  "``MAXVIDRE``"  `Max video resolution support`
+-2048   "``KASM``"  "``FRAMERAT``"  `Framerate level`
 ======= =========== =============== ===================================
 
 Note that the server need not (but it may) list the "``RAW_____``"
@@ -1337,11 +1350,14 @@ Number      Name
 127         VMware
 128         Car Connectivity
 150         `EnableContinuousUpdates`_
+178         Kasm request stats
+179         Kasm request frame stats
+180         Kasm binary clipboard
 248         `ClientFence`_
 249         OLIVE Call Control
 250         `xvp Client Message`_
 251         `SetDesktopSize`_
-252         tight
+252         tight / Kasm override as max video resolution
 253         `gii Client Message`_
 254         VMware
 255         `QEMU Client Message`_
@@ -2328,6 +2344,9 @@ Number      Name
 128         Car Connectivity
 150         `EndOfContinuousUpdates`_
 173         ServerState
+178         Kasm stats
+179         Kasm frame stats
+180         Kasm binary clipboard
 248         `ServerFence`_
 249         OLIVE Call Control
 250         `xvp Server Message`_
@@ -3057,14 +3076,15 @@ Bits            Binary value        Description
 =============== =================== ===================================
 
 Otherwise, if the bit 7 of *compression-control* is set to 1, then the
-compression method is either **FillCompression** or
-**JpegCompression**, depending on other bits of the same byte:
+compression method is either **FillCompression**,
+**JpegCompression**, or Kasm-specific depending on other bits of the same byte:
 
 =============== =================== ===================================
 Bits            Binary value        Description
 =============== =================== ===================================
 7-4             1000                **FillCompression**
 ..              1001                **JpegCompression**
+..              1011                **WebpCompression**
 ..              any other           Invalid
 =============== =================== ===================================
 
@@ -4099,6 +4119,27 @@ The values for this pseudo-encoding are defined as follows:
 
 This pseudo-encoding was originally intended for use with JPEG-encoded
 subrectangles, but it could be used with other types of image encoding as well.
+
+Kasm-specific pseudo-encodings
+------------------------------
+
+These allow remote configuration of some properties, in case the server allows
+it. For the interpretation of these values, see the man page and server config
+docs.
+
+Video time = 0-100
+Video area = 1-100
+Dynamic quality max = 0-9
+Dynamic quality min = 0-9
+Prefer bandwidth over quality = bool
+Treat lossless = 0-10
+Webp video quality = 0-9
+Jpeg video quality = 0-9
+Webp support = bool
+Video out time = 1-100
+Video scaling = 0-9, currently 0-2 defined
+Max video resolution = bool
+Frame rate = 10-60
 
 VMware Cursor Pseudo-encoding
 -----------------------------
