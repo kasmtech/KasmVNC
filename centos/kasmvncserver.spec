@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        0.9.1~beta
+Version:        0.9.3~beta
 Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
@@ -73,6 +73,7 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Tue Mar 22 2022 KasmTech <info@kasmweb.com> - 0.9.3~beta-1
 * Fri Feb 12 2021 KasmTech <info@kasmweb.com> - 0.9.1~beta-1
 - Initial release of the rpm package.
 
