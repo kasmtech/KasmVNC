@@ -1,3 +1,9 @@
+kasmvnc (0.9.3~beta-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Kasm Technologies LLC <info@kasmweb.com>  Tue, 22 Mar 2022 09:15:38 +0000
+
 kasmvnc (0.9.1~beta-1) unstable; urgency=medium
 
   * Initial release of the Debian package.
