@@ -25,16 +25,19 @@
 #include "xorg-version.h"
 
 #include <stdio.h>
+#include <limits.h>
 
 #include <X11/keysym.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
+#include "RFBGlue.h"
 #include "xkbsrv.h"
 #include "xkbstr.h"
 #include "eventstr.h"
 #include "scrnintstr.h"
 #include "mi.h"
+#include "stdbool.h"
 
 #include "Input.h"
 
@@ -50,7 +53,15 @@
 #endif
 #endif
 
+#define LOG_NAME "Input"
+
+#define LOG_ERROR(...) vncLogError(LOG_NAME, __VA_ARGS__)
+#define LOG_STATUS(...) vncLogStatus(LOG_NAME, __VA_ARGS__)
+#define LOG_INFO(...) vncLogInfo(LOG_NAME, __VA_ARGS__)
+#define LOG_DEBUG(...) vncLogDebug(LOG_NAME, __VA_ARGS__)
+
 extern DeviceIntPtr vncKeyboardDev;
+static unsigned int MAX_MAPPINGS = UINT_MAX - 1;
 
 static void vncXkbProcessDeviceEvent(int screenNum,
                                      InternalEvent *event,
@@ -536,12 +547,16 @@ int vncIsAffectedByNumLock(KeyCode keycode)
 	return 1;
 }
 
-KeyCode vncAddKeysym(KeySym keysym, unsigned state)
+KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool freeKeys)
 {
 	DeviceIntPtr master;
 	XkbDescPtr xkb;
-	unsigned int key;
-
+	unsigned int key = 0;
+	unsigned int i;
+	unsigned int newest_k = 0;
+	unsigned int oldest_k = 0;
+	unsigned int freeCnt = 0;
+	
 	XkbEventCauseRec cause;
 	XkbChangesRec changes;
 
@@ -551,13 +566,44 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state)
 
 	master = GetMaster(vncKeyboardDev, KEYBOARD_OR_FLOAT);
 	xkb = master->key->xkbInfo->desc;
-	for (key = xkb->max_key_code; key >= xkb->min_key_code; key--) {
-		if (XkbKeyNumGroups(xkb, key) == 0)
-			break;
+
+	//find the first free key to map
+	for (i = xkb->max_key_code; i >= xkb->min_key_code; i--) {
+		if (XkbKeyNumGroups(xkb, i) == 0 && *(needFree + i) != UINT_MAX) {
+			if (++freeCnt == 1) 
+				key = i;
+		}
 	}
 
 	if (key < xkb->min_key_code)
 		return 0;
+
+	//find the oldest and newest keys that have been remapped
+	for (i = 1;i < 256;i++) {
+		//protect from uint rollover
+		if (*(needFree + i) == MAX_MAPPINGS)
+			*(needFree + i) = 1;
+		if (*(needFree + i) > *(needFree + newest_k) && *(needFree + i) != UINT_MAX)
+			newest_k = i;
+		if (*(needFree + i) < *(needFree + oldest_k) && *(needFree +i) > 0)
+			oldest_k = i;
+		//mark as free to use
+		if (*(needFree + i) == UINT_MAX)
+			*(needFree + i) = 0;
+	}
+	*(needFree + key) = ++(*(needFree + newest_k));
+	
+	//if running low on free keys, free the oldest key that was used
+	if (freeCnt < 3 && *(needFree + oldest_k) > 0 && freeKeys) {
+		vncRemoveKeycode(oldest_k);
+		LOG_DEBUG("Removed mapping for keycode %d", oldest_k);
+		//mark as free to use after one more cycle
+		*(needFree + oldest_k) = UINT_MAX;
+	} else if (freeCnt < 3 && freeKeys) {
+		//this should only happen if the system had fewer than 3 free keys to begin with
+		LOG_INFO("The system has fewer than 3 unmapped keys with no available keys to free.");
+		return 0;
+	}
 
 	memset(&changes, 0, sizeof(changes));
 	memset(&cause, 0, sizeof(cause));
@@ -610,6 +656,40 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state)
 	XkbSendNotification(master, &changes, &cause);
 
 	return key;
+}
+
+void vncRemoveKeycode(unsigned keycode)
+{
+	DeviceIntPtr master;
+	XkbDescPtr xkb;
+
+	XkbEventCauseRec cause;
+	XkbChangesRec changes;
+
+	master = GetMaster(vncKeyboardDev, KEYBOARD_OR_FLOAT);
+	xkb = master->key->xkbInfo->desc;
+
+	memset(&changes, 0, sizeof(changes));
+	memset(&cause, 0, sizeof(cause));
+
+	XkbSetCauseUnknown(&cause);
+
+	KeySym ks = NoSymbol;
+
+	KeySymsRec keysyms;
+	keysyms.minKeyCode = keycode;
+	keysyms.maxKeyCode = keycode;
+	keysyms.mapWidth = 1;
+	keysyms.map = &ks;
+
+	unsigned check = 0;
+	XkbUpdateKeyTypesFromCore(master, &keysyms, keycode, 1, &changes);
+	XkbUpdateActions(master, keycode, 1, &changes, &check, &cause);
+
+	if (check)
+		XkbCheckSecondaryEffects(master->key->xkbInfo, 1, &changes, &cause);
+
+	XkbSendNotification(master, &changes, &cause);
 }
 
 static void vncXkbProcessDeviceEvent(int screenNum,

@@ -21,3 +21,4 @@ debian/files
 debian/kasmvncserver.substvars
 debian/kasmvncserver/
 .pc
+.vscode/

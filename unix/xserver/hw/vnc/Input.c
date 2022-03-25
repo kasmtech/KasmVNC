@@ -39,6 +39,7 @@
 #include "xkbsrv.h"
 #include "xkbstr.h"
 #include "xserver-properties.h"
+#include "stdbool.h"
 extern _X_EXPORT DevPrivateKey CoreDevicePrivateKey;
 #include <X11/keysym.h>
 #include <X11/Xlib.h>
@@ -66,6 +67,8 @@ static const unsigned short *codeMap;
 static unsigned int codeMapLen;
 
 static KeySym pressedKeys[256];
+static unsigned int needFree[256];
+static bool freeKeys;
 
 static int vncPointerProc(DeviceIntPtr pDevice, int onoff);
 static void vncKeyboardBell(int percent, DeviceIntPtr device,
@@ -91,7 +94,7 @@ static void vncKeysymKeyboardEvent(KeySym keysym, int down);
  * Instead we call it from XserverDesktop at an appropriate
  * time.
  */
-void vncInitInputDevice(void)
+void vncInitInputDevice(bool freeKeyMappings)
 {
 	int i, ret;
 
@@ -110,6 +113,8 @@ void vncInitInputDevice(void)
 	codeMap = code_map_qnum_to_xorgkbd;
 	codeMapLen = code_map_qnum_to_xorgkbd_len;
 #endif
+	freeKeys = freeKeyMappings;
+	memset(needFree, 0, sizeof(needFree));
 
 	for (i = 0;i < 256;i++)
 		pressedKeys[i] = NoSymbol;
@@ -500,6 +505,7 @@ static void vncKeysymKeyboardEvent(KeySym keysym, int down)
 				pressedKeys[i] = NoSymbol;
 				pressKey(vncKeyboardDev, i, FALSE, "keycode");
 				mieqProcessInputEvents();
+
 				return;
 			}
 		}
@@ -544,7 +550,7 @@ static void vncKeysymKeyboardEvent(KeySym keysym, int down)
 
 	/* No matches. Will have to add a new entry... */
 	if (keycode == 0) {
-		keycode = vncAddKeysym(keysym, state);
+		keycode = vncAddKeysym(keysym, state, needFree, freeKeys);
 		if (keycode == 0) {
 			LOG_ERROR("Failure adding new keysym 0x%x", keysym);
 			return;

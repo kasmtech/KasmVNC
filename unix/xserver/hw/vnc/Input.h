@@ -25,12 +25,13 @@
 
 #include <stdlib.h>
 #include <X11/X.h>
+#include "stdbool.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void vncInitInputDevice(void);
+void vncInitInputDevice(bool freeKeyMappings);
 
 void vncPointerButtonAction(int buttonMask, const unsigned char skipclick,
                             const unsigned char skiprelease);
@@ -57,7 +58,8 @@ KeyCode vncKeysymToKeycode(KeySym keysym, unsigned state, unsigned *new_state);
 
 int vncIsAffectedByNumLock(KeyCode keycode);
 
-KeyCode vncAddKeysym(KeySym keysym, unsigned state);
+KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needfree, bool freeKeys);
+void vncRemoveKeycode(unsigned keycode);
 
 #ifdef __cplusplus
 }
