@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -eo pipefail
+
+new_version="$1"
+
+add_debian_revision_to_new_version() {
+  echo "$new_version-1"
+}
+
+bump_deb() {
+  local image="debbump_package_version:dev"
+  local L_UID=$(id -u)
+  local L_GID=$(id -g)
+  local debian_version=$(add_debian_revision_to_new_version)
+
+  docker build -t "$image" -f builder/dockerfile.bump-package-version .
+  docker run --rm -v "$PWD":/src --user "$L_UID:$L_GID" \
+    "$image" /bin/bash -c \
+    "cd /src && builder/bump-package-version-inside-docker-deb $debian_version"
+}
+
+bump_deb
