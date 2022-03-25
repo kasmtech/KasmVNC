@@ -60,6 +60,10 @@ BoolParameter rawKeyboard("RawKeyboard",
                           "Send keyboard events straight through and "
                           "avoid mapping them to the current keyboard "
                           "layout", false);
+BoolParameter freeKeyMappings("FreeKeyMappings", 
+                              "Automatically free added keyboard mappings "
+                              "when there are not enough unused keys to "
+                              "map symbols to.", false);
 IntParameter queryConnectTimeout("QueryConnectTimeout",
                                  "Number of seconds to show the "
                                  "Accept Connection dialog before "
@@ -370,7 +374,7 @@ void XserverDesktop::blockHandler(int* timeout)
   // so we abuse the fact that this routine will be called first thing
   // once the dix is done initialising.
   // [1] Technically Xvnc has InitInput(), but libvnc.so has nothing.
-  vncInitInputDevice();
+  vncInitInputDevice(freeKeyMappings);
 
   try {
     std::list<Socket*> sockets;
