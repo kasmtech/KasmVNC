@@ -12,7 +12,7 @@ add_debian_revision_to_new_version() {
 }
 
 bump_rpm() {
-  sed -i "s/^Version:.\+/Version:        $new_version/" centos/kasmvncserver.spec
+  builder/bump-package-version-rpm "$new_version"
 }
 
 bump_deb() {
