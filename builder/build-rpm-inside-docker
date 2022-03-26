@@ -8,7 +8,7 @@ prepare_build_env() {
 }
 
 copy_spec_and_tar_with_binaries() {
-  cp /src/centos/kasmvncserver.spec ~/rpmbuild/SPECS/
+  cp /tmp/kasmvncserver.spec ~/rpmbuild/SPECS/
   cp /src/builder/build/kasmvnc.${os}_${os_codename}.tar.gz \
     ~/rpmbuild/SOURCES/
 }
@@ -20,8 +20,13 @@ copy_rpm_to_build_dir() {
 
 cd "$(dirname "$0")/.."
 
-os=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-os_codename=$(lsb_release -cs | tr '[:upper:]' '[:lower:]')
+if [ -z ${KASMVNC_BUILD_OS_CODENAME+x} ]; then
+  os=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+  os_codename=$(lsb_release -cs | tr '[:upper:]' '[:lower:]')
+else
+  os=${KASMVNC_BUILD_OS}
+  os_codename=${KASMVNC_BUILD_OS_CODENAME}
+fi
 os_dir="build/${os}_${os_codename}"
 
 prepare_build_env
