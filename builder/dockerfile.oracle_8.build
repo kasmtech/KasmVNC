@@ -1,0 +1,58 @@
+FROM oraclelinux:8
+
+ENV KASMVNC_BUILD_OS oracle
+ENV KASMVNC_BUILD_OS_CODENAME 8
+ENV XORG_VER 1.20.10
+
+# Install from stock repos
+RUN dnf install -y \
+  bzip2-devel \
+  ca-certificates \
+  cmake \
+  dnf-plugins-core \
+  gcc \
+  gcc-c++ \
+  git \
+  gnutls-devel \
+  libjpeg-turbo-devel \
+  libpng-devel \
+  libtiff-devel \
+  make \
+  mesa-dri-drivers \
+  openssl-devel \
+  openssl-devel \
+  patch \
+  tigervnc-server \
+  wget \
+  xorg-x11-font-utils \
+  zlib-devel
+
+# Enable additional repos (epel, powertools, and fusion)
+RUN dnf config-manager --set-enabled ol8_codeready_builder
+RUN dnf install -y oracle-epel-release-el8
+RUN dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
+
+# Install from new repos
+RUN dnf install -y \
+  ffmpeg-devel \
+  giflib-devel \
+  lbzip2 \
+  libXfont2-devel \
+  libxkbfile-devel \
+  xorg-x11-server-devel \
+  xorg-x11-xkb-utils-devel \
+  xorg-x11-xtrans-devel
+
+# Additions for webp
+RUN cd /tmp && wget https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.0.2.tar.gz
+RUN cd /tmp && tar -xzf /tmp/libwebp-*
+RUN cd /tmp/libwebp-1.0.2 && \
+    ./configure --enable-static --disable-shared && \
+    make && make install
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+COPY --chown=docker:docker . /src/
+
+USER docker
+ENTRYPOINT ["/src/builder/build.sh"]

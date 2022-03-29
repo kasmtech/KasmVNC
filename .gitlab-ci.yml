@@ -263,6 +263,42 @@ build_centos7:
     paths:
       - output/
 
+build_oracle_8:
+  stage: build
+  allow_failure: true
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package oracle 8;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
+
+build_oracle_8_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - arm
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package oracle 8;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
+
 upload:
   stage: upload
   image: ubuntu:focal

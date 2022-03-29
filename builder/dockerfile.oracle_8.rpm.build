@@ -1,0 +1,21 @@
+FROM oraclelinux:8
+
+ENV KASMVNC_BUILD_OS oracle
+ENV KASMVNC_BUILD_OS_CODENAME 8
+
+RUN dnf install -y \
+  gpg* \
+  less \
+  redhat-lsb-core \
+  rng-tools \
+  rpm* \
+  rpmlint \
+  tree \
+  vim
+
+COPY oracle/*.spec /tmp
+RUN dnf builddep -y /tmp/*.spec
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+USER docker
