@@ -3,25 +3,29 @@
 set -eo pipefail
 
 new_version="$1"
-spec_file="centos/kasmvncserver.spec"
+specs="centos/kasmvncserver.spec
+oracle/kasmvncserver.spec"
 
 bump_version() {
-  sed -i "s/^Version:.\+/Version:        $new_version/" "$spec_file"
+  sed -i "s/^Version:.\+/Version:        $new_version/" "$1"
 }
 
 detect_release_version() {
-  release_version=$(sed -ne 's/^Release:\s\+//p' "$spec_file" | sed -e 's/%.\+$//')
+  release_version=$(sed -ne 's/^Release:\s\+//p' "$1" | sed -e 's/%.\+$//')
 }
 
 bump_changelog() {
-  detect_release_version
+  detect_release_version "$1"
 
   local date=$(date +'%a %b %d %Y')
   local changelog_version="$new_version-$release_version"
   local new_changelog_entry="* $date KasmTech <info@kasmweb.com> - $changelog_version\n- Upstream release"
 
-  sed -i -e "s/%changelog/%changelog\n$new_changelog_entry/" "$spec_file"
+  sed -i -e "s/%changelog/%changelog\n$new_changelog_entry/" "$1"
 }
 
-bump_version
-bump_changelog
+IFS=$'\n'
+for spec_file in $specs; do
+  bump_version $spec_file
+  bump_changelog $spec_file
+done
