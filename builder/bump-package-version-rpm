@@ -4,7 +4,8 @@ set -eo pipefail
 
 new_version="$1"
 specs="centos/kasmvncserver.spec
-oracle/kasmvncserver.spec"
+oracle/kasmvncserver.spec
+opensuse/kasmvncserver.spec"
 
 bump_version() {
   sed -i "s/^Version:.\+/Version:        $new_version/" "$1"

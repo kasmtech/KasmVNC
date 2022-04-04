@@ -1,0 +1,39 @@
+FROM opensuse/leap:15
+
+# base tools
+RUN zypper -n install -y \
+  less \
+  vim \
+  xterm
+
+# deps and rpm install
+RUN zypper -n install -y \
+  libglvnd \
+  libgnutls30 \
+  libgomp1 \
+  libjpeg8 \
+  libnettle6 \
+  libpixman-1-0 \
+  libXdmcp6 \
+  libXfont2-2 \
+  libxkbcommon-x11-0 \
+  openssl \
+  perl \
+  x11-tools \
+  xauth \
+  xkbcomp \
+  xkeyboard-config && \
+  mkdir -p /etc/pki/tls/private
+
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp
+RUN rpm -i /tmp/*.rpm
+
+RUN useradd -m foo
+
+USER foo:kasmvnc-cert
+
+RUN mkdir ~/.vnc && echo '/usr/bin/xterm &' >> ~/.vnc/xstartup && \
+  chmod +x ~/.vnc/xstartup
+
+ENTRYPOINT bash -c "echo -e \"$VNC_PW\n$VNC_PW\n\" | kasmvncpasswd -w -u \"$VNC_USER\" && vncserver :1 -interface 0.0.0.0 && vncserver -kill :1 && vncserver :1 -depth 24 -geometry 1280x1050 -websocketPort 6901 -cert /etc/pki/tls/private/kasmvnc.pem -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www && tail -f $HOME/.vnc/*.log "

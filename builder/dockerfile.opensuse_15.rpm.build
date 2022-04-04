@@ -1,0 +1,24 @@
+FROM opensuse/leap:15
+
+ENV KASMVNC_BUILD_OS opensuse
+ENV KASMVNC_BUILD_OS_CODENAME 15
+
+RUN zypper -n install -y \
+  gpg* \
+  less \
+  lsb-release \
+  rng-tools \
+  rpm-build \
+  rpmdevtools \
+  rpmlint \
+  tree \
+  vim
+
+COPY opensuse/*.spec /tmp
+RUN zypper -n install $(grep BuildRequires /tmp/*.spec | cut -d' ' -f2 | xargs)
+
+RUN useradd -u 1000 -m -d /home/docker docker && \
+  groupadd -g 1000 docker && \
+  usermod -a -G docker docker
+
+USER docker
