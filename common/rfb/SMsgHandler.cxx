@@ -73,7 +73,7 @@ void SMsgHandler::clearBinaryClipboard()
 }
 
 void SMsgHandler::addBinaryClipboard(const char mime[], const rdr::U8 *data,
-                                     const rdr::U32 len)
+                                     const rdr::U32 len, const rdr::U32 id)
 {
 }
 
