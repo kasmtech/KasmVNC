@@ -131,7 +131,8 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
     renderedCursorInvalid(false),
     queryConnectionHandler(0), keyRemapper(&KeyRemapper::defInstance),
     lastConnectionTime(0), disableclients(false),
-    frameTimer(this), apimessager(NULL), trackingFrameStats(0)
+    frameTimer(this), apimessager(NULL), trackingFrameStats(0),
+    clipboardId(0)
 {
   lastUserInputTime = lastDisconnectTime = time(0);
   slog.debug("creating single-threaded server %s", name.buf);
@@ -539,8 +540,10 @@ void VNCServerST::sendBinaryClipboardData(const char* mime, const unsigned char 
   std::list<VNCSConnectionST*>::iterator ci, ci_next;
   for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
     ci_next = ci; ci_next++;
-    (*ci)->sendBinaryClipboardDataOrClose(mime, data, len);
+    (*ci)->sendBinaryClipboardDataOrClose(mime, data, len, clipboardId);
   }
+
+  clipboardId++;
 }
 
 void VNCServerST::getBinaryClipboardData(const char* mime, const unsigned char **data,

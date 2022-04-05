@@ -92,6 +92,9 @@ void SMsgWriter::writeBinaryClipboard(const std::vector<SConnection::binaryClipb
   os->writeU8(b.size());
   rdr::U8 i;
   for (i = 0; i < b.size(); i++) {
+    const rdr::U32 id = b[i].id;
+    os->writeU32(id);
+
     const rdr::U8 mimelen = strlen(b[i].mime);
     os->writeU8(mimelen);
     os->writeBytes(b[i].mime, mimelen);

@@ -281,6 +281,8 @@ namespace rfb {
     } DLPRegion;
 
     void translateDLPRegion(rdr::U16 &x1, rdr::U16 &y1, rdr::U16 &x2, rdr::U16 &y2) const;
+
+    rdr::U32 clipboardId;
   };
 
 };

@@ -76,7 +76,7 @@ namespace rfb {
 
     virtual void clearBinaryClipboard();
     virtual void addBinaryClipboard(const char mime[], const rdr::U8 *data,
-                                    const rdr::U32 len);
+                                    const rdr::U32 len, const rdr::U32 id);
 
     virtual void supportsQEMUKeyEvent();
 
@@ -193,6 +193,7 @@ namespace rfb {
 
     struct binaryClipboard_t {
         char mime[32];
+        rdr::U32 id;
         std::vector<unsigned char> data;
     };
 

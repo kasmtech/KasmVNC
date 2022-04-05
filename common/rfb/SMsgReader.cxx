@@ -276,7 +276,7 @@ void SMsgReader::readBinaryClipboard()
 
     vlog.debug("Received binary clipboard, type %s, %u bytes", mime, len);
 
-    handler->addBinaryClipboard(mime, (rdr::U8 *) ca.buf, len);
+    handler->addBinaryClipboard(mime, (rdr::U8 *) ca.buf, len, 0);
     valid++;
   }
 

@@ -292,7 +292,7 @@ void SConnection::clearBinaryClipboard()
 }
 
 void SConnection::addBinaryClipboard(const char mime[], const rdr::U8 *data,
-                                     const rdr::U32 len)
+                                     const rdr::U32 len, const rdr::U32 id)
 {
   binaryClipboard_t bin;
   strncpy(bin.mime, mime, sizeof(bin.mime));
@@ -300,6 +300,8 @@ void SConnection::addBinaryClipboard(const char mime[], const rdr::U8 *data,
 
   bin.data.resize(len);
   memcpy(&bin.data[0], data, len);
+
+  bin.id = id;
 
   binaryClipboard.push_back(bin);
 }

@@ -80,7 +80,7 @@ namespace rfb {
     void announceClipboardOrClose(bool available);
     void clearBinaryClipboardData();
     void sendBinaryClipboardDataOrClose(const char* mime, const unsigned char *data,
-                                        const unsigned len);
+                                        const unsigned len, const unsigned id);
     void getBinaryClipboardData(const char* mime, const unsigned char **data,
                                 unsigned *len);
 
