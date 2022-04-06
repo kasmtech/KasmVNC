@@ -15,4 +15,3 @@ cd /build
 rm *.md
 rm AUTHORS
 rm vnc.html
-rm vnc_lite.html
