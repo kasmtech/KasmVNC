@@ -1,0 +1,46 @@
+.TH kasmxproxy 1 "" "KasmVNC" "Virtual Network Computing"
+.SH NAME
+kasmxproxy \- proxy an existing X11 display to a KasmVNC display
+.SH SYNOPSIS
+.B kasmxproxy
+.RB [ \-a|\-\-app\-display
+.IR source\-display ]
+.RB [ \-v|\-\-vnc\-display
+.IR destination\-display ]
+.RB [ \-f|\-\-fps
+.IR FPS ]
+.RB [ \-r|\-\-resize ]
+.br
+
+.SH DESCRIPTION
+.B kasmxproxy
+is used to proxy an x display, usually attached to a physical GPU, to KasmVNC display. This is usually used in the context of providing GPU acceleration to a KasmVNC session.
+
+.SH OPTIONS
+.TP
+.B \-a, \-\-app\-display \fIsource-display\fP
+Existing X display to proxy.
+Defaults to :0.
+
+.TP
+.B \-v, \-\-vnc\-display \fIdestination-display\fP
+X display, where source display will be available on.
+Defaults to :1.
+
+.TP
+.B \-f, \-\-fps \fIframes-per-second\fP
+X display, where the source display will be available on.
+Defaults to 30 frames per second.
+
+.TP
+.B \-r|\-\-resize
+Enable resizing. WARNING: DO NOT ENABLE IF PHYSICAL DISPLAY IS ATTACHED.
+Disabled by default.
+
+.SH EXAMPLES
+.TP
+.BI "kasmxproxy -a :1 -v :10 -r"
+.B  Proxy display :1 to display :10, with resizing on.
+
+.SH AUTHOR
+Kasm Technologies http://kasmweb.com

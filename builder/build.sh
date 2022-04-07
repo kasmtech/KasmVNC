@@ -96,7 +96,9 @@ cd /src
 detect_quilt
 if [ -n "$QUILT_PRESENT" ]; then
   quilt push -a
+  echo 'Patches applied!'
 fi
+
 make servertarball
 
 cp kasmvnc*.tar.gz /build/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_CODENAME}.tar.gz
