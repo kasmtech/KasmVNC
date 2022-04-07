@@ -53,6 +53,7 @@ cp $SRC_BIN/Xvnc $DESTDIR/usr/bin;
 cp $SRC_BIN/vncserver $DESTDIR/usr/bin;
 cp $SRC_BIN/vncconfig $DESTDIR/usr/bin;
 cp $SRC_BIN/kasmvncpasswd $DESTDIR/usr/bin;
+cp $SRC_BIN/kasmxproxy $DESTDIR/usr/bin;
 cd $DESTDIR/usr/bin && ln -s kasmvncpasswd vncpasswd;
 cp -r $SRC/share/doc/kasmvnc*/* $DESTDIR/usr/share/doc/kasmvncserver/
 rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
@@ -62,7 +63,9 @@ cp $SRC/man/man1/Xvnc.1 $DESTDIR/usr/share/man/man1/;
 cp $SRC/share/man/man1/vncserver.1 $DST_MAN;
 cp $SRC/share/man/man1/vncconfig.1 $DST_MAN;
 cp $SRC/share/man/man1/vncpasswd.1 $DST_MAN;
+cp $SRC/share/man/man1/kasmxproxy.1 $DST_MAN;
 cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
+
 
 %files
 /usr/bin/*

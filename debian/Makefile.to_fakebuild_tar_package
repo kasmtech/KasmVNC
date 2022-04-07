@@ -16,12 +16,14 @@ install: unpack_tarball
 	cp $(SRC_BIN)/vncserver $(DESTDIR)/usr/bin/kasmvncserver
 	cp $(SRC_BIN)/vncconfig $(DESTDIR)/usr/bin/kasmvncconfig
 	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
+	cp $(SRC_BIN)/kasmxproxy $(DESTDIR)/usr/bin/
 	cp -r $(SRC)/share/doc/kasmvnc*/* $(DESTDIR)/usr/share/doc/kasmvncserver/
 	rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
 	  --exclude www/utils/ --exclude .eslintrc \
 	  $(SRC)/share/kasmvnc $(DESTDIR)/usr/share
 	cp $(SRC)/man/man1/Xvnc.1 $(DESTDIR)/usr/share/man/man1/Xkasmvnc.1
 	cp $(SRC)/share/man/man1/vncserver.1 $(DST_MAN)/kasmvncserver.1
+	cp $(SRC)/share/man/man1/kasmxproxy.1 $(DST_MAN)/kasmxproxy.1
 	cp $(SRC)/share/man/man1/vncpasswd.1 $(DST_MAN)/kasmvncpasswd.1
 	cp $(SRC)/share/man/man1/vncconfig.1 $(DST_MAN)/kasmvncconfig.1
 
