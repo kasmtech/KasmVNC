@@ -871,14 +871,14 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in) {
     }
 
     fseek(f, 0, SEEK_END);
-    const unsigned filesize = ftell(f);
+    const uint64_t filesize = ftell(f);
     rewind(f);
 
     sprintf(buf, "HTTP/1.1 200 OK\r\n"
                  "Server: KasmVNC/4.0\r\n"
                  "Connection: close\r\n"
                  "Content-type: %s\r\n"
-                 "Content-length: %u\r\n"
+                 "Content-length: %lu\r\n"
                  "\r\n",
                  name2mime(path), filesize);
     ws_send(ws_ctx, buf, strlen(buf));
