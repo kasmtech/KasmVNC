@@ -27,7 +27,7 @@ RUN zypper -n install -y \
 
 ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp
-RUN rpm -i /tmp/*.rpm
+RUN zypper install -y --allow-unsigned-rpm /tmp/*.rpm
 
 RUN useradd -m foo
 
