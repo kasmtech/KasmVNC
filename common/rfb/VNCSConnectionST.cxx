@@ -712,7 +712,7 @@ void VNCSConnectionST::setPixelFormat(const PixelFormat& pf)
   setCursor();
 }
 
-void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
+void VNCSConnectionST::pointerEvent(const Point& pos, const Point& abspos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
   pointerEventTime = lastEventTime = time(0);
   server->lastUserInputTime = lastEventTime;
@@ -725,7 +725,45 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool
   }
   if (!rfb::Server::acceptPointerEvents) return;
   if (!server->pointerClient || server->pointerClient == this) {
-    pointerEventPos = pos;
+    Point newpos = pos;
+    if (pos.x & 0x4000) {
+      newpos.x &= ~0x4000;
+      newpos.y &= ~0x4000;
+
+      if (newpos.x & 0x8000) {
+        newpos.x &= ~0x8000;
+        newpos.x = -newpos.x;
+      }
+      if (newpos.y & 0x8000) {
+        newpos.y &= ~0x8000;
+        newpos.y = -newpos.y;
+      }
+
+      if (newpos.x < 0) {
+        if (pointerEventPos.x + newpos.x >= 0)
+          pointerEventPos.x += newpos.x;
+        else
+          pointerEventPos.x = 0;
+      } else {
+        pointerEventPos.x += newpos.x;
+        if (pointerEventPos.x >= cp.width)
+          pointerEventPos.x = cp.width;
+      }
+
+      if (newpos.y < 0) {
+        if (pointerEventPos.y + newpos.y >= 0)
+          pointerEventPos.y += newpos.y;
+        else
+          pointerEventPos.y = 0;
+      } else {
+        pointerEventPos.y += newpos.y;
+        if (pointerEventPos.y >= cp.height)
+          pointerEventPos.y = cp.height;
+      }
+    } else {
+      pointerEventPos = pos;
+    }
+
     if (buttonMask)
       server->pointerClient = this;
     else
@@ -746,7 +784,7 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool
       }
     }
 
-    server->desktop->pointerEvent(pointerEventPos, buttonMask, skipclick, skiprelease, scrollX, scrollY);
+    server->desktop->pointerEvent(newpos, pointerEventPos, buttonMask, skipclick, skiprelease, scrollX, scrollY);
   }
 }
 

@@ -36,6 +36,7 @@ namespace rfb {
                           rdr::U32 __unused_attr keycode,
                           bool __unused_attr down) { }
     virtual void pointerEvent(const Point& __unused_attr pos,
+		              const Point& __unused_attr abspos,
 		              int __unused_attr buttonMask,
                               const bool __unused_attr skipClick,
                               const bool __unused_attr skipRelease,

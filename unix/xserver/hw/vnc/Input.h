@@ -36,6 +36,8 @@ void vncInitInputDevice(bool freeKeyMappings);
 void vncPointerButtonAction(int buttonMask, const unsigned char skipclick,
                             const unsigned char skiprelease);
 void vncPointerMove(int x, int y);
+void vncPointerMoveRelative(int x, int y, int absx, int absy);
+
 void vncScroll(int x, int y);
 void vncGetPointerPos(int *x, int *y);
 
