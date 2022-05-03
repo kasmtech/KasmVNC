@@ -226,7 +226,8 @@ void SMsgReader::readPointerEvent()
   int y = is->readU16();
   int scrollX = is->readS16();
   int scrollY = is->readS16();
-  handler->pointerEvent(Point(x, y), mask, false, false, scrollX, scrollY);
+  
+  handler->pointerEvent(Point(x, y), Point(0, 0), mask, false, false, scrollX, scrollY);
 }
 
 
