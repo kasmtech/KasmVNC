@@ -771,6 +771,18 @@ def:
     return "application/octet-stream";
 }
 
+static uint8_t isValidIp(const char *str, const unsigned len) {
+    unsigned i;
+
+    // Just a quick check for now
+    for (i = 0; i < len; i++) {
+        if (!isxdigit(str[i]) && str[i] != '.' && str[i] != ':')
+            return 0;
+    }
+
+    return 1;
+}
+
 static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[]) {
     char buf[4096];
     char enc[PATH_MAX * 3 + 1];
@@ -1497,7 +1509,7 @@ timeout:
     return 1;
 }
 
-ws_ctx_t *do_handshake(int sock, const char *ip) {
+ws_ctx_t *do_handshake(int sock, char * const ip) {
     char handshake[4096], response[4096], sha1[29], trailer[17];
     char *scheme, *pre;
     headers_t *headers;
@@ -1563,6 +1575,25 @@ ws_ctx_t *do_handshake(int sock, const char *ip) {
             return NULL;
         }
         usleep(10);
+    }
+
+    // Proxied?
+    const char *fwd = strcasestr(handshake, "X-Forwarded-For: ");
+    if (fwd) {
+        fwd += 17;
+        const char *end = strchr(fwd, '\r');
+        const char *comma = memchr(fwd, ',', end - fwd);
+        if (comma)
+            end = comma;
+
+        // Sanity checks, in case it's malicious input
+        if (!isValidIp(fwd, end - fwd) || (end - fwd) >= 64) {
+            wserr("An invalid X-Forwarded-For was passed, maybe an attack\n");
+        } else {
+            memcpy(ip, fwd, end - fwd);
+            ip[end - fwd] = '\0';
+            handler_msg("X-Forwarded-For ip '%s'\n", ip);
+        }
     }
 
     if (bl_isBlacklisted(ip)) {
@@ -1744,7 +1775,7 @@ __thread unsigned wsthread_handler_id;
 
 void *subthread(void *ptr) {
 
-    const struct wspass_t * const pass = ptr;
+    struct wspass_t * const pass = ptr;
 
     const int csock = pass->csock;
     wsthread_handler_id = pass->id;
