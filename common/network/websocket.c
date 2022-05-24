@@ -948,6 +948,16 @@ notfound:
     return 0;
 }
 
+static void send403(ws_ctx_t *ws_ctx) {
+    const char response[] = "HTTP/1.1 403 Forbidden\r\n"
+                            "Server: KasmVNC/4.0\r\n"
+                            "Connection: close\r\n"
+                            "Content-type: text/plain\r\n"
+                            "\r\n"
+                            "403 Forbidden";
+    ws_send(ws_ctx, response, strlen(response));
+}
+
 static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
     char buf[4096], path[4096];
     uint8_t ret = 0; // 0 = continue checking
@@ -1622,8 +1632,9 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
         hdr += sizeof("Authorization: Basic ") - 1;
         const char *end = strchr(hdr, '\r');
         if (!end || end - hdr > 256) {
-            handler_emsg("Client sent invalid BasicAuth, dropping connection\n");
+            handler_emsg("Client sent invalid BasicAuth, 403 forbidden\n");
             bl_addFailure(ip);
+            send403(ws_ctx);
             free_ws_ctx(ws_ctx);
             return NULL;
         }
