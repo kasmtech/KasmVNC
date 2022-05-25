@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -61,6 +62,46 @@ void fatal(char *msg)
 {
     perror(msg);
     exit(1);
+}
+
+// 2022-05-18 19:51:26,810 [INFO] websocket 0: 71.62.44.0 172.12.15.5 - "GET /api/get_frame_stats?client=auto HTTP/1.1" 403 2
+static void weblog(const unsigned code, const unsigned websocket,
+                   const uint8_t debug,
+                   const char *origip, const char *ip,
+                   const char *user, const uint8_t get,
+                   const char *url, const uint64_t len)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    struct tm local;
+    localtime_r(&tv.tv_sec, &local);
+
+    char timebuf[128];
+    strftime(timebuf, sizeof(timebuf), DATELOGFMT, &local);
+
+    const unsigned msec = tv.tv_usec / 1000;
+    const char *levelname = debug ? "DEBUG" : "INFO";
+
+    fprintf(stderr, " %s,%03u [%s] websocket %u: %s %s %s \"%s %s HTTP/1.1\" %u %lu\n",
+            timebuf, msec, levelname, websocket, origip, ip, user,
+            get ? "GET" : "POST", url, code, len);
+}
+
+void wslog(char *logbuf, const unsigned websocket, const uint8_t debug)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    struct tm local;
+    localtime_r(&tv.tv_sec, &local);
+
+    char timebuf[128];
+    strftime(timebuf, sizeof(timebuf), DATELOGFMT, &local);
+
+    const unsigned msec = tv.tv_usec / 1000;
+    const char *levelname = debug ? "DEBUG" : "INFO";
+
+    sprintf(logbuf, " %s,%03u [%s] websocket %u: ",
+            timebuf, msec, levelname, websocket);
 }
 
 /* resolve host with also IP address parsing */
@@ -783,7 +824,9 @@ static uint8_t isValidIp(const char *str, const unsigned len) {
     return 1;
 }
 
-static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[]) {
+static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[],
+                       const char * const user, const char * const ip,
+                       const char * const origip) {
     char buf[4096];
     char enc[PATH_MAX * 3 + 1];
     unsigned i;
@@ -798,6 +841,7 @@ static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[
                      "Content-type: text/plain\r\n"
                      "\r\n", path);
         ws_send(ws_ctx, buf, strlen(buf));
+        weblog(301, wsthread_handler_id, 0, origip, ip, user, 1, path, strlen(buf));
         return;
     }
 
@@ -811,6 +855,7 @@ static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[
                  "Content-type: text/html\r\n"
                  "\r\n<html><title>Directory Listing</title><body><h2>%s</h2><hr><ul>", path);
     ws_send(ws_ctx, buf, strlen(buf));
+    unsigned totallen = strlen(buf);
 
     struct dirent **names;
     const unsigned num = scandir(fullpath, &names, NULL, alphasort);
@@ -829,19 +874,23 @@ static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[
 	                names[i]->d_name);
 
         ws_send(ws_ctx, buf, strlen(buf));
+        totallen += strlen(buf);
     }
 
     sprintf(buf, "</ul></body></html>");
     ws_send(ws_ctx, buf, strlen(buf));
+    totallen += strlen(buf);
+    weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, path, totallen);
 }
 
-static void servefile(ws_ctx_t *ws_ctx, const char *in) {
+static void servefile(ws_ctx_t *ws_ctx, const char *in, const char * const user,
+                      const char * const ip, const char * const origip) {
     char buf[4096], path[4096], fullpath[4096];
 
     //fprintf(stderr, "http servefile input '%s'\n", in);
 
     if (strncmp(in, "GET ", 4)) {
-        wserr("non-GET request, rejecting\n");
+        handler_msg("non-GET request, rejecting\n");
         goto nope;
     }
     in += 4;
@@ -849,7 +898,7 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in) {
     unsigned len = end - in;
 
     if (len < 1 || len > 1024 || strstr(in, "../")) {
-        wserr("Request too long (%u) or attempted dir traversal attack, rejecting\n", len);
+        handler_msg("Request too long (%u) or attempted dir traversal attack, rejecting\n", len);
         goto nope;
     }
 
@@ -866,19 +915,19 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in) {
 
     percent_decode(path, buf, 1);
 
-    wserr("Requested file '%s'\n", buf);
+    handler_msg("Requested file '%s'\n", buf);
     sprintf(fullpath, "%s/%s", settings.httpdir, buf);
 
     DIR *dir = opendir(fullpath);
     if (dir) {
         closedir(dir);
-        dirlisting(ws_ctx, fullpath, buf);
+        dirlisting(ws_ctx, fullpath, buf, user, ip, origip);
         return;
     }
 
     FILE *f = fopen(fullpath, "r");
     if (!f) {
-        wserr("file not found or insufficient permissions\n");
+        handler_msg("file not found or insufficient permissions\n");
         goto nope;
     }
 
@@ -903,6 +952,8 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in) {
     }
     fclose(f);
 
+    weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, path, strlen(buf) + filesize);
+
     return;
 nope:
     sprintf(buf, "HTTP/1.1 404 Not Found\r\n"
@@ -912,6 +963,7 @@ nope:
                  "\r\n"
                  "404");
     ws_send(ws_ctx, buf, strlen(buf));
+    weblog(404, wsthread_handler_id, 0, origip, ip, user, 1, path, strlen(buf));
 }
 
 static uint8_t allUsersPresent(const struct kasmpasswd_t * const inset) {
@@ -948,7 +1000,7 @@ notfound:
     return 0;
 }
 
-static void send403(ws_ctx_t *ws_ctx) {
+static void send403(ws_ctx_t *ws_ctx, const char * const origip, const char * const ip) {
     const char response[] = "HTTP/1.1 403 Forbidden\r\n"
                             "Server: KasmVNC/4.0\r\n"
                             "Connection: close\r\n"
@@ -956,9 +1008,11 @@ static void send403(ws_ctx_t *ws_ctx) {
                             "\r\n"
                             "403 Forbidden";
     ws_send(ws_ctx, response, strlen(response));
+    weblog(403, wsthread_handler_id, 0, origip, ip, "-", 1, "-", strlen(response));
 }
 
-static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
+static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in, const char * const user,
+                             const char * const ip, const char * const origip) {
     char buf[4096], path[4096];
     uint8_t ret = 0; // 0 = continue checking
 
@@ -967,24 +1021,24 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
     unsigned len = end - in;
 
     if (len < 1 || len > 1024 || strstr(in, "../")) {
-        wserr("Request too long (%u) or attempted dir traversal attack, rejecting\n", len);
+        handler_msg("Request too long (%u) or attempted dir traversal attack, rejecting\n", len);
         return 0;
     }
 
     end = memchr(in, '?', len);
     if (end) {
-        wserr("Attempted GET params in a POST request, rejecting\n");
+        handler_msg("Attempted GET params in a POST request, rejecting\n");
         return 0;
     }
 
     memcpy(path, in, len);
     path[len] = '\0';
 
-    wserr("Requested owner POST api '%s'\n", path);
+    handler_msg("Requested owner POST api '%s'\n", path);
 
     in = strstr(in, "\r\n\r\n");
     if (!in) {
-        wserr("No content\n");
+        handler_msg("No content\n");
         return 0;
     }
     in += 4;
@@ -1030,6 +1084,7 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
                  "\r\n"
                  "200 OK");
         ws_send(ws_ctx, buf, strlen(buf));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 0, path, strlen(buf));
 
         ret = 1;
     } else entry("/api/remove_user") {
@@ -1067,6 +1122,7 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
                  "\r\n"
                  "200 OK");
         ws_send(ws_ctx, buf, strlen(buf));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 0, path, strlen(buf));
 
         ret = 1;
     } else entry("/api/update_user") {
@@ -1104,7 +1160,7 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
                                        set->entries[s].password,
                                        set->entries[s].read,
                                        set->entries[s].write, set->entries[s].owner)) {
-                wserr("Invalid params to update_user\n");
+                handler_msg("Invalid params to update_user\n");
                 goto nope;
             }
         }
@@ -1120,6 +1176,7 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in) {
                  "\r\n"
                  "200 OK");
         ws_send(ws_ctx, buf, strlen(buf));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 0, path, strlen(buf));
 
         ret = 1;
     }
@@ -1135,18 +1192,20 @@ nope:
                  "\r\n"
                  "400 Bad Request");
     ws_send(ws_ctx, buf, strlen(buf));
+    weblog(400, wsthread_handler_id, 0, origip, ip, user, 0, path, strlen(buf));
     return 1;
 }
 
-static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
-    char buf[4096], path[4096], args[4096] = "";
+static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const user,
+                        const char * const ip, const char * const origip) {
+    char buf[4096], path[4096], args[4096] = "", origpath[4096];
     uint8_t ret = 0; // 0 = continue checking
 
     if (strncmp(in, "GET ", 4)) {
         if (!strncmp(in, "POST ", 5))
-            return ownerapi_post(ws_ctx, in);
+            return ownerapi_post(ws_ctx, in, user, ip, origip);
 
-        wserr("non-GET, non-POST request, rejecting\n");
+        handler_msg("non-GET, non-POST request, rejecting\n");
         return 0;
     }
     in += 4;
@@ -1154,9 +1213,12 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
     unsigned len = end - in;
 
     if (len < 1 || len > 1024 || strstr(in, "../")) {
-        wserr("Request too long (%u) or attempted dir traversal attack, rejecting\n", len);
+        handler_msg("Request too long (%u) or attempted dir traversal attack, rejecting\n", len);
         return 0;
     }
+
+    memcpy(origpath, in, len);
+    origpath[len] = '\0';
 
     end = memchr(in, '?', len);
     if (end) {
@@ -1172,9 +1234,9 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
     path[len] = '\0';
 
     if (strstr(args, "password=")) {
-        wserr("Requested owner api '%s' with args (skipped, includes password)\n", path);
+        handler_msg("Requested owner api '%s' with args (skipped, includes password)\n", path);
     } else {
-        wserr("Requested owner api '%s' with args '%s'\n", path, args);
+        handler_msg("Requested owner api '%s' with args '%s'\n", path, args);
     }
 
     #define entry(x) if (!strcmp(path, x))
@@ -1216,8 +1278,9 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                      "\r\n", len);
             ws_send(ws_ctx, buf, strlen(buf));
             ws_send(ws_ctx, staging, len);
+            weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf) + len);
 
-            wserr("Screenshot hadn't changed and dedup was requested, sent hash\n");
+            handler_msg("Screenshot hadn't changed and dedup was requested, sent hash\n");
             ret = 1;
         } else if (len) {
             sprintf(buf, "HTTP/1.1 200 OK\r\n"
@@ -1228,15 +1291,16 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                      "\r\n", len);
             ws_send(ws_ctx, buf, strlen(buf));
             ws_send(ws_ctx, staging, len);
+            weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf) + len);
 
-            wserr("Sent screenshot %u bytes\n", len);
+            handler_msg("Sent screenshot %u bytes\n", len);
             ret = 1;
         }
 
         free(staging);
 
         if (!len) {
-            wserr("Invalid params to screenshot\n");
+            handler_msg("Invalid params to screenshot\n");
             goto nope;
         }
     } else entry("/api/create_user") {
@@ -1285,7 +1349,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
             goto nope;
 
         if (!settings.adduserCb(settings.messager, decname, decpw, read, write, owner)) {
-            wserr("Invalid params to create_user\n");
+            handler_msg("Invalid params to create_user\n");
             goto nope;
         }
 
@@ -1297,6 +1361,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                  "\r\n"
                  "200 OK");
         ws_send(ws_ctx, buf, strlen(buf));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf));
 
         ret = 1;
     } else entry("/api/remove_user") {
@@ -1313,7 +1378,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
             goto nope;
 
         if (!settings.removeCb(settings.messager, decname)) {
-            wserr("Invalid params to remove_user\n");
+            handler_msg("Invalid params to remove_user\n");
             goto nope;
         }
 
@@ -1325,6 +1390,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                  "\r\n"
                  "200 OK");
         ws_send(ws_ctx, buf, strlen(buf));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf));
 
         ret = 1;
     } else entry("/api/update_user") {
@@ -1367,7 +1433,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
 
         if (!settings.updateUserCb(settings.messager, decname, mask, "",
                                    myread, mywrite, myowner)) {
-            wserr("Invalid params to update_user\n");
+            handler_msg("Invalid params to update_user\n");
             goto nope;
         }
 
@@ -1379,6 +1445,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                  "\r\n"
                  "200 OK");
         ws_send(ws_ctx, buf, strlen(buf));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf));
 
         ret = 1;
     } else entry("/api/get_bottleneck_stats") {
@@ -1393,8 +1460,9 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                  "\r\n", strlen(statbuf));
         ws_send(ws_ctx, buf, strlen(buf));
         ws_send(ws_ctx, statbuf, strlen(statbuf));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf) + strlen(statbuf));
 
-        wserr("Sent bottleneck stats to API caller\n");
+        handler_msg("Sent bottleneck stats to API caller\n");
         ret = 1;
     } else entry("/api/get_users") {
         const char *ptr;
@@ -1408,10 +1476,11 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                  "\r\n", strlen(ptr));
         ws_send(ws_ctx, buf, strlen(buf));
         ws_send(ws_ctx, ptr, strlen(ptr));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf) + strlen(ptr));
 
         free((char *) ptr);
 
-        wserr("Sent user list to API caller\n");
+        handler_msg("Sent user list to API caller\n");
         ret = 1;
     } else entry("/api/get_frame_stats") {
         char statbuf[4096], decname[1024];
@@ -1423,7 +1492,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
             buf[len] = '\0';
             percent_decode(buf, decname, 0);
         } else {
-            wserr("client param required\n");
+            handler_msg("client param required\n");
             goto nope;
         }
 
@@ -1465,7 +1534,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
             }
 
             if (failed) {
-                wserr("Main thread didn't respond, aborting (bug!)\n");
+                handler_msg("Main thread didn't respond, aborting (bug, if nothing happened for 10s)\n");
                 settings.resetFrameStatsCb(settings.messager);
                 goto timeout;
             }
@@ -1489,8 +1558,9 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in) {
                  "\r\n", strlen(statbuf));
         ws_send(ws_ctx, buf, strlen(buf));
         ws_send(ws_ctx, statbuf, strlen(statbuf));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf) + strlen(statbuf));
 
-        wserr("Sent frame stats to API caller\n");
+        handler_msg("Sent frame stats to API caller\n");
         ret = 1;
     }
 
@@ -1506,6 +1576,7 @@ nope:
                  "\r\n"
                  "400 Bad Request");
     ws_send(ws_ctx, buf, strlen(buf));
+    weblog(400, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf));
     return 1;
 
 timeout:
@@ -1516,6 +1587,7 @@ timeout:
                  "\r\n"
                  "503 Service Unavailable");
     ws_send(ws_ctx, buf, strlen(buf));
+    weblog(503, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf));
     return 1;
 }
 
@@ -1588,6 +1660,8 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
     }
 
     // Proxied?
+    char origip[64];
+    memcpy(origip, ip, 64);
     const char *fwd = strcasestr(handshake, "X-Forwarded-For: ");
     if (fwd) {
         fwd += 17;
@@ -1606,25 +1680,40 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
         }
     }
 
+    // Early URL parsing for the auth denies
+    char url[2048] = "-";
+    const char *end = strchr(handshake + 4, ' ');
+    if (end) {
+        len = end - (handshake + 4);
+        if (len > 1024)
+            len = 1024;
+
+        memcpy(url, handshake + 4, len);
+        url[len] = '\0';
+    }
+
     if (bl_isBlacklisted(ip)) {
         wserr("IP %s is blacklisted, dropping\n", ip);
         sprintf(response, "HTTP/1.1 401 Forbidden\r\n"
                           "\r\n");
         ws_send(ws_ctx, response, strlen(response));
+        weblog(401, wsthread_handler_id, 0, origip, ip, "-", 1, url, strlen(response));
         free_ws_ctx(ws_ctx);
         return NULL;
     }
 
     unsigned char owner = 0;
+    char inuser[32] = "-";
     if (!settings.disablebasicauth) {
         const char *hdr = strstr(handshake, "Authorization: Basic ");
         if (!hdr) {
             bl_addFailure(ip);
-            handler_emsg("BasicAuth required, but client didn't send any. 401 Unauth\n");
+            wserr("Authentication attempt failed, BasicAuth required, but client didn't send any\n");
             sprintf(response, "HTTP/1.1 401 Unauthorized\r\n"
                               "WWW-Authenticate: Basic realm=\"Websockify\"\r\n"
                               "\r\n");
             ws_send(ws_ctx, response, strlen(response));
+            weblog(401, wsthread_handler_id, 0, origip, ip, "-", 1, url, strlen(response));
             free_ws_ctx(ws_ctx);
             return NULL;
         }
@@ -1632,9 +1721,9 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
         hdr += sizeof("Authorization: Basic ") - 1;
         const char *end = strchr(hdr, '\r');
         if (!end || end - hdr > 256) {
-            handler_emsg("Client sent invalid BasicAuth, 403 forbidden\n");
+            wserr("Authentication attempt failed, client sent invalid BasicAuth\n");
             bl_addFailure(ip);
-            send403(ws_ctx);
+            send403(ws_ctx, origip, ip);
             free_ws_ctx(ws_ctx);
             return NULL;
         }
@@ -1655,12 +1744,10 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
                 char pwbuf[4096];
                 struct kasmpasswd_t *set = readkasmpasswd(settings.passwdfile);
                 if (!set->num) {
-                    fprintf(stderr, " websocket %d: Error: BasicAuth configured to read password from file %s, but the file doesn't exist or has no valid users\n",
-                            wsthread_handler_id,
+                    wserr("Error: BasicAuth configured to read password from file %s, but the file doesn't exist or has no valid users\n",
                             settings.passwdfile);
                 } else {
                     unsigned i;
-                    char inuser[32];
                     unsigned char found = 0;
                     memcpy(inuser, response, resppw - response - 1);
                     inuser[resppw - response - 1] = '\0';
@@ -1680,7 +1767,7 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
                     }
 
                     if (!found)
-                        handler_emsg("BasicAuth user %s not found\n", inuser);
+                        wserr("Authentication attempt failed, user %s does not exist\n", inuser);
                 }
                 free(set->entries);
                 free(set);
@@ -1703,11 +1790,12 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
         }
 
         if (len <= 0 || strcmp(authbuf, response)) {
-            handler_emsg("BasicAuth user/pw did not match\n");
+            wserr("Authentication attempt failed, wrong password for user %s\n", inuser);
             bl_addFailure(ip);
             sprintf(response, "HTTP/1.1 401 Forbidden\r\n"
                               "\r\n");
             ws_send(ws_ctx, response, strlen(response));
+            weblog(401, wsthread_handler_id, 0, origip, ip, inuser, 1, url, strlen(response));
             free_ws_ctx(ws_ctx);
             return NULL;
         }
@@ -1722,7 +1810,7 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
             handler_emsg("HTTP request under /api/\n");
 
             if (owner) {
-                if (ownerapi(ws_ctx, handshake))
+                if (ownerapi(ws_ctx, handshake, inuser, ip, origip))
                     goto done;
             } else {
                 sprintf(response, "HTTP/1.1 401 Unauthorized\r\n"
@@ -1732,12 +1820,13 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
                         "\r\n"
                         "401 Unauthorized");
                 ws_send(ws_ctx, response, strlen(response));
+                weblog(401, wsthread_handler_id, 0, origip, ip, inuser, 1, url, strlen(response));
                 goto done;
             }
         }
 
         if (settings.httpdir && settings.httpdir[0])
-            servefile(ws_ctx, handshake);
+            servefile(ws_ctx, handshake, inuser, ip, origip);
 
 done:
         free_ws_ctx(ws_ctx);
@@ -1843,9 +1932,12 @@ void *start_server(void *unused) {
         }
         struct wspass_t *pass = calloc(1, sizeof(struct wspass_t));
         inet_ntop(cli_addr.sin_family, &cli_addr.sin_addr, pass->ip, sizeof(pass->ip));
-        fprintf(stderr, " websocket %d: got client connection from %s\n",
-                    settings.handler_id,
+
+        char logbuf[2][1024];
+        wslog(logbuf[0], settings.handler_id, 0);
+        sprintf(logbuf[1], "got client connection from %s\n",
                     pass->ip);
+        fprintf(stderr, "%s%s", logbuf[0], logbuf[1]);
 
         pthread_t tid;
         pass->id = settings.handler_id;
