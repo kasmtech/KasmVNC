@@ -20,11 +20,14 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include <os/Mutex.h>
 
+#include <network/datelog.h>
 #include <rfb/util.h>
 #include <rfb/Logger_file.h>
+#include <rfb/LogWriter.h>
 
 using namespace rfb;
 
@@ -55,14 +58,28 @@ void Logger_File::write(int level, const char *logname, const char *message)
     if (!m_file) return;
   }
 
-  time_t current = time(0);
-  if (current != m_lastLogTime) {
-    m_lastLogTime = current;
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+
+  if (tv.tv_sec != m_lastLogTime) {
+    m_lastLogTime = tv.tv_sec;
 //    fprintf(m_file, "\n%s", ctime(&m_lastLogTime));
   }
 
-  fprintf(m_file," %s:", logname);
-  int column = strlen(logname) + 2;
+  char timebuf[128];
+  struct tm local;
+  localtime_r(&tv.tv_sec, &local);
+  strftime(timebuf, sizeof(timebuf), DATELOGFMT, &local);
+
+  const unsigned msec = tv.tv_usec / 1000;
+  const char *levelname = "PRIO";
+  if (level >= LogWriter::LEVEL_INFO)
+    levelname = "INFO";
+  if (level >= LogWriter::LEVEL_DEBUG)
+    levelname = "DEBUG";
+
+  int column = fprintf(m_file, " %s,%03u [%s] %s:", timebuf, msec, levelname, logname);
+
   if (column < indent) {
     fprintf(m_file,"%*s",indent-column,"");
     column = indent;

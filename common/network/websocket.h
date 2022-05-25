@@ -1,6 +1,7 @@
 #include <openssl/ssl.h>
 #include <stdint.h>
 #include "GetAPIEnums.h"
+#include "datelog.h"
 
 #define BUFSIZE 65536
 #define DBUFSIZE (BUFSIZE * 3) / 4 - 20
@@ -120,18 +121,24 @@ ssize_t ws_send(ws_ctx_t *ctx, const void *buf, size_t len);
 //int b64_ntop(u_char const *src, size_t srclength, char *target, size_t targsize);
 //int b64_pton(char const *src, u_char *target, size_t targsize);
 
+void wslog(char *logbuf, const unsigned websocket, const uint8_t debug);
+
 extern __thread unsigned wsthread_handler_id;
 
 #define gen_handler_msg(stream, ...) \
     if (settings.verbose) { \
-        fprintf(stream, " websocket %d: ", wsthread_handler_id); \
-        fprintf(stream, __VA_ARGS__); \
+        char logbuf[2][1024]; \
+        wslog(logbuf[0], wsthread_handler_id, 1); \
+        sprintf(logbuf[1], __VA_ARGS__); \
+        fprintf(stream, "%s%s", logbuf[0], logbuf[1]); \
     }
 
 #define wserr(...) \
     { \
-        fprintf(stderr, " websocket %d: ", wsthread_handler_id); \
-        fprintf(stderr, __VA_ARGS__); \
+        char logbuf[2][1024]; \
+        wslog(logbuf[0], wsthread_handler_id, 0); \
+        sprintf(logbuf[1], __VA_ARGS__); \
+        fprintf(stderr, "%s%s", logbuf[0], logbuf[1]); \
     }
 
 #define handler_msg(...) gen_handler_msg(stderr, __VA_ARGS__);
