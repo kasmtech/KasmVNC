@@ -628,6 +628,8 @@ int decode_hybi(unsigned char *src, size_t srclength,
 int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     char *start, *end;
     headers_t *headers = ws_ctx->headers;
+    const uint8_t extralogs = !!strstr(handshake, "/websockify");
+    #define err(x) if (extralogs) { wserr("/websockify request failed websocket checks, " x "\n"); }
 
     headers->key1[0] = '\0';
     headers->key2[0] = '\0';
@@ -635,16 +637,17 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
 
     if ((strlen(handshake) < 92) || (bcmp(handshake, "GET ", 4) != 0) ||
         (!strcasestr(handshake, "Upgrade: websocket"))) {
+        err("not a GET request, or missing Upgrade header");
         return 0;
     }
     start = handshake+4;
     end = strstr(start, " HTTP/1.1");
-    if (!end) { return 0; }
+    if (!end) { err("not HTTP"); return 0; }
     strncpy(headers->path, start, end-start);
     headers->path[end-start] = '\0';
 
     start = strstr(handshake, "\r\nHost: ");
-    if (!start) { return 0; }
+    if (!start) { err("missing Host header"); return 0; }
     start += 8;
     end = strstr(start, "\r\n");
     strncpy(headers->host, start, end-start);
@@ -656,7 +659,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         start += 10;
     } else {
         start = strcasestr(handshake, "\r\nSec-WebSocket-Origin: ");
-        if (!start) { return 0; }
+        if (!start) { err("missing Sec-WebSocket-Origin header"); return 0; }
         start += 24;
     }
     end = strstr(start, "\r\n");
@@ -674,21 +677,21 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         ws_ctx->hybi = strtol(headers->version, NULL, 10);
 
         start = strcasestr(handshake, "\r\nSec-WebSocket-Key: ");
-        if (!start) { return 0; }
+        if (!start) { err("missing Sec-WebSocket-Key header"); return 0; }
         start += 21;
         end = strstr(start, "\r\n");
         strncpy(headers->key1, start, end-start);
         headers->key1[end-start] = '\0';
 
         start = strstr(handshake, "\r\nConnection: ");
-        if (!start) { return 0; }
+        if (!start) { err("missing Connection header"); return 0; }
         start += 14;
         end = strstr(start, "\r\n");
         strncpy(headers->connection, start, end-start);
         headers->connection[end-start] = '\0';
 
         start = strcasestr(handshake, "\r\nSec-WebSocket-Protocol: ");
-        if (!start) { return 0; }
+        if (!start) { err("missing Sec-WebSocket-Protocol header"); return 0; }
         start += 26;
         end = strstr(start, "\r\n");
         strncpy(headers->protocols, start, end-start);
@@ -698,7 +701,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         ws_ctx->hybi = 0;
 
         start = strstr(handshake, "\r\n\r\n");
-        if (!start) { return 0; }
+        if (!start) { err("headers too large"); return 0; }
         start += 4;
         if (strlen(start) == 8) {
             ws_ctx->hixie = 76;
@@ -706,14 +709,14 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
             headers->key3[8] = '\0';
 
             start = strcasestr(handshake, "\r\nSec-WebSocket-Key1: ");
-            if (!start) { return 0; }
+            if (!start) { err("missing Sec-WebSocket-Key1 header"); return 0; }
             start += 22;
             end = strstr(start, "\r\n");
             strncpy(headers->key1, start, end-start);
             headers->key1[end-start] = '\0';
 
             start = strcasestr(handshake, "\r\nSec-WebSocket-Key2: ");
-            if (!start) { return 0; }
+            if (!start) { err("missing Sec-WebSocket-Key2 header"); return 0; }
             start += 22;
             end = strstr(start, "\r\n");
             strncpy(headers->key2, start, end-start);
@@ -723,6 +726,8 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         }
 
     }
+
+    #undef err
 
     return 1;
 }
