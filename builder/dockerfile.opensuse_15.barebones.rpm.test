@@ -1,4 +1,4 @@
-FROM opensuse/leap:15
+FROM opensuse/leap:15.3
 
 # base tools
 RUN zypper -n install -y \
