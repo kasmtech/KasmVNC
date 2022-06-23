@@ -45,6 +45,7 @@ int ssl_initialized = 0;
 int pipe_error = 0;
 settings_t settings;
 
+extern int wakeuppipe[2];
 
 void traffic(const char * token) {
     /*if ((settings.verbose) && (! settings.daemon)) {
@@ -1566,6 +1567,20 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
         weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf) + strlen(statbuf));
 
         handler_msg("Sent frame stats to API caller\n");
+        ret = 1;
+    } else entry("/api/send_full_frame") {
+        write(wakeuppipe[1], "", 1);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: 6\r\n"
+                 "\r\n"
+                 "200 OK");
+        ws_send(ws_ctx, buf, strlen(buf));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf));
+
         ret = 1;
     }
 
