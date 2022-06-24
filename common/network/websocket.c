@@ -249,6 +249,7 @@ void free_ws_ctx(ws_ctx_t *ctx) {
     free(ctx->cout_buf);
     free(ctx->tin_buf);
     free(ctx->tout_buf);
+    free(ctx->headers);
     free(ctx);
 }
 
@@ -947,7 +948,8 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in, const char * const user,
                  "Content-length: %lu\r\n"
                  "\r\n",
                  name2mime(path), filesize);
-    ws_send(ws_ctx, buf, strlen(buf));
+    const unsigned hdrlen = strlen(buf);
+    ws_send(ws_ctx, buf, hdrlen);
 
     //fprintf(stderr, "http servefile output '%s'\n", buf);
 
@@ -957,7 +959,7 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in, const char * const user,
     }
     fclose(f);
 
-    weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, path, strlen(buf) + filesize);
+    weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, path, hdrlen + filesize);
 
     return;
 nope:
@@ -1947,7 +1949,14 @@ void *start_server(void *unused) {
         pthread_t tid;
         pass->id = settings.handler_id;
         pass->csock = csock;
-        pthread_create(&tid, NULL, subthread, pass);
+
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+        pthread_create(&tid, &attr, subthread, pass);
+
+        pthread_attr_destroy(&attr);
 
         settings.handler_id += 1;
     }
