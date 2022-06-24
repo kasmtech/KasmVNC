@@ -931,6 +931,8 @@ void network::createWebsocketListeners(std::list<SocketListener*> *listeners,
       freeaddrinfo(ai);
       throw;
     }
+
+    freeaddrinfo(ai);
   }
 }
 
