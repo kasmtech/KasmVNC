@@ -8,6 +8,10 @@
   - Security - The RFB specification (VNC) limits the password field to 8 characters, so while the client may take a longer password, only the first 8 characters are sent. KasmVNC defaults to HTTPS with HTTP Basic Auth and disables the legacy VNC authentication method which is not sufficiently secure for internet accessible systems.
   - Simplicity - KasmVNC aims at being simple to deploy and configure.
 
+# Releases
+
+Since this is a fast evolving project, the documents on the tip of master are chaning rapidly and will not match releases. Be sure to use the README and other documentation from the release branch that matches the version of KasmVNC you are using. Do not use the README from the master branch, unless you are compiling KasmVNC yourself from the tip of master. All releases starting at 0.9.3 have a branch named in the format 'release/0.9.3', for example. 
+
 # New Features!
 
   - Webp image compression for better bandwidth usage
@@ -16,6 +20,7 @@
   - [Full screen video detection](https://github.com/kasmtech/KasmVNC/wiki/Video-Rendering-Options#video-mode), goes into configurable video mode for better full screen videoo playback performance.
   - [Dynamic jpeg/webp image coompression](https://github.com/kasmtech/KasmVNC/wiki/Video-Rendering-Options#dynamic-image-quality) quality settings based on screen change rates
   - Seemless clipboard support (on Chromium based browsers)
+  - Binary clipboard support for text, images, and formatted text (on Chromium based browsers)
   - Allow client to set/change most configuration settings
   - [Data Loss Prevention features](https://github.com/kasmtech/KasmVNC/wiki/Data-Loss-Prevention)
     - Key stroke logging
@@ -25,17 +30,20 @@
     - Keyboard input rate limit
     - Screen region selection
   - Deb packages for Debian, Ubuntu, and Kali Linux included in release.
-  - RPM packages for CentOS, Fedora. RPM packages are currently not updatable and not released, though you can build and install them. See build documentation.
+  - RPM packages for CentOS, Oracle, OpenSUSE, Fedora. RPM packages are currently not updatable and not released, though you can build and install them. See build documentation.
   - Web [API](https://github.com/kasmtech/KasmVNC/wiki/API) added for remotely controlling and getting information from KasmVNC
-  - Multi-User with ability to pass control to other users.
+  - Multi-User support with permissions that can be changed via the API
   - Web UI uses a webpack for faster load times.
   - Network and CPU bottleneck statistics
-
+  - Relative cursor support (game pointer mode)
+  - Cursor lock
+  - IME support for languages with extended characters
+  - Better mobile support
 
 Future Goals:
 
-  - Support uploads and downloads
-  - Pre-build Packages for all major Linux distributions
+  - UDP transport for faster frame rates
+  - H264 encoding
 
 ### Installation
 
