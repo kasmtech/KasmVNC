@@ -33,14 +33,15 @@
 
 static void usage(const char *prog)
 {
-  fprintf(stderr, "Usage: %s -u username [-wnod] [file]\n"
+  fprintf(stderr, "Usage: %s -u username [-wnod] [password_file]\n"
                   "-r	Read permission\n"
                   "-w	Write permission\n"
                   "-o	Owner\n"
                   "-n	Don't change password, change permissions only\n"
                   "-d	Delete this user\n"
                   "\n"
-                  "The file is updated atomically.\n\n"
+                  "The password file is updated atomically.\n"
+                  "For more information, run \"man vncpasswd\".\n\n"
                   "To pass the password via a pipe, use\n"
                   "echo -e \"password\\npassword\\n\" | %s [-args]\n",
                   prog, prog);
