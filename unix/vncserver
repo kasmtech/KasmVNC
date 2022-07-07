@@ -281,7 +281,7 @@ $kasmAuthEnabled = 1;
 
 if ($kasmAuthEnabled) {
     if (!(-e "$ENV{HOME}/.kasmpasswd")) {
-        warn "\nYou will require a password to access your desktops.\n\n";
+        warn "\nYou need to create a KasmVNC user to access your desktops.\n\n";
         system($exedir."kasmvncpasswd $ENV{HOME}/.kasmpasswd");
         if (($? >> 8) != 0) {
             exit 1;
