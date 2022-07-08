@@ -9,10 +9,8 @@ RUN zypper -n install -y \
 # deps and rpm install
 RUN zypper -n install -y \
   libglvnd \
-  libgnutls30 \
   libgomp1 \
   libjpeg8 \
-  libnettle6 \
   libpixman-1-0 \
   libXdmcp6 \
   libXfont2-2 \
@@ -36,4 +34,4 @@ USER foo:kasmvnc-cert
 RUN mkdir ~/.vnc && echo '/usr/bin/xterm &' >> ~/.vnc/xstartup && \
   chmod +x ~/.vnc/xstartup
 
-ENTRYPOINT bash -c "echo -e \"$VNC_PW\n$VNC_PW\n\" | kasmvncpasswd -w -u \"$VNC_USER\" && vncserver :1 -interface 0.0.0.0 && vncserver -kill :1 && vncserver :1 -depth 24 -geometry 1280x1050 -websocketPort 6901 -cert /etc/pki/tls/private/kasmvnc.pem -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www && tail -f $HOME/.vnc/*.log "
+ENTRYPOINT bash -c "echo -e \"$VNC_PW\n$VNC_PW\n\" | kasmvncpasswd -w -u \"$VNC_USER\" && vncserver :1 -interface 0.0.0.0 && vncserver -kill :1 && vncserver :1 -depth 24 -geometry 1280x1050 -websocketPort 8443 -cert /etc/pki/tls/private/kasmvnc.pem -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www && tail -f $HOME/.vnc/*.log "
