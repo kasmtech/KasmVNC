@@ -36,7 +36,8 @@ sed -i -e '/find_package(FLTK/s@^@#@' \
 	-e '/add_subdirectory(tests/s@^@#@' \
 	CMakeLists.txt
 
-cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF
+cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
+  -DENABLE_GNUTLS:BOOL=OFF
 make -j5
 
 tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=1
@@ -65,6 +66,7 @@ fi
 	--with-xkb-output=/var/lib/xkb \
 	--with-xkb-bin-directory=/usr/bin \
 	--with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/100dpi/:unscaled,/usr/share/fonts/X11/75dpi/:unscaled,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi,/usr/share/fonts/X11/75dpi,built-ins" \
+  --with-sha1=libcrypto \
 	--without-dtrace --disable-dri \
         --disable-static \
 	--disable-xinerama --disable-xvfb --disable-xnest --disable-xorg \

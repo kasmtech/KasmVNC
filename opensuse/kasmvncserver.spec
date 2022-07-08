@@ -7,7 +7,7 @@ License: GPLv2+
 URL: https://github.com/kasmtech/KasmVNC
 
 BuildRequires: rsync
-Requires: xauth, libxkbcommon-x11-0, xkeyboard-config, x11-tools, openssl, perl, libpixman-1-0, libnettle6, libjpeg8, libgomp1, libgnutls30, libXfont2-2, libXdmcp6, libglvnd, xkbcomp
+Requires: xauth, libxkbcommon-x11-0, xkeyboard-config, x11-tools, openssl, perl, libpixman-1-0, libjpeg8, libgomp1, libXfont2-2, libXdmcp6, libglvnd, xkbcomp
 Conflicts: tigervnc, tigervnc-x11vnc
 
 %description
