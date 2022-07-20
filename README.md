@@ -67,7 +67,7 @@ sudo addgroup $USER ssl-cert
 # You will need to re-connect in order to pick up the group change
 
 # Create a KasmVNC user able to use keyboard and mouse:
-vncpasswd -u $USER -w
+kasmvncpasswd -u $USER -w
 
 # Create ~/.vnc directory and corresponding files.
 kasmvncserver-easy-start -d && kasmvncserver-easy-start -kill
