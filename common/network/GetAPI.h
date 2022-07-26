@@ -65,6 +65,7 @@ namespace network {
     void netGetFrameStats(char *buf, uint32_t len);
     void netResetFrameStatsCall();
     uint8_t netServerFrameStatsReady();
+    void netUdpUpgrade(void *client, uint32_t ip);
 
     enum USER_ACTION {
       NONE,
@@ -72,6 +73,7 @@ namespace network {
       WANT_FRAME_STATS_ALL,
       WANT_FRAME_STATS_OWNER,
       WANT_FRAME_STATS_SPECIFIC,
+      UDP_UPGRADE
     };
 
     uint8_t netRequestFrameStats(USER_ACTION what, const char *client);
@@ -81,7 +83,13 @@ namespace network {
 
     struct action_data {
       enum USER_ACTION action;
-      kasmpasswd_entry_t data;
+      union {
+        kasmpasswd_entry_t data;
+        struct {
+          void *client;
+          uint32_t ip;
+        } udp;
+      };
     };
 
     pthread_mutex_t userMutex;

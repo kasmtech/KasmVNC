@@ -53,7 +53,7 @@ extern rfb::BoolParameter disablebasicauth;
 
 VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
                                    bool reverse)
-  : sock(s), reverseConnection(reverse),
+  : upgradingToUdp(false), sock(s), reverseConnection(reverse),
     inProcessMessages(false),
     pendingSyncFence(false), syncFence(false), fenceFlags(0),
     fenceDataLen(0), fenceData(NULL), congestionTimer(this),
@@ -63,7 +63,8 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
     continuousUpdates(false), encodeManager(this, &server_->encCache),
     needsPermCheck(false), pointerEventTime(0),
     clientHasCursor(false),
-    accessRights(AccessDefault), startTime(time(0)), frameTracking(false)
+    accessRights(AccessDefault), startTime(time(0)), frameTracking(false),
+    udpFramesSinceFull(0)
 {
   setStreams(&sock->inStream(), &sock->outStream());
   peerEndpoint.buf = sock->getPeerEndpoint();
@@ -1231,7 +1232,7 @@ bool VNCSConnectionST::isCongested()
   if (sock->outStream().bufferUsage() > 0)
     return true;
 
-  if (!cp.supportsFence)
+  if (!cp.supportsFence || cp.supportsUdp)
     return false;
 
   congestion.updatePosition(sock->outStream().length());
@@ -1462,6 +1463,14 @@ void VNCSConnectionST::writeDataUpdate()
   if (!pending.is_empty())
     ui.copypassed.clear();
 
+  // Do we need to send a full frame?
+  if (Server::udpFullFrameFrequency && cp.supportsUdp) {
+    if (udpFramesSinceFull >= (unsigned) Server::udpFullFrameFrequency) {
+      udpFramesSinceFull = 0;
+      ui.changed.assign_union(Region(Rect(0, 0, cp.width, cp.height)));
+    }
+  }
+
   // Return if there is nothing to send the client.
   const unsigned losslessThreshold = 80 + 2 * 1000 / Server::frameRate;
 
@@ -1518,6 +1527,9 @@ void VNCSConnectionST::writeDataUpdate()
   updates.subtract(req);
 
   requested.clear();
+
+  if (Server::udpFullFrameFrequency && cp.supportsUdp)
+    udpFramesSinceFull++;
 }
 
 void VNCSConnectionST::writeBinaryClipboard()
@@ -1744,4 +1756,23 @@ bool VNCSConnectionST::checkOwnerConn() const
   }
 
   return false;
+}
+
+void VNCSConnectionST::udpUpgrade(const char *resp)
+{
+  if (resp[0] == 'H') {
+    vlog.info("Client %s requested upgrade to udp, but WebUdp refused", sock->getPeerAddress());
+  } else {
+    vlog.info("Client %s requesting upgrade to udp", sock->getPeerAddress());
+    upgradingToUdp = true;
+  }
+  writer()->writeUdpUpgrade(resp);
+}
+
+void VNCSConnectionST::udpDowngrade()
+{
+  cp.supportsUdp = false;
+  cp.useCopyRect = true;
+
+  vlog.info("Client %s downgrading from udp", sock->getPeerAddress());
 }

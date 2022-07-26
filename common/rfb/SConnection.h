@@ -24,6 +24,7 @@
 #ifndef __RFB_SCONNECTION_H__
 #define __RFB_SCONNECTION_H__
 
+#include <network/Udp.h>
 #include <rdr/InStream.h>
 #include <rdr/OutStream.h>
 #include <rfb/SMsgHandler.h>
@@ -173,7 +174,7 @@ namespace rfb {
     SMsgWriter* writer() { return writer_; }
 
     rdr::InStream* getInStream() { return is; }
-    rdr::OutStream* getOutStream() { return os; }
+    rdr::OutStream* getOutStream(const bool udp = false) { return udp ? udps : os; }
 
     enum stateEnum {
       RFBSTATE_UNINITIALISED,
@@ -219,6 +220,7 @@ namespace rfb {
     int defaultMajorVersion, defaultMinorVersion;
     rdr::InStream* is;
     rdr::OutStream* os;
+    network::UdpStream *udps;
     SMsgReader* reader_;
     SMsgWriter* writer_;
     SecurityServer security;

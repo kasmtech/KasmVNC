@@ -122,6 +122,15 @@ Password file for BasicAuth, created with the \fBkasmvncpasswd\fP utility.
 Default \fI~/.kasmpasswd\fP.
 .
 .TP
+.B \-PublicIP \fImy-ip\fP
+The server's public IP, for UDP negotiation. If not set, will be queried via the internet.
+Default unset.
+.
+.TP
+.B \-udpFullFrameFrequency \fIframes\fP
+Send a full frame every N frames for clients using UDP. 0 to disable. Default \fI0\fP.
+.
+.TP
 .B \-AcceptCutText
 Accept clipboard updates from clients. Default is on.
 .

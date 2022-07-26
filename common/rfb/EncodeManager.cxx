@@ -622,7 +622,7 @@ Encoder *EncodeManager::startRect(const Rect& rect, int type, const bool trackQu
   if (isWebp)
     klass = encoderTightWEBP;
 
-  beforeLength = conn->getOutStream()->length();
+  beforeLength = conn->getOutStream(conn->cp.supportsUdp)->length();
 
   stats[klass][activeType].rects++;
   stats[klass][activeType].pixels += rect.area();
@@ -655,7 +655,7 @@ void EncodeManager::endRect(const uint8_t isWebp)
 
   conn->writer()->endRect();
 
-  length = conn->getOutStream()->length() - beforeLength;
+  length = conn->getOutStream(conn->cp.supportsUdp)->length() - beforeLength;
 
   klass = activeEncoders[activeType];
   if (isWebp)
@@ -669,7 +669,7 @@ void EncodeManager::writeCopyPassRects(const std::vector<CopyPassRect>& copypass
 
   Region lossyCopy;
 
-  beforeLength = conn->getOutStream()->length();
+  beforeLength = conn->getOutStream(conn->cp.supportsUdp)->length();
 
   for (rect = copypassed.begin(); rect != copypassed.end(); ++rect) {
     int equiv;
@@ -689,7 +689,7 @@ void EncodeManager::writeCopyPassRects(const std::vector<CopyPassRect>& copypass
     lossyRegion.assign_union(lossyCopy);
   }
 
-  copyStats.bytes += conn->getOutStream()->length() - beforeLength;
+  copyStats.bytes += conn->getOutStream(conn->cp.supportsUdp)->length() - beforeLength;
 }
 
 void EncodeManager::writeCopyRects(const Region& copied, const Point& delta)
@@ -699,7 +699,7 @@ void EncodeManager::writeCopyRects(const Region& copied, const Point& delta)
 
   Region lossyCopy;
 
-  beforeLength = conn->getOutStream()->length();
+  beforeLength = conn->getOutStream(conn->cp.supportsUdp)->length();
 
   copied.get_rects(&rects, delta.x <= 0, delta.y <= 0);
   for (rect = rects.begin(); rect != rects.end(); ++rect) {
@@ -714,7 +714,7 @@ void EncodeManager::writeCopyRects(const Region& copied, const Point& delta)
                                    rect->tl.y - delta.y);
   }
 
-  copyStats.bytes += conn->getOutStream()->length() - beforeLength;
+  copyStats.bytes += conn->getOutStream(conn->cp.supportsUdp)->length() - beforeLength;
 
   lossyCopy = lossyRegion;
   lossyCopy.translate(delta);

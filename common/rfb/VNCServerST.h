@@ -43,7 +43,6 @@ namespace rfb {
   class ListConnInfo;
   class PixelBuffer;
   class KeyRemapper;
-  class network::GetAPIMessager;
 
   class VNCServerST : public VNCServer,
                       public Timer::Callback,

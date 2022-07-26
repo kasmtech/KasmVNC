@@ -38,7 +38,7 @@ namespace rfb {
 
   class SMsgWriter {
   public:
-    SMsgWriter(ConnParams* cp, rdr::OutStream* os);
+    SMsgWriter(ConnParams* cp, rdr::OutStream* os, rdr::OutStream *udps);
     virtual ~SMsgWriter();
 
     // writeServerInit() must only be called at the appropriate time in the
@@ -127,6 +127,8 @@ namespace rfb {
     void startRect(const Rect& r, int enc);
     void endRect();
 
+    void writeUdpUpgrade(const char *resp);
+
   protected:
     void startMsg(int type);
     void endMsg();
@@ -157,6 +159,7 @@ namespace rfb {
 
     ConnParams* cp;
     rdr::OutStream* os;
+    rdr::OutStream* udps;
 
     int nRectsInUpdate;
     int nRectsInHeader;

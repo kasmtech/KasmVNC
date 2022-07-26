@@ -41,7 +41,6 @@
  *
  *   Warning: not thread safe
  */
-int ssl_initialized = 0;
 int pipe_error = 0;
 settings_t settings;
 
@@ -270,15 +269,6 @@ ws_ctx_t *ws_socket_ssl(ws_ctx_t *ctx, int socket, const char * certfile, const 
     } else {
         // Combined key and cert file
         use_keyfile = certfile;
-    }
-
-    // Initialize the library
-    if (! ssl_initialized) {
-        SSL_library_init();
-        OpenSSL_add_all_algorithms();
-        SSL_load_error_strings();
-        ssl_initialized = 1;
-
     }
 
     ctx->ssl_ctx = SSL_CTX_new(SSLv23_server_method());

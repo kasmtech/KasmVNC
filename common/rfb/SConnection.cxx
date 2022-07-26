@@ -62,6 +62,8 @@ SConnection::SConnection()
     defaultMinorVersion = 3;
 
   cp.setVersion(defaultMajorVersion, defaultMinorVersion);
+
+  udps = new network::UdpStream;
 }
 
 SConnection::~SConnection()
@@ -72,6 +74,7 @@ SConnection::~SConnection()
   delete writer_;
   writer_ = 0;
   strFree(clientClipboard);
+  delete udps;
 }
 
 void SConnection::setStreams(rdr::InStream* is_, rdr::OutStream* os_)
@@ -348,7 +351,7 @@ void SConnection::approveConnection(bool accept, const char* reason)
   if (accept) {
     state_ = RFBSTATE_INITIALISATION;
     reader_ = new SMsgReader(this, is);
-    writer_ = new SMsgWriter(&cp, os);
+    writer_ = new SMsgWriter(&cp, os, udps);
     authSuccess();
   } else {
     state_ = RFBSTATE_INVALID;

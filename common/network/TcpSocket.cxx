@@ -42,10 +42,14 @@
 #include <wordexp.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <openssl/crypto.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 #include "websocket.h"
 
 #include <network/GetAPI.h>
 #include <network/TcpSocket.h>
+#include <network/Udp.h>
 #include <rfb/LogWriter.h>
 #include <rfb/Configuration.h>
 #include <rfb/ServerCore.h>
@@ -541,6 +545,45 @@ static uint8_t serverFrameStatsReadyCb(void *messager)
   return msgr->netServerFrameStatsReady();
 }
 
+#if OPENSSL_VERSION_NUMBER < 0x1010000f
+
+static pthread_mutex_t *sslmutex;
+
+static void openssl_lock(int mode, int n, const char *, int)
+{
+  if (mode & CRYPTO_LOCK)
+    pthread_mutex_lock(&sslmutex[n]);
+  else
+    pthread_mutex_unlock(&sslmutex[n]);
+}
+
+static unsigned long openssl_id()
+{
+  return pthread_self();
+}
+
+#endif
+
+static void openssl_threads() {
+
+  SSL_library_init();
+  OpenSSL_add_all_algorithms();
+  SSL_load_error_strings();
+  ERR_load_BIO_strings();
+  ERR_load_crypto_strings();
+
+#if OPENSSL_VERSION_NUMBER < 0x1010000f
+
+  sslmutex = (pthread_mutex_t *) calloc(CRYPTO_num_locks(), sizeof(pthread_mutex_t));
+  unsigned i;
+  for (i = 0; i < (unsigned) CRYPTO_num_locks(); i++)
+    pthread_mutex_init(&sslmutex[i], NULL);
+
+  CRYPTO_set_locking_callback(openssl_lock);
+  CRYPTO_set_id_callback(openssl_id);
+
+#endif
+}
 
 WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
                          socklen_t listenaddrlen,
@@ -650,8 +693,14 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   settings.getClientFrameStatsNumCb = getClientFrameStatsNumCb;
   settings.serverFrameStatsReadyCb = serverFrameStatsReadyCb;
 
+  openssl_threads();
+
   pthread_t tid;
   pthread_create(&tid, NULL, start_server, NULL);
+
+  uint16_t *nport = (uint16_t *) calloc(1, sizeof(uint16_t));
+  *nport = ntohs(sa.u.sin.sin_port);
+  pthread_create(&tid, NULL, udpserver, nport);
 }
 
 Socket* WebsocketListener::createSocket(int fd) {

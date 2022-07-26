@@ -35,6 +35,7 @@
 #include <rfb/Hostname.h>
 #include <rfb/Region.h>
 #include <rfb/ledStates.h>
+#include <network/iceip.h>
 #include <network/TcpSocket.h>
 #include <network/UnixSocket.h>
 
@@ -199,8 +200,10 @@ void vncExtensionInit(void)
 
   vncAddExtension();
 
-  if (!initialised)
+  if (!initialised) {
     parseClipTypes();
+    getPublicIP();
+  }
   vncSelectionInit();
 
   vlog.info("VNC extension running!");

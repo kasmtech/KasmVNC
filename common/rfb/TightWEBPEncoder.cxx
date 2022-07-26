@@ -188,7 +188,7 @@ void TightWEBPEncoder::writeOnly(const std::vector<uint8_t> &out) const
 {
   rdr::OutStream* os;
 
-  os = conn->getOutStream();
+  os = conn->getOutStream(conn->cp.supportsUdp);
 
   os->writeU8(tightWebp << 4);
 
@@ -248,7 +248,7 @@ void TightWEBPEncoder::writeRect(const PixelBuffer* pb, const Palette& palette)
     vlog.error("WEBP error %u", pic.error_code);
   }
 
-  os = conn->getOutStream();
+  os = conn->getOutStream(conn->cp.supportsUdp);
 
   os->writeU8(tightWebp << 4);
 

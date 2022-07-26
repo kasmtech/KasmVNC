@@ -1,0 +1,19 @@
+{
+  "name": "webudp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "webudp.js",
+  "scripts": {
+    "configure": "node-gyp configure",
+    "build": "node-gyp build"
+  },
+  "dependencies": {
+    "express": "4.16.3",
+    "cors": "2.8.4",
+    "body-parser": "1.18.3"
+  },
+  "devDependencies": {
+    "node-gyp": "6.1.0",
+    "nan": "2.14.0"
+  }
+}
