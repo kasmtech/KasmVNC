@@ -52,6 +52,7 @@
 #include <stdlib.h>
 
 #include <network/GetAPI.h>
+#include <network/Udp.h>
 
 #include <rfb/cpuid.h>
 #include <rfb/ComparingUpdateTracker.h>
@@ -66,6 +67,7 @@
 
 #include <rdr/types.h>
 
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <sys/inotify.h>
 #include <unistd.h>
@@ -796,8 +798,43 @@ int VNCServerST::msToNextUpdate()
     return frameTimer.getRemainingMs();
 }
 
+static void upgradeClientToUdp(const network::GetAPIMessager::action_data &act,
+                               std::list<VNCSConnectionST*> &clients)
+{
+  std::list<VNCSConnectionST*>::iterator ci, ci_next;
+
+  for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
+    ci_next = ci; ci_next++;
+
+    if (!(*ci)->upgradingToUdp)
+      continue;
+
+    char buf[32];
+    inet_ntop(AF_INET, &act.udp.ip, buf, 32);
+
+    const char * const who = (*ci)->getPeerEndpoint();
+    const char *start = strchr(who, '@');
+    if (!start)
+      continue;
+    start++;
+
+    // Slightly inaccurate, if several clients on the same IP try to upgrade at the same time
+    if (strncmp(start, buf, strlen(buf)))
+      continue;
+
+    (*ci)->upgradingToUdp = false;
+    (*ci)->cp.useCopyRect = false;
+    ((network::UdpStream *)(*ci)->getOutStream(true))->setClient((WuClient *) act.udp.client);
+    (*ci)->cp.supportsUdp = true;
+
+    slog.info("%s upgraded to UDP", who);
+    return;
+  }
+}
+
 static void checkAPIMessages(network::GetAPIMessager *apimessager,
-                             rdr::U8 &trackingFrameStats, char trackingClient[])
+                             rdr::U8 &trackingFrameStats, char trackingClient[],
+                             std::list<VNCSConnectionST*> &clients)
 {
   if (pthread_mutex_lock(&apimessager->userMutex))
     return;
@@ -825,6 +862,9 @@ static void checkAPIMessages(network::GetAPIMessager *apimessager,
       case network::GetAPIMessager::WANT_FRAME_STATS_SPECIFIC:
         trackingFrameStats = act.action;
         memcpy(trackingClient, act.data.password, 128);
+      break;
+      case network::GetAPIMessager::UDP_UPGRADE:
+        upgradeClientToUdp(act, clients);
       break;
     }
   }
@@ -991,7 +1031,7 @@ void VNCServerST::writeUpdate()
     shottime = msSince(&shotstart);
 
     trackingFrameStats = 0;
-    checkAPIMessages(apimessager, trackingFrameStats, trackingClient);
+    checkAPIMessages(apimessager, trackingFrameStats, trackingClient, clients);
   }
   const rdr::U8 origtrackingFrameStats = trackingFrameStats;
 

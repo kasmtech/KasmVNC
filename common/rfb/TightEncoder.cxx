@@ -104,7 +104,7 @@ void TightEncoder::writeSolidRect(int width, int height,
 {
   rdr::OutStream* os;
 
-  os = conn->getOutStream();
+  os = conn->getOutStream(conn->cp.supportsUdp);
 
   os->writeU8(tightFill << 4);
   writePixels(colour, pf, 1, os);
@@ -165,9 +165,11 @@ void TightEncoder::writeFullColourRect(const PixelBuffer* pb, const Palette& pal
   const rdr::U8* buffer;
   int stride, h;
 
-  os = conn->getOutStream();
-
-  os->writeU8(streamId << 4);
+  os = conn->getOutStream(conn->cp.supportsUdp);
+  if (conn->cp.supportsUdp)
+    os->writeU8((streamId << 4) | (1 << streamId));
+  else
+    os->writeU8(streamId << 4);
 
   // Set up compression
   if ((pb->getPF().bpp != 32) || !pb->getPF().is888())
@@ -238,13 +240,15 @@ rdr::OutStream* TightEncoder::getZlibOutStream(int streamId, int level, size_t l
   // Minimum amount of data to be compressed. This value should not be
   // changed, doing so will break compatibility with existing clients.
   if (length < 12)
-    return conn->getOutStream();
+    return conn->getOutStream(conn->cp.supportsUdp);
 
   assert(streamId >= 0);
   assert(streamId < 4);
 
   zlibStreams[streamId].setUnderlying(&memStream);
   zlibStreams[streamId].setCompressionLevel(level);
+  if (conn->cp.supportsUdp)
+    zlibStreams[streamId].resetDeflate();
 
   return &zlibStreams[streamId];
 }
@@ -261,7 +265,7 @@ void TightEncoder::flushZlibOutStream(rdr::OutStream* os_)
   zos->flush();
   zos->setUnderlying(NULL);
 
-  os = conn->getOutStream();
+  os = conn->getOutStream(conn->cp.supportsUdp);
 
   writeCompact(os, memStream.length());
   os->writeBytes(memStream.data(), memStream.length());

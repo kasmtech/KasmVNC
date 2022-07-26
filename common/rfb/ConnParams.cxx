@@ -45,6 +45,7 @@ ConnParams::ConnParams()
     supportsWEBP(false),
     supportsSetDesktopSize(false), supportsFence(false),
     supportsContinuousUpdates(false), supportsExtendedClipboard(false),
+    supportsUdp(false),
     compressLevel(2), qualityLevel(-1), fineQualityLevel(-1),
     subsampling(subsampleUndefined), name_(0), cursorPos_(0, 0), verStrPos(0),
     ledState_(ledUnknown), shandler(NULL)

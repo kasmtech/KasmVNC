@@ -147,7 +147,7 @@ void TightJPEGEncoder::writeOnly(const std::vector<uint8_t> &out) const
 {
   rdr::OutStream* os;
 
-  os = conn->getOutStream();
+  os = conn->getOutStream(conn->cp.supportsUdp);
 
   os->writeU8(tightJpeg << 4);
 
@@ -184,7 +184,7 @@ void TightJPEGEncoder::writeRect(const PixelBuffer* pb, const Palette& palette)
   jc.compress(buffer, stride, pb->getRect(),
               pb->getPF(), quality, subsampling);
 
-  os = conn->getOutStream();
+  os = conn->getOutStream(conn->cp.supportsUdp);
 
   os->writeU8(tightJpeg << 4);
 

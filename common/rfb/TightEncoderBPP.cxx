@@ -38,9 +38,12 @@ void TightEncoder::writeMonoRect(int width, int height,
 
   assert(palette.size() == 2);
 
-  os = conn->getOutStream();
+  os = conn->getOutStream(conn->cp.supportsUdp);
 
-  os->writeU8((streamId | tightExplicitFilter) << 4);
+  if (conn->cp.supportsUdp)
+    os->writeU8(((streamId | tightExplicitFilter) << 4) | (1 << streamId));
+  else
+    os->writeU8((streamId | tightExplicitFilter) << 4);
   os->writeU8(tightFilterPalette);
 
   // Write the palette
@@ -125,9 +128,12 @@ void TightEncoder::writeIndexedRect(int width, int height,
   assert(palette.size() > 0);
   assert(palette.size() <= 256);
 
-  os = conn->getOutStream();
+  os = conn->getOutStream(conn->cp.supportsUdp);
 
-  os->writeU8((streamId | tightExplicitFilter) << 4);
+  if (conn->cp.supportsUdp)
+    os->writeU8(((streamId | tightExplicitFilter) << 4) | (1 << streamId));
+  else
+    os->writeU8((streamId | tightExplicitFilter) << 4);
   os->writeU8(tightFilterPalette);
 
   // Write the palette

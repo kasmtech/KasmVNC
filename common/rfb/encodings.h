@@ -27,6 +27,7 @@ namespace rfb {
   const int encodingCoRRE = 4;
   const int encodingHextile = 5;
   const int encodingTight = 7;
+  const int encodingUdp = 8;
   const int encodingZRLE = 16;
 
   const int encodingMax = 255;

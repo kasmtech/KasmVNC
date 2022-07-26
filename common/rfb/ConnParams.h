@@ -117,6 +117,8 @@ namespace rfb {
     bool supportsContinuousUpdates;
     bool supportsExtendedClipboard;
 
+    bool supportsUdp;
+
     int compressLevel;
     int qualityLevel;
     int fineQualityLevel;

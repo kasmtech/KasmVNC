@@ -43,6 +43,8 @@ namespace rdr {
     void flush();
     size_t length();
 
+    void resetDeflate();
+
   private:
 
     virtual void overrun(size_t needed);

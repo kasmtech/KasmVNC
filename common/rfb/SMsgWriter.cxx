@@ -37,8 +37,8 @@ using namespace rfb;
 
 static LogWriter vlog("SMsgWriter");
 
-SMsgWriter::SMsgWriter(ConnParams* cp_, rdr::OutStream* os_)
-  : cp(cp_), os(os_),
+SMsgWriter::SMsgWriter(ConnParams* cp_, rdr::OutStream* os_, rdr::OutStream* udps_)
+  : cp(cp_), os(os_), udps(udps_),
     nRectsInUpdate(0), nRectsInHeader(0),
     needSetDesktopSize(false), needExtendedDesktopSize(false),
     needSetDesktopName(false), needSetCursor(false),
@@ -362,6 +362,16 @@ void SMsgWriter::writeFramebufferUpdateEnd()
     os->writeU16(0);
     os->writeU16(0);
     os->writeU32(pseudoEncodingLastRect);
+
+    // Send an UDP flip marker, if needed
+    if (cp->supportsUdp) {
+      udps->writeS16(0);
+      udps->writeS16(0);
+      udps->writeU16(0);
+      udps->writeU16(0);
+      udps->writeU32(pseudoEncodingLastRect);
+      udps->flush();
+    }
   }
 
   endMsg();
@@ -370,8 +380,13 @@ void SMsgWriter::writeFramebufferUpdateEnd()
 void SMsgWriter::writeCopyRect(const Rect& r, int srcX, int srcY)
 {
   startRect(r,encodingCopyRect);
-  os->writeU16(srcX);
-  os->writeU16(srcY);
+  if (cp->supportsUdp) {
+    udps->writeU16(srcX);
+    udps->writeU16(srcY);
+  } else {
+    os->writeU16(srcX);
+    os->writeU16(srcY);
+  }
   endRect();
 }
 
@@ -380,16 +395,27 @@ void SMsgWriter::startRect(const Rect& r, int encoding)
   if (++nRectsInUpdate > nRectsInHeader && nRectsInHeader)
     throw Exception("SMsgWriter::startRect: nRects out of sync");
 
-  os->writeS16(r.tl.x);
-  os->writeS16(r.tl.y);
-  os->writeU16(r.width());
-  os->writeU16(r.height());
-  os->writeU32(encoding);
+  if (cp->supportsUdp) {
+    udps->writeS16(r.tl.x);
+    udps->writeS16(r.tl.y);
+    udps->writeU16(r.width());
+    udps->writeU16(r.height());
+    udps->writeU32(encoding);
+  } else {
+    os->writeS16(r.tl.x);
+    os->writeS16(r.tl.y);
+    os->writeU16(r.width());
+    os->writeU16(r.height());
+    os->writeU32(encoding);
+  }
 }
 
 void SMsgWriter::endRect()
 {
-  os->flush();
+  if (cp->supportsUdp)
+    udps->flush();
+  else
+    os->flush();
 }
 
 void SMsgWriter::startMsg(int type)
@@ -711,4 +737,15 @@ void SMsgWriter::writeQEMUKeyEventRect()
   os->writeU16(0);
   os->writeU16(0);
   os->writeU32(pseudoEncodingQEMUKeyEvent);
+}
+
+void SMsgWriter::writeUdpUpgrade(const char *resp)
+{
+  startMsg(msgTypeUpgradeToUdp);
+
+  rdr::U16 len = strlen(resp);
+  os->writeU16(len);
+  os->writeBytes(resp, len);
+
+  endMsg();
 }

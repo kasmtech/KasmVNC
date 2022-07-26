@@ -63,6 +63,8 @@ namespace rfb {
     void readQEMUMessage();
     void readQEMUKeyEvent();
 
+    void readUpgradeToUdp();
+
     SMsgHandler* handler;
     rdr::InStream* is;
   };

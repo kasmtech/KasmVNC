@@ -17,6 +17,7 @@
  * USA.
  */
 #include <stdio.h>
+#include <network/Udp.h>
 #include <rdr/InStream.h>
 #include <rdr/ZlibInStream.h>
 
@@ -95,6 +96,9 @@ void SMsgReader::readMsg()
     break;
   case msgTypeQEMUClientMessage:
     readQEMUMessage();
+    break;
+  case msgTypeUpgradeToUdp:
+    readUpgradeToUdp();
     break;
   default:
     fprintf(stderr, "unknown message type %d\n", msgType);
@@ -328,4 +332,28 @@ void SMsgReader::readQEMUKeyEvent()
     return;
   }
   handler->keyEvent(keysym, keycode, down);
+}
+
+void SMsgReader::readUpgradeToUdp()
+{
+  char buf[4096], resp[4096];
+  rdr::U16 len = is->readU16();
+
+  if (len >= sizeof(buf)) {
+    vlog.error("Ignoring udp upgrade with too large payload");
+    is->skip(len);
+    return;
+  }
+
+  if (!len) {
+    handler->udpDowngrade();
+    return;
+  }
+
+  is->readBytes(buf, len);
+  buf[len] = '\0';
+
+  wuGotHttp(buf, len, resp);
+
+  handler->udpUpgrade(resp);
 }

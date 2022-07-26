@@ -217,6 +217,16 @@ rfb::StringParameter rfb::Server::kasmPasswordFile
  "Password file for BasicAuth, created with the kasmvncpasswd utility.",
  "~/.kasmpasswd");
 
+rfb::StringParameter rfb::Server::publicIP
+("publicIP",
+ "The server's public IP, for UDP negotiation. If not set, will be queried via the internet.",
+ "");
+
+rfb::IntParameter rfb::Server::udpFullFrameFrequency
+("udpFullFrameFrequency",
+ "Send a full frame every N frames for clients using UDP. 0 to disable",
+ 0, 0, 1000);
+
 static void bandwidthPreset() {
   rfb::Server::dynamicQualityMin.setParam(2);
   rfb::Server::dynamicQualityMax.setParam(9);

@@ -194,3 +194,9 @@ void ZlibOutStream::checkCompressionLevel()
     compressionLevel = newLevel;
   }
 }
+
+void ZlibOutStream::resetDeflate() {
+  int ret = deflateReset(zs);
+  if (ret != Z_OK)
+    throw Exception("ZlibOutStream: deflateReset failed");
+}

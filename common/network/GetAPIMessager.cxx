@@ -790,3 +790,19 @@ uint8_t GetAPIMessager::netServerFrameStatsReady() {
 
 	return ret;
 }
+
+void GetAPIMessager::netUdpUpgrade(void *client, uint32_t ip) {
+	// Return 1 for success
+	action_data act;
+	act.action = UDP_UPGRADE;
+	act.udp.client = client;
+	act.udp.ip = ip;
+
+	// Send it in
+	if (pthread_mutex_lock(&userMutex))
+		return;
+
+	actionQueue.push_back(act);
+
+	pthread_mutex_unlock(&userMutex);
+}
