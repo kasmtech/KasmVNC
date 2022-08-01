@@ -63,6 +63,7 @@ namespace rfb {
     static IntParameter udpFullFrameFrequency;
     static StringParameter kasmPasswordFile;
     static StringParameter publicIP;
+    static StringParameter stunServer;
     static BoolParameter printVideoArea;
     static BoolParameter protocol3_3;
     static BoolParameter alwaysShared;

@@ -170,10 +170,15 @@ void getPublicIP() {
 		abort();
 
 	unsigned i;
-	for (i = 0; i < sizeof(servers) / sizeof(servers[0]); i++) {
-		if (tryserver(servers[i], sock))
-			break;
-		vlog.info("STUN server %u didn't work, trying next...", i);
+	if (rfb::Server::stunServer[0]) {
+		if (strlen(rfb::Server::stunServer) < PATH_MAX)
+			tryserver(rfb::Server::stunServer, sock);
+	} else {
+		for (i = 0; i < sizeof(servers) / sizeof(servers[0]); i++) {
+			if (tryserver(servers[i], sock))
+				break;
+			vlog.info("STUN server %u didn't work, trying next...", i);
+		}
 	}
 
 	close(sock);
