@@ -226,6 +226,10 @@ rfb::IntParameter rfb::Server::udpFullFrameFrequency
 ("udpFullFrameFrequency",
  "Send a full frame every N frames for clients using UDP. 0 to disable",
  0, 0, 1000);
+rfb::IntParameter rfb::Server::udpPort
+("udpPort",
+ "Which port to use for UDP. Default same as websocket",
+ 0, 0, 65535);
 
 static void bandwidthPreset() {
   rfb::Server::dynamicQualityMin.setParam(2);
