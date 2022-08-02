@@ -131,6 +131,10 @@ Default unset.
 Send a full frame every N frames for clients using UDP. 0 to disable. Default \fI0\fP.
 .
 .TP
+.B \-udpPort \fIport\fP
+Which port to use for UDP. Default same as websocket.
+.
+.TP
 .B \-AcceptCutText
 Accept clipboard updates from clients. Default is on.
 .

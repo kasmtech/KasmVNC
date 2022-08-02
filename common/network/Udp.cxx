@@ -60,6 +60,7 @@ void *udpserver(void *nport) {
 		vlog.error("Failed to create WebUDP host");
 		return NULL;
 	}
+	vlog.debug("UDP listening on port %u", *(uint16_t *) nport);
 
 	__sync_bool_compare_and_swap(&host, host, myhost);
 

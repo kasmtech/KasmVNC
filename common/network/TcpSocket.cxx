@@ -699,7 +699,10 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   pthread_create(&tid, NULL, start_server, NULL);
 
   uint16_t *nport = (uint16_t *) calloc(1, sizeof(uint16_t));
-  *nport = ntohs(sa.u.sin.sin_port);
+  if (rfb::Server::udpPort)
+    *nport = rfb::Server::udpPort;
+  else
+    *nport = ntohs(sa.u.sin.sin_port);
   pthread_create(&tid, NULL, udpserver, nport);
 }
 
