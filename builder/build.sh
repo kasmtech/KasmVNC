@@ -46,9 +46,13 @@ cd unix/xserver
 patch -Np1 -i ../xserver${XORG_PATCH}.patch
 case "$XORG_VER" in
   1.20.*)
+      patch -s -p0 < ../CVE-2022-2320-v1.20.patch
       if [ -f ../xserver120.7.patch ]; then
         patch -Np1 -i ../xserver120.7.patch
       fi ;;
+  1.19.*)
+      patch -s -p0 < ../CVE-2022-2320-v1.19.patch
+      ;;
 esac
 
 autoreconf -i
