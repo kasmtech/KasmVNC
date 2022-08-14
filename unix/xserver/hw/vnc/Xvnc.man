@@ -127,6 +127,12 @@ The server's public IP, for UDP negotiation. If not set, will be queried via the
 Default unset.
 .
 .TP
+.B \-StunServer \fIsrv\fP
+Use this STUN server for querying the server's public IP. If not set, a hardcoded list of
+STUN servers is used.
+Default unset.
+.
+.TP
 .B \-udpFullFrameFrequency \fIframes\fP
 Send a full frame every N frames for clients using UDP. 0 to disable. Default \fI0\fP.
 .

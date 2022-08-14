@@ -221,6 +221,10 @@ rfb::StringParameter rfb::Server::publicIP
 ("publicIP",
  "The server's public IP, for UDP negotiation. If not set, will be queried via the internet.",
  "");
+rfb::StringParameter rfb::Server::stunServer
+("stunServer",
+ "Use this STUN server for querying the server's public IP. If not set, a hardcoded list is used.",
+ "");
 
 rfb::IntParameter rfb::Server::udpFullFrameFrequency
 ("udpFullFrameFrequency",
