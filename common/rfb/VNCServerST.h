@@ -197,6 +197,8 @@ namespace rfb {
     void handleClipboardAnnounceBinary(VNCSConnectionST* client, const unsigned num,
                                        const char mimes[][32]);
 
+    void refreshClients();
+
   protected:
 
     friend class VNCSConnectionST;
