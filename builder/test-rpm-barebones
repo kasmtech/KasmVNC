@@ -3,11 +3,13 @@
 set -e
 
 cd "$(dirname "$0")"
+. ./common.sh
 os="${1:-centos}"
 os_codename="${2:-core}"
 
 docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os}_${os_codename}" \
   -t kasmvnctester_barebones_${os}:$os_codename \
   -f dockerfile.${os}_${os_codename}.barebones.rpm.test .
-docker run -it -p 443:8443 --rm -e "VNC_USER=foo" -e "VNC_PW=foobar" \
+docker run -it -p "443:$VNC_PORT" --rm -e "VNC_USER=foo" -e "VNC_PW=foobar" \
+  -e "VNC_PORT=$VNC_PORT" \
   kasmvnctester_barebones_${os}:$os_codename

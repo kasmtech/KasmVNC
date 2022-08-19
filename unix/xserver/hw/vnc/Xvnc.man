@@ -1,9 +1,9 @@
 .TH Xvnc 1 "" "KasmVNC" "Virtual Network Computing"
 .SH NAME
-Xvnc \- the X VNC server 
+Xvnc \- the X VNC server
 .SH SYNOPSIS
 .B Xvnc
-.RI [ options ] 
+.RI [ options ]
 .RI : display#
 .SH DESCRIPTION
 .B Xvnc
@@ -50,7 +50,7 @@ depth 16 is RGB565 and for depth 24 and 32 is RGB888.
 Listen on interface. By default Xvnc listens on all available interfaces.
 .
 .TP
-.B \-inetd 
+.B \-inetd
 This significantly changes Xvnc's behaviour so that it can be launched from
 inetd.  See the section below on usage with inetd.
 .
@@ -143,11 +143,6 @@ Which port to use for UDP. Default same as websocket.
 .TP
 .B \-AcceptCutText
 Accept clipboard updates from clients. Default is on.
-.
-.TP
-.B \-MaxCutText \fIbytes\fP
-The maximum size of a clipboard update that will be accepted from a client.
-Default is \fB262144\fP.
 .
 .TP
 .B \-SendCutText

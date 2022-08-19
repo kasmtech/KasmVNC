@@ -37,7 +37,7 @@ RUN apt-get update && apt-get -y install lsb-release
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
 RUN mkdir -p $STARTUPDIR
-COPY startup/ $STARTUPDIR
+COPY builder/startup/ $STARTUPDIR
 
 ### START CUSTOM STUFF ####
 

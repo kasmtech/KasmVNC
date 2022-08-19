@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -e
+export PYTHONPATH=${PWD}/spec
+
+RUN_CMD="pipenv run mamba"
+
+specs=()
+for arg in "$@"; do
+  if [[ "$arg" = "-d" ]]; then
+    export KASMVNC_SPEC_DEBUG_OUTPUT=1
+    continue;
+  fi
+  if [[ "$arg" = "-v" ]]; then
+    verbose=1
+    continue
+  fi
+
+  specs+=("$arg")
+done
+set -- "${specs[@]}"
+
+if [[ "$1" = "-h" || "$1" = "--help" ]]; then
+  echo >&2 "Usage: $(basename "$0") [-d] [-v] <spec...>"
+  exit 0
+fi
+
+if [[ -n "$verbose" ]]; then
+ RUN_CMD="$RUN_CMD --format=documentation"
+fi
+
+if [[ -n "$1" ]]; then
+  $RUN_CMD "$@"
+else
+  $RUN_CMD spec/*_spec.py
+fi

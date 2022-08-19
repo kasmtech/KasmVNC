@@ -1,18 +1,20 @@
 FROM centos:centos7
 
+ENV STARTUPDIR=/dockerstartup
+
 RUN yum install -y xterm
 RUN yum install -y vim less
 RUN yum install -y redhat-lsb-core
+RUN yum install -y epel-release
 
 ARG KASMVNC_PACKAGE_DIR
-COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp
+COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp/
 RUN yum localinstall -y /tmp/*.rpm
 
-RUN useradd -m foo
+RUN mkdir -p $STARTUPDIR
+COPY startup/vnc_startup_barebones.sh $STARTUPDIR
 
+RUN useradd -m foo
 USER foo:kasmvnc-cert
 
-RUN mkdir ~/.vnc && echo '/usr/bin/xterm &' >> ~/.vnc/xstartup && \
-  chmod +x ~/.vnc/xstartup
-
-ENTRYPOINT bash -c "echo -e \"$VNC_PW\n$VNC_PW\n\" | kasmvncpasswd -w -u \"$VNC_USER\" && vncserver :1 -interface 0.0.0.0 && vncserver -kill :1 && vncserver :1 -depth 24 -geometry 1280x1050 -websocketPort 8443 -cert /etc/pki/tls/private/kasmvnc.pem -sslOnly -FrameRate=24 -interface 0.0.0.0 -httpd /usr/share/kasmvnc/www && tail -f $HOME/.vnc/*.log "
+ENTRYPOINT "/$STARTUPDIR/vnc_startup_barebones.sh"

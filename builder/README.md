@@ -110,6 +110,37 @@ prepare_upload_filename "bionic/kasmvncserver_0.9.1~beta-1+libjpeg-turbo-latest_
 echo $upload_filename;'
 ```
 
+# vncserver development
+
+## Building a Ubuntu Focal package
+```
+builder/build-package ubuntu focal
+```
+
+You don't need to `build-package` every time you change something, but you need
+`Xvnc` and other files.
+
+## Running a development environment
+
+```
+builder/devenv-vncserver
+```
+
+`devenv-vncserver` starts a dockerized development environment. Edit
+`vncserver`, its modules, and configuration files as usual. When you
+run`vncserver`, not `/usr/bin/vncserver` will be used, but `./unix/vncserver`.
+Same for configuration files.
+
+Python specs can be run with `ty` alias inside devenv.
+
+### Debug output
+To see `vncserver` output, run `ty -d`. Anything you print inside `vncserver`
+with `say` should be visible that way.
+
+### Finding which spec produces a warning
+By default, each passing test is represented as a dot. `-v` flag causes tests to
+emit test descriptions alongside the program's output. Run `ty -v`.
+
 # ARM
 
 KasmVNC is supported on ARM, however, the build process needs to be broken into two parts with one occuring on a x64 system and the other on an ARM system. All our testing and official builds are done on AWS Graviton instances.

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+default_os=ubuntu
+default_os_codename=focal
+
+. ./builder/os_ver_cli.sh
+
+if [[ -n "$GITLAB_CI" ]]; then
+  package_dir="output/${os_codename}"
+else
+  package_dir="builder/build/${os_codename}"
+fi
+
+docker build --build-arg KASMVNC_PACKAGE_DIR="$package_dir" \
+  -t kasmvnctester_${os}:$os_codename \
+  -f builder/dockerfile.${os}_${os_codename}.specs.test .
+docker run -v $(realpath ${PWD}):/src \
+  --rm \
+  -e KASMVNC_VERBOSE_LOGGING=$KASMVNC_VERBOSE_LOGGING \
+  -e "VNC_USER=foo" -e "VNC_PW=foobar" \
+  kasmvnctester_${os}:$os_codename

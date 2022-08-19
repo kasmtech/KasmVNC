@@ -1,0 +1,4 @@
+security:
+  brute_force_protection:
+    blacklist_threshold: 7
+    blacklist_timeout: 12

@@ -2,15 +2,17 @@
 
 set -e
 
-cd "$(dirname "$0")"
-. ./os_ver_cli.sh
+cd "$(dirname "$0")/.."
+. ./builder/os_ver_cli.sh
+. ./builder/common.sh
 
-tester_image=kasmvnctester_${os}:$os_codename${build_tag_for_images}
-docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os_codename}" \
+tester_image="builder/kasmvnctester_${os}:$os_codename${build_tag_for_images}"
+docker build --build-arg KASMVNC_PACKAGE_DIR="builder/build/${os_codename}" \
   --build-arg BUILD_DEBIAN_REVISION="$build_debian_revision" \
   -t "$tester_image" \
-  -f dockerfile.${os}_${os_codename}${build_tag}.deb.test .
-docker run -it -p 443:8443 --rm \
+  -f "builder/dockerfile.${os}_${os_codename}${build_tag}.deb.test" .
+docker run -it -p "443:$VNC_PORT" --rm \
   -e KASMVNC_VERBOSE_LOGGING=$KASMVNC_VERBOSE_LOGGING \
   -e "VNC_USER=foo" -e "VNC_PW=foobar" \
+  -e "VNC_PORT=$VNC_PORT" \
   "$tester_image"
