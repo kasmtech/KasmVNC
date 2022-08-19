@@ -2,13 +2,15 @@
 
 set -e
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
+. ./builder/common.sh
 os="${1:-debian}"
 os_codename="${2:-buster}"
 
-docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os_codename}" \
+docker build --build-arg KASMVNC_PACKAGE_DIR="builder/build/${os_codename}" \
   -t kasmvnctester_barebones_${os}:$os_codename \
-  -f dockerfile.${os}_${os_codename}.barebones.deb.test .
+  -f builder/dockerfile.${os}_${os_codename}.barebones.deb.test .
 echo
-docker run -it -p 443:8443 --rm -e "VNC_USER=foo" -e "VNC_PW=foobar" \
+docker run -it -p "443:$VNC_PORT" --rm -e "VNC_USER=foo" -e "VNC_PW=foobar" \
+  -e "VNC_PORT=$VNC_PORT" \
   kasmvnctester_barebones_${os}:$os_codename

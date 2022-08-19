@@ -15,6 +15,7 @@ variables:
 stages:
   - www
   - build
+  - test
   - upload
 
 .prepare_build: &prepare_build
@@ -370,6 +371,13 @@ build_opensuse_15_arm:
   artifacts:
     paths:
       - output/
+
+test:
+  stage: test
+  before_script:
+    - *prepare_build
+  script:
+    - bash builder/test-vncserver
 
 upload:
   stage: upload

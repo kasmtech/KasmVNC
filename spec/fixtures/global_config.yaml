@@ -1,0 +1,3 @@
+security:
+  brute_force_protection:
+    blacklist_threshold: 6

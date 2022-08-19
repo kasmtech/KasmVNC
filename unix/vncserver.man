@@ -4,8 +4,6 @@ vncserver \- start or stop a VNC server
 .SH SYNOPSIS
 .B vncserver
 .RI [: display# ]
-.RB [ \-name
-.IR desktop-name ]
 .RB [ \-geometry
 .IR width x height ]
 .RB [ \-depth
@@ -17,7 +15,7 @@ vncserver \- start or stop a VNC server
 .RB [ \-fg ]
 .RB [ \-autokill ]
 .RB [ \-noxstartup ]
-.RB [ \-xstartup 
+.RB [ \-xstartup
 .IR script ]
 .RI [ Xvnc-options... ]
 .br
@@ -53,16 +51,15 @@ In addition to the options listed below, any unrecognised options will be
 passed to Xvnc - see the Xvnc man page, or "Xvnc \-help", for details.
 
 .TP
-.B \-name \fIdesktop-name\fP
-Each VNC desktop has a name which may be displayed by the viewer. The desktop
-name defaults to "\fIhost\fP:\fIdisplay#\fP (\fIusername\fP)", but you can
-change it with this option.  The desktop name option is passed to the xstartup
-script via the $VNCDESKTOP environment variable, which allows you to run a
-different set of applications depending on the name of the desktop.
-.
+.B \-select-de [\fIde_name\fP]
+Select Desktop Enviromnent to run. Cinnamon, Mate, LXDE, LXQT, KDE, Gnome, XFCE
+are supported. If \fIde_name\fP isn't specified, a text UI prompt to select a
+Desktop Enviromnent will be shown.
+Warning: $HOME/.vnc/xstartup will be overwritten.
+
 .TP
 .B \-geometry \fIwidth\fPx\fIheight\fP
-Specify the size of the VNC desktop to be created. Default is 1024x768. 
+Specify the size of the VNC desktop to be created. Default is 1024x768.
 .
 .TP
 .B \-depth \fIdepth\fP
@@ -138,45 +135,28 @@ Xvnc. This is useful to run full-screen applications.
 .TP
 .B \-list
 Lists all VNC desktops started by vncserver.
+.TP
+.B \-dry-run
+Print full command VNC server would be run with and exit. Won't run VNC server.
 
 .SH FILES
-Several VNC-related files are found in the directory $HOME/.vnc:
+.TP
+/etc/kasmvnc/kasmvnc.yaml
+System-wide KasmVNC config. By default, all settings are commented out. The
+commented out settings are the defaults used. Uncomment if you want to change
+them. Otherwise, there's no need.
+.TP
+$HOME/.vnc/kasmvnc.yaml
+An optional user-level server config. Settings here override the system-wide
+config.
 .TP
 $HOME/.vnc/xstartup
 A shell script specifying X applications to be run when a VNC desktop is
 started.  If this file does not exist, then vncserver will create a default
 xstartup script which attempts to launch your chosen window manager.
 .TP
-/etc/kasmvnc/vncserver-config-defaults
-The optional system-wide equivalent of $HOME/.vnc/config. If this file exists
-and defines options to be passed to Xvnc, they will be used as defaults for
-users. The user's $HOME/.vnc/config overrides settings configured in this file.
-The overall configuration file load order is: this file, $HOME/.vnc/config,
-and then /etc/kasmvnc/vncserver-config-mandatory. None are required to exist.
-.TP
-/etc/kasmvnc/vncserver-config-mandatory
-The optional system-wide equivalent of $HOME/.vnc/config. If this file exists
-and defines options to be passed to Xvnc, they will override any of the same
-options defined in a user's $HOME/.vnc/config. This file offers a mechanism
-to establish some basic form of system-wide policy. WARNING! There is
-nothing stopping users from constructing their own vncserver-like script
-that calls Xvnc directly to bypass any options defined in
-/etc/kasmvnc/vncserver-config-mandatory.  Likewise, any CLI arguments passed
-to vncserver will override ANY config file setting of the same name. The
-overall configuration file load order is:
-/etc/kasmvnc/vncserver-config-defaults, $HOME/.vnc/config, and then this file.
-None are required to exist.
-.TP
-$HOME/.vnc/config
-An optional server config file wherein options to be passed to Xvnc are listed
-to avoid hard-coding them to the physical invocation. List options in this file
-one per line. For those requiring an argument, simply separate the option from
-the argument with an equal sign, for example: "geometry=2000x1200". Options
-without an argument are simply listed as a single word, for example: "localhost"
-or "alwaysshared".
-.TP
-$HOME/.vnc/passwd
-The VNC password file.
+$HOME/.kasmpasswd
+The KasmVNC password file.
 .TP
 $HOME/.vnc/\fIhost\fP:\fIdisplay#\fP.log
 The log file for Xvnc and applications started in xstartup.

@@ -1,19 +1,19 @@
 FROM debian:buster-slim
 
+ENV STARTUPDIR=/dockerstartup
+
+COPY ./builder/scripts/ /tmp/scripts/
+COPY ./debian/changelog /tmp
+
 ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp/
-RUN rm -f /tmp/kasmvncserver_*+*.deb; apt-get update && dpkg -i /tmp/*.deb; apt-get -yf install
+RUN /tmp/scripts/install_kasmvncserver_package
 RUN apt-get update && apt-get -y install xterm
 
-COPY startup/deb/kasmvncserver-easy-start /usr/local/bin
+RUN mkdir -p $STARTUPDIR
+COPY builder/startup/vnc_startup_barebones.sh $STARTUPDIR
 
 RUN useradd -m foo
-
 USER foo:ssl-cert
 
-RUN mkdir ~/.vnc && echo '/usr/bin/xterm &' >> ~/.vnc/xstartup && \
-  chmod +x ~/.vnc/xstartup
-
-ENTRYPOINT bash -c "echo -e \"$VNC_PW\n$VNC_PW\n\" | \
-  kasmvncpasswd -w -u $VNC_USER $HOME/.kasmpasswd && \
-  kasmvncserver-easy-start && tail -f $HOME/.vnc/*.log"
+ENTRYPOINT "/$STARTUPDIR/vnc_startup_barebones.sh"

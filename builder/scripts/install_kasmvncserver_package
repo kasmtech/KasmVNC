@@ -1,0 +1,64 @@
+#!/bin/bash
+
+set -e
+
+if [[ -n "$1" ]]; then
+  tag="$1"
+fi
+
+is_debian() {
+  [[ -f /etc/debian_version ]]
+}
+
+check_package_version_exists() {
+  if ! stat /tmp/kasmvncserver_"$package_version"*.deb; then
+    >&2 echo "No package found for version $package_version"
+    exit 1
+  fi
+}
+
+remove_tagged_debs_unless_tag_used() {
+  if [[ -n "$tag" ]]; then
+    return
+  fi
+
+  rm -f /tmp/kasmvncserver_*+*.deb
+}
+
+detect_rpm_package_manager() {
+  if command -v dnf >/dev/null; then
+    rpm_package_manager=dnf
+  else
+    rpm_package_manager=yum
+  fi
+}
+
+install_package_built_for_current_branch_package_version_deb() {
+  remove_tagged_debs_unless_tag_used
+
+  apt-get update
+  apt-get install -y dpkg-dev
+  package_version=$(dpkg-parsechangelog --show-field Version \
+    --file /tmp/changelog)
+
+  check_package_version_exists
+  apt-get install -y /tmp/kasmvncserver_"$package_version"*"$tag"*.deb
+}
+
+install_package_built_for_current_branch_package_version_rpm() {
+  detect_rpm_package_manager
+  $rpm_package_manager install -y rpmdevtools
+
+  package_version=$(rpmspec -q --qf '%{version}\n' /tmp/kasmvncserver.spec 2>/dev/null)
+  if [[ $rpm_package_manager = "dnf" ]]; then
+    dnf localinstall -y --allowerasing /tmp/kasmvncserver-"$package_version"*.rpm
+  else
+    yum install -y /tmp/kasmvncserver-"$package_version"*.rpm
+  fi
+}
+
+if is_debian ; then
+  install_package_built_for_current_branch_package_version_deb
+else
+  install_package_built_for_current_branch_package_version_rpm
+fi

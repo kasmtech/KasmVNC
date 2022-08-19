@@ -1,0 +1,42 @@
+desktop:
+  resolution:
+    width: 1024
+    height: 768
+  allow_resize: true
+  pixel_depth: 24
+
+security:
+  brute_force_protection:
+    blacklist_threshold: 1
+    blacklist_timeout: 10
+
+logging:
+  log_writer_name: all
+  log_dest: logfile
+  # 0 - silent(?), 100 - most verbose
+  level: 100
+
+data_loss_prevention:
+  visible_region:
+    # top: 10
+    # left: 10
+    # right: 40
+    # bottom: 40
+    concealed_region:
+      allow_click_down: false
+      allow_click_release: false
+  clipboard:
+    delay_between_operations: none
+    # Cut buffers and CLIPBOARD selection.
+    server_to_client:
+      enabled: true
+      size: unlimited
+      primary_clipboard_enabled: false
+
+keyboard:
+  remap_keys:
+    - 0x22->0x40
+    - 0x24->0x40
+
+command_line:
+  prompt: true

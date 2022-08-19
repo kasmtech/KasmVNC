@@ -35,7 +35,7 @@ RUN apt-get purge -y pm-utils xscreensaver*
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
 RUN mkdir -p $STARTUPDIR
-COPY startup/ $STARTUPDIR
+COPY builder/startup/ $STARTUPDIR
 
 ### START CUSTOM STUFF ####
 

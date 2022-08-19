@@ -7,7 +7,7 @@ License: GPLv2+
 URL: https://github.com/kasmtech/KasmVNC
 
 BuildRequires: rsync
-Requires: xauth, libxkbcommon-x11-0, xkeyboard-config, x11-tools, openssl, perl, libpixman-1-0, libjpeg8, libgomp1, libXfont2-2, libXdmcp6, libglvnd, xkbcomp
+Requires: xauth, hostname, libxkbcommon-x11-0, xkeyboard-config, x11-tools, openssl, perl, libpixman-1-0, libjpeg8, libgomp1, libXfont2-2, libXdmcp6, libglvnd, xkbcomp, perl-Switch, perl-YAML-Tiny, perl-Hash-Merge-Simple, perl-Scalar-List-Utils, perl-List-MoreUtils, perl-Try-Tiny
 Conflicts: tigervnc, tigervnc-x11vnc
 
 %description
@@ -48,17 +48,27 @@ DESTDIR=$RPM_BUILD_ROOT
 DST_MAN=$DESTDIR/usr/share/man/man1
 
 mkdir -p $DESTDIR/usr/bin $DESTDIR/usr/share/man/man1 \
-  $DESTDIR/usr/share/doc/kasmvncserver
+  $DESTDIR/usr/share/doc/kasmvncserver $DESTDIR/usr/lib \
+  $DESTDIR/%perl_vendorlib $DESTDIR/etc/kasmvnc
 cp $SRC_BIN/Xvnc $DESTDIR/usr/bin;
 cp $SRC_BIN/vncserver $DESTDIR/usr/bin;
+cp -a $SRC_BIN/KasmVNC $DESTDIR/%perl_vendorlib
 cp $SRC_BIN/vncconfig $DESTDIR/usr/bin;
 cp $SRC_BIN/kasmvncpasswd $DESTDIR/usr/bin;
 cp $SRC_BIN/kasmxproxy $DESTDIR/usr/bin;
+cp -r $SRC/lib/kasmvnc/ $DESTDIR/usr/lib/kasmvncserver
 cd $DESTDIR/usr/bin && ln -s kasmvncpasswd vncpasswd;
 cp -r $SRC/share/doc/kasmvnc*/* $DESTDIR/usr/share/doc/kasmvncserver/
 rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
-  --exclude www/utils/ --exclude .eslintrc \
+  --exclude www/utils/ --exclude .eslintrc --exclude configure \
   $SRC/share/kasmvnc $DESTDIR/usr/share
+
+sed -i -e 's!pem_certificate: .\+$!pem_certificate: /etc/pki/tls/private/kasmvnc.pem!' \
+    $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml
+sed -i -e 's!pem_key: .\+$!pem_key: /etc/pki/tls/private/kasmvnc.pem!' \
+    $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml
+sed -e 's/^\([^#]\)/# \1/' $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml > \
+  $DESTDIR/etc/kasmvnc/kasmvnc.yaml
 cp $SRC/man/man1/Xvnc.1 $DESTDIR/usr/share/man/man1/;
 cp $SRC/share/man/man1/vncserver.1 $DST_MAN;
 cp $SRC/share/man/man1/vncconfig.1 $DST_MAN;
@@ -68,9 +78,13 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 
 
 %files
+%config(noreplace) /etc/kasmvnc
+
 /usr/bin/*
+/usr/lib/kasmvncserver
 /usr/share/man/man1/*
-/usr/share/kasmvnc/www
+%perl_vendorlib/KasmVNC
+/usr/share/kasmvnc
 
 %license /usr/share/doc/kasmvncserver/LICENSE.TXT
 %doc /usr/share/doc/kasmvncserver/README.md

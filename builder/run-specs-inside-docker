@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+logfile=/tmp/specs.log
+red='\033[0;31m'
+no_color='\033[0m'
+
+fail_on_perl_warnings() {
+   if grep -qP 'line \d+\.$' "$logfile"; then
+      echo -e "${red}Failure: Perl warnings were found${no_color}"
+      false
+   fi
+}
+
+cd /src
+pipenv install
+./run-specs 2>&1 | tee "$logfile"
+fail_on_perl_warnings

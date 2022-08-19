@@ -41,13 +41,16 @@ RUN yum install -y vim less
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
 RUN mkdir -p $STARTUPDIR
-COPY startup/ $STARTUPDIR
+COPY builder/startup/ $STARTUPDIR
 
 ### START CUSTOM STUFF ####
 
+COPY ./builder/scripts/ /tmp/scripts/
+COPY ./centos/kasmvncserver.spec /tmp
+
 ARG KASMVNC_PACKAGE_DIR
-COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp
-RUN yum localinstall -y /tmp/*.rpm
+COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp/
+RUN /tmp/scripts/install_kasmvncserver_package
 
 ### END CUSTOM STUFF ###
 

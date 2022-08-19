@@ -35,30 +35,29 @@ RUN dnf install -y xorg-x11-xauth xorg-x11-xkb-utils \
   xkeyboard-config xorg-x11-server-utils
 # xorg-x11-server-Xorg
 # RUN dnf install -y @xfce-desktop-environment
-RUN dnf group install -y lxde-desktop
 RUN dnf erase -y pm-utils xscreensaver*
 RUN dnf install -y redhat-lsb-core
 RUN dnf install -y vim less
+RUN dnf install -y @xfce-desktop-environment
 
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
 RUN mkdir -p $STARTUPDIR
-COPY startup/ $STARTUPDIR
+COPY builder/startup/ $STARTUPDIR
 
 ### START CUSTOM STUFF ####
+COPY ./builder/scripts/ /tmp/scripts/
+COPY ./centos/kasmvncserver.spec /tmp
 
 ARG KASMVNC_PACKAGE_DIR
-COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp
+COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp/
 # RUN dnf remove -y tigervnc-server-minimal
-RUN dnf localinstall -y --allowerasing /tmp/*.rpm
+RUN /tmp/scripts/install_kasmvncserver_package
 
 ### END CUSTOM STUFF ###
 
 RUN chown -R 1000:0 $HOME
 USER 1000:kasmvnc-cert
 WORKDIR $HOME
-
-RUN mkdir ~/.vnc && echo '/usr/bin/lxsession -s LXDE &' >> ~/.vnc/xstartup && \
-  chmod +x ~/.vnc/xstartup
 
 ENTRYPOINT [ "/dockerstartup/vnc_startup.sh" ]

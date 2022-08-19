@@ -1,0 +1,84 @@
+desktop:
+  resolution:
+    width: 1024
+    height: 768
+  allow_resize: true
+  pixel_depth: 24
+
+network:
+  protocol: http
+  interface: 0.0.0.0
+  websocket_port: auto
+  use_ipv4: true
+  use_ipv6: true
+  ssl:
+    pem_certificate: /etc/ssl/certs/ssl-cert-snakeoil.pem
+    pem_key: /etc/ssl/private/ssl-cert-snakeoil.key
+    require_ssl: true
+
+security:
+  brute_force_protection:
+    blacklist_threshold: 5
+    blacklist_timeout: 10
+
+data_loss_prevention:
+  visible_region:
+    # top: 10
+    # left: 10
+    # right: 40
+    # bottom: 40
+    concealed_region:
+      allow_click_down: false
+      allow_click_release: false
+  clipboard:
+    delay_between_operations: none
+    server_to_client:
+      enabled: true
+      size: 10000
+      primary_clipboard_enabled: false
+    client_to_server:
+      enabled: true
+      size: 10000
+  keyboard:
+    enabled: true
+    rate_limit: unlimited
+  logging:
+    level: off
+
+encoding:
+  max_frame_rate: 60
+  rect_encoding_mode:
+    min_quality: 7
+    max_quality: 8
+    consider_lossless_quality: 10
+    rectangle_compress_threads: auto
+
+  video_encoding_mode:
+    jpeg_quality: -1
+    webp_quality: -1
+    max_resolution:
+      width: 1920
+      height: 1080
+    enter_video_encoding_mode:
+      time_threshold: 5
+      area_threshold: 45%
+    exit_video_encoding_mode:
+      time_threshold: 3
+    logging:
+      level: off
+    scaling_algorithm: progressive_bilinear
+
+  compare_framebuffer: auto
+  zrle_zlib_level: auto
+  hextile_improved_compression: true
+
+server:
+  advanced:
+    x_font_path: auto
+    httpd_directory: /usr/share/kasmvnc/www
+    kasm_password_file: ~/.kasmpasswd
+    x_authority_file: auto
+  auto_shutdown:
+    no_user_session_timeout: never
+    active_user_session_timeout: never
+    inactive_user_session_timeout: never

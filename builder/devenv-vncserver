@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+
+default_os=ubuntu
+default_os_codename=focal
+
+cd "$(dirname "$0")/.."
+. ./builder/os_ver_cli.sh
+. ./builder/common.sh
+
+docker build --build-arg KASMVNC_PACKAGE_DIR="builder/build/${os_codename}" \
+  -t kasmvncdevenv_${os}:$os_codename \
+  -f builder/dockerfile.${os}_${os_codename}.vncserver_devenv.test .
+docker run -it -v $(realpath ${PWD}):/src -p "443:$VNC_PORT" -p "$VNC_PORT:$VNC_PORT" \
+  -p 8444:8444 \
+  -p 8445:8445 --rm \
+  -e KASMVNC_VERBOSE_LOGGING=$KASMVNC_VERBOSE_LOGGING \
+  -e "VNC_USER=foo" -e "VNC_PW=foobar" \
+  kasmvncdevenv_${os}:$os_codename

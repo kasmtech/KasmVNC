@@ -12,28 +12,6 @@ cleanup () {
 }
 trap cleanup SIGINT SIGTERM
 
-detect_www_dir() {
-  local package_www_dir="/usr/share/kasmvnc/www"
-  if [[ -d "$package_www_dir" ]]; then
-    package_www_dir_option="-httpd $package_www_dir"
-  fi
-}
-
-detect_cert_location() {
-  local tarball_cert="$HOME/.vnc/self.pem"
-  local deb_cert="/etc/ssl/certs/ssl-cert-snakeoil.pem"
-  local deb_key="/etc/ssl/private/ssl-cert-snakeoil.key"
-  local rpm_cert="/etc/pki/tls/private/kasmvnc.pem"
-
-  if [[ -f "$deb_cert" ]]; then
-    cert_option="-cert $deb_cert -key $deb_key"
-  elif [[ -f "$rpm_cert" ]]; then
-    cert_option="-cert $rpm_cert"
-  else
-    cert_option="-cert $tarball_cert"
-  fi
-}
-
 add_vnc_user() {
   local username="$1"
   local password="$2"
@@ -61,9 +39,6 @@ kasmvncpasswd -d -u "$VNC_USER-to-delete" $HOME/.kasmpasswd
 chmod 0600 $HOME/.kasmpasswd
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout $HOME/.vnc/self.pem -out $HOME/.vnc/self.pem -subj "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
 
-vncserver :1 -interface 0.0.0.0
-vncserver -kill :1
-
 if [[ -f $PASSWD_PATH ]]; then
     rm -f $PASSWD_PATH
 fi
@@ -84,12 +59,10 @@ vncserver -kill $DISPLAY &> $HOME/.vnc/vnc_startup.log \
     || echo "no locks present"
 
 
-detect_www_dir
-detect_cert_location
-[ -n "$KASMVNC_VERBOSE_LOGGING" ] && verbose_logging_option="-log *:stderr:100"
+[ -n "$KASMVNC_VERBOSE_LOGGING" ] && verbose_logging_option="-debug"
 
 echo -e "start vncserver with param: VNC_COL_DEPTH=$VNC_COL_DEPTH, VNC_RESOLUTION=$VNC_RESOLUTION\n..."
-vncserver $DISPLAY -depth $VNC_COL_DEPTH -geometry $VNC_RESOLUTION -FrameRate=$MAX_FRAME_RATE -websocketPort $VNC_PORT $cert_option -sslOnly -interface 0.0.0.0 $VNCOPTIONS $package_www_dir_option $verbose_logging_option #&> $STARTUPDIR/no_vnc_startup.log
+vncserver $DISPLAY -select-de xfce -depth $VNC_COL_DEPTH -geometry $VNC_RESOLUTION -FrameRate=$MAX_FRAME_RATE -websocketPort $VNC_PORT $VNCOPTIONS $verbose_logging_option #&> $STARTUPDIR/no_vnc_startup.log
 
 PID_SUN=$!
 
