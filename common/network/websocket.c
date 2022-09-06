@@ -45,6 +45,7 @@ int ssl_initialized = 0;
 int pipe_error = 0;
 settings_t settings;
 
+extern int wakeuppipe[2];
 
 void traffic(const char * token) {
     /*if ((settings.verbose) && (! settings.daemon)) {
@@ -1083,6 +1084,9 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in, const char * cons
         free(set->entries);
         free(set);
 
+        //force full frame to all users with at least read
+        write(wakeuppipe[1], "", 1);
+
         sprintf(buf, "HTTP/1.1 200 OK\r\n"
                  "Server: KasmVNC/4.0\r\n"
                  "Connection: close\r\n"
@@ -1171,6 +1175,9 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in, const char * cons
                 goto nope;
             }
         }
+
+        //force full frame to all users with at least read
+        write(wakeuppipe[1], "", 1);
 
         free(set->entries);
         free(set);
@@ -1312,7 +1319,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
         }
     } else entry("/api/create_user") {
         char decname[1024] = "", decpw[1024] = "";
-        uint8_t read = 0, write = 0, owner = 0;
+        uint8_t read_p = 0, write_p = 0, owner_p = 0;
 
         param = parse_get(args, "name", &len);
         if (len) {
@@ -1337,28 +1344,31 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
         param = parse_get(args, "read", &len);
         if (len && isalpha(param[0])) {
             if (!strncmp(param, "true", len))
-                read = 1;
+                read_p = 1;
         }
 
         param = parse_get(args, "write", &len);
         if (len && isalpha(param[0])) {
             if (!strncmp(param, "true", len))
-                write = 1;
+                write_p = 1;
         }
 
         param = parse_get(args, "owner", &len);
         if (len && isalpha(param[0])) {
             if (!strncmp(param, "true", len))
-                owner = 1;
+                owner_p = 1;
         }
 
         if (!decname[0] || !decpw[0])
             goto nope;
 
-        if (!settings.adduserCb(settings.messager, decname, decpw, read, write, owner)) {
+        if (!settings.adduserCb(settings.messager, decname, decpw, read_p, write_p, owner_p)) {
             handler_msg("Invalid params to create_user\n");
             goto nope;
         }
+
+        //force full frame to all users with at least read
+        write(wakeuppipe[1], "", 1);
 
         sprintf(buf, "HTTP/1.1 200 OK\r\n"
                  "Server: KasmVNC/4.0\r\n"
@@ -1413,7 +1423,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
         if (!decname[0])
             goto nope;
 
-	uint64_t mask = 0;
+	    uint64_t mask = 0;
         uint8_t myread = 0;
         param = parse_get(args, "read", &len);
         if (len && isalpha(param[0])) {
@@ -1443,6 +1453,9 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
             handler_msg("Invalid params to update_user\n");
             goto nope;
         }
+
+        //force full frame to all users with at least read
+        write(wakeuppipe[1], "", 1);
 
         sprintf(buf, "HTTP/1.1 200 OK\r\n"
                  "Server: KasmVNC/4.0\r\n"

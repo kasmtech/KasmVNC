@@ -43,7 +43,6 @@ namespace rfb {
   class ListConnInfo;
   class PixelBuffer;
   class KeyRemapper;
-  class network::GetAPIMessager;
 
   class VNCServerST : public VNCServer,
                       public Timer::Callback,
@@ -197,6 +196,8 @@ namespace rfb {
     void handleClipboardAnnounce(VNCSConnectionST* client, bool available);
     void handleClipboardAnnounceBinary(VNCSConnectionST* client, const unsigned num,
                                        const char mimes[][32]);
+
+    void refreshClients();
 
   protected:
 

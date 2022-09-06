@@ -1181,3 +1181,13 @@ void VNCServerST::handleClipboardAnnounceBinary(VNCSConnectionST* client,
   clipboardClient = client;
   desktop->handleClipboardAnnounceBinary(num, mimes);
 }
+
+void VNCServerST::refreshClients()
+{
+  add_changed(pb->getRect());
+
+  std::list<VNCSConnectionST*>::iterator i;
+  for (i = clients.begin(); i != clients.end(); i++) {
+    (*i)->add_changed_all();
+  }
+}
