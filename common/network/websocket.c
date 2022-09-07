@@ -1422,8 +1422,8 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
 
         if (!decname[0])
             goto nope;
-
-	    uint64_t mask = 0;
+            
+        uint64_t mask = 0;
         uint8_t myread = 0;
         param = parse_get(args, "read", &len);
         if (len && isalpha(param[0])) {

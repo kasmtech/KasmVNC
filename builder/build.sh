@@ -23,7 +23,7 @@ fail_on_gcc_12() {
   if gcc --version | head -1 | grep -q 12; then
     cat >&2 <<EOF
 
-Error: gcc 12 detected. It has a bug causing the build to fall because of a
+Error: gcc 12 detected. It has a bug causing the build to fail because of a
 -Warray-bounds bug. Please use gcc 11 in the build Dockerfile:
 ENV CC=gcc-11
 ENV CXX=g++-11
@@ -44,7 +44,7 @@ cd /tmp
 # default to the version of x in Ubuntu 18.04, otherwise caller will need to specify
 XORG_VER=${XORG_VER:-"1.19.6"}
 XORG_PATCH=$(echo "$XORG_VER" | grep -Po '^\d.\d+' | sed 's#\.##')
-wget --no-check-certificate https://www.x.org/archive/individual/xserver/xorg-server-${XORG_VER}.tar.bz2
+wget https://www.x.org/archive/individual/xserver/xorg-server-${XORG_VER}.tar.bz2
 
 #git clone https://kasmweb@bitbucket.org/kasmtech/kasmvnc.git
 #cd kasmvnc
