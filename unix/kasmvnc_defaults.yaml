@@ -74,11 +74,11 @@ data_loss_prevention:
       - image/png
     # Add to docs: Cut buffers and CLIPBOARD selection.
     server_to_client:
-      enabled: false
+      enabled: true
       size: unlimited
       primary_clipboard_enabled: false
     client_to_server:
-      enabled: false
+      enabled: true
       size: unlimited
   keyboard:
     enabled: true
