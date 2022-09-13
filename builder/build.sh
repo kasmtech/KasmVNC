@@ -1,4 +1,6 @@
-#!/bin/sh -e
+#!/bin/bash
+
+set -e
 
 detect_quilt() {
   if which quilt 1>/dev/null; then
@@ -13,11 +15,30 @@ ensure_crashpad_can_fetch_line_number_by_address() {
   fi
 }
 
+fail_on_gcc_12() {
+  if [[ -n "$CC" && -n "$CXX" ]]; then
+    return;
+  fi
+
+  if gcc --version | head -1 | grep -q 12; then
+    cat >&2 <<EOF
+
+Error: gcc 12 detected. It has a bug causing the build to fail because of a
+-Warray-bounds bug. Please use gcc 11 in the build Dockerfile:
+ENV CC=gcc-11
+ENV CXX=g++-11
+RUN <install gcc 11>
+EOF
+  exit 1
+  fi
+}
+
 # For build-dep to work, the apt sources need to have the source server
 #sudo apt-get build-dep xorg-server
 
 #sudo apt-get install cmake git libjpeg-dev libgnutls-dev
 
+fail_on_gcc_12
 # Ubuntu applies a million patches, but here we use upstream to simplify matters
 cd /tmp
 # default to the version of x in Ubuntu 18.04, otherwise caller will need to specify

@@ -49,6 +49,8 @@
 
 extern "C" {
 void vncSetGlueContext(int screenIndex);
+
+extern int wakeuppipe[2];
 }
 
 using namespace rfb;
@@ -307,6 +309,13 @@ void XserverDesktop::handleSocketEvent(int fd, bool read, bool write)
 {
   try {
     if (read) {
+      if (fd == wakeuppipe[0]) {
+        unsigned char buf;
+        while (::read(fd, &buf, 1) > 0);
+        server->refreshClients();
+        return;
+      }
+
       if (handleListenerEvent(fd, &listeners, server))
         return;
     }

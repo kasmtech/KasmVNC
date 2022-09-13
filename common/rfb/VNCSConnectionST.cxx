@@ -76,7 +76,7 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
   kasmpasswdpath[0] = '\0';
   wordexp_t wexp;
   if (!wordexp(rfb::Server::kasmPasswordFile, &wexp, WRDE_NOCMD))
-    strncpy(kasmpasswdpath, wexp.we_wordv[0], 4096);
+    strncpy(kasmpasswdpath, wexp.we_wordv[0], 4095);
   kasmpasswdpath[4095] = '\0';
   wordfree(&wexp);
 
