@@ -1,4 +1,4 @@
 [submodule "kasmweb"]
 	path = kasmweb
 	url = https://github.com/kasmtech/noVNC.git
-	branch = release/0.9.3
+	branch = bugfix/KASM-3196_clip_0.9.3.2_hotfix 
