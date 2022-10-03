@@ -196,6 +196,8 @@ namespace rfb {
       return encodeManager.getScalingTime();
     }
 
+    virtual void udpDowngrade(const bool byServer);
+
     bool upgradingToUdp;
 
   private:
@@ -220,7 +222,6 @@ namespace rfb {
     virtual void handleClipboardAnnounce(bool available);
     virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
     virtual void udpUpgrade(const char *resp);
-    virtual void udpDowngrade();
     virtual void supportsLocalCursor();
     virtual void supportsFence();
     virtual void supportsContinuousUpdates();

@@ -125,7 +125,7 @@ static uint8_t udpsend(WuClient *client, const uint8_t *data, unsigned len, uint
 	return 0;
 }
 
-UdpStream::UdpStream(): OutStream(), client(NULL), total_len(0), id(0) {
+UdpStream::UdpStream(): OutStream(), client(NULL), total_len(0), id(0), failed(false) {
 	ptr = data;
 	end = data + UDPSTREAM_BUFSIZE;
 
@@ -137,8 +137,10 @@ void UdpStream::flush() {
 	total_len += len;
 
 	if (client) {
-		if (udpsend(client, data, len, &id))
+		if (udpsend(client, data, len, &id)) {
 			vlog.error("Error sending udp, client gone?");
+			failed = true;
+		}
 	} else {
 		vlog.error("Tried to send udp without a client");
 	}
@@ -149,6 +151,14 @@ void UdpStream::flush() {
 void UdpStream::overrun(size_t needed) {
 	vlog.error("Udp buffer overrun");
 	abort();
+}
+
+bool UdpStream::isFailed() const {
+	return failed;
+}
+
+void UdpStream::clearFailed() {
+	failed = false;
 }
 
 void wuGotHttp(const char msg[], const uint32_t msglen, char resp[]) {

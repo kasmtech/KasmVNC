@@ -96,7 +96,7 @@ namespace rfb {
     virtual void supportsQEMUKeyEvent();
 
     virtual void udpUpgrade(const char *resp) = 0;
-    virtual void udpDowngrade() = 0;
+    virtual void udpDowngrade(const bool) = 0;
 
     ConnParams cp;
   };

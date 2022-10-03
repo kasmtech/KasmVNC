@@ -57,7 +57,7 @@ static const TightConf conf[10] = {
 };
 
 TightEncoder::TightEncoder(SConnection* conn) :
-  Encoder(conn, encodingTight, EncoderPlain, 256)
+  Encoder(conn, encodingTight, EncoderPlain, 256), zlibNeedsReset(false)
 {
   setCompressLevel(-1);
 }
@@ -166,7 +166,7 @@ void TightEncoder::writeFullColourRect(const PixelBuffer* pb, const Palette& pal
   int stride, h;
 
   os = conn->getOutStream(conn->cp.supportsUdp);
-  if (conn->cp.supportsUdp)
+  if (conn->cp.supportsUdp || zlibNeedsReset)
     os->writeU8((streamId << 4) | (1 << streamId));
   else
     os->writeU8(streamId << 4);
@@ -247,7 +247,7 @@ rdr::OutStream* TightEncoder::getZlibOutStream(int streamId, int level, size_t l
 
   zlibStreams[streamId].setUnderlying(&memStream);
   zlibStreams[streamId].setCompressionLevel(level);
-  if (conn->cp.supportsUdp)
+  if (conn->cp.supportsUdp || zlibNeedsReset)
     zlibStreams[streamId].resetDeflate();
 
   return &zlibStreams[streamId];
@@ -270,6 +270,11 @@ void TightEncoder::flushZlibOutStream(rdr::OutStream* os_)
   writeCompact(os, memStream.length());
   os->writeBytes(memStream.data(), memStream.length());
   memStream.clear();
+}
+
+void TightEncoder::resetZlib()
+{
+  zlibNeedsReset = true;
 }
 
 //

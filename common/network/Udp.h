@@ -39,11 +39,15 @@ namespace network {
 			void setClient(WuClient *cli) {
 				client = cli;
 			}
+
+			bool isFailed() const;
+			void clearFailed();
 		private:
 			uint8_t data[UDPSTREAM_BUFSIZE];
 			WuClient *client;
 			size_t total_len;
 			uint32_t id;
+			bool failed;
 	};
 }
 

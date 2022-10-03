@@ -1716,3 +1716,7 @@ unsigned EncodeManager::scaledQuality(const Rect& rect) const {
 
   return dynamic;
 }
+
+void EncodeManager::resetZlib() {
+  ((TightEncoder *) encoders[encoderTight])->resetZlib();
+}

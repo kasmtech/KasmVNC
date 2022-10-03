@@ -346,7 +346,7 @@ void SMsgReader::readUpgradeToUdp()
   }
 
   if (!len) {
-    handler->udpDowngrade();
+    handler->udpDowngrade(false);
     return;
   }
 
