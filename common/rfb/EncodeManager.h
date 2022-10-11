@@ -79,6 +79,8 @@ namespace rfb {
         return scalingTime;
     };
 
+    void resetZlib();
+
     struct codecstats_t {
       uint32_t ms;
       uint32_t area;

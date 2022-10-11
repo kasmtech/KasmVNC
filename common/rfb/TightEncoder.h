@@ -39,6 +39,7 @@ namespace rfb {
     virtual void writeSolidRect(int width, int height,
                                 const PixelFormat& pf,
                                 const rdr::U8* colour);
+    void resetZlib();
 
   protected:
     void writeMonoRect(const PixelBuffer* pb, const Palette& palette);
@@ -76,6 +77,7 @@ namespace rfb {
     rdr::MemOutStream memStream;
 
     int idxZlibLevel, monoZlibLevel, rawZlibLevel;
+    bool zlibNeedsReset;
   };
 
 }

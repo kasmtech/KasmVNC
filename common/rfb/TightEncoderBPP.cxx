@@ -40,7 +40,7 @@ void TightEncoder::writeMonoRect(int width, int height,
 
   os = conn->getOutStream(conn->cp.supportsUdp);
 
-  if (conn->cp.supportsUdp)
+  if (conn->cp.supportsUdp || zlibNeedsReset)
     os->writeU8(((streamId | tightExplicitFilter) << 4) | (1 << streamId));
   else
     os->writeU8((streamId | tightExplicitFilter) << 4);
@@ -130,7 +130,7 @@ void TightEncoder::writeIndexedRect(int width, int height,
 
   os = conn->getOutStream(conn->cp.supportsUdp);
 
-  if (conn->cp.supportsUdp)
+  if (conn->cp.supportsUdp || zlibNeedsReset)
     os->writeU8(((streamId | tightExplicitFilter) << 4) | (1 << streamId));
   else
     os->writeU8((streamId | tightExplicitFilter) << 4);

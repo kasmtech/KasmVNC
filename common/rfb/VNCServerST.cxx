@@ -1064,6 +1064,11 @@ void VNCServerST::writeUpdate()
     (*ci)->add_changed(ui.changed);
     (*ci)->writeFramebufferUpdateOrClose();
 
+    if (((network::UdpStream *)(*ci)->getOutStream(true))->isFailed()) {
+      ((network::UdpStream *)(*ci)->getOutStream(true))->clearFailed();
+      (*ci)->udpDowngrade(true);
+    }
+
     if (apimessager) {
       (*ci)->sendStats(false);
       const EncodeManager::codecstats_t subjpeg = (*ci)->getJpegStats();

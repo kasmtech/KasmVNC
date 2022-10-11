@@ -1769,10 +1769,12 @@ void VNCSConnectionST::udpUpgrade(const char *resp)
   writer()->writeUdpUpgrade(resp);
 }
 
-void VNCSConnectionST::udpDowngrade()
+void VNCSConnectionST::udpDowngrade(const bool byServer)
 {
   cp.supportsUdp = false;
   cp.useCopyRect = true;
+  encodeManager.resetZlib();
 
-  vlog.info("Client %s downgrading from udp", sock->getPeerAddress());
+  vlog.info("Client %s downgrading from udp by %s", sock->getPeerAddress(),
+            byServer ? "the server" : "its own request");
 }
