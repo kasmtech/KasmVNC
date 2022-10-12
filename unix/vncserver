@@ -534,77 +534,66 @@ sub CheckRequiredDependenciesArePresent
 sub CheckSslCertReadable {
   return if IsDryRun();
 
-  CheckUserHasAccessToSslCertOnDebian();
-  CheckUserHasAccessToSslCertOnCentOS();
+  RequireSslCertsToBeReadable();
 }
 
 sub IsDebian {
   return -f "/etc/debian_version";
 }
 
-sub CheckUserHasAccessToSslCertOnDebian {
-  if (!IsDebian()) {
-    return;
-  }
-
-  if (DoesCertKeyRequireSslCertGroup()) {
-    RequireUserToHaveSslCertGroup();
-  } else {
-    RequireSslCertsToBeReadable();
-  }
-}
-
 sub RequireSslCertsToBeReadable {
   my $certFilename = DerivedValue("network.ssl.pem_certificate");
   my $certKeyFilename = DerivedValue("network.ssl.pem_key");
 
-  my @unreadableCertFiles = map { -r $_ ? () : $_ }
-    uniq($certFilename, $certKeyFilename);
+  @certs = ($certFilename, $certKeyFilename);
+  @certs = grep defined, @certs;
+  @certs = uniq @certs;
+
+  my @unreadableCertFiles = map { -r $_ ? () : $_ } @certs;
   return if (scalar @unreadableCertFiles == 0);
 
-  $unreadableCertFiles = join "\n", @unreadableCertFiles;
-  $logger->warn(<<TEXT);
-Please ensure SSL certificate files are readable by you:
-$unreadableCertFiles
-TEXT
-    exit 1;
-}
-
-sub DoesCertKeyRequireSslCertGroup {
-  my $certKeyFilename = ConfigValue("network.ssl.pem_key");
-  $certKeyFilename =~ m!^/etc/ssl/private!;
-}
-
-sub DoesCertKeyRequireKasmvncCertGroup {
-  my $certKeyFilename = ConfigValue("network.ssl.pem_key");
-  $certKeyFilename =~ m!^/etc/pki/tls/private!;
-}
-
-sub RequireUserToHaveSslCertGroup {
-  my $certGroup = 'ssl-cert';
-  if (system("groups | grep -qw $certGroup") != 0) {
-    $logger->warn(<<EOF);
-  Can't access TLS certificate.
-  Please add your user to $certGroup via 'addgroup \$USER $certGroup'
-EOF
-    exit(1);
+  foreach my $unreadableCert (@unreadableCertFiles) {
+    GuideUserToMakeCertFileReadable($unreadableCert);
   }
+  exit 1;
+}
+
+sub FileGroupName {
+  my $file = shift;
+  my $grpId = (stat($file))[5];
+
+  getgrgid($grpId);
+}
+
+sub AddUserToGroupCmd {
+  my $certGroup = shift;
+
+  if (IsRpmSystem()) {
+    "usermod -a -G $certGroup \$USER"
+  } else {
+    "addgroup \$USER $certGroup"
+  }
+}
+
+sub GuideUserToMakeCertFileReadable {
+  my $certFile = shift;
+  if (! -f $certFile) {
+    $logger->warn("$certFile: certificate file doesn't exist or isn't a file");
+    return;
+  }
+
+  my $certGroup = FileGroupName $certFile;
+  my $addUserToGroupCmd = AddUserToGroupCmd $certGroup;
+
+  $logger->warn(<<EOF);
+$certFile: certificate isn't readable.
+Make the certificate readable by adding your user to group "$certGroup":
+  '$addUserToGroupCmd'
+EOF
 }
 
 sub IsRpmSystem {
   system("command -v rpm >/dev/null 2>&1") == 0;
-}
-
-sub CheckUserHasAccessToSslCertOnCentOS {
-  if (!IsRpmSystem()) {
-    return;
-  }
-
-  if (DoesCertKeyRequireKasmvncCertGroup()) {
-    RequireUserToHaveKasmvncCertGroup();
-  } else {
-    RequireSslCertsToBeReadable();
-  }
 }
 
 sub RequireUserToHaveKasmvncCertGroup {
@@ -843,12 +832,12 @@ sub ConfigureDeToRun {
 }
 
 sub AskUserToChooseDeOrManualXstartup {
+  return if IsDryRun();
+
   if (PromptingDisabled()) {
     WarnIfShouldPromptForDe();
     return;
   }
-
-  return if IsDryRun();
   return unless shouldPromptUserToSelectDe();
 
   ForgetSelectedDe();
