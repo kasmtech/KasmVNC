@@ -831,9 +831,11 @@ void VNCSConnectionST::keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down) {
   if (down) {
     keylog(keysym, sock->getPeerAddress());
     kbdLogTimer.start(60 * 1000);
-    vlog.debug("Key pressed: 0x%x / 0x%x", keysym, keycode);
+    if (Server::DLP_ClipLog[0] == 'v')
+      vlog.debug("Key pressed: 0x%x / 0x%x", keysym, keycode);
   } else {
-    vlog.debug("Key released: 0x%x / 0x%x", keysym, keycode);
+    if (Server::DLP_ClipLog[0] == 'v')
+      vlog.debug("Key released: 0x%x / 0x%x", keysym, keycode);
   }
 
   // Remap the key if required

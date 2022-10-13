@@ -24,6 +24,7 @@
 #include <rfb/LogWriter.h>
 #include <rfb/Logger_stdio.h>
 #include <rfb/Logger_syslog.h>
+#include <rfb/ServerCore.h>
 
 #include "RFBGlue.h"
 
@@ -79,6 +80,20 @@ void vncLogInfo(const char *name, const char *format, ...)
 
 void vncLogDebug(const char *name, const char *format, ...)
 {
+  LogWriter *vlog;
+  va_list ap;
+  vlog = LogWriter::getLogWriter(name);
+  if (vlog == NULL)
+    return;
+  va_start(ap, format);
+  vlog->vdebug(format, ap);
+  va_end(ap);
+}
+
+void vncLogDLPVerbose(const char *name, const char *format, ...)
+{
+  if (Server::DLP_ClipLog[0] != 'v')
+    return;
   LogWriter *vlog;
   va_list ap;
   vlog = LogWriter::getLogWriter(name);
