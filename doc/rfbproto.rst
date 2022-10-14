@@ -1634,13 +1634,15 @@ On a conventional mouse, buttons 1, 2 and 3 correspond to the left,
 middle and right buttons on the mouse. On a wheel mouse, each step of
 the wheel is represented by a press and release of a certain button.
 Button 4 means up, button 5 means down, button 6 means left and
-button 7 means right.
+button 7 means right. Some pointer devices support additional buttons.
+Button 8 is typically the back button and button 9 is typically the 
+forward button.
 
 =============== ==================== ========== =======================
 No. of bytes    Type                 [Value]    Description
 =============== ==================== ========== =======================
 1               ``U8``               5          *message-type*
-1               ``U8``                          *button-mask*
+1               ``U16``                          *button-mask*
 2               ``U16``                         *x-position*
 2               ``U16``                         *y-position*
 =============== ==================== ========== =======================

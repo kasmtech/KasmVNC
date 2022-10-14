@@ -225,7 +225,7 @@ void SMsgReader::readKeyEvent()
 
 void SMsgReader::readPointerEvent()
 {
-  int mask = is->readU8();
+  int mask = is->readU16();
   int x = is->readU16();
   int y = is->readU16();
   int scrollX = is->readS16();
