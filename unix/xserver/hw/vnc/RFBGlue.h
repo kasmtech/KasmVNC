@@ -36,6 +36,7 @@ void vncLogError(const char *name, const char *format, ...) __printf_attr(2, 3);
 void vncLogStatus(const char *name, const char *format, ...) __printf_attr(2, 3);
 void vncLogInfo(const char *name, const char *format, ...) __printf_attr(2, 3);
 void vncLogDebug(const char *name, const char *format, ...) __printf_attr(2, 3);
+void vncLogDLPVerbose(const char *name, const char *format, ...) __printf_attr(2, 3);
 
 int vncSetParam(const char *name, const char *value);
 int vncSetParamSimple(const char *nameAndValue);

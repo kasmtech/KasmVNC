@@ -83,6 +83,7 @@ static void vncKeysymKeyboardEvent(KeySym keysym, int down);
 #define LOG_STATUS(...) vncLogStatus(LOG_NAME, __VA_ARGS__)
 #define LOG_INFO(...) vncLogInfo(LOG_NAME, __VA_ARGS__)
 #define LOG_DEBUG(...) vncLogDebug(LOG_NAME, __VA_ARGS__)
+#define LOG_DLP_VERBOSE(...) vncLogDLPVerbose(LOG_NAME, __VA_ARGS__)
 
 /*
  * Init input device.
@@ -406,7 +407,7 @@ static inline void pressKey(DeviceIntPtr dev, int kc, Bool down, const char *msg
 #endif
 
 	if (msg != NULL)
-		LOG_DEBUG("%s %d %s", msg, kc, down ? "down" : "up");
+		LOG_DLP_VERBOSE("%s %d %s", msg, kc, down ? "down" : "up");
 
 	action = down ? KeyPress : KeyRelease;
 #if XORG < 111
