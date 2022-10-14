@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This software is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this software; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
@@ -50,7 +50,7 @@ extern const unsigned int code_map_qnum_to_xorgevdev_len;
 extern const unsigned short code_map_qnum_to_xorgkbd[];
 extern const unsigned int code_map_qnum_to_xorgkbd_len;
 
-#define BUTTONS 7
+#define BUTTONS 10
 
 /* Event queue is shared between all devices. */
 #if XORG < 111
@@ -337,8 +337,8 @@ static int vncPointerProc(DeviceIntPtr pDevice, int onoff)
 		InitValuatorAxisStruct(pDevice, 2, axes_labels[2], NO_AXIS_LIMITS, NO_AXIS_LIMITS, 0, 0, 0, Relative);
         InitValuatorAxisStruct(pDevice, 3, axes_labels[3], NO_AXIS_LIMITS, NO_AXIS_LIMITS, 0, 0, 0, Relative);
 
-		char* envScrollFactorH = getenv("SCROLL_FACTOR_H"); 
-		char* envScrollFactorV = getenv("SCROLL_FACTOR_V"); 
+		char* envScrollFactorH = getenv("SCROLL_FACTOR_H");
+		char* envScrollFactorV = getenv("SCROLL_FACTOR_V");
 
 		float scrollFactorH = envScrollFactorH ? atof(envScrollFactorH) : 50.0;
 		float scrollFactorV = envScrollFactorV ? atof(envScrollFactorV) : 50.0;
@@ -552,12 +552,12 @@ static void vncKeysymKeyboardEvent(KeySym keysym, int down)
 		return;
 	}
 
-	/* 
+	/*
 	 * Since we are checking the current state to determine if we need
 	 * to fake modifiers, we must make sure that everything put on the
 	 * input queue is processed before we start. Otherwise, shift may be
 	 * stuck down.
-	 */ 
+	 */
 	mieqProcessInputEvents();
 
 	state = vncGetKeyboardState();
