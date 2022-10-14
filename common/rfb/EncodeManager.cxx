@@ -675,6 +675,9 @@ Encoder *EncodeManager::startRect(const Rect& rect, int type, const bool trackQu
 
   beforeLength = conn->getOutStream(conn->cp.supportsUdp)->length();
 
+  if (conn->cp.supportsUdp)
+    ((network::UdpStream *) conn->getOutStream(conn->cp.supportsUdp))->setFrameNumber(updates);
+
   stats[klass][activeType].rects++;
   stats[klass][activeType].pixels += rect.area();
   equiv = 12 + rect.area() * (conn->cp.pf().bpp/8);
