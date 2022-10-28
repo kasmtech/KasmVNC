@@ -212,7 +212,7 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
       break;
     case pseudoEncodingPreferBandwidth:
       if (!rfb::Server::ignoreClientSettingsKasm && canChangeSettings)
-        Server::preferBandwidth.setParam();
+        Server::preferBandwidth.setParam(true);
       break;
     case pseudoEncodingMaxVideoResolution:
       if (!rfb::Server::ignoreClientSettingsKasm && canChangeSettings)
