@@ -42,6 +42,7 @@
 #include <rfb/TightEncoder.h>
 #include <rfb/TightJPEGEncoder.h>
 #include <rfb/TightWEBPEncoder.h>
+#include <rfb/TightQOIEncoder.h>
 
 using namespace rfb;
 
@@ -70,6 +71,7 @@ enum EncoderClass {
   encoderTight,
   encoderTightJPEG,
   encoderTightWEBP,
+  encoderTightQOI,
   encoderZRLE,
   encoderClassMax,
 };
@@ -112,6 +114,8 @@ static const char *encoderClassName(EncoderClass klass)
     return "Tight (JPEG)";
   case encoderTightWEBP:
     return "Tight (WEBP)";
+  case encoderTightQOI:
+    return "Tight (QOI)";
   case encoderZRLE:
     return "ZRLE";
   case encoderClassMax:
@@ -172,6 +176,7 @@ EncodeManager::EncodeManager(SConnection* conn_, EncCache *encCache_) : conn(con
   encoders[encoderTight] = new TightEncoder(conn);
   encoders[encoderTightJPEG] = new TightJPEGEncoder(conn);
   encoders[encoderTightWEBP] = new TightWEBPEncoder(conn);
+  encoders[encoderTightQOI] = new TightQOIEncoder(conn);
   encoders[encoderZRLE] = new ZRLEEncoder(conn);
 
   webpBenchResult = ((TightWEBPEncoder *) encoders[encoderTightWEBP])->benchmark();
@@ -414,7 +419,7 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
      * We start by searching for solid rects, which are then removed
      * from the changed region.
      */
-    if (conn->cp.supportsLastRect)
+    if (conn->cp.supportsLastRect && !conn->cp.supportsQOI)
       writeSolidRects(&changed, pb);
 
     writeRects(changed, pb,
@@ -451,7 +456,10 @@ void EncodeManager::prepareEncoders(bool allowLossy)
     bitmapRLE = indexedRLE = fullColour = encoderHextile;
     break;
   case encodingTight:
-    if (encoders[encoderTightWEBP]->isSupported() &&
+    if (encoders[encoderTightQOI]->isSupported() &&
+        (conn->cp.pf().bpp >= 16))
+      fullColour = encoderTightQOI;
+    else if (encoders[encoderTightWEBP]->isSupported() &&
         (conn->cp.pf().bpp >= 16) && allowLossy)
       fullColour = encoderTightWEBP;
     else if (encoders[encoderTightJPEG]->isSupported() &&
@@ -472,7 +480,10 @@ void EncodeManager::prepareEncoders(bool allowLossy)
   // Any encoders still unassigned?
 
   if (fullColour == encoderRaw) {
-    if (encoders[encoderTightWEBP]->isSupported() &&
+    if (encoders[encoderTightQOI]->isSupported() &&
+        (conn->cp.pf().bpp >= 16))
+      fullColour = encoderTightQOI;
+    else if (encoders[encoderTightWEBP]->isSupported() &&
         (conn->cp.pf().bpp >= 16) && allowLossy)
       fullColour = encoderTightWEBP;
     else if (encoders[encoderTightJPEG]->isSupported() &&
@@ -1221,7 +1232,7 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
       if (isWebp[i])
         webpstats.ms += ms[i];
       else
-        jpegstats.ms += ms[i];
+        jpegstats.ms += ms[i]; // Also covers QOI for now
     }
   }
 
@@ -1247,7 +1258,8 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
     activeEncoders[encoderFullColour] = encoderTightJPEG;
 
   for (i = 0; i < subrects.size(); ++i) {
-    if (encCache->enabled && compresseds[i].size() && !fromCache[i]) {
+    if (encCache->enabled && compresseds[i].size() && !fromCache[i] &&
+        !encoders[encoderTightQOI]->isSupported()) {
       void *tmp = malloc(compresseds[i].size());
       memcpy(tmp, &compresseds[i][0], compresseds[i].size());
       encCache->add(isWebp[i] ? encoderTightWEBP : encoderTightJPEG,
@@ -1314,7 +1326,7 @@ uint8_t EncodeManager::getEncoderType(const Rect& rect, const PixelBuffer *pb,
       type = encoderIndexed;
   }
 
-  if (scaledpb)
+  if (scaledpb || conn->cp.supportsQOI)
     type = encoderFullColour;
 
   *isWebp = 0;
@@ -1349,6 +1361,21 @@ uint8_t EncodeManager::getEncoderType(const Rect& rect, const PixelBuffer *pb,
                                                                       compressed,
                                                                       videoDetected);
       *isWebp = 1;
+    } else if (activeEncoders[encoderFullColour] == encoderTightQOI) {
+      if (scaledpb) {
+        delete ppb;
+        ppb = preparePixelBuffer(scaledrect, scaledpb,
+                                 encoders[encoderTightQOI]->flags & EncoderUseNativePF ?
+                                 false : true);
+      } else if (encoders[encoderTightQOI]->flags & EncoderUseNativePF) {
+        delete ppb;
+        ppb = preparePixelBuffer(rect, pb, false);
+      }
+
+      ((TightQOIEncoder *) encoders[encoderTightQOI])->compressOnly(ppb,
+                                                                      scaledQuality(rect),
+                                                                      compressed,
+                                                                      videoDetected);
     } else if (activeEncoders[encoderFullColour] == encoderTightJPEG || webpTookTooLong) {
       if (scaledpb) {
         delete ppb;
@@ -1389,6 +1416,10 @@ void EncodeManager::writeSubRect(const Rect& rect, const PixelBuffer *pb,
       ((TightWEBPEncoder *) encoder)->writeOnly(compressed);
       webpstats.area += rect.area();
       webpstats.rects++;
+    } else if (encoders[encoderTightQOI]->isSupported()) {
+      ((TightQOIEncoder *) encoder)->writeOnly(compressed);
+      jpegstats.area += rect.area(); // Also QOI for now
+      jpegstats.rects++;
     } else {
       ((TightJPEGEncoder *) encoder)->writeOnly(compressed);
       jpegstats.area += rect.area();

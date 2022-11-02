@@ -59,6 +59,7 @@ set(RFB_SOURCES
   TightEncoder.cxx
   TightJPEGEncoder.cxx
   TightWEBPEncoder.cxx
+  TightQOIEncoder.cxx
   UpdateTracker.cxx
   VNCSConnectionST.cxx
   VNCServerST.cxx
