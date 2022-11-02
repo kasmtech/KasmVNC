@@ -42,7 +42,7 @@ ConnParams::ConnParams()
     supportsDesktopResize(false), supportsExtendedDesktopSize(false),
     supportsDesktopRename(false), supportsLastRect(false),
     supportsLEDState(false), supportsQEMUKeyEvent(false),
-    supportsWEBP(false),
+    supportsWEBP(false), supportsQOI(false),
     supportsSetDesktopSize(false), supportsFence(false),
     supportsContinuousUpdates(false), supportsExtendedClipboard(false),
     supportsUdp(false),
@@ -132,6 +132,7 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
   supportsLastRect = false;
   supportsQEMUKeyEvent = false;
   supportsWEBP = false;
+  supportsQOI = false;
   compressLevel = -1;
   qualityLevel = -1;
   fineQualityLevel = -1;
@@ -182,6 +183,9 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
       break;
     case pseudoEncodingWEBP:
       supportsWEBP = true;
+      break;
+    case pseudoEncodingQOI:
+      supportsQOI = true;
       break;
     case pseudoEncodingFence:
       supportsFence = true;
@@ -277,6 +281,10 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
     if (encodings[i] > 0)
       encodings_.insert(encodings[i]);
   }
+
+  // QOI-specific overrides
+  if (supportsQOI)
+    useCopyRect = false;
 }
 
 void ConnParams::setLEDState(unsigned int state)
