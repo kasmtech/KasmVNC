@@ -365,7 +365,7 @@ void SMsgWriter::writeFramebufferUpdateEnd()
 
     // Send an UDP flip marker, if needed
     if (cp->supportsUdp) {
-      udps->writeS16(0);
+      udps->writeS16(nRectsInUpdate);
       udps->writeS16(0);
       udps->writeU16(0);
       udps->writeU16(0);
