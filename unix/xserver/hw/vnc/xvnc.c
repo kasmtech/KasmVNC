@@ -155,6 +155,49 @@ static char displayNumStr[16];
 
 static int vncVerbose = DEFAULT_LOG_VERBOSITY;
 
+char *extra_headers = NULL;
+unsigned extra_headers_len = 0;
+
+static unsigned
+add_extra_headers(const char * const arg)
+{
+    unsigned i, found = 0;
+    const char *sep;
+    for (i = 0; arg[i]; i++) {
+        if (arg[i] == '=') {
+            found++;
+            sep = &arg[i];
+        }
+    }
+    if (found != 1)
+        return 0;
+
+    const unsigned len = strlen(arg);
+    if (len < 3)
+        return 0;
+
+    if (arg[0] == '=' || arg[len - 1] == '=')
+        return 0;
+
+    extra_headers = realloc(extra_headers, extra_headers_len + 4 + len);
+    extra_headers[extra_headers_len] = '\0';
+
+    char tmp[len + 3];
+    const unsigned firstlen = sep - arg;
+
+    memcpy(tmp, arg, firstlen);
+    tmp[firstlen] = ':';
+    tmp[firstlen + 1] = ' ';
+    memcpy(&tmp[firstlen + 2], sep + 1, len - firstlen - 1);
+    tmp[len + 1] = '\r';
+    tmp[len + 2] = '\n';
+
+    memcpy(&extra_headers[extra_headers_len], tmp, len + 3);
+    extra_headers_len += len + 3;
+    extra_headers[extra_headers_len] = '\0';
+
+    return 1;
+}
 
 static void
 vncPrintBanner(void)
@@ -319,6 +362,7 @@ void ddxUseMsg(void)
     ErrorF("-depth D               set screen 0's depth\n");
     ErrorF("-pixelformat fmt       set pixel format (rgbNNN or bgrNNN)\n");
     ErrorF("-inetd                 has been launched from inetd\n");
+    ErrorF("-H header=val          append this header to all HTTP responses\n");
     ErrorF("-noclipboard           disable clipboard settings modification via vncconfig utility\n");
     ErrorF("-verbose [n]           verbose startup messages\n");
     ErrorF("-quiet                 minimal startup messages\n");
@@ -528,6 +572,17 @@ ddxProcessArgument(int argc, char *argv[], int i)
 	++i;
 	vfbScreens[0].fb.depth = atoi(argv[i]);
 	return 2;
+    }
+
+    if (strcmp(argv[i], "-H") == 0)
+    {
+        fail_unless_args(argc, i, 1);
+        ++i;
+        if (!add_extra_headers(argv[i])) {
+            ErrorF("Invalid argument\n");
+            return 0;
+        }
+        return 2;
     }
 
     if (strcmp(argv[i], "-pixelformat") == 0)

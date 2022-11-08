@@ -110,6 +110,11 @@ Run a mini-HTTP server which serves files from the given directory.  Normally
 the directory will contain the kasmweb client. It will use the websocket port.
 .
 .TP
+.B \-H \fIheader=val\fP
+Append this header to all HTTP responses (file and API). May be given multiple
+times.
+.
+.TP
 .B \-rfbauth \fIpasswd-file\fP, \-PasswordFile \fIpasswd-file\fP
 Password file for VNC authentication.  There is no default, you should
 specify the password file explicitly.  Password file should be created with
