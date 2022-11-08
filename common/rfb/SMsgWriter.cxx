@@ -39,7 +39,7 @@ static LogWriter vlog("SMsgWriter");
 
 SMsgWriter::SMsgWriter(ConnParams* cp_, rdr::OutStream* os_, rdr::OutStream* udps_)
   : cp(cp_), os(os_), udps(udps_),
-    nRectsInUpdate(0), nRectsInHeader(0),
+    nRectsInUpdate(0), dataRectsInUpdate(0), nRectsInHeader(0),
     needSetDesktopSize(false), needExtendedDesktopSize(false),
     needSetDesktopName(false), needSetCursor(false),
     needSetXCursor(false), needSetCursorWithAlpha(false),
@@ -340,7 +340,7 @@ void SMsgWriter::writeFramebufferUpdateStart(int nRects)
 
   os->writeU16(nRects);
 
-  nRectsInUpdate = 0;
+  nRectsInUpdate = dataRectsInUpdate = 0;
   if (nRects == 0xFFFF)
     nRectsInHeader = 0;
   else
@@ -365,7 +365,7 @@ void SMsgWriter::writeFramebufferUpdateEnd()
 
     // Send an UDP flip marker, if needed
     if (cp->supportsUdp) {
-      udps->writeS16(nRectsInUpdate);
+      udps->writeS16(dataRectsInUpdate);
       udps->writeS16(0);
       udps->writeU16(0);
       udps->writeU16(0);
@@ -394,6 +394,7 @@ void SMsgWriter::startRect(const Rect& r, int encoding)
 {
   if (++nRectsInUpdate > nRectsInHeader && nRectsInHeader)
     throw Exception("SMsgWriter::startRect: nRects out of sync");
+  ++dataRectsInUpdate;
 
   if (cp->supportsUdp) {
     udps->writeS16(r.tl.x);
