@@ -362,7 +362,7 @@ void ddxUseMsg(void)
     ErrorF("-depth D               set screen 0's depth\n");
     ErrorF("-pixelformat fmt       set pixel format (rgbNNN or bgrNNN)\n");
     ErrorF("-inetd                 has been launched from inetd\n");
-    ErrorF("-H header=val          append this header to all HTTP responses\n");
+    ErrorF("-http-header name=val  append this header to all HTTP responses\n");
     ErrorF("-noclipboard           disable clipboard settings modification via vncconfig utility\n");
     ErrorF("-verbose [n]           verbose startup messages\n");
     ErrorF("-quiet                 minimal startup messages\n");
@@ -574,7 +574,7 @@ ddxProcessArgument(int argc, char *argv[], int i)
 	return 2;
     }
 
-    if (strcmp(argv[i], "-H") == 0)
+    if (strcmp(argv[i], "-http-header") == 0)
     {
         fail_unless_args(argc, i, 1);
         ++i;

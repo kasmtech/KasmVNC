@@ -110,7 +110,7 @@ Run a mini-HTTP server which serves files from the given directory.  Normally
 the directory will contain the kasmweb client. It will use the websocket port.
 .
 .TP
-.B \-H \fIheader=val\fP
+.B \-http-header \fIheader=val\fP
 Append this header to all HTTP responses (file and API). May be given multiple
 times.
 .
