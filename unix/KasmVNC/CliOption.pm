@@ -33,6 +33,16 @@ sub new {
 
         scalar $self->configValues() > 0;
       },
+      toStringSub => $args->{toStringSub}  || sub {
+        my $self = shift;
+        
+        my $derivedValue = $self->deriveValue();
+        if (defined($derivedValue)) {
+          return "-$self->{name} " . "'$derivedValue'";
+        }
+
+        "-$self->{name}";
+      },
       errors => []
     }, $class;
 }
@@ -75,12 +85,7 @@ sub toString {
 
   return unless $self->isActive();
 
-  my $derivedValue = $self->deriveValue();
-  if (defined($derivedValue)) {
-    return "-$self->{name} " . "'$derivedValue'";
-  }
-
-  "-$self->{name}";
+  $self->{toStringSub}->($self);
 }
 
 sub toValue {

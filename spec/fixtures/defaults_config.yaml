@@ -73,9 +73,10 @@ encoding:
   hextile_improved_compression: true
 
 server:
+  http:
+    httpd_directory: /usr/share/kasmvnc/www
   advanced:
     x_font_path: auto
-    httpd_directory: /usr/share/kasmvnc/www
     kasm_password_file: ~/.kasmpasswd
     x_authority_file: auto
   auto_shutdown:
