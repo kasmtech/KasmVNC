@@ -15,6 +15,7 @@ network:
   udp:
     public_ip: auto
     port: auto
+    stun_server: auto
   ssl:
     pem_certificate: /etc/ssl/certs/ssl-cert-snakeoil.pem
     pem_key: /etc/ssl/private/ssl-cert-snakeoil.key
@@ -117,9 +118,13 @@ encoding:
   hextile_improved_compression: true
 
 server:
+  http:
+    headers:
+      - Cross-Origin-Embedder-Policy=require-corp
+      - Cross-Origin-Opener-Policy=same-origin
+    httpd_directory: /usr/share/kasmvnc/www
   advanced:
     x_font_path: auto
-    httpd_directory: /usr/share/kasmvnc/www
     kasm_password_file: ${HOME}/.kasmpasswd
     x_authority_file: auto
   auto_shutdown:
