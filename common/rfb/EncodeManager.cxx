@@ -366,7 +366,7 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
         Server::dynamicQualityMax > Server::dynamicQualityMin) {
       dynamicQualityMin = Server::dynamicQualityMin;
       dynamicQualityOff = Server::dynamicQualityMax - Server::dynamicQualityMin;
-    } else if (dynamicQualityMin >= 0) {
+    } else if (Server::dynamicQualityMin >= 0) {
       dynamicQualityMin = Server::dynamicQualityMin;
       dynamicQualityOff = 0;
     }
