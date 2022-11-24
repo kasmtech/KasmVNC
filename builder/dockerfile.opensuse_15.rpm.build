@@ -14,7 +14,10 @@ RUN zypper -n install -y \
   tree \
   vim
 
+# Cache repo updates, so that spec changes don't trigger it on every build.
+RUN zypper refresh
 COPY opensuse/*.spec /tmp
+
 RUN zypper -n install $(grep BuildRequires /tmp/*.spec | cut -d' ' -f2 | xargs)
 
 RUN useradd -u 1000 -m -d /home/docker docker && \
