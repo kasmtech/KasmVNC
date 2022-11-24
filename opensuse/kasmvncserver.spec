@@ -46,6 +46,7 @@ SRC=$TAR_DATA/usr/local
 SRC_BIN=$SRC/bin
 DESTDIR=$RPM_BUILD_ROOT
 DST_MAN=$DESTDIR/usr/share/man/man1
+SSL_CERT_DIR=/usr/share/pki/trust/anchors
 
 mkdir -p $DESTDIR/usr/bin $DESTDIR/usr/share/man/man1 \
   $DESTDIR/usr/share/doc/kasmvncserver $DESTDIR/usr/lib \
@@ -63,9 +64,9 @@ rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
   --exclude www/utils/ --exclude .eslintrc --exclude configure \
   $SRC/share/kasmvnc $DESTDIR/usr/share
 
-sed -i -e 's!pem_certificate: .\+$!pem_certificate: /etc/pki/tls/private/kasmvnc.pem!' \
+sed -i -e 's!pem_certificate: .\+$!pem_certificate: '$SSL_CERT_DIR'/kasmvnc.pem!' \
     $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml
-sed -i -e 's!pem_key: .\+$!pem_key: /etc/pki/tls/private/kasmvnc.pem!' \
+sed -i -e 's!pem_key: .\+$!pem_key: '$SSL_CERT_DIR'/kasmvnc.pem!' \
     $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml
 sed -e 's/^\([^#]\)/# \1/' $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml > \
   $DESTDIR/etc/kasmvnc/kasmvnc.yaml
@@ -104,7 +105,7 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
   }
 
   make_self_signed_certificate() {
-    local cert_file=/etc/pki/tls/private/kasmvnc.pem
+    local cert_file="/usr/share/pki/trust/anchors/kasmvnc.pem"
     [ -f "$cert_file" ] && return 0
 
     openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
@@ -119,4 +120,4 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
   make_self_signed_certificate
 
 %postun
-  rm -f /etc/pki/tls/private/kasmvnc.pem
+  rm -f /usr/share/pki/trust/anchors/kasmvnc.pem
