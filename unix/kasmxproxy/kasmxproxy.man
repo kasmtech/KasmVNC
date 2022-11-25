@@ -43,4 +43,4 @@ Disabled by default.
 .B  Proxy display :1 to display :10, with resizing on.
 
 .SH AUTHOR
-Kasm Technologies http://kasmweb.com
+Kasm Technologies Corp https://www.kasmweb.com
