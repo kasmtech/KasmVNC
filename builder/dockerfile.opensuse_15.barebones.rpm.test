@@ -8,23 +8,8 @@ RUN zypper -n install -y \
   vim \
   xterm
 
-# deps and rpm install
-RUN zypper -n install -y \
-  libglvnd \
-  libgomp1 \
-  libjpeg8 \
-  libpixman-1-0 \
-  libXdmcp6 \
-  libXfont2-2 \
-  libxkbcommon-x11-0 \
-  openssl \
-  perl \
-  x11-tools \
-  xauth \
-  xkbcomp \
-  xkeyboard-config && \
-  mkdir -p /etc/pki/tls/private
-
+# Cache repo updates, so that package changes don't trigger it on every build.
+RUN zypper refresh
 ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp
 RUN zypper install -y --allow-unsigned-rpm /tmp/*.rpm
