@@ -1,6 +1,13 @@
 kasmvnc (1.0.0-1) unstable; urgency=medium
 
-  * New upstream release.
+  * WebRTC UDP transit support with support of STUN servers
+  * Lossless compression using multi-threaded WASM QOI decoder client side
+  * New yaml based configuration
+  * Significantly improved FPS through both client-side and server-side improvements.
+  * Support for the admin to define arbitrary http response headers for the built in web server
+  * Support for additional mouse buttons
+  * Refinement of vncserver checks and user prompts
+  * Added send_full_frame to developer API, forces full frame to be sent to all connected users that have at least read permission.
 
  -- Kasm Technologies LLC <info@kasmweb.com>  Tue, 29 Nov 2022 12:16:00 +0000
 

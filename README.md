@@ -1,12 +1,10 @@
 # KasmVNC - Linux Web Remote Desktop
 
 <a href="https://kasmweb.com"><img src="https://kasm-static-content.s3.amazonaws.com/logo_kasm.png" width="300"><a/>
-  
-[Kasm Technologies](https://www.kasmweb.com) developed Kasm Workspaces, the Containerized Streaming Platform. Kasm has open-sourced the Workspace docker images, which include containerized [full desktops and apps](https://github.com/kasmtech/workspaces-images) and [base images](https://github.com/kasmtech/workspaces-core-images) intended for developers to create custimized streaming containers. These containers can be used standalone or within the [Kasm Workspaces Platform](https://www.kasmweb.com) which provides a full Enterprise feature set. KasmVNC is used as the streaming tech for our container images, however, you can use KasmVNC for individual servers. While the term VNC is in the name, KasmVNC is not compliant with the RFB spec and has different goals than other VNC projects:
 
-  - Modern - KasmVNC is designed to provide a web accessible remote desktop. It comes with a web server and websocket server built in. There is no need to install other components. Simply run and navigate to your desktop's URL on the port you specify. While you can still turn on the legacy VNC port, it is disabled by default and will not work with legacy VNC clients.
-  - Secure - The RFB specification (VNC) limits the password field to 8 characters, so while the client may take a longer password, only the first 8 characters are sent. KasmVNC defaults to HTTPS with HTTP Basic Auth and disables the legacy VNC authentication method which is not sufficiently secure for internet accessible systems.
-  - Simple - KasmVNC aims at being simple to deploy and configure.
+KasmVNC provides remote web-based access to a Desktop or application. While VNC is in the name, KasmVNC differs from other VNC variants such as TigerVNC, RealVNC, and TurboVNC. KasmVNC has broken from the RFB specification which defines VNC, in order to support modern technologies and increase security. KasmVNC is accessed by users from any modern browser and does not support legacy VNC viewer applications. KasmVNC uses a modern YAML based configuration at the server and user level, allowing for ease of management.
+
+[Kasm Technologies](https://www.kasmweb.com) developed Kasm Workspaces, the Containerized Streaming Platform. Kasm has open-sourced the Workspace docker images, which include containerized [full desktops and apps](https://github.com/kasmtech/workspaces-images) and [base images](https://github.com/kasmtech/workspaces-core-images) intended for developers to create custimized streaming containers. These containers can be used standalone or within the [Kasm Workspaces Platform](https://www.kasmweb.com) which provides a full Enterprise feature set.
 
 ## Documentation
 
