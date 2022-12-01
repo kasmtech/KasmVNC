@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.0.0
+Version:        1.0.1
 Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
@@ -82,6 +82,8 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Thu Dec 01 2022 KasmTech <info@kasmweb.com> - 1.0.1-1
+- Bug fix for extreme video quality using high bandwidth with poor quality
 * Tue Nov 29 2022 KasmTech <info@kasmweb.com> - 1.0.0-1
 - WebRTC UDP transit support with support of STUN servers
 - Lossless compression using multi-threaded WASM QOI decoder client side
