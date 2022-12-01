@@ -46,6 +46,9 @@ build_www:
   only:
     variables:
       - $BUILD_JOBS !~ /^none$/
+  except:
+    variables:
+      - $CI_COMMIT_TAG
   artifacts:
     paths:
       - output/
