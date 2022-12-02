@@ -12,6 +12,11 @@ variables:
   # "BUILD_JOBS: none" won't build any build jobs, nor www.
   BUILD_JOBS: all
 
+workflow:
+  rules:
+    # Disable tag builds.
+    - if: $CI_COMMIT_TAG != $CI_COMMIT_REF_NAME
+
 stages:
   - www
   - build
