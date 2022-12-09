@@ -92,7 +92,7 @@ KasmVNC is configured via YAML based configurations. The server level configurat
 
 The following configuration shows all default settings. Many of the encoding settings can be overridden by the client, unless the `runtime_configuration.allow_client_to_override_kasm_server_settings` setting is set tot false. By default the client is allowed to modify encoding settings.
 
-For a full description of each setting see the [configuration reference](https://www.kasmweb/kasmvnc/docs/latest/index.html).
+For a full description of each setting see the [configuration reference](https://www.kasmweb.com/kasmvnc/docs/latest/configuration.html).
 
 ```yaml
 desktop:
