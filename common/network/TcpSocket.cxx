@@ -545,6 +545,12 @@ static uint8_t serverFrameStatsReadyCb(void *messager)
   return msgr->netServerFrameStatsReady();
 }
 
+static void clearClipboardCb(void *messager)
+{
+  GetAPIMessager *msgr = (GetAPIMessager *) messager;
+  msgr->netClearClipboard();
+}
+
 #if OPENSSL_VERSION_NUMBER < 0x1010000f
 
 static pthread_mutex_t *sslmutex;
@@ -692,6 +698,8 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   settings.numActiveUsersCb = numActiveUsersCb;
   settings.getClientFrameStatsNumCb = getClientFrameStatsNumCb;
   settings.serverFrameStatsReadyCb = serverFrameStatsReadyCb;
+
+  settings.clearClipboardCb = clearClipboardCb;
 
   openssl_threads();
 
