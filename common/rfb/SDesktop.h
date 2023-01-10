@@ -86,6 +86,8 @@ namespace rfb {
     virtual void handleClipboardAnnounceBinary(const unsigned __unused_attr num,
                                                const char __unused_attr mimes[][32]) {}
 
+    virtual void clearLocalClipboards() {}
+
   protected:
     virtual ~SDesktop() {}
   };

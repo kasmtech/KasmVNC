@@ -871,6 +871,8 @@ void VNCServerST::checkAPIMessages(network::GetAPIMessager *apimessager,
         desktop->handleClipboardAnnounceBinary(0, NULL);
 
         sendBinaryClipboardData("text/plain", NULL, 0);
+
+        desktop->clearLocalClipboards();
       break;
     }
   }

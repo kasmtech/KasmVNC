@@ -182,6 +182,11 @@ XserverDesktop::queryConnection(network::Socket* sock,
   return rfb::VNCServerST::PENDING;
 }
 
+void XserverDesktop::clearLocalClipboards()
+{
+  vncClearLocalClipboards();
+}
+
 void XserverDesktop::announceClipboard(bool available)
 {
   try {
