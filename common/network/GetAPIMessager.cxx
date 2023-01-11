@@ -806,3 +806,16 @@ void GetAPIMessager::netUdpUpgrade(void *client, uint32_t ip) {
 
 	pthread_mutex_unlock(&userMutex);
 }
+
+void GetAPIMessager::netClearClipboard() {
+	action_data act;
+	act.action = CLEAR_CLIPBOARD;
+
+	// Send it in
+	if (pthread_mutex_lock(&userMutex))
+		return;
+
+	actionQueue.push_back(act);
+
+	pthread_mutex_unlock(&userMutex);
+}
