@@ -72,6 +72,12 @@ from the X Consortium.
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #endif /* HAS_SHM */
+#ifdef MITSHM
+#include "shmint.h"
+#endif
+#ifdef HAVE_XSHMFENCE
+#include <misyncshm.h>
+#endif
 #include "dix.h"
 #include "os.h"
 #include "miline.h"
@@ -149,6 +155,8 @@ typedef enum { NORMAL_MEMORY_FB, SHARED_MEMORY_FB } fbMemType;
 static fbMemType fbmemtype = NORMAL_MEMORY_FB;
 static int lastScreen = -1;
 static Bool Render = TRUE;
+static Bool hw3d = FALSE;
+const char *driNode = NULL;
 
 static Bool displaySpecified = FALSE;
 static char displayNumStr[16];
@@ -350,6 +358,8 @@ void ddxUseMsg(void)
     ErrorF("+/-render		   turn on/off RENDER extension support"
 	   "(default on)\n");
 #endif
+    ErrorF("-hw3d                  enable hardware 3d acceleration\n");
+    ErrorF("-drinode path          use another card than /dev/dri/renderD128\n");
     ErrorF("-linebias n            adjust thin line pixelization\n");
     ErrorF("-blackpixel n          pixel value for black\n");
     ErrorF("-whitepixel n          pixel value for white\n");
@@ -480,6 +490,20 @@ ddxProcessArgument(int argc, char *argv[], int i)
     {
 	Render = FALSE;
 	return 1;
+    }
+
+    if (strcmp (argv[i], "-hw3d") == 0)
+    {
+	hw3d = TRUE;
+	return 1;
+    }
+
+    if (strcmp (argv[i], "-drinode") == 0)
+    {
+        fail_unless_args(argc, i, 1);
+        ++i;
+        driNode = argv[i];
+        return 2;
     }
 
     if (strcmp (argv[i], "-blackpixel") == 0)	/* -blackpixel n */
@@ -1684,6 +1708,15 @@ vfbScreenInit(ScreenPtr pScreen, int argc, char **argv)
 	ret = fbPictureInit (pScreen, 0, 0);
 #endif
 
+#ifdef MITSHM
+    ShmRegisterFbFuncs(pScreen);
+#endif
+
+#ifdef HAVE_XSHMFENCE
+    if (!miSyncShmScreenInit(pScreen))
+        return FALSE;
+#endif
+
     if (!ret) return FALSE;
 
 #if XORG < 110
@@ -1796,6 +1829,10 @@ static ExtensionModule glxExt = {
 #endif
 #endif
 
+#ifdef DRI3
+extern void xvnc_init_dri3(void);
+#endif
+
 void
 InitOutput(ScreenInfo *scrInfo, int argc, char **argv)
 {
@@ -1871,6 +1908,14 @@ InitOutput(ScreenInfo *scrInfo, int argc, char **argv)
 
     if (!AddCallback(&ClientStateCallback, vfbClientStateChange, 0)) {
 	FatalError("AddCallback failed\n");
+    }
+
+    if (hw3d) {
+#ifdef DRI3
+        xvnc_init_dri3();
+#else
+        FatalError("DRI3 disabled at compile time\n");
+#endif
     }
 } /* end InitOutput */
 

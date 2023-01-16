@@ -80,3 +80,14 @@ Index: xserver/mi/miinitext.c
      {GEExtensionInit, "Generic Event Extension", &noGEExtension},
      {ShapeExtensionInit, "SHAPE", NULL},
  #ifdef MITSHM
+--- xserver.orig/dri3/Makefile.am	2019-02-26 21:28:50.000000000 +0200
++++ xserver/dri3/Makefile.am	2023-01-18 11:55:45.315851638 +0200
+@@ -1,7 +1,7 @@
+ noinst_LTLIBRARIES = libdri3.la
+ AM_CFLAGS = \
+ 	-DHAVE_XORG_CONFIG_H \
+-	@DIX_CFLAGS@ @XORG_CFLAGS@
++	@DIX_CFLAGS@ @XORG_CFLAGS@ @LIBDRM_CFLAGS@
+ 
+ libdri3_la_SOURCES = \
+ 	dri3.h \

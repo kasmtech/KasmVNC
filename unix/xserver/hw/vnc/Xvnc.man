@@ -281,6 +281,15 @@ be either \fB0\fP (off), \fB1\fP (always) or \fB2\fP (auto). Default is
 \fB2\fP.
 .
 .TP
+.B \-hw3d
+Enable hardware 3d acceleration. Default is software (llvmpipe usually).
+.
+.TP
+.B \-drinode \fIpath\fP
+Use another path instead of /dev/dri/renderD128. You may need this if you have
+more than one GPU.
+.
+.TP
 .B \-ZlibLevel \fIlevel\fP
 Zlib compression level for ZRLE encoding (it does not affect Tight encoding).
 Acceptable values are between 0 and 9.  Default is to use the standard

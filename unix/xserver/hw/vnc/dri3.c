@@ -1,0 +1,284 @@
+/* Copyright (c) 2023 Kasm
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE X CONSORTIUM BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+Except as contained in this notice, the name of the X Consortium shall
+not be used in advertising or otherwise to promote the sale, use or
+other dealings in this Software without prior written authorization
+from the X Consortium.
+
+*/
+
+#ifdef HAVE_DIX_CONFIG_H
+#include <dix-config.h>
+#endif
+
+#ifdef DRI3
+
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+
+#include <X11/X.h>
+#include <X11/Xmd.h>
+#include <dri3.h>
+#include <drm_fourcc.h>
+#include <fb.h>
+#include <gcstruct.h>
+#include <gbm.h>
+
+extern const char *driNode;
+
+static struct priv_t {
+    struct gbm_device *gbm;
+    int fd;
+} priv;
+
+struct gbm_pixmap {
+    struct gbm_bo *bo;
+};
+
+typedef struct gbm_pixmap gbm_pixmap;
+
+static DevPrivateKeyRec dri3_pixmap_private_key;
+static struct timeval start;
+
+
+
+static int
+xvnc_dri3_open_client(ClientPtr client,
+                     ScreenPtr screen,
+                     RRProviderPtr provider,
+                     int *pfd)
+{
+    int fd = open(driNode, O_RDWR | O_CLOEXEC);
+    if (fd < 0)
+        return BadAlloc;
+    *pfd = fd;
+    return Success;
+}
+
+static uint32_t
+gbm_format_for_depth(CARD8 depth)
+{
+    switch (depth) {
+    case 16:
+        return GBM_FORMAT_RGB565;
+    case 24:
+        return GBM_FORMAT_XRGB8888;
+    case 30:
+        return GBM_FORMAT_ARGB2101010;
+    default:
+        ErrorF("unexpected depth: %d\n", depth);
+        /* fallthrough */
+    case 32:
+        return GBM_FORMAT_ARGB8888;
+    }
+
+}
+
+static void dri3_pixmap_set_private(PixmapPtr pixmap, gbm_pixmap *gp)
+{
+    dixSetPrivate(&pixmap->devPrivates, &dri3_pixmap_private_key, gp);
+}
+
+static gbm_pixmap *gbm_pixmap_get(PixmapPtr pixmap)
+{
+    return dixLookupPrivate(&pixmap->devPrivates, &dri3_pixmap_private_key);
+}
+
+static PixmapPtr
+create_pixmap_for_bo(ScreenPtr screen, struct gbm_bo *bo, CARD8 depth)
+{
+    PixmapPtr pixmap;
+
+    gbm_pixmap *gp = calloc(1, sizeof(gbm_pixmap));
+    if (!gp)
+        return NULL;
+
+    pixmap = screen->CreatePixmap(screen, gbm_bo_get_width(bo), gbm_bo_get_height(bo),
+                                  depth, CREATE_PIXMAP_USAGE_SCRATCH);
+    if (!pixmap)
+        return NULL;
+
+    gp->bo = bo;
+    dri3_pixmap_set_private(pixmap, gp);
+
+    return pixmap;
+}
+
+static PixmapPtr
+xvnc_pixmap_from_fds(ScreenPtr screen, CARD8 num_fds, const int *fds,
+                       CARD16 width, CARD16 height,
+                       const CARD32 *strides, const CARD32 *offsets,
+                       CARD8 depth, CARD8 bpp, uint64_t modifier)
+{
+    struct gbm_bo *bo = NULL;
+    PixmapPtr pixmap;
+
+    if (width == 0 || height == 0 || num_fds == 0 ||
+        depth < 15 || bpp != BitsPerPixel(depth) ||
+        strides[0] < width * bpp / 8)
+        return NULL;
+
+    if (num_fds == 1) {
+        struct gbm_import_fd_data data;
+
+        data.fd = fds[0];
+        data.width = width;
+        data.height = height;
+        data.stride = strides[0];
+        data.format = gbm_format_for_depth(depth);
+        bo = gbm_bo_import(priv.gbm, GBM_BO_IMPORT_FD, &data,
+                           GBM_BO_USE_RENDERING);
+        if (!bo)
+            return NULL;
+    } else {
+        return NULL;
+    }
+
+    pixmap = create_pixmap_for_bo(screen, bo, depth);
+    if (pixmap == NULL) {
+        gbm_bo_destroy(bo);
+        return NULL;
+    }
+
+    return pixmap;
+}
+
+static int
+xvnc_fds_from_pixmap(ScreenPtr screen, PixmapPtr pixmap, int *fds,
+                     uint32_t *strides, uint32_t *offsets,
+                     uint64_t *modifier)
+{
+    gbm_pixmap *gp = gbm_pixmap_get(pixmap);
+    if (!gp)
+        return 0;
+
+    fds[0] = gbm_bo_get_fd(gp->bo);
+    strides[0] = gbm_bo_get_stride(gp->bo);
+    offsets[0] = 0;
+    *modifier = DRM_FORMAT_MOD_INVALID;
+
+    return 1;
+}
+
+static Bool
+xvnc_get_formats(ScreenPtr screen,
+                 CARD32 *num_formats, CARD32 **formats)
+{
+    ErrorF("xvnc_get_formats\n");
+    return FALSE;
+}
+
+static Bool
+xvnc_get_modifiers(ScreenPtr screen, uint32_t format,
+                   uint32_t *num_modifiers, uint64_t **modifiers)
+{
+    ErrorF("xvnc_get_modifiers\n");
+    return FALSE;
+}
+
+static Bool
+xvnc_get_drawable_modifiers(DrawablePtr draw, uint32_t format,
+                            uint32_t *num_modifiers, uint64_t **modifiers)
+{
+    ErrorF("xvnc_get_drawable_modifiers\n");
+    return FALSE;
+}
+
+static const dri3_screen_info_rec xvnc_dri3_info = {
+    .version = 2,
+    .open = NULL,
+    .pixmap_from_fds = xvnc_pixmap_from_fds,
+    .fds_from_pixmap = xvnc_fds_from_pixmap,
+    .open_client = xvnc_dri3_open_client,
+    .get_formats = xvnc_get_formats,
+    .get_modifiers = xvnc_get_modifiers,
+    .get_drawable_modifiers = xvnc_get_drawable_modifiers,
+};
+
+void xvnc_sync_dri3_pixmap(PixmapPtr pixmap)
+{
+    // There doesn't seem to be a good hook or sync point, so we do it manually
+    // here, right before Present copies from the pixmap
+    DrawablePtr pDraw;
+    GCPtr gc;
+    void *ptr;
+    uint32_t stride, w, h;
+    void *opaque = NULL;
+    gbm_pixmap *gp = gbm_pixmap_get(pixmap);
+    if (!gp) {
+        ErrorF("Present tried to copy from a non-dri3 pixmap\n");
+        return;
+    }
+
+    w = gbm_bo_get_width(gp->bo);
+    h = gbm_bo_get_height(gp->bo);
+
+    ptr = gbm_bo_map(gp->bo, 0, 0, w, h,
+                     GBM_BO_TRANSFER_READ, &stride, &opaque);
+    if (!ptr) {
+        ErrorF("gbm map failed, errno %d\n", errno);
+        return;
+    }
+
+    pDraw = &pixmap->drawable;
+    if ((gc = GetScratchGC(pDraw->depth, pDraw->pScreen))) {
+        ValidateGC(pDraw, gc);
+        //gc->ops->PutImage(pDraw, gc, pDraw->depth, 0, 0, w, h, 0, ZPixmap, data);
+        fbPutZImage(pDraw, fbGetCompositeClip(gc), gc->alu, fbGetGCPrivate(gc)->pm,
+                    0, 0, w, h, ptr, stride / sizeof(FbStip));
+        FreeScratchGC(gc);
+    }
+
+    gbm_bo_unmap(gp->bo, opaque);
+}
+
+void xvnc_init_dri3(void)
+{
+    memset(&priv, 0, sizeof(priv));
+
+    gettimeofday(&start, NULL);
+
+    if (!dixRegisterPrivateKey(&dri3_pixmap_private_key, PRIVATE_PIXMAP, 0))
+        FatalError("dix\n");
+
+    if (!driNode)
+        driNode = "/dev/dri/renderD128";
+
+    priv.fd = open(driNode, O_RDWR | O_CLOEXEC);
+    if (!priv.fd)
+        FatalError("Failed to open %s\n", driNode);
+
+    priv.gbm = gbm_create_device(priv.fd);
+    if (!priv.gbm)
+        FatalError("Failed to create gbm\n");
+
+    if (!dri3_screen_init(screenInfo.screens[0], &xvnc_dri3_info))
+        FatalError("Couldn't init dri3\n");
+}
+
+#endif // DRI3
