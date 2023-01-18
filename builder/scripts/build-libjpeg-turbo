@@ -11,15 +11,15 @@ build_and_install() {
 }
 
 install_build_dependencies() {
+  ensure_libjpeg_is_fast
+
   if [ "$DISTRO" = centos ]; then
     yum install -y cmake gcc
-    ensure_libjpeg_is_fast
     return
   fi
 
   apt-get update
   apt-get install -y cmake gcc
-  ensure_libjpeg_is_fast
 }
 
 ensure_libjpeg_is_fast() {
@@ -28,6 +28,7 @@ ensure_libjpeg_is_fast() {
     return
   fi
 
+  apt-get update
   apt-get install -y nasm
 }
 
