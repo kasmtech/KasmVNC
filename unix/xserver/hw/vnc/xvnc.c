@@ -1783,8 +1783,8 @@ static void vfbClientStateChange(CallbackListPtr *a, void *b, void *c) {
         dispatchException &= ~DE_RESET;
     }
 }
- 
-#if XORG >= 113
+
+#if XORG >= 113 && XORG < 120
 #ifdef GLXEXT
 extern void GlxExtensionInit(void);
 
