@@ -4,19 +4,30 @@ set -euo pipefail
 
 build_and_install() {
   export MAKEFLAGS=-j`nproc`
-  export CFLAGS="-fno-semantic-interposition -fpic -flto"
+  export CFLAGS="-fpic -flto"
   cmake -DCMAKE_INSTALL_PREFIX=/usr/local -G"Unix Makefiles"
   make
   make install
 }
 
 install_build_dependencies() {
+  if [ "$DISTRO" = centos ]; then
+    yum install -y cmake gcc
+    ensure_libjpeg_is_fast
+    return
+  fi
+
   apt-get update
   apt-get install -y cmake gcc
   ensure_libjpeg_is_fast
 }
 
 ensure_libjpeg_is_fast() {
+  if [ "$DISTRO" = centos ]; then
+    yum install -y nasm
+    return
+  fi
+
   apt-get install -y nasm
 }
 
@@ -24,6 +35,9 @@ prepare_libjpeg_source() {
   git clone --depth=1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
   cd libjpeg-turbo
 }
+
+source_dir=$(dirname "$0")
+. "$source_dir/common.sh"
 
 install_build_dependencies
 prepare_libjpeg_source
