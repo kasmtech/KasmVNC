@@ -12,7 +12,7 @@ RUN apt-get update && \
 
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
-RUN apt-get update && apt-get -y install cmake git libjpeg-dev vim wget
+RUN apt-get update && apt-get -y install cmake git vim wget
 RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev
 
 # Additions for webp
@@ -21,6 +21,10 @@ RUN cd /tmp && tar -xzf /tmp/libwebp-*
 RUN cd /tmp/libwebp-1.0.2 && \
     ./configure --enable-static --disable-shared && \
     make && make install
+
+RUN apt-get update && apt-get install -y cmake nasm gcc
+RUN git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git
+RUN export MAKEFLAGS=-j`nproc`; export CFLAGS="-fno-semantic-interposition -fpic -flto"; cd libjpeg-turbo && cmake -DCMAKE_INSTALL_PREFIX=/usr/ -G"Unix Makefiles" && make && make install
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
 
