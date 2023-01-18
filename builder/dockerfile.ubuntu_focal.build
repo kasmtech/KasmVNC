@@ -22,9 +22,8 @@ RUN cd /tmp/libwebp-1.0.2 && \
     ./configure --enable-static --disable-shared && \
     make && make install
 
-RUN apt-get update && apt-get install -y cmake nasm gcc
-RUN git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git
-RUN export MAKEFLAGS=-j`nproc`; export CFLAGS="-fno-semantic-interposition -fpic -flto"; cd libjpeg-turbo && cmake -DCMAKE_INSTALL_PREFIX=/usr/ -G"Unix Makefiles" && make && make install
+COPY builder/scripts /scripts
+RUN /scripts/build-libjpeg-turbo
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
 
