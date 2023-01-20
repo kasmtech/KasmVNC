@@ -91,3 +91,23 @@ Index: xserver/mi/miinitext.c
  
  libdri3_la_SOURCES = \
  	dri3.h \
+--- xserver.orig/present/present.c	2019-02-26 21:28:50.000000000 +0200
++++ xserver/present/present.c	2023-01-20 11:32:27.175493594 +0200
+@@ -27,6 +27,8 @@
+ #include "present_priv.h"
+ #include <gcstruct.h>
+ 
++void xvnc_sync_dri3_pixmap(PixmapPtr pixmap);
++
+ /*
+  * Returns:
+  * TRUE if the first MSC value is equal to or after the second one
+@@ -79,6 +81,8 @@
+     ScreenPtr   screen = drawable->pScreen;
+     GCPtr       gc;
+ 
++    xvnc_sync_dri3_pixmap(pixmap);
++
+     gc = GetScratchGC(drawable->depth, screen);
+     if (update) {
+         ChangeGCVal     changes[2];
