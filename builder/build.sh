@@ -100,7 +100,7 @@ fi
 	--disable-xinerama --disable-xvfb --disable-xnest --disable-xorg \
 	--disable-dmx --disable-xwin --disable-xephyr --disable-kdrive \
 	--disable-config-hal --disable-config-udev \
-	--disable-dri2 --enable-glx --disable-xwayland --disable-dri3
+	--disable-dri2 --enable-glx --disable-xwayland
 make -j5
 
 # modifications for the servertarball
