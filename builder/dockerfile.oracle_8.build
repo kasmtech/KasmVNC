@@ -14,7 +14,6 @@ RUN dnf install -y \
   gcc-c++ \
   git \
   gnutls-devel \
-  libjpeg-turbo-devel \
   libpng-devel \
   libtiff-devel \
   make \
@@ -52,6 +51,10 @@ RUN cd /tmp && tar -xzf /tmp/libwebp-*
 RUN cd /tmp/libwebp-1.0.2 && \
     ./configure --enable-static --disable-shared && \
     make && make install
+
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-libjpeg-turbo
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd
 
