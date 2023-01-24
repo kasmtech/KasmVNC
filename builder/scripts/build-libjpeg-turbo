@@ -11,41 +11,12 @@ build_and_install() {
 }
 
 install_build_dependencies() {
+  install_packages cmake gcc
   ensure_libjpeg_is_fast
-
-  if [ "$DISTRO" = centos ]; then
-    yum install -y cmake gcc
-    return
-  fi
-  if [ "$DISTRO" = oracle ]; then
-    dnf install -y cmake gcc
-    return
-  fi
-  if [ "$DISTRO" = opensuse ]; then
-    zypper install -y cmake gcc
-    return
-  fi
-
-  apt-get update
-  apt-get install -y cmake gcc
 }
 
 ensure_libjpeg_is_fast() {
-  if [ "$DISTRO" = centos ]; then
-    yum install -y nasm
-    return
-  fi
-  if [ "$DISTRO" = oracle ]; then
-    dnf install -y nasm
-    return
-  fi
-  if [ "$DISTRO" = opensuse ]; then
-    zypper install -y nasm
-    return
-  fi
-
-  apt-get update
-  apt-get install -y nasm
+  install_packages nasm
 }
 
 prepare_libjpeg_source() {
