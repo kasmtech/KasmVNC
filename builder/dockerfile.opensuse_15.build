@@ -21,7 +21,6 @@ RUN zypper install -ny \
   libbz2-devel \
   libGLw-devel \
   libgnutls-devel \
-  libjpeg8-devel \
   libopenssl-devel \
   libpng16-devel \
   libtiff-devel \
@@ -47,6 +46,10 @@ RUN cd /tmp && tar -xzf /tmp/libwebp-*
 RUN cd /tmp/libwebp-1.0.2 && \
     ./configure --enable-static --disable-shared && \
     make && make install
+
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-libjpeg-turbo
 
 RUN useradd -u 1000 docker && \
   groupadd -g 1000 docker && \

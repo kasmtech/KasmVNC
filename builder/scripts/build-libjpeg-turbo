@@ -21,6 +21,10 @@ install_build_dependencies() {
     dnf install -y cmake gcc
     return
   fi
+  if [ "$DISTRO" = opensuse ]; then
+    zypper install -y cmake gcc
+    return
+  fi
 
   apt-get update
   apt-get install -y cmake gcc
@@ -33,6 +37,10 @@ ensure_libjpeg_is_fast() {
   fi
   if [ "$DISTRO" = oracle ]; then
     dnf install -y nasm
+    return
+  fi
+  if [ "$DISTRO" = opensuse ]; then
+    zypper install -y nasm
     return
   fi
 
