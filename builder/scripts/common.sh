@@ -5,6 +5,8 @@ detect_distro() {
     DISTRO=centos
   elif [ -f /etc/oracle-release ]; then
     DISTRO=oracle
+  elif [ -f /etc/fedora-release ]; then
+    DISTRO=fedora
   elif [ -f /usr/bin/zypper ]; then
     DISTRO=opensuse
   else
@@ -18,6 +20,7 @@ install_packages() {
   case "$DISTRO" in
     centos) install_cmd="yum install -y" ;;
     oracle) install_cmd="dnf install -y" ;;
+    fedora) install_cmd="dnf install -y" ;;
     opensuse) install_cmd="zypper install -y" ;;
     *) install_cmd="apt-get update && apt-get install -y"
   esac
