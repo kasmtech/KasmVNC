@@ -3,6 +3,7 @@
 set -e
 
 cd "$(dirname "$0")/.."
+. ./builder/process_test_options.sh
 . ./builder/os_ver_cli.sh
 . ./builder/common.sh
 
@@ -16,4 +17,6 @@ docker run -it -p "443:$VNC_PORT" --rm \
   -e KASMVNC_VERBOSE_LOGGING=$KASMVNC_VERBOSE_LOGGING \
   -e "VNC_USER=foo" -e "VNC_PW=foobar" \
   -e "VNC_PORT=$VNC_PORT" \
-  kasmvnctester_${os}:$os_codename
+  $entrypoint_executable \
+  kasmvnctester_${os}:$os_codename \
+  $entrypoint_args
