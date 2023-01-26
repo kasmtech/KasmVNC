@@ -18,15 +18,9 @@ RUN apt-get update && apt-get -y install gcc-11 g++-11
 RUN apt-get update && apt-get -y install cmake git libgnutls28-dev vim wget tightvncserver
 RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev
 
-# Additions for webp
-RUN cd /tmp && wget https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.0.2.tar.gz
-RUN cd /tmp && tar -xzf /tmp/libwebp-*
-RUN cd /tmp/libwebp-1.0.2 && \
-    ./configure --enable-static --disable-shared && \
-    make -j$(nproc) && make install
-
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-webp
 RUN $SCRIPTS_DIR/build-libjpeg-turbo
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
