@@ -35,6 +35,10 @@ stages:
   - cp -r builder/build/* output/
   - rm output/*.tar.gz
 
+default:
+  tags:
+    - oci-fixed-amd64
+
 build_www:
   stage: www
   allow_failure: false
