@@ -52,6 +52,9 @@ build_www:
     - docker run --rm -v $PWD/builder/www:/build kasmweb/www:latest
     - mkdir -p output/www
     - cd builder
+    - echo $PWD
+    - ls -l
+    - ls -l ../output
     - tar -zcvf ../output/www/kasm_www.tar.gz www
   only:
     variables:
