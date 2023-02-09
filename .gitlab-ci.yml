@@ -84,7 +84,7 @@ build_ubuntu_bionic_arm:
   stage: build
   allow_failure: false
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -137,7 +137,7 @@ build_ubuntu_focal_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -173,7 +173,7 @@ build_ubuntu_jammy_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -209,7 +209,7 @@ build_debian_buster_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -245,7 +245,7 @@ build_debian_bullseye_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -281,7 +281,7 @@ build_kali_rolling_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -334,7 +334,7 @@ build_oracle_8_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -370,7 +370,7 @@ build_opensuse_15_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
