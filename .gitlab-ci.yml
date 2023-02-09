@@ -11,6 +11,7 @@ variables:
   # arm builds, because build_debian_buster_arm matches build_debian_buster.
   # "BUILD_JOBS: none" won't build any build jobs, nor www.
   BUILD_JOBS: all
+  DOCKER_HOST: unix://
 
 workflow:
   rules:
