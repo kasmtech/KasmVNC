@@ -187,7 +187,7 @@ build_debian_buster:
     - bash builder/build-package debian buster;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -206,7 +206,7 @@ build_debian_buster_arm:
     - bash builder/build-package debian buster;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -223,7 +223,7 @@ build_debian_bullseye:
     - bash builder/build-package debian bullseye;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -242,7 +242,7 @@ build_debian_bullseye_arm:
     - bash builder/build-package debian bullseye;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
