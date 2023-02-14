@@ -11,6 +11,7 @@ variables:
   # arm builds, because build_debian_buster_arm matches build_debian_buster.
   # "BUILD_JOBS: none" won't build any build jobs, nor www.
   BUILD_JOBS: all
+  DOCKER_HOST: unix://
 
 workflow:
   rules:
@@ -35,6 +36,10 @@ stages:
   - cp -r builder/build/* output/
   - rm output/*.tar.gz
 
+default:
+  tags:
+    - oci-fixed-amd64
+
 build_www:
   stage: www
   allow_failure: false
@@ -47,6 +52,9 @@ build_www:
     - docker run --rm -v $PWD/builder/www:/build kasmweb/www:latest
     - mkdir -p output/www
     - cd builder
+    - echo $PWD
+    - ls -l
+    - ls -l ../output
     - tar -zcvf ../output/www/kasm_www.tar.gz www
   only:
     variables:
@@ -76,7 +84,7 @@ build_ubuntu_bionic_arm:
   stage: build
   allow_failure: false
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -129,7 +137,7 @@ build_ubuntu_focal_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -165,7 +173,7 @@ build_ubuntu_jammy_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -192,7 +200,7 @@ build_debian_buster:
     - bash builder/build-package debian buster;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -201,7 +209,7 @@ build_debian_buster_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -211,7 +219,7 @@ build_debian_buster_arm:
     - bash builder/build-package debian buster;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -228,7 +236,7 @@ build_debian_bullseye:
     - bash builder/build-package debian bullseye;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -237,7 +245,7 @@ build_debian_bullseye_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -247,7 +255,7 @@ build_debian_bullseye_arm:
     - bash builder/build-package debian bullseye;
   only:
     variables:
-      - $CI_COMMIT_MESSAGE =~ /\[full [cC][Ii]\]/ || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -273,7 +281,7 @@ build_kali_rolling_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -326,7 +334,7 @@ build_oracle_8_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -362,7 +370,7 @@ build_opensuse_15_arm:
   stage: build
   allow_failure: true
   tags:
-    - arm
+    - oci-fixed-arm64
   before_script:
     - *prepare_build
     - *prepare_www
