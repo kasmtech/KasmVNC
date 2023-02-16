@@ -198,6 +198,7 @@ namespace rfb {
                                        const char mimes[][32]);
 
     void refreshClients();
+    void sendUnixRelayData(const char name[], const unsigned char *buf, const unsigned len);
 
   protected:
 

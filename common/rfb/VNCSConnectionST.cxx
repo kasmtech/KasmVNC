@@ -51,6 +51,8 @@ static Cursor emptyCursor(0, 0, Point(0, 0), NULL);
 
 extern rfb::BoolParameter disablebasicauth;
 
+extern "C" char unixrelaynames[MAX_UNIX_RELAYS][MAX_UNIX_RELAY_NAME_LEN];
+
 VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
                                    bool reverse)
   : upgradingToUdp(false), sock(s), reverseConnection(reverse),
@@ -72,6 +74,10 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
 
   memset(bstats_total, 0, sizeof(bstats_total));
   gettimeofday(&connStart, NULL);
+
+  unsigned i;
+  for (i = 0; i < MAX_UNIX_RELAYS; i++)
+    unixRelaySubscriptions[i][0] = '\0';
 
   // Check their permissions, if applicable
   kasmpasswdpath[0] = '\0';
@@ -1779,4 +1785,55 @@ void VNCSConnectionST::udpDowngrade(const bool byServer)
 
   vlog.info("Client %s downgrading from udp by %s", sock->getPeerAddress(),
             byServer ? "the server" : "its own request");
+}
+
+void VNCSConnectionST::subscribeUnixRelay(const char *name)
+{
+  bool read, write, owner;
+  if (!getPerms(read, write, owner) || !write) {
+    // Need write permissions to subscribe
+    writer()->writeSubscribeUnixRelay(false, "No permissions");
+    vlog.info("Client tried to subscribe to unix channel %s without permissions", name);
+    return;
+  }
+
+  unsigned i;
+  bool found = false;
+  for (i = 0; i < MAX_UNIX_RELAYS; i++) {
+    if (!strcmp(name, unixrelaynames[i])) {
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) {
+    writer()->writeSubscribeUnixRelay(false, "No such unix channel");
+    vlog.info("Client tried to subscribe to nonexistent unix channel %s", name);
+    return;
+  }
+
+  writer()->writeSubscribeUnixRelay(true, "Ok");
+  for (i = 0; i < MAX_UNIX_RELAYS; i++) {
+    if (!unixRelaySubscriptions[i][0]) {
+      strcpy(unixRelaySubscriptions[i], name);
+      break;
+    }
+  }
+}
+
+void VNCSConnectionST::unixRelay(const char *name, const rdr::U8 *buf, const unsigned len)
+{
+  unsigned i;
+  for (i = 0; i < MAX_UNIX_RELAYS; i++) {
+    if (!strcmp(unixRelaySubscriptions[i], name)) {
+      server->desktop->receivedUnixRelayData(name, buf, len);
+      return;
+    }
+  }
+}
+
+void VNCSConnectionST::sendUnixRelayData(const char name[], const unsigned char *buf,
+                                         const unsigned len)
+{
+  writer()->writeUnixRelay(name, buf, len);
 }

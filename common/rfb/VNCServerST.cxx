@@ -1244,3 +1244,15 @@ void VNCServerST::refreshClients()
     (*i)->add_changed_all();
   }
 }
+
+void VNCServerST::sendUnixRelayData(const char name[],
+                                    const unsigned char *buf, const unsigned len)
+{
+  // For each client subscribed to this channel, send the data to them
+  std::list<VNCSConnectionST*>::iterator i;
+  for (i = clients.begin(); i != clients.end(); i++) {
+    if ((*i)->isSubscribedToUnixRelay(name)) {
+      (*i)->sendUnixRelayData(name, buf, len);
+    }
+  }
+}

@@ -33,6 +33,7 @@
 #include <rfb/EncodeManager.h>
 #include <rfb/SConnection.h>
 #include <rfb/Timer.h>
+#include <rfb/unixRelayLimits.h>
 
 namespace rfb {
   class VNCServerST;
@@ -200,6 +201,18 @@ namespace rfb {
 
     bool upgradingToUdp;
 
+    bool isSubscribedToUnixRelay(const char *name) const {
+      unsigned i;
+      for (i = 0; i < MAX_UNIX_RELAYS; i++) {
+        if (!strcmp(unixRelaySubscriptions[i], name))
+          return true;
+      }
+      return false;
+    }
+
+    virtual void sendUnixRelayData(const char name[], const unsigned char *buf,
+                                   const unsigned len);
+
   private:
     // SConnection callbacks
 
@@ -222,6 +235,8 @@ namespace rfb {
     virtual void handleClipboardAnnounce(bool available);
     virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
     virtual void udpUpgrade(const char *resp);
+    virtual void subscribeUnixRelay(const char *name);
+    virtual void unixRelay(const char *name, const rdr::U8 *buf, const unsigned len);
     virtual void supportsLocalCursor();
     virtual void supportsFence();
     virtual void supportsContinuousUpdates();
@@ -324,6 +339,8 @@ namespace rfb {
 
     bool frameTracking;
     uint32_t udpFramesSinceFull;
+
+    char unixRelaySubscriptions[MAX_UNIX_RELAYS][MAX_UNIX_RELAY_NAME_LEN];
   };
 }
 #endif

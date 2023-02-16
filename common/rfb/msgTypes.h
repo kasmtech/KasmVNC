@@ -33,6 +33,8 @@ namespace rfb {
   const int msgTypeRequestFrameStats = 179;
   const int msgTypeBinaryClipboard = 180;
   const int msgTypeUpgradeToUdp = 181;
+  const int msgTypeSubscribeUnixRelay = 182;
+  const int msgTypeUnixRelay = 183;
 
   const int msgTypeServerFence = 248;
 
@@ -54,6 +56,8 @@ namespace rfb {
   // same as the other direction
   //const int msgTypeBinaryClipboard = 180;
   //const int msgTypeUpgradeToUdp = 181;
+  //const int msgTypeSubscribeUnixRelay = 182;
+  //const int msgTypeUnixRelay = 183;
 
   const int msgTypeClientFence = 248;
 

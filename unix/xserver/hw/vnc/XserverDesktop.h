@@ -110,6 +110,9 @@ public:
                                                         const char* userName,
                                                         char** reason);
 
+  virtual void receivedUnixRelayData(const char name[], const unsigned char *buf,
+                                     const unsigned len);
+
 protected:
   bool handleListenerEvent(int fd,
                            std::list<network::SocketListener*>* sockets,
@@ -138,5 +141,7 @@ private:
   rfb::Point oldCursorPos;
 
   bool resizing;
+
+  uint8_t unixbuf[1024 * 1024];
 };
 #endif

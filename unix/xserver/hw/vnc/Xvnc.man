@@ -89,6 +89,11 @@ Use IPv4 for incoming and outgoing connections. Default is on.
 Use IPv6 for incoming and outgoing connections. Default is on.
 .
 .TP
+.B \-UnixRelay \fIname:path\fP
+Create a local named unix socket, for relaying data. May be given multiple times.
+Example: -UnixRelay audio:/tmp/audiosock
+.
+.TP
 .B \-rfbunixpath \fIpath\fP
 Specifies the path of a Unix domain socket on which Xvnc listens for
 connections from viewers, instead of listening on a TCP port.

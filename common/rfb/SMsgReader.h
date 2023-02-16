@@ -65,6 +65,9 @@ namespace rfb {
 
     void readUpgradeToUdp();
 
+    void readSubscribeUnixRelay();
+    void readUnixRelay();
+
     SMsgHandler* handler;
     rdr::InStream* is;
   };

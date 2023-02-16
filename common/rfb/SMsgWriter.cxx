@@ -749,3 +749,29 @@ void SMsgWriter::writeUdpUpgrade(const char *resp)
 
   endMsg();
 }
+
+void SMsgWriter::writeSubscribeUnixRelay(const bool success, const char *msg)
+{
+  startMsg(msgTypeSubscribeUnixRelay);
+
+  const rdr::U8 len = strlen(msg);
+  os->writeU8(success);
+  os->writeU8(len);
+  os->writeBytes(msg, len);
+
+  endMsg();
+}
+
+void SMsgWriter::writeUnixRelay(const char *name, const rdr::U8 *buf, const unsigned len)
+{
+  startMsg(msgTypeUnixRelay);
+
+  const rdr::U8 namelen = strlen(name);
+  os->writeU8(namelen);
+  os->writeBytes(name, namelen);
+
+  os->writeU32(len);
+  os->writeBytes(buf, len);
+
+  endMsg();
+}
