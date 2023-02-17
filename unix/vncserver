@@ -2242,6 +2242,24 @@ sub DefineConfigToCLIConversion {
           isPresent($value) && $value ne 'auto';
         }
     }),
+    KasmVNC::CliOption->new({
+        name => 'hw3d',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "desktop.gpu.hw3d",
+            type => KasmVNC::ConfigKey::BOOLEAN
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
+        name => 'drinode',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "desktop.gpu.drinode",
+            type => KasmVNC::ConfigKey::ANY
+          })
+        ]
+    }),
   );
 
   %cliArgMap = map { ("-" . $_->{name}) => $_ } @xvncOptions;
