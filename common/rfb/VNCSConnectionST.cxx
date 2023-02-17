@@ -1777,6 +1777,9 @@ void VNCSConnectionST::udpDowngrade(const bool byServer)
   cp.useCopyRect = true;
   encodeManager.resetZlib();
 
+  if (Server::DLP_WatermarkImage[0])
+    cp.useCopyRect = false;
+
   vlog.info("Client %s downgrading from udp by %s", sock->getPeerAddress(),
             byServer ? "the server" : "its own request");
 }

@@ -341,6 +341,28 @@ Log clipboard and keyboard actions. Info logs just clipboard direction and size,
 verbose adds the contents for both.
 .
 .TP
+.B \-DLP_WatermarkImage \fIpath/to/file.png\fP
+Add a watermark. The PNG file should be greyscale, black is treated as transparent
+and white as opaque.
+.
+.TP
+.B \-DLP_WatermarkLocation \fIx,y\fP
+Place the watermark at this position from the corner. Positive numbers are from top-left,
+negative from bottom-right. Negative numbers count from the bottom-right edge of the image.
+If not set, the watermark will be centered. Cannot be used together with repeat.
+.
+.TP
+.B \-DLP_WatermarkRepeatSpace \fInum\fP
+If set, repeat the watermark over the entire image, with \fBnum\fP pixels between
+repetitions. Cannot be used together with location.
+.
+.TP
+.B \-DLP_WatermarkTint \fIr,g,b,a\fP
+Tint the greyscale watermark by this color. Default is 255,255,255,255 - full white.
+The color components can be used to colorize the greyscale watermark, and the alpha
+can be used to make it fainter.
+.
+.TP
 .B \-selfBench
 Run a set of self-benchmarks and exit.
 .

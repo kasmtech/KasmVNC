@@ -277,6 +277,28 @@ void TightEncoder::resetZlib()
   zlibNeedsReset = true;
 }
 
+void TightEncoder::writeWatermarkRect(const rdr::U8 *data, const unsigned len,
+                                      const rdr::U8 r,
+                                      const rdr::U8 g,
+                                      const rdr::U8 b,
+                                      const rdr::U8 a)
+{
+  rdr::OutStream* os;
+
+  os = conn->getOutStream(conn->cp.supportsUdp);
+
+  os->writeU8(tightIT << 4);
+
+  writeCompact(os, len + 4);
+
+  os->writeU8(r);
+  os->writeU8(g);
+  os->writeU8(b);
+  os->writeU8(a);
+
+  os->writeBytes(data, len);
+}
+
 //
 // Including BPP-dependent implementation of the encoder.
 //
