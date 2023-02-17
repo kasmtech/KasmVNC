@@ -5,6 +5,9 @@ desktop:
     height: 768
   allow_resize: true
   pixel_depth: 24
+  gpu:
+    hw3d: false
+    drinode: /dev/dri/renderD128
 
 network:
   protocol: http

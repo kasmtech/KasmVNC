@@ -2249,7 +2249,22 @@ sub DefineConfigToCLIConversion {
             name => "desktop.gpu.hw3d",
             type => KasmVNC::ConfigKey::BOOLEAN
           })
-        ]
+        ],
+        toStringSub => sub {
+          $self = shift;
+          my $value = $self->configValue();
+
+          switch($value) {
+            case 'true' {
+              $valuesStr = '-hw3d ';
+            }
+            case 'false' {
+              $valuesStr = ' ';
+            }
+          }
+
+          return $valuesStr;
+        }
     }),
     KasmVNC::CliOption->new({
         name => 'drinode',
