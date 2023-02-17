@@ -216,15 +216,27 @@ void packWatermark(const Region &changed) {
         const Rect &bounding = changed.get_bounding_rect();
 
 	for (y = 0; y < rh; y++) {
-		for (x = 0; x < rw; x++) {
-			pix[cur] = 0;
-			if (bounding.contains(Point(x, y)) && changed.contains(x, y))
-				pix[cur] = watermarkUnpacked[y * rw + x];
+		// Is the entire line outside the changed area?
+		if (bounding.tl.y > y || bounding.br.y < y) {
+			for (x = 0; x < rw; x++) {
+				pix[cur] = 0;
 
-			if (cur || (y == rh - 1 && x == rw - 1))
-				*dst++ = pix[0] | (pix[1] << 4);
+				if (cur || (y == rh - 1 && x == rw - 1))
+					*dst++ = pix[0] | (pix[1] << 4);
 
-			cur ^= 1;
+				cur ^= 1;
+			}
+		} else {
+			for (x = 0; x < rw; x++) {
+				pix[cur] = 0;
+				if (bounding.contains(Point(x, y)) && changed.contains(x, y))
+					pix[cur] = watermarkUnpacked[y * rw + x];
+
+				if (cur || (y == rh - 1 && x == rw - 1))
+					*dst++ = pix[0] | (pix[1] << 4);
+
+				cur ^= 1;
+			}
 		}
 	}
 
