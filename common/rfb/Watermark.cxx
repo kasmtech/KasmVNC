@@ -212,10 +212,13 @@ void packWatermark(const Region &changed) {
 	uint16_t x, y;
 	uint8_t pix[2], cur = 0;
 	uint8_t *dst = watermarkTmp;
+
+        const Rect &bounding = changed.get_bounding_rect();
+
 	for (y = 0; y < rh; y++) {
 		for (x = 0; x < rw; x++) {
 			pix[cur] = 0;
-			if (changed.contains(x, y))
+			if (bounding.contains(Point(x, y)) && changed.contains(x, y))
 				pix[cur] = watermarkUnpacked[y * rw + x];
 
 			if (cur || (y == rh - 1 && x == rw - 1))
