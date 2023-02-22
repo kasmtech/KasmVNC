@@ -34,7 +34,12 @@ sub load {
   failIfConfigNotReadable($self->{filename});
 
   $logger->debug("Loading config " . $self->{filename});
-  $self->{data} = YAML::Tiny->read($self->{filename})->[0];
+  my $yamlDocuments = YAML::Tiny->read($self->{filename});
+  unless (defined $yamlDocuments) {
+    die "Couldn't load config: $self-{filename}. Probable reason: No newline at end of file";
+  }
+
+  $self->{data} = $yamlDocuments->[0];
 }
 
 sub get {
