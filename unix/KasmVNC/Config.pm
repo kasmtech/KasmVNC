@@ -8,6 +8,8 @@ use Data::Dumper;
 use Hash::Merge::Simple;
 use KasmVNC::Utils;
 
+our $logger;
+
 sub merge {
   my @configsToMerge = map { $_->{data} } @_;
   my $mergedConfig = Hash::Merge::Simple::merge(@configsToMerge) // {};
@@ -31,6 +33,7 @@ sub load {
 
   failIfConfigNotReadable($self->{filename});
 
+  $logger->debug("Loading config " . $self->{filename});
   $self->{data} = YAML::Tiny->read($self->{filename})->[0];
 }
 
