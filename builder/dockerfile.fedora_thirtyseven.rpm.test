@@ -1,4 +1,4 @@
-FROM fedora:33
+FROM fedora:37
 
 ENV DISPLAY=:1 \
     VNC_PORT=8443 \
@@ -47,7 +47,7 @@ COPY builder/startup/ $STARTUPDIR
 
 ### START CUSTOM STUFF ####
 COPY ./builder/scripts/ /tmp/scripts/
-COPY ./centos/kasmvncserver.spec /tmp
+COPY ./fedora/kasmvncserver.spec /tmp
 
 ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp/

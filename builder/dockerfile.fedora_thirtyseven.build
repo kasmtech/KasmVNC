@@ -1,0 +1,65 @@
+FROM fedora:37
+
+ENV KASMVNC_BUILD_OS fedora
+ENV KASMVNC_BUILD_OS_CODENAME thirtyseven
+ENV XORG_VER 1.20.7
+
+RUN \
+  echo "**** install build deps ****" && \
+  dnf install -y \
+    autoconf \
+    automake \
+    bzip2 \
+    cmake \
+    gcc \
+    gcc-c++ \
+    git \
+    libdrm-devel \
+    libepoxy-devel \
+    libjpeg-turbo-devel \
+    libjpeg-turbo-static \
+    libpciaccess-devel \
+    libtool \
+    libwebp-devel \
+    libX11-devel \
+    libXau-devel \
+    libxcb-devel \
+    libXcursor-devel \
+    libxcvt-devel \
+    libXdmcp-devel \
+    libXext-devel \
+    libXfont2-devel \
+    libxkbfile-devel \
+    libXrandr-devel \
+    libxshmfence-devel \
+    libXtst-devel \
+    mesa-libEGL-devel \
+    mesa-libGL-devel \
+    meson \
+    nettle-devel \
+    openssl-devel \
+    patch \
+    pixman-devel \
+    wayland-devel \
+    wget \
+    xcb-util-devel \
+    xcb-util-image-devel \
+    xcb-util-keysyms-devel \
+    xcb-util-renderutil-devel \
+    xcb-util-wm-devel \
+    xinit \
+    xkbcomp \
+    xkbcomp-devel \
+    xkeyboard-config \
+    xorg-x11-font-utils \
+    xorg-x11-proto-devel \
+    xorg-x11-server-common \
+    xorg-x11-server-devel \
+    xorg-x11-xtrans-devel
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+COPY --chown=docker:docker . /src/
+
+USER docker
+ENTRYPOINT ["/src/builder/build.sh"]
