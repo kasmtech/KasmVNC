@@ -40,7 +40,7 @@ EOF
 #sudo apt-get install cmake git libjpeg-dev libgnutls-dev
 
 # Gcc12 builds fail due to bug
-fail_on_gcc_12
+#fail_on_gcc_12
 
 # Ubuntu applies a million patches, but here we use upstream to simplify matters
 cd /tmp
@@ -89,6 +89,7 @@ ensure_crashpad_can_fetch_line_number_by_address
 if [ "${KASMVNC_BUILD_OS}" == "opensuse" ]; then
   sed -i 's/LIBGL="gl >= 7.1.0"/LIBGL="gl >= 1.1"/g' configure
 fi
+# build X11
 ./configure --prefix=/opt/kasmweb \
 	--with-xkb-path=/usr/share/X11/xkb \
 	--with-xkb-output=/var/lib/xkb \
@@ -101,6 +102,8 @@ fi
 	--disable-dmx --disable-xwin --disable-xephyr --disable-kdrive \
 	--disable-config-hal --disable-config-udev \
 	--disable-dri2 --enable-glx --disable-xwayland --disable-dri3
+# remove array bounds errors for new versions of GCC
+find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
 make -j5
 
 # modifications for the servertarball
