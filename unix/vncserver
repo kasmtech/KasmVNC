@@ -2256,10 +2256,10 @@ sub DefineConfigToCLIConversion {
 
           switch($value) {
             case 'true' {
-              $valuesStr = '-hw3d ';
+              my $valuesStr = '-hw3d ';
             }
             case 'false' {
-              $valuesStr = ' ';
+              my $valuesStr = ' ';
             }
           }
 
