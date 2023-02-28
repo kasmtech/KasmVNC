@@ -1979,7 +1979,7 @@ sub DefineConfigToCLIConversion {
           $self = shift;
 
           my @values = @{ listify($self->configValues()) };
-          
+
           my $valuesStr = "";
           foreach $value (@values) {
             $valuesStr = $valuesStr . "-http-header '$value' "
@@ -2250,20 +2250,13 @@ sub DefineConfigToCLIConversion {
             type => KasmVNC::ConfigKey::BOOLEAN
           })
         ],
-        toStringSub => sub {
-          $self = shift;
-          my $value = $self->configValue();
+        deriveValueSub => sub {
+          undef;
+        },
+        isActiveSub => sub {
+          my $self = shift;
 
-          switch($value) {
-            case 'true' {
-              my $valuesStr = '-hw3d ';
-            }
-            case 'false' {
-              my $valuesStr = ' ';
-            }
-          }
-
-          return $valuesStr;
+          $self->configValue() eq 'true';
         }
     }),
     KasmVNC::CliOption->new({
