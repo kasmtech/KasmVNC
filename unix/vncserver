@@ -2250,13 +2250,20 @@ sub DefineConfigToCLIConversion {
             type => KasmVNC::ConfigKey::BOOLEAN
           })
         ],
-        deriveValueSub => sub {
-          undef;
-        },
-        isActiveSub => sub {
-          my $self = shift;
+        toStringSub => sub {
+          $self = shift;
+          my $value = $self->configValue();
 
-          $self->configValue() eq 'true';
+          switch($value) {
+            case 'true' {
+              $valuesStr = '-hw3d ';
+            }
+            case 'false' {
+              $valuesStr = ' ';
+            }
+          }
+
+          return $valuesStr;
         }
     }),
     KasmVNC::CliOption->new({
