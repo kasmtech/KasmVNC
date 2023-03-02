@@ -85,6 +85,10 @@ autoreconf -i
 # everything after that is based on BUILDING.txt to remove unneeded
 # components.
 ensure_crashpad_can_fetch_line_number_by_address
+# Centos7 is too old for dri3
+if [ ! "${KASMVNC_BUILD_OS}" == "centos" ]; then
+  CONFIG_OPTIONS="--enable-dri3"
+fi
 # remove gl check for opensuse
 if [ "${KASMVNC_BUILD_OS}" == "opensuse" ]; then
   sed -i 's/LIBGL="gl >= 7.1.0"/LIBGL="gl >= 1.1"/g' configure
@@ -104,7 +108,6 @@ fi
     --disable-xvfb \
     --disable-xwayland \
     --disable-xwin \
-    --enable-dri3 \
     --enable-glx \
     --prefix=/opt/kasmweb \
     --with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/100dpi/:unscaled,/usr/share/fonts/X11/75dpi/:unscaled,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi,/usr/share/fonts/X11/75dpi,built-ins" \
@@ -112,7 +115,7 @@ fi
     --with-sha1=libcrypto \
     --with-xkb-bin-directory=/usr/bin \
     --with-xkb-output=/var/lib/xkb \
-    --with-xkb-path=/usr/share/X11/xkb
+    --with-xkb-path=/usr/share/X11/xkb ${CONFIG_OPTIONS}
 # remove array bounds errors for new versions of GCC
 find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
 make -j5
