@@ -5,27 +5,31 @@ ENV KASMVNC_BUILD_OS_CODENAME 8
 ENV XORG_VER 1.20.10
 
 # Install from stock repos
-RUN dnf install -y \
-  bzip2-devel \
-  ca-certificates \
-  cmake \
-  dnf-plugins-core \
-  gcc \
-  gcc-c++ \
-  git \
-  gnutls-devel \
-  libjpeg-turbo-devel \
-  libpng-devel \
-  libtiff-devel \
-  make \
-  mesa-dri-drivers \
-  openssl-devel \
-  openssl-devel \
-  patch \
-  tigervnc-server \
-  wget \
-  xorg-x11-font-utils \
-  zlib-devel
+RUN \
+  dnf install -y 'dnf-command(config-manager)' && \
+  dnf config-manager --set-enabled ol8_codeready_builder && \
+  dnf install -y \
+    bzip2-devel \
+    ca-certificates \
+    cmake \
+    dnf-plugins-core \
+    gcc \
+    gcc-c++ \
+    git \
+    gnutls-devel \
+    libjpeg-turbo-devel \
+    libpng-devel \
+    libtiff-devel \
+    libxshmfence-devel \
+    make \
+    mesa-dri-drivers \
+    mesa-libgbm-devel \
+    openssl-devel \
+    patch \
+    tigervnc-server \
+    wget \
+    xorg-x11-font-utils \
+    zlib-devel
 
 # Enable additional repos (epel, powertools, and fusion)
 RUN dnf config-manager --set-enabled ol8_codeready_builder

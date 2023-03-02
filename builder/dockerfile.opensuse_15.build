@@ -19,6 +19,7 @@ RUN zypper install -ny \
   gzip \
   lbzip2 \
   libbz2-devel \
+  libgbm-devel \
   libGLw-devel \
   libgnutls-devel \
   libjpeg8-devel \
@@ -27,6 +28,7 @@ RUN zypper install -ny \
   libtiff-devel \
   libXfont2-devel \
   libxkbcommon-x11-devel \
+  libxshmfence-devel \
   make \
   Mesa-dri \
   Mesa-libglapi-devel \

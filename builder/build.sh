@@ -89,18 +89,30 @@ ensure_crashpad_can_fetch_line_number_by_address
 if [ "${KASMVNC_BUILD_OS}" == "opensuse" ]; then
   sed -i 's/LIBGL="gl >= 7.1.0"/LIBGL="gl >= 1.1"/g' configure
 fi
-./configure --prefix=/opt/kasmweb \
-	--with-xkb-path=/usr/share/X11/xkb \
-	--with-xkb-output=/var/lib/xkb \
-	--with-xkb-bin-directory=/usr/bin \
-	--with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/100dpi/:unscaled,/usr/share/fonts/X11/75dpi/:unscaled,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi,/usr/share/fonts/X11/75dpi,built-ins" \
-  --with-sha1=libcrypto \
-	--without-dtrace --disable-dri \
+./configure \
+        --disable-config-hal \
+        --disable-config-udev \
+        --disable-dmx \
+        --disable-dri \
+        --disable-dri2 \
+        --disable-kdrive \
         --disable-static \
-	--disable-xinerama --disable-xvfb --disable-xnest --disable-xorg \
-	--disable-dmx --disable-xwin --disable-xephyr --disable-kdrive \
-	--disable-config-hal --disable-config-udev \
-	--disable-dri2 --enable-glx --disable-xwayland
+        --disable-xephyr \
+        --disable-xinerama \
+        --disable-xnest \
+        --disable-xorg \
+        --disable-xvfb \
+        --disable-xwayland \
+        --disable-xwin \
+        --enable-dri3 \
+        --enable-glx \
+        --prefix=/opt/kasmweb \
+        --with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/100dpi/:unscaled,/usr/share/fonts/X11/75dpi/:unscaled,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi,/usr/share/fonts/X11/75dpi,built-ins" \
+        --without-dtrace \
+        --with-sha1=libcrypto \
+        --with-xkb-bin-directory=/usr/bin \
+        --with-xkb-output=/var/lib/xkb \
+        --with-xkb-path=/usr/share/X11/xkb
 make -j5
 
 # modifications for the servertarball
