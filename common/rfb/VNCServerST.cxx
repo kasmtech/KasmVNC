@@ -832,9 +832,8 @@ static void upgradeClientToUdp(const network::GetAPIMessager::action_data &act,
   }
 }
 
-static void checkAPIMessages(network::GetAPIMessager *apimessager,
-                             rdr::U8 &trackingFrameStats, char trackingClient[],
-                             std::list<VNCSConnectionST*> &clients)
+void VNCServerST::checkAPIMessages(network::GetAPIMessager *apimessager,
+                             rdr::U8 &trackingFrameStats, char trackingClient[])
 {
   if (pthread_mutex_lock(&apimessager->userMutex))
     return;
@@ -865,6 +864,15 @@ static void checkAPIMessages(network::GetAPIMessager *apimessager,
       break;
       case network::GetAPIMessager::UDP_UPGRADE:
         upgradeClientToUdp(act, clients);
+      break;
+      case network::GetAPIMessager::CLEAR_CLIPBOARD:
+        clearBinaryClipboardData();
+        clipboardClient = NULL;
+        desktop->handleClipboardAnnounceBinary(0, NULL);
+
+        sendBinaryClipboardData("text/plain", NULL, 0);
+
+        desktop->clearLocalClipboards();
       break;
     }
   }
@@ -1031,7 +1039,7 @@ void VNCServerST::writeUpdate()
     shottime = msSince(&shotstart);
 
     trackingFrameStats = 0;
-    checkAPIMessages(apimessager, trackingFrameStats, trackingClient, clients);
+    checkAPIMessages(apimessager, trackingFrameStats, trackingClient);
   }
   const rdr::U8 origtrackingFrameStats = trackingFrameStats;
 

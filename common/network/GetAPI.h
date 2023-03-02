@@ -66,6 +66,7 @@ namespace network {
     void netResetFrameStatsCall();
     uint8_t netServerFrameStatsReady();
     void netUdpUpgrade(void *client, uint32_t ip);
+    void netClearClipboard();
 
     enum USER_ACTION {
       NONE,
@@ -73,7 +74,8 @@ namespace network {
       WANT_FRAME_STATS_ALL,
       WANT_FRAME_STATS_OWNER,
       WANT_FRAME_STATS_SPECIFIC,
-      UDP_UPGRADE
+      UDP_UPGRADE,
+      CLEAR_CLIPBOARD,
     };
 
     uint8_t netRequestFrameStats(USER_ACTION what, const char *client);
