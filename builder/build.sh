@@ -90,9 +90,11 @@ if [ ! "${KASMVNC_BUILD_OS}" == "centos" ]; then
   CONFIG_OPTIONS="--enable-dri3"
 fi
 # remove gl check for opensuse
-if [ "${KASMVNC_BUILD_OS}" == "opensuse" ]; then
+if [ "${KASMVNC_BUILD_OS}" == "opensuse" ] || ([ "${KASMVNC_BUILD_OS}" == "oracle" ] && [ "${KASMVNC_BUILD_OS_CODENAME}" == 9 ]); then
   sed -i 's/LIBGL="gl >= 7.1.0"/LIBGL="gl >= 1.1"/g' configure
 fi
+
+# build X11
 ./configure \
     --disable-config-hal \
     --disable-config-udev \
@@ -116,6 +118,7 @@ fi
     --with-xkb-bin-directory=/usr/bin \
     --with-xkb-output=/var/lib/xkb \
     --with-xkb-path=/usr/share/X11/xkb ${CONFIG_OPTIONS}
+
 # remove array bounds errors for new versions of GCC
 find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
 make -j5
@@ -135,6 +138,8 @@ if [ -d /usr/lib/x86_64-linux-gnu/dri ]; then
   ln -s /usr/lib/x86_64-linux-gnu/dri dri
 elif [ -d /usr/lib/aarch64-linux-gnu/dri ]; then
   ln -s /usr/lib/aarch64-linux-gnu/dri dri
+elif [ -d /usr/lib/xorg/modules/dri ]; then
+  ln -s /usr/lib/xorg/modules/dri dri
 else
   ln -s /usr/lib64/dri dri
 fi

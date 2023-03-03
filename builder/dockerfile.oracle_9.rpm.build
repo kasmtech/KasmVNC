@@ -1,0 +1,23 @@
+FROM oraclelinux:9
+
+ENV KASMVNC_BUILD_OS oracle
+ENV KASMVNC_BUILD_OS_CODENAME 9
+
+RUN dnf config-manager --set-enabled ol9_codeready_builder
+RUN dnf config-manager --set-enabled ol9_distro_builder
+RUN dnf install -y \
+  gpg* \
+  less \
+  redhat-lsb-core \
+  rng-tools \
+  rpm* \
+  rpmlint \
+  rsync \
+  tree \
+  vim
+
+COPY oracle/kasmvncserver9.spec /tmp
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+USER docker
