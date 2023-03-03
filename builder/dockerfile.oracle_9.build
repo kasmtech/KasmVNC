@@ -8,7 +8,6 @@ ENV XORG_VER 1.20.10
 RUN \
   dnf config-manager --set-enabled ol9_codeready_builder && \
   dnf config-manager --set-enabled ol9_distro_builder && \
-  dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm && \
   dnf install -y \
     bzip2-devel \
     ca-certificates \
@@ -16,32 +15,39 @@ RUN \
     dnf-plugins-core \
     gcc \
     gcc-c++ \
-    giflib-devel \
     git \
     gnutls-devel \
-    lbzip2 \
     libjpeg-turbo-devel \
     libpng-devel \
     libtiff-devel \
-    libXcursor-devel \
-    libXfont2-devel \
-    libxkbfile-devel \
-    libXrandr-devel \
     libxshmfence-devel \
-    libXtst-devel \
     make \
     mesa-dri-drivers \
-    mesa-libgbm-devel \
     mesa-libGL-devel \
+    mesa-libgbm-devel \
     openssl-devel \
     openssl-devel \
     patch \
     tigervnc-server \
     wget \
     xorg-x11-font-utils \
-    xorg-x11-server-devel \
-    xorg-x11-xtrans-devel \
     zlib-devel
+
+# Enable additional repos (epel, powertools, and fusion)
+RUN dnf install -y oracle-epel-release-el9
+RUN dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm
+
+# Install from new repos
+RUN dnf install -y \
+  giflib-devel \
+  lbzip2 \
+  libXfont2-devel \
+  libxkbfile-devel \
+  xorg-x11-server-devel \
+  xorg-x11-xtrans-devel \
+  libXrandr-devel \
+  libXtst-devel \
+  libXcursor-devel
 
 # Additions for webp
 RUN cd /tmp && wget https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.0.2.tar.gz
