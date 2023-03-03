@@ -40,7 +40,7 @@ EOF
 #sudo apt-get install cmake git libjpeg-dev libgnutls-dev
 
 # Gcc12 builds fail due to bug
-fail_on_gcc_12
+#fail_on_gcc_12
 
 # Ubuntu applies a million patches, but here we use upstream to simplify matters
 cd /tmp
@@ -86,21 +86,24 @@ autoreconf -i
 # components.
 ensure_crashpad_can_fetch_line_number_by_address
 # remove gl check for opensuse
-if [ "${KASMVNC_BUILD_OS}" == "opensuse" ]; then
+if [ "${KASMVNC_BUILD_OS}" == "opensuse" ] || ([ "${KASMVNC_BUILD_OS}" == "oracle" ] && [ "${KASMVNC_BUILD_OS_CODENAME}" == 9 ]); then
   sed -i 's/LIBGL="gl >= 7.1.0"/LIBGL="gl >= 1.1"/g' configure
 fi
+# build X11
 ./configure --prefix=/opt/kasmweb \
 	--with-xkb-path=/usr/share/X11/xkb \
 	--with-xkb-output=/var/lib/xkb \
 	--with-xkb-bin-directory=/usr/bin \
 	--with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/100dpi/:unscaled,/usr/share/fonts/X11/75dpi/:unscaled,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi,/usr/share/fonts/X11/75dpi,built-ins" \
-  --with-sha1=libcrypto \
+        --with-sha1=libcrypto \
 	--without-dtrace --disable-dri \
         --disable-static \
 	--disable-xinerama --disable-xvfb --disable-xnest --disable-xorg \
 	--disable-dmx --disable-xwin --disable-xephyr --disable-kdrive \
 	--disable-config-hal --disable-config-udev \
 	--disable-dri2 --enable-glx --disable-xwayland --disable-dri3
+# remove array bounds errors for new versions of GCC
+find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
 make -j5
 
 # modifications for the servertarball
@@ -118,6 +121,8 @@ if [ -d /usr/lib/x86_64-linux-gnu/dri ]; then
   ln -s /usr/lib/x86_64-linux-gnu/dri dri
 elif [ -d /usr/lib/aarch64-linux-gnu/dri ]; then
   ln -s /usr/lib/aarch64-linux-gnu/dri dri
+elif [ -d /usr/lib/xorg/modules/dri ]; then
+  ln -s /usr/lib/xorg/modules/dri dri
 else
   ln -s /usr/lib64/dri dri
 fi
