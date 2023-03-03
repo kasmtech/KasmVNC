@@ -18,6 +18,7 @@ RUN dnf install -y \
   libjpeg-turbo-devel \
   libpng-devel \
   libtiff-devel \
+  libxshmfence-devel \
   make \
   mesa-dri-drivers \
   mesa-libGL-devel \
