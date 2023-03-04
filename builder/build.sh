@@ -47,7 +47,7 @@ cd /tmp
 # default to the version of x in Ubuntu 18.04, otherwise caller will need to specify
 XORG_VER=${XORG_VER:-"1.19.6"}
 XORG_PATCH=$(echo "$XORG_VER" | grep -Po '^\d.\d+' | sed 's#\.##')
-wget --no-check-certificate https://www.x.org/archive/individual/xserver/xorg-server-${XORG_VER}.tar.bz2
+wget --no-check-certificate https://www.x.org/archive/individual/xserver/xorg-server-${XORG_VER}.tar.gz
 
 #git clone https://kasmweb@bitbucket.org/kasmtech/kasmvnc.git
 #cd kasmvnc
@@ -64,7 +64,7 @@ cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
   -DENABLE_GNUTLS:BOOL=OFF
 make -j5
 
-tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=1
+tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.gz --strip-components=1
 
 cd unix/xserver
 patch -Np1 -i ../xserver${XORG_PATCH}.patch
@@ -99,8 +99,8 @@ fi
     --disable-config-hal \
     --disable-config-udev \
     --disable-dmx \
-    --disable-dri \
-    --disable-dri2 \
+    --enable-dri \
+    --enable-dri2 \
     --disable-kdrive \
     --disable-static \
     --disable-xephyr \
