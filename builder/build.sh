@@ -67,10 +67,6 @@ make -j5
 tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.gz --strip-components=1
 
 cd unix/xserver
-# Remove assertion that breaks stock Fedora
-if [ "${KASMVNC_BUILD_OS}" == "fedora" ]; then
-    sed -i '/assert(key->initialized)/d' include/privates.h
-fi
 # Apply patches
 patch -Np1 -i ../xserver${XORG_PATCH}.patch
 case "$XORG_VER" in
@@ -104,8 +100,8 @@ fi
     --disable-config-hal \
     --disable-config-udev \
     --disable-dmx \
-    --enable-dri \
-    --enable-dri2 \
+    --disable-dri \
+    --disable-dri2 \
     --disable-kdrive \
     --disable-static \
     --disable-xephyr \
