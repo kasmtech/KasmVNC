@@ -92,7 +92,7 @@ if [ ! "${KASMVNC_BUILD_OS}" == "centos" ]; then
 fi
 # remove gl check for opensuse
 if [ "${KASMVNC_BUILD_OS}" == "opensuse" ] || ([ "${KASMVNC_BUILD_OS}" == "oracle" ] && [ "${KASMVNC_BUILD_OS_CODENAME}" == 9 ]); then
-  sed -i 's/LIBGL="gl >= 9.2.0"/LIBGL="gl >= 1.1"/g' configure
+  sed -i 's/LIBGL="gl >= 7.1.0"/LIBGL="gl >= 1.1"/g' configure
 fi
 
 # build X11
