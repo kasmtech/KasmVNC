@@ -1979,7 +1979,7 @@ sub DefineConfigToCLIConversion {
           $self = shift;
 
           my @values = @{ listify($self->configValues()) };
-          
+
           my $valuesStr = "";
           foreach $value (@values) {
             $valuesStr = $valuesStr . "-http-header '$value' "
@@ -2241,6 +2241,39 @@ sub DefineConfigToCLIConversion {
           my $value = $self->configValue();
           isPresent($value) && $value ne 'auto';
         }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'hw3d',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "desktop.gpu.hw3d",
+            type => KasmVNC::ConfigKey::BOOLEAN
+          })
+        ],
+        toStringSub => sub {
+          $self = shift;
+          my $value = $self->configValue();
+
+          switch($value) {
+            case 'true' {
+              $valuesStr = '-hw3d ';
+            }
+            case 'false' {
+              $valuesStr = ' ';
+            }
+          }
+
+          return $valuesStr;
+        }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'drinode',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "desktop.gpu.drinode",
+            type => KasmVNC::ConfigKey::ANY
+          })
+        ]
     }),
   );
 

@@ -5,32 +5,35 @@ ENV KASMVNC_BUILD_OS_CODENAME 9
 ENV XORG_VER 1.20.10
 
 # Install from stock repos
-RUN dnf config-manager --set-enabled ol9_distro_builder
-RUN dnf install -y \
-  bzip2-devel \
-  ca-certificates \
-  cmake \
-  dnf-plugins-core \
-  gcc \
-  gcc-c++ \
-  git \
-  gnutls-devel \
-  libjpeg-turbo-devel \
-  libpng-devel \
-  libtiff-devel \
-  make \
-  mesa-dri-drivers \
-  mesa-libGL-devel \
-  openssl-devel \
-  openssl-devel \
-  patch \
-  tigervnc-server \
-  wget \
-  xorg-x11-font-utils \
-  zlib-devel
+RUN \
+  dnf config-manager --set-enabled ol9_codeready_builder && \
+  dnf config-manager --set-enabled ol9_distro_builder && \
+  dnf install -y \
+    bzip2-devel \
+    ca-certificates \
+    cmake \
+    dnf-plugins-core \
+    gcc \
+    gcc-c++ \
+    git \
+    gnutls-devel \
+    libjpeg-turbo-devel \
+    libpng-devel \
+    libtiff-devel \
+    libxshmfence-devel \
+    make \
+    mesa-dri-drivers \
+    mesa-libGL-devel \
+    mesa-libgbm-devel \
+    openssl-devel \
+    openssl-devel \
+    patch \
+    tigervnc-server \
+    wget \
+    xorg-x11-font-utils \
+    zlib-devel
 
 # Enable additional repos (epel, powertools, and fusion)
-RUN dnf config-manager --set-enabled ol9_codeready_builder
 RUN dnf install -y oracle-epel-release-el9
 RUN dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm
 
