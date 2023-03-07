@@ -1597,6 +1597,22 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
         weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf));
 
         ret = 1;
+    } else entry("/api/clear_clipboard") {
+        settings.clearClipboardCb(settings.messager);
+        write(wakeuppipe[1], "", 1);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: 6\r\n"
+                 "%s"
+                 "\r\n"
+                 "200 OK", extra_headers ? extra_headers : "");
+        ws_send(ws_ctx, buf, strlen(buf));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf));
+
+        ret = 1;
     }
 
     #undef entry

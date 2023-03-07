@@ -2,8 +2,8 @@ Source: kasmvnc
 Section: x11
 Priority: optional
 Maintainer: Kasm Technologies LLC <info@kasmweb.com>
-Build-Depends: debhelper (>= 11), rsync, libpng-dev,
-  libtiff-dev, libgif-dev, libavcodec-dev, libssl-dev, libgl1, libxfont2, libsm6, libxext-dev, libxrandr-dev, libxtst-dev, libxcursor-dev, libunwind8
+Build-Depends: debhelper (>= 11), rsync, libjpeg-dev, libjpeg-dev, libpng-dev,
+  libtiff-dev, libgif-dev, libavcodec-dev, libssl-dev, libgl1, libxfont2, libsm6, libxext-dev, libxrandr-dev, libxtst-dev, libxcursor-dev, libunwind8, libgbm-dev
 Standards-Version: 4.1.3
 Homepage: https://github.com/kasmtech/KasmVNC
 #Vcs-Browser: https://salsa.debian.org/debian/kasmvnc
@@ -14,7 +14,7 @@ Architecture: amd64 arm64
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, ssl-cert, xauth,
   x11-xkb-utils, xkb-data, procps, libswitch-perl, libyaml-tiny-perl,
   libhash-merge-simple-perl, libscalar-list-utils-perl, liblist-moreutils-perl,
-  libtry-tiny-perl
+  libtry-tiny-perl, libgbm1
 Provides: vnc-server
 Description: KasmVNC provides remote web-based access to a Desktop or application.
   While VNC is in the name, KasmVNC differs from other VNC variants such

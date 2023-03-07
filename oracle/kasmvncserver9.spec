@@ -1,25 +1,27 @@
 Name:           kasmvncserver
 Version:        1.0.0
-Release:        leap15
+Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
 License: GPLv2+
 URL: https://github.com/kasmtech/KasmVNC
 
 BuildRequires: rsync
-Requires: xauth, hostname, libxkbcommon-x11-0, xkeyboard-config, x11-tools, openssl, perl, libpixman-1-0, libjpeg8, libgomp1, libXfont2-2, libXdmcp6, libglvnd, xkbcomp, perl-Switch, perl-YAML-Tiny, perl-Hash-Merge-Simple, perl-Scalar-List-Utils, perl-List-MoreUtils, perl-Try-Tiny, libgbm1, libxshmfence1
-Conflicts: tigervnc, tigervnc-x11vnc
+Requires: xorg-x11-xauth, xkeyboard-config, xorg-x11-server-utils, openssl, perl, perl-Switch, perl-YAML-Tiny, perl-Hash-Merge-Simple, perl-Scalar-List-Utils, perl-List-MoreUtils, perl-Try-Tiny, hostname, mesa-libgbm, libxshmfence
+Conflicts: tigervnc-server, tigervnc-server-minimal
 
 %description
-KasmVNC provides remote web-based access to a Desktop or application.
-While VNC is in the name, KasmVNC differs from other VNC variants such
-as TigerVNC, RealVNC, and TurboVNC. KasmVNC has broken from the RFB
-specification which defines VNC, in order to support modern technologies
-and increase security. KasmVNC is accessed by users from any modern
-browser and does not support legacy VNC viewer applications. KasmVNC
-uses a modern YAML based configuration at the server and user level,
-allowing for ease of management. KasmVNC is maintained by Kasm
+KasmVNC provides remote web-based access to a Desktop or application. 
+While VNC is in the name, KasmVNC differs from other VNC variants such 
+as TigerVNC, RealVNC, and TurboVNC. KasmVNC has broken from the RFB 
+specification which defines VNC, in order to support modern technologies 
+and increase security. KasmVNC is accessed by users from any modern 
+browser and does not support legacy VNC viewer applications. KasmVNC 
+uses a modern YAML based configuration at the server and user level, 
+allowing for ease of management. KasmVNC is maintained by Kasm 
 Technologies Corp, www.kasmweb.com.
+
+WARNING: this package requires EPEL and CodeReady builder.
 
 %prep
 
@@ -36,14 +38,13 @@ SRC=$TAR_DATA/usr/local
 SRC_BIN=$SRC/bin
 DESTDIR=$RPM_BUILD_ROOT
 DST_MAN=$DESTDIR/usr/share/man/man1
-SSL_CERT_DIR=/usr/share/pki/trust/anchors
 
 mkdir -p $DESTDIR/usr/bin $DESTDIR/usr/share/man/man1 \
   $DESTDIR/usr/share/doc/kasmvncserver $DESTDIR/usr/lib \
-  $DESTDIR/%perl_vendorlib $DESTDIR/etc/kasmvnc
+  $DESTDIR/usr/share/perl5 $DESTDIR/etc/kasmvnc
 cp $SRC_BIN/Xvnc $DESTDIR/usr/bin;
 cp $SRC_BIN/vncserver $DESTDIR/usr/bin;
-cp -a $SRC_BIN/KasmVNC $DESTDIR/%perl_vendorlib
+cp -a $SRC_BIN/KasmVNC $DESTDIR/usr/share/perl5
 cp $SRC_BIN/vncconfig $DESTDIR/usr/bin;
 cp $SRC_BIN/kasmvncpasswd $DESTDIR/usr/bin;
 cp $SRC_BIN/kasmxproxy $DESTDIR/usr/bin;
@@ -54,9 +55,9 @@ rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
   --exclude www/utils/ --exclude .eslintrc --exclude configure \
   $SRC/share/kasmvnc $DESTDIR/usr/share
 
-sed -i -e 's!pem_certificate: .\+$!pem_certificate: '$SSL_CERT_DIR'/kasmvnc.pem!' \
+sed -i -e 's!pem_certificate: .\+$!pem_certificate: /etc/pki/tls/private/kasmvnc.pem!' \
     $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml
-sed -i -e 's!pem_key: .\+$!pem_key: '$SSL_CERT_DIR'/kasmvnc.pem!' \
+sed -i -e 's!pem_key: .\+$!pem_key: /etc/pki/tls/private/kasmvnc.pem!' \
     $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml
 sed -e 's/^\([^#]\)/# \1/' $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml > \
   $DESTDIR/etc/kasmvnc/kasmvnc.yaml
@@ -74,14 +75,14 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 /usr/bin/*
 /usr/lib/kasmvncserver
 /usr/share/man/man1/*
-%perl_vendorlib/KasmVNC
+/usr/share/perl5/KasmVNC
 /usr/share/kasmvnc
 
 %license /usr/share/doc/kasmvncserver/LICENSE.TXT
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
-* Tue Nov 29 2022 KasmTech <info@kasmweb.com> - 1.0.0-leap15
+* Tue Nov 29 2022 KasmTech <info@kasmweb.com> - 1.0.0-1
 - WebRTC UDP transit support with support of STUN servers
 - Lossless compression using multi-threaded WASM QOI decoder client side
 - New yaml based configuration
@@ -104,7 +105,7 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
   }
 
   make_self_signed_certificate() {
-    local cert_file="/usr/share/pki/trust/anchors/kasmvnc.pem"
+    local cert_file=/etc/pki/tls/private/kasmvnc.pem
     [ -f "$cert_file" ] && return 0
 
     openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
@@ -119,4 +120,4 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
   make_self_signed_certificate
 
 %postun
-  rm -f /usr/share/pki/trust/anchors/kasmvnc.pem
+  rm -f /etc/pki/tls/private/kasmvnc.pem

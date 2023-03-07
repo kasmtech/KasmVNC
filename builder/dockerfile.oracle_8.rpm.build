@@ -13,7 +13,7 @@ RUN dnf install -y \
   tree \
   vim
 
-COPY oracle/*.spec /tmp
+COPY oracle/kasmvncserver.spec /tmp
 RUN dnf builddep -y /tmp/*.spec
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd

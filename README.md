@@ -101,6 +101,9 @@ desktop:
     height: 768
   allow_resize: true
   pixel_depth: 24
+  gpu:
+    hw3d: false
+    drinode: /dev/dri/renderD128
 
 network:
   protocol: http
@@ -256,6 +259,7 @@ command_line:
   - Cursor lock
   - IME support for languages with extended characters
   - Better mobile support
+  - DRI3 GPU acceleration with open source drivers (AMDGPU,Intel,ATI,ARM)
 
 Future Goals:
 

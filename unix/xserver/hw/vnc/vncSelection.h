@@ -26,6 +26,7 @@ void vncSelectionInit(void);
 
 void vncHandleClipboardAnnounce(int available);
 void vncHandleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
+void vncClearLocalClipboards();
 
 #ifdef __cplusplus
 }

@@ -105,6 +105,8 @@ typedef struct {
     void (*getUsersCb)(void *messager, const char **buf);
     uint8_t (*getClientFrameStatsNumCb)(void *messager);
     uint8_t (*serverFrameStatsReadyCb)(void *messager);
+
+    void (*clearClipboardCb)(void *messager);
 } settings_t;
 
 #ifdef __cplusplus

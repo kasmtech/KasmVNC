@@ -763,3 +763,42 @@ static void vncClientStateCallback(CallbackListPtr * l,
     }
   }
 }
+
+static void vncClearLocalClipboard(Atom selection)
+{
+  SelectionInfoRec info;
+  Selection *pSel;
+  int rc;
+
+  rc = dixLookupSelection(&pSel, selection, serverClient, DixSetAttrAccess);
+  if (rc != Success)
+    return;
+
+  if (pSel->client && (pSel->client != serverClient)) {
+    xEvent event = {
+      .u.selectionClear.time = currentTime.milliseconds,
+      .u.selectionClear.window = pSel->window,
+      .u.selectionClear.atom = pSel->selection
+    };
+    event.u.u.type = SelectionClear;
+    WriteEventsToClient(pSel->client, 1, &event);
+  }
+
+  pSel->lastTimeChanged = currentTime;
+  pSel->window = None;
+  pSel->pWin = NULL;
+  pSel->client = NullClient;
+
+  LOG_DEBUG("Cleared %s selection", NameForAtom(selection));
+
+  info.selection = pSel;
+  info.client = serverClient;
+  info.kind = SelectionSetOwner;
+  CallCallbacks(&SelectionCallback, &info);
+}
+
+void vncClearLocalClipboards()
+{
+  vncClearLocalClipboard(xaPRIMARY);
+  vncClearLocalClipboard(xaCLIPBOARD);
+}

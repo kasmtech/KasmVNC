@@ -61,6 +61,7 @@ public:
   void setFramebuffer(int w, int h, void* fbptr, int stride);
   void refreshScreenLayout();
   void requestClipboard();
+  void clearLocalClipboards();
   void announceClipboard(bool available);
   void clearBinaryClipboardData();
   void sendBinaryClipboardData(const char* mime, const unsigned char *data,
