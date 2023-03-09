@@ -27,8 +27,6 @@ RUN \
     glibc-devel \
     libdrm-devel \
     libepoxy-devel \
-    libjpeg-turbo-devel \
-    libjpeg-turbo-static \
     libmd-devel \
     libpciaccess-devel \
     libtool \
@@ -74,6 +72,11 @@ RUN \
     xorg-x11-server-devel \
     xorg-x11-xtrans-devel \
     xsltproc
+
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-webp
+RUN $SCRIPTS_DIR/build-libjpeg-turbo
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd
 

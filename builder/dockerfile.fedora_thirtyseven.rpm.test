@@ -31,8 +31,7 @@ WORKDIR $HOME
 
 RUN dnf install -y openssl xterm gettext wget
 RUN dnf install -y nss_wrapper
-RUN dnf install -y xorg-x11-xauth xorg-x11-xkb-utils \
-  xkeyboard-config xorg-x11-server-utils
+RUN dnf install -y xorg-x11-xauth xkeyboard-config
 # xorg-x11-server-Xorg
 # RUN dnf install -y @xfce-desktop-environment
 RUN dnf erase -y pm-utils xscreensaver*
