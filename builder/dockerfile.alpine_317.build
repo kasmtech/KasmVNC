@@ -2,7 +2,7 @@ FROM alpine:3.17
 
 ENV KASMVNC_BUILD_OS alpine
 ENV KASMVNC_BUILD_OS_CODENAME 317
-ENV XORG_VER 1.20.7
+ENV XORG_VER 1.20.14
 
 RUN \
   echo "**** install build deps ****" && \
@@ -67,6 +67,12 @@ RUN \
     xorg-server-common \
     xorg-server-dev \
     xtrans
+
+
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-webp
+RUN $SCRIPTS_DIR/build-libjpeg-turbo
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd
 

@@ -12,15 +12,13 @@ RUN apt-get update && \
 
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
-RUN apt-get update && apt-get -y install cmake git libjpeg-dev vim wget
+RUN apt-get update && apt-get -y install cmake git vim wget
 RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev
 
-# Additions for webp
-RUN cd /tmp && wget https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.0.2.tar.gz
-RUN cd /tmp && tar -xzf /tmp/libwebp-*
-RUN cd /tmp/libwebp-1.0.2 && \
-    ./configure --enable-static --disable-shared && \
-    make && make install
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-webp
+RUN $SCRIPTS_DIR/build-libjpeg-turbo
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
 

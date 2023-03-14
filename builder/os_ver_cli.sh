@@ -1,3 +1,5 @@
+#!/bin/bash
+
 default_os=${default_os:-ubuntu}
 default_os_codename=${default_os_codename:-bionic}
 

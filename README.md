@@ -101,6 +101,9 @@ desktop:
     height: 768
   allow_resize: true
   pixel_depth: 24
+  gpu:
+    hw3d: false
+    drinode: /dev/dri/renderD128
 
 network:
   protocol: http
@@ -228,6 +231,7 @@ command_line:
 
 # New Features!
 
+  - Faster jpeg compression (via statically linked libjpeg-turbo)
   - Webp image compression for better bandwidth usage
   - Automatic mixing of webp and jpeg based on CPU availability on server
   - Multi-threaded image encoding for smoother frame rate for servers with more cores
@@ -255,6 +259,7 @@ command_line:
   - Cursor lock
   - IME support for languages with extended characters
   - Better mobile support
+  - DRI3 GPU acceleration with open source drivers (AMDGPU,Intel,ATI,ARM)
 
 Future Goals:
 

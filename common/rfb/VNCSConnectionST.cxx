@@ -64,7 +64,7 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
     needsPermCheck(false), pointerEventTime(0),
     clientHasCursor(false),
     accessRights(AccessDefault), startTime(time(0)), frameTracking(false),
-    udpFramesSinceFull(0)
+    udpFramesSinceFull(0), complainedAboutNoViewRights(false)
 {
   setStreams(&sock->inStream(), &sock->outStream());
   peerEndpoint.buf = sock->getPeerEndpoint();
@@ -1308,8 +1308,14 @@ void VNCSConnectionST::writeFramebufferUpdate()
     }
   }
 
-  if (!(accessRights & AccessView))
+  if (!(accessRights & AccessView)) {
+    if (!complainedAboutNoViewRights) {
+      complainedAboutNoViewRights = true;
+      vlog.error("User %s has no read permissions. If this is not intended, grant them permissions with kasmvncpasswd or via the API",
+                 user);
+    }
     return;
+  }
 
   // Updates often consists of many small writes, and in continuous
   // mode, we will also have small fence messages around the update. We

@@ -324,6 +324,7 @@ namespace rfb {
 
     bool frameTracking;
     uint32_t udpFramesSinceFull;
+    bool complainedAboutNoViewRights;
   };
 }
 #endif
