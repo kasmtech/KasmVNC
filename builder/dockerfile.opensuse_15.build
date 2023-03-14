@@ -24,6 +24,8 @@ RUN zypper install -ny \
   libgnutls-devel \
   libopenssl-devel \
   libpng16-devel \
+  libpnglite0 \
+  png++-devel \
   libtiff-devel \
   libXfont2-devel \
   libxkbcommon-x11-devel \
