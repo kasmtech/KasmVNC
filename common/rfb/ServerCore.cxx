@@ -185,6 +185,23 @@ rfb::BoolParameter rfb::Server::DLP_RegionAllowRelease
  "Allow click releases inside the blacked-out region",
  true);
 
+rfb::IntParameter rfb::Server::DLP_WatermarkRepeatSpace
+("DLP_WatermarkRepeatSpace",
+ "Number of pixels between repeats of the watermark",
+ 0, 0, 4096);
+rfb::StringParameter rfb::Server::DLP_WatermarkImage
+("DLP_WatermarkImage",
+ "PNG file to use as a watermark",
+ "");
+rfb::StringParameter rfb::Server::DLP_WatermarkLocation
+("DLP_WatermarkLocation",
+ "Place the watermark at this position from the corner.",
+ "");
+rfb::StringParameter rfb::Server::DLP_WatermarkTint
+("DLP_WatermarkTint",
+ "Tint the greyscale watermark by this color.",
+ "255,255,255,255");
+
 rfb::StringParameter rfb::Server::maxVideoResolution
 ("MaxVideoResolution",
  "When in video mode, downscale the screen to max this size.",

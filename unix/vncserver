@@ -1722,6 +1722,50 @@ sub DefineConfigToCLIConversion {
         }
     }),
     KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkImage',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.image",
+            type => KasmVNC::ConfigKey::ANY
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkLocation',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.location",
+            type => KasmVNC::ConfigKey::ANY,
+            validator => KasmVNC::PatternValidator->new({
+              pattern => qr/^\d+,\d+$/,
+              errorMessage => "Must be an x and y offset separated by a comma: 10,10"
+            })
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkTint',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.tint",
+            type => KasmVNC::ConfigKey::ANY,
+            validator => KasmVNC::PatternValidator->new({
+              pattern => qr/^\d{1,3},\d{1,3},\d{1,3},\d{1,3}$/,
+              errorMessage => "Must be RBGA formatted: 255,255,255,128"
+            })
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkRepeatSpace',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.repeat_spacing",
+            type => KasmVNC::ConfigKey::INT
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
         name => 'DLP_Log',
         configKeys => [
           KasmVNC::ConfigKey->new({

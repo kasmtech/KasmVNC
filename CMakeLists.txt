@@ -148,6 +148,9 @@ endif()
 # Check for zlib
 find_package(ZLIB REQUIRED)
 
+# Check for libpng
+find_package(PNG REQUIRED)
+
 # Check for libjpeg
 find_package(JPEG REQUIRED)
 

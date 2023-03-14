@@ -73,6 +73,8 @@ namespace rfb {
 
     void debug_print(const char *prefix) const;
 
+    bool contains(int x, int y) const;
+
   protected:
 
     struct _XRegion* xrgn;

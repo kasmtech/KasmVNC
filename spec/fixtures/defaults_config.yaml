@@ -45,6 +45,11 @@ data_loss_prevention:
   keyboard:
     enabled: true
     rate_limit: unlimited
+  watermark:
+    # image: /etc/kasmvnc/picture.png
+    # location: 10,10
+    # tint: 255,20,20,128
+    # repeat_spacing: 10
   logging:
     level: off
 
