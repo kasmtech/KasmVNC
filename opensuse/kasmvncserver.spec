@@ -11,14 +11,14 @@ Requires: xauth, hostname, libxkbcommon-x11-0, xkeyboard-config, x11-tools, open
 Conflicts: tigervnc, tigervnc-x11vnc
 
 %description
-KasmVNC provides remote web-based access to a Desktop or application. 
-While VNC is in the name, KasmVNC differs from other VNC variants such 
-as TigerVNC, RealVNC, and TurboVNC. KasmVNC has broken from the RFB 
-specification which defines VNC, in order to support modern technologies 
-and increase security. KasmVNC is accessed by users from any modern 
-browser and does not support legacy VNC viewer applications. KasmVNC 
-uses a modern YAML based configuration at the server and user level, 
-allowing for ease of management. KasmVNC is maintained by Kasm 
+KasmVNC provides remote web-based access to a Desktop or application.
+While VNC is in the name, KasmVNC differs from other VNC variants such
+as TigerVNC, RealVNC, and TurboVNC. KasmVNC has broken from the RFB
+specification which defines VNC, in order to support modern technologies
+and increase security. KasmVNC is accessed by users from any modern
+browser and does not support legacy VNC viewer applications. KasmVNC
+uses a modern YAML based configuration at the server and user level,
+allowing for ease of management. KasmVNC is maintained by Kasm
 Technologies Corp, www.kasmweb.com.
 
 %prep

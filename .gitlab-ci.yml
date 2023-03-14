@@ -99,23 +99,6 @@ build_ubuntu_bionic_arm:
     paths:
       - output/
 
-build_ubuntu_bionic_libjpeg_turbo:
-  stage: build
-  allow_failure: false
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package ubuntu bionic +libjpeg-turbo_latest
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
 build_ubuntu_focal:
   stage: build
   allow_failure: true

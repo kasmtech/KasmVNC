@@ -231,6 +231,7 @@ command_line:
 
 # New Features!
 
+  - Faster jpeg compression (via statically linked libjpeg-turbo)
   - Webp image compression for better bandwidth usage
   - Automatic mixing of webp and jpeg based on CPU availability on server
   - Multi-threaded image encoding for smoother frame rate for servers with more cores

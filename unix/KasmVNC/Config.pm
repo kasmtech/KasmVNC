@@ -8,6 +8,8 @@ use Data::Dumper;
 use Hash::Merge::Simple;
 use KasmVNC::Utils;
 
+our $logger;
+
 sub merge {
   my @configsToMerge = map { $_->{data} } @_;
   my $mergedConfig = Hash::Merge::Simple::merge(@configsToMerge) // {};
@@ -31,7 +33,13 @@ sub load {
 
   failIfConfigNotReadable($self->{filename});
 
-  $self->{data} = YAML::Tiny->read($self->{filename})->[0];
+  $logger->debug("Loading config " . $self->{filename});
+  my $yamlDocuments = YAML::Tiny->read($self->{filename});
+  unless (defined $yamlDocuments) {
+    die "Couldn't load config: $self->{filename}. Probable reason: No newline at end of file\n";
+  }
+
+  $self->{data} = $yamlDocuments->[0];
 }
 
 sub get {

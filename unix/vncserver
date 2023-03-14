@@ -1171,6 +1171,7 @@ sub DefineFilePathsAndStuff {
 
   $KasmVNC::Users::vncPasswdBin = $exedir . "kasmvncpasswd";
   $KasmVNC::Users::logger = $logger;
+  $KasmVNC::Config::logger = $logger;
 
   $vncSystemConfigDir = "/etc/kasmvnc";
   if ($ENV{KASMVNC_DEVELOPMENT}) {
@@ -2787,5 +2788,6 @@ sub SetAppSettingsFromConfigAndCli {
 }
 
 sub InitLogger {
-  $logger = KasmVNC::Logger->new();
+  my $debugEnabled = any { $_ eq "-debug" } @ARGV;
+  $logger = KasmVNC::Logger->new({ level => $debugEnabled ? "debug" : "warn" });
 }

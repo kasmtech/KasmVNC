@@ -151,6 +151,8 @@ find_package(ZLIB REQUIRED)
 # Check for libjpeg
 find_package(JPEG REQUIRED)
 
+# Staticly link libjpeg-turbo
+set(JPEG_LIBRARIES "-Wl,-Bstatic -lturbojpeg -Wl,-Bdynamic")
 # Warn if it doesn't seem to be the accelerated libjpeg that's found
 set(CMAKE_REQUIRED_LIBRARIES ${JPEG_LIBRARIES})
 set(CMAKE_REQUIRED_FLAGS -I${JPEG_INCLUDE_DIR})
