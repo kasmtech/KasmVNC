@@ -20,7 +20,11 @@ ensure_libjpeg_is_fast() {
 }
 
 prepare_libjpeg_source() {
-  git clone --depth=1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
+  export JPEG_TURBO_RELEASE=$(curl -sX GET "https://api.github.com/repos/libjpeg-turbo/libjpeg-turbo/releases/latest" \
+  | awk '/tag_name/{print $4;exit}' FS='[""]')
+  mkdir libjpeg-turbo
+  curl -Ls "https://github.com/libjpeg-turbo/libjpeg-turbo/archive/${JPEG_TURBO_RELEASE}.tar.gz" | \
+  tar xzvf - -C libjpeg-turbo/ --strip-components=1
   cd libjpeg-turbo
 }
 
