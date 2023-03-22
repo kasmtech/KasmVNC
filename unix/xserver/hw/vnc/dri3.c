@@ -219,9 +219,14 @@ void xvnc_sync_dri3_pixmap(PixmapPtr pixmap)
     void *ptr;
     uint32_t stride, w, h;
     void *opaque = NULL;
+
+    // We may not be running on hw if there's a compositor using PRESENT on llvmpipe
+    if (!driNode)
+        return;
+
     gbm_pixmap *gp = gbm_pixmap_get(pixmap);
     if (!gp) {
-        ErrorF("Present tried to copy from a non-dri3 pixmap\n");
+        //ErrorF("Present tried to copy from a non-dri3 pixmap\n");
         return;
     }
 
