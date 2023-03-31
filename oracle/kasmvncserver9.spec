@@ -11,14 +11,14 @@ Requires: xorg-x11-xauth, xkeyboard-config, xorg-x11-server-utils, openssl, perl
 Conflicts: tigervnc-server, tigervnc-server-minimal
 
 %description
-KasmVNC provides remote web-based access to a Desktop or application. 
-While VNC is in the name, KasmVNC differs from other VNC variants such 
-as TigerVNC, RealVNC, and TurboVNC. KasmVNC has broken from the RFB 
-specification which defines VNC, in order to support modern technologies 
-and increase security. KasmVNC is accessed by users from any modern 
-browser and does not support legacy VNC viewer applications. KasmVNC 
-uses a modern YAML based configuration at the server and user level, 
-allowing for ease of management. KasmVNC is maintained by Kasm 
+KasmVNC provides remote web-based access to a Desktop or application.
+While VNC is in the name, KasmVNC differs from other VNC variants such
+as TigerVNC, RealVNC, and TurboVNC. KasmVNC has broken from the RFB
+specification which defines VNC, in order to support modern technologies
+and increase security. KasmVNC is accessed by users from any modern
+browser and does not support legacy VNC viewer applications. KasmVNC
+uses a modern YAML based configuration at the server and user level,
+allowing for ease of management. KasmVNC is maintained by Kasm
 Technologies Corp, www.kasmweb.com.
 
 WARNING: this package requires EPEL and CodeReady builder.
@@ -51,7 +51,7 @@ cp $SRC_BIN/kasmxproxy $DESTDIR/usr/bin;
 cp -r $SRC/lib/kasmvnc/ $DESTDIR/usr/lib/kasmvncserver
 cd $DESTDIR/usr/bin && ln -s kasmvncpasswd vncpasswd;
 cp -r $SRC/share/doc/kasmvnc*/* $DESTDIR/usr/share/doc/kasmvncserver/
-rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
+rsync -r --links --safe-links --exclude '.git*' --exclude po2js --exclude xgettext-html \
   --exclude www/utils/ --exclude .eslintrc --exclude configure \
   $SRC/share/kasmvnc $DESTDIR/usr/share
 
