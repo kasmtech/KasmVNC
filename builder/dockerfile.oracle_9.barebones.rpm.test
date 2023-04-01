@@ -4,7 +4,6 @@ ENV STARTUPDIR=/dockerstartup
 
 RUN dnf install -y \
   less \
-  redhat-lsb-core \
   vim \
   xterm
 RUN dnf config-manager --set-enabled ol9_codeready_builder
