@@ -1,3 +1,9 @@
+kasmvnc (1.1.0-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Kasm Technologies LLC <info@kasmweb.com>  Tue, 04 Apr 2023 13:52:14 +0000
+
 kasmvnc (1.0.0-1) unstable; urgency=medium
 
   * WebRTC UDP transit support with support of STUN servers
