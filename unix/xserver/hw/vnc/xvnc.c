@@ -93,7 +93,7 @@ from the X Consortium.
 #include "version-config.h"
 #include "site.h"
 
-#define XVNCVERSION "KasmVNC 0.9"
+#define XVNCVERSION "KasmVNC 1.1.0"
 #define XVNCCOPYRIGHT ("Copyright (C) 1999-2018 KasmVNC Team and many others (see README.me)\n" \
                        "See http://kasmweb.com for information on KasmVNC.\n")
 
