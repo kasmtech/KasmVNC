@@ -15,3 +15,4 @@ cd /build
 rm *.md
 rm AUTHORS
 rm vnc.html
+ln -s index.html vnc.html

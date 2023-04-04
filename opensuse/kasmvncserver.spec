@@ -50,7 +50,7 @@ cp $SRC_BIN/kasmxproxy $DESTDIR/usr/bin;
 cp -r $SRC/lib/kasmvnc/ $DESTDIR/usr/lib/kasmvncserver
 cd $DESTDIR/usr/bin && ln -s kasmvncpasswd vncpasswd;
 cp -r $SRC/share/doc/kasmvnc*/* $DESTDIR/usr/share/doc/kasmvncserver/
-rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
+rsync -r --links --safe-links --exclude '.git*' --exclude po2js --exclude xgettext-html \
   --exclude www/utils/ --exclude .eslintrc --exclude configure \
   $SRC/share/kasmvnc $DESTDIR/usr/share
 

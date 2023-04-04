@@ -4,7 +4,6 @@ ENV STARTUPDIR=/dockerstartup
 
 RUN dnf install -y \
   less \
-  redhat-lsb-core \
   vim \
   xterm
 RUN dnf config-manager --set-enabled ol9_codeready_builder
@@ -13,6 +12,9 @@ RUN dnf install -y oracle-epel-release-el9
 ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp
 RUN dnf localinstall -y /tmp/*.rpm
+
+RUN dnf install -y crypto-policies-scripts
+RUN update-crypto-policies --set FIPS:SHA1
 
 RUN mkdir -p $STARTUPDIR
 COPY startup/vnc_startup_barebones.sh $STARTUPDIR
