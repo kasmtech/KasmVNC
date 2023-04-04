@@ -3,7 +3,7 @@
 set -eo pipefail
 
 new_version="$1"
-spec_dirs=(centos oracle opensuse)
+spec_dirs=(centos oracle opensuse fedora)
 
 spec_files() {
   for d in "${spec_dirs[@]}"; do
