@@ -3,9 +3,13 @@
 set -eo pipefail
 
 new_version="$1"
-specs="centos/kasmvncserver.spec
-oracle/kasmvncserver.spec
-opensuse/kasmvncserver.spec"
+spec_dirs=(centos oracle opensuse fedora)
+
+spec_files() {
+  for d in "${spec_dirs[@]}"; do
+    ls "$d"/*.spec
+  done
+}
 
 bump_version() {
   sed -i "s/^Version:.\+/Version:        $new_version/" "$1"
@@ -25,8 +29,7 @@ bump_changelog() {
   sed -i -e "s/%changelog/%changelog\n$new_changelog_entry/" "$1"
 }
 
-IFS=$'\n'
-for spec_file in $specs; do
+for spec_file in $(spec_files); do
   bump_version $spec_file
   bump_changelog $spec_file
 done
