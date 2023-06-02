@@ -1,0 +1,38 @@
+FROM debian:bookworm-slim
+
+ENV KASMVNC_BUILD_OS debian
+ENV KASMVNC_BUILD_OS_CODENAME bookworm
+ENV XORG_VER 1.20.10
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN \
+  echo "**** add all sources ****" && \
+  echo "deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
+  echo "deb-src http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+  echo "deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+  echo "deb-src http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+  echo "deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+  echo "deb-src http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+  echo "deb http://security.debian.org/debian-security/ bookworm-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+  echo "deb-src http://security.debian.org/debian-security/ bookworm-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+  rm -f /etc/apt/sources.list.d/debian.sources
+
+RUN apt-get update && \
+      apt-get -y install sudo
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
+RUN apt-get update && apt-get -y install cmake git libgnutls28-dev vim wget tightvncserver curl
+RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev
+
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-webp
+RUN $SCRIPTS_DIR/build-libjpeg-turbo
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
+
+COPY --chown=docker:docker . /src/
+
+USER docker
+ENTRYPOINT ["/src/builder/build.sh"]

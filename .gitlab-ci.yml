@@ -243,6 +243,43 @@ build_debian_bullseye_arm:
     paths:
       - output/
 
+
+build_debian_bookworm:
+  stage: build
+  allow_failure: true
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package debian bookworm;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
+
+build_debian_bookworm_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - oci-fixed-arm64
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package debian bookworm;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
+
 build_kali_rolling:
   stage: build
   allow_failure: true
@@ -440,6 +477,42 @@ build_fedora_thirtyseven_arm:
     paths:
       - output/
 
+build_fedora_thirtyeight:
+  stage: build
+  allow_failure: true
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package fedora thirtyeight;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
+  
+build_fedora_thirtyeight_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - oci-fixed-arm64
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package fedora thirtyeight;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
+
 build_alpine_317:
   stage: build
   allow_failure: true
@@ -482,6 +555,43 @@ test:
     - *prepare_build
   script:
     - bash builder/test-vncserver
+
+
+build_alpine_318:
+  stage: build
+  allow_failure: true
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package alpine 318;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
+  
+build_alpine_318_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - oci-fixed-arm64
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package alpine 318;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
 
 upload:
   stage: upload
