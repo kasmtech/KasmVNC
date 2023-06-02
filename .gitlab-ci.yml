@@ -486,6 +486,9 @@ test:
 upload:
   stage: upload
   image: ubuntu:focal
+  artifacts:
+    paths:
+      - output/
   before_script:
     - . .ci/upload.sh
   script:
@@ -502,6 +505,7 @@ upload:
       done
     - export S3_BUILD_DIRECTORY="kasmvnc/${CI_COMMIT_SHA}"
     - export RELEASE_VERSION=$(.ci/next_release_version "$CI_COMMIT_REF_NAME")
+    - uploaded_files=()
     - for package in `find output/ -type f -name '*.deb' -or -name '*.rpm' -or -name '*.tgz'`; do
         prepare_upload_filename "$package";
         upload_filename="${S3_BUILD_DIRECTORY}/$upload_filename";
@@ -510,4 +514,23 @@ upload:
         upload_to_s3 "$package" "$upload_filename" "$S3_BUCKET";
         UPLOAD_NAME=$(basename $upload_filename | sed 's#kasmvncserver_##' | sed -r 's#_([0-9]{1,3}\.){2}[0-9]{1,2}_\S+?([a-f0-9]{6})##' | sed -r 's#\.(deb|rpm|tgz)##');
         curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=${UPLOAD_NAME}&target_url=${S3_URL}";
+        uploaded_files+=("$upload_filename");
       done
+    - make_index_html "${uploaded_files[@]}" > output/index.html;
+
+upload_build_preview:
+  stage: upload
+  needs: ["upload"]
+  dependencies: ["upload"]
+  image: ubuntu:focal
+  before_script:
+    - . .ci/upload.sh
+  resource_group: upload_build_preview
+  only:
+    variables:
+      - $CI_COMMIT_BRANCH == 'master'
+  script:
+    - prepare_to_run_scripts_and_s3_uploads
+    - preview_builds_dir=kasmvnc/preview-builds
+    - upload_to_s3 "output/index.html" "$preview_builds_dir/index.html" "$S3_BUCKET"
+    - curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=index.html&target_url=${S3_URL}";

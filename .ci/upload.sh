@@ -89,3 +89,26 @@ detect_revision() {
 
   REVISION=$(echo "$package" | sed "s/_${arch}.\+//" | sed 's/.\++//')
 }
+
+make_index_html() {
+  local body=""
+  local bname
+
+  for f in "$@"; do
+    bname=$(basename "$f")
+    body="${body}<a href=/$f>$bname</a><br>"
+  done
+
+  cat <<EOF
+<!doctype html>
+<html lang=en>
+<head>
+	<meta charset=utf-8>
+	<title>KasmVNC preview build</title>
+</head>
+<body>
+$body
+</body>
+</html>
+EOF
+}
