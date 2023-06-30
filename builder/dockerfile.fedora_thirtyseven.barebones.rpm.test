@@ -1,0 +1,19 @@
+FROM fedora:37
+
+ENV STARTUPDIR=/dockerstartup
+
+RUN dnf install -y xterm
+RUN dnf install -y vim less
+RUN yum install -y redhat-lsb-core
+
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp/
+RUN dnf localinstall -y /tmp/*.rpm
+
+RUN mkdir -p $STARTUPDIR
+COPY startup/vnc_startup_barebones.sh $STARTUPDIR
+
+RUN useradd -m foo
+USER foo:kasmvnc-cert
+
+ENTRYPOINT "/$STARTUPDIR/vnc_startup_barebones.sh"

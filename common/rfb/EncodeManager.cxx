@@ -34,6 +34,7 @@
 #include <rfb/UpdateTracker.h>
 #include <rfb/LogWriter.h>
 #include <rfb/Exception.h>
+#include <rfb/Watermark.h>
 
 #include <rfb/RawEncoder.h>
 #include <rfb/RREEncoder.h>
@@ -162,6 +163,7 @@ static void updateMaxVideoRes(uint16_t *x, uint16_t *y) {
 EncodeManager::EncodeManager(SConnection* conn_, EncCache *encCache_) : conn(conn_),
   dynamicQualityMin(-1), dynamicQualityOff(-1),
   areaCur(0), videoDetected(false), videoTimer(this),
+  watermarkStats(0),
   maxEncodingTime(0), framesSinceEncPrint(0),
   encCache(encCache_)
 {
@@ -299,6 +301,11 @@ void EncodeManager::logStats()
   vlog.info("  Total: %s, %s", a, b);
   iecPrefix(bytes, "B", a, sizeof(a));
   vlog.info("         %s (1:%g ratio)", a, ratio);
+
+  if (watermarkData) {
+    siPrefix(watermarkStats, "B", a, sizeof(a));
+    vlog.info("  Watermark data sent: %s", a);
+  }
 }
 
 bool EncodeManager::supported(int encoding)
@@ -408,7 +415,13 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
       nRects += copypassed.size();
       nRects += computeNumRects(changed);
       nRects += computeNumRects(cursorRegion);
+
+      if (watermarkData)
+          nRects++;
     }
+
+    if (watermarkData)
+        packWatermark(changed);
 
     conn->writer()->writeFramebufferUpdateStart(nRects);
 
@@ -426,6 +439,23 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
                &start, true);
     if (!videoDetected) // In case detection happened between the calls
       writeRects(cursorRegion, renderedCursor);
+
+    if (watermarkData) {
+      beforeLength = conn->getOutStream(conn->cp.supportsUdp)->length();
+
+      const Rect rect(0, 0, pb->width(), pb->height());
+      TightEncoder *encoder = ((TightEncoder *) encoders[encoderTight]);
+
+      conn->writer()->startRect(rect, encoder->encoding);
+      encoder->writeWatermarkRect(watermarkData, watermarkDataLen,
+                                  watermarkInfo.r,
+                                  watermarkInfo.g,
+                                  watermarkInfo.b,
+                                  watermarkInfo.a);
+      conn->writer()->endRect();
+
+      watermarkStats += conn->getOutStream(conn->cp.supportsUdp)->length() - beforeLength;
+    }
 
     updateQualities();
 

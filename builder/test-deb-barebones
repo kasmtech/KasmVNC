@@ -3,6 +3,7 @@
 set -e
 
 cd "$(dirname "$0")/.."
+. ./builder/process_test_options.sh
 . ./builder/common.sh
 os="${1:-debian}"
 os_codename="${2:-buster}"
@@ -13,4 +14,6 @@ docker build --build-arg KASMVNC_PACKAGE_DIR="builder/build/${os_codename}" \
 echo
 docker run -it -p "443:$VNC_PORT" --rm -e "VNC_USER=foo" -e "VNC_PW=foobar" \
   -e "VNC_PORT=$VNC_PORT" \
-  kasmvnctester_barebones_${os}:$os_codename
+  $entrypoint_executable \
+  kasmvnctester_barebones_${os}:$os_codename \
+  $entrypoint_args

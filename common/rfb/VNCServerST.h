@@ -257,6 +257,8 @@ namespace rfb {
 
     bool getComparerState();
 
+    void updateWatermark();
+
     QueryConnectionHandler* queryConnectionHandler;
     KeyRemapper* keyRemapper;
 

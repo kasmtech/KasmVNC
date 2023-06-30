@@ -1,4 +1,4 @@
-include_directories(${CMAKE_SOURCE_DIR}/common ${JPEG_INCLUDE_DIR}
+include_directories(${CMAKE_SOURCE_DIR}/common ${JPEG_INCLUDE_DIR} ${PNG_INCLUDE_DIR}
                     ${CMAKE_SOURCE_DIR}/unix/kasmvncpasswd)
 
 set(RFB_SOURCES
@@ -65,6 +65,7 @@ set(RFB_SOURCES
   VNCServerST.cxx
   ZRLEEncoder.cxx
   ZRLEDecoder.cxx
+  Watermark.cxx
   cpuid.cxx
   encodings.cxx
   util.cxx
@@ -79,7 +80,7 @@ if(WIN32)
   set(RFB_SOURCES ${RFB_SOURCES} WinPasswdValidator.cxx)
 endif(WIN32)
 
-set(RFB_LIBRARIES ${JPEG_LIBRARIES} os rdr Xregion)
+set(RFB_LIBRARIES ${JPEG_LIBRARIES} ${PNG_LIBRARIES} os rdr Xregion)
 
 if(HAVE_PAM)
   set(RFB_SOURCES ${RFB_SOURCES} UnixPasswordValidator.cxx

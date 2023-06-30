@@ -39,6 +39,11 @@ namespace rfb {
     virtual void writeSolidRect(int width, int height,
                                 const PixelFormat& pf,
                                 const rdr::U8* colour);
+    void writeWatermarkRect(const rdr::U8 *data, const unsigned len,
+                            const rdr::U8 r,
+                            const rdr::U8 g,
+                            const rdr::U8 b,
+                            const rdr::U8 a);
     void resetZlib();
 
   protected:

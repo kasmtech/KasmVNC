@@ -286,6 +286,15 @@ be either \fB0\fP (off), \fB1\fP (always) or \fB2\fP (auto). Default is
 \fB2\fP.
 .
 .TP
+.B \-hw3d
+Enable hardware 3d acceleration. Default is software (llvmpipe usually).
+.
+.TP
+.B \-drinode \fIpath\fP
+Use another path instead of /dev/dri/renderD128. You may need this if you have
+more than one GPU.
+.
+.TP
 .B \-ZlibLevel \fIlevel\fP
 Zlib compression level for ZRLE encoding (it does not affect Tight encoding).
 Acceptable values are between 0 and 9.  Default is to use the standard
@@ -344,6 +353,28 @@ Reject keyboard presses over this many per second. Default 0 (disabled).
 .B \-DLP_Log \fIoff/info/verbose\fP
 Log clipboard and keyboard actions. Info logs just clipboard direction and size,
 verbose adds the contents for both.
+.
+.TP
+.B \-DLP_WatermarkImage \fIpath/to/file.png\fP
+Add a watermark. The PNG file should be greyscale, black is treated as transparent
+and white as opaque.
+.
+.TP
+.B \-DLP_WatermarkLocation \fIx,y\fP
+Place the watermark at this position from the corner. Positive numbers are from top-left,
+negative from bottom-right. Negative numbers count from the bottom-right edge of the image.
+If not set, the watermark will be centered. Cannot be used together with repeat.
+.
+.TP
+.B \-DLP_WatermarkRepeatSpace \fInum\fP
+If set, repeat the watermark over the entire image, with \fBnum\fP pixels between
+repetitions. Cannot be used together with location.
+.
+.TP
+.B \-DLP_WatermarkTint \fIr,g,b,a\fP
+Tint the greyscale watermark by this color. Default is 255,255,255,255 - full white.
+The color components can be used to colorize the greyscale watermark, and the alpha
+can be used to make it fainter.
 .
 .TP
 .B \-selfBench

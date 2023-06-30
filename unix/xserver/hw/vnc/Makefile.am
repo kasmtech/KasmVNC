@@ -30,9 +30,13 @@ bin_PROGRAMS = Xvnc
 
 man1_MANS = Xvnc.man
 
-Xvnc_SOURCES = xvnc.c \
+Xvnc_SOURCES = xvnc.c dri3.c \
 	$(top_srcdir)/Xi/stubs.c $(top_srcdir)/mi/miinitext.c \
 	$(top_srcdir)/fb/fbcmap_mi.c buildtime.c
+
+if DRI3
+XVNC_SYS_LIBS += -lgbm
+endif
 
 # Xvnc contains no C++ sources so automake doesn't understand that we
 # need to use the C++ compiler to link things. This is the upstream
@@ -44,7 +48,8 @@ Xvnc_CPPFLAGS = $(XVNC_CPPFLAGS) -DKASMVNC -DNO_MODULE_EXTS \
 	-DXVNCEXTRAVERSION="\".$(KASMVNC_COMMIT_ID)\"" \
 	-DXFree86Server -DVENDOR_RELEASE="$(VENDOR_RELEASE)" \
 	-DVENDOR_STRING="\"$(VENDOR_STRING)\"" -I$(KASMVNC_SRCDIR)/common -I$(KASMVNC_SRCDIR)/unix/common \
-	-I$(top_srcdir)/include ${XSERVERLIBS_CFLAGS} -I$(includedir)
+	-I$(top_srcdir)/include ${XSERVERLIBS_CFLAGS} -I$(includedir) \
+	-I$(top_srcdir)/dri3 @LIBDRM_CFLAGS@
 
 Xvnc_LDADD = $(XVNC_LIBS) libvnccommon.la $(COMMON_LIBS) \
 	$(XSERVER_LIBS) $(XSERVER_SYS_LIBS) $(XVNC_SYS_LIBS) -lX11 -lwebp -lssl -lcrypto -lcrypt

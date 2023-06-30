@@ -62,6 +62,7 @@
 #include <rfb/ServerCore.h>
 #include <rfb/VNCServerST.h>
 #include <rfb/VNCSConnectionST.h>
+#include <rfb/Watermark.h>
 #include <rfb/util.h>
 #include <rfb/ledStates.h>
 
@@ -1047,6 +1048,9 @@ void VNCServerST::writeUpdate()
   unsigned enctime = 0, scaletime = 0;
   memset(&jpegstats, 0, sizeof(EncodeManager::codecstats_t));
   memset(&webpstats, 0, sizeof(EncodeManager::codecstats_t));
+
+  if (watermarkData)
+      updateWatermark();
 
   for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
     ci_next = ci; ci_next++;

@@ -1,4 +1,4 @@
-FROM opensuse/leap:15.3
+FROM opensuse/leap:15.5
 
 ENV KASMVNC_BUILD_OS opensuse
 ENV KASMVNC_BUILD_OS_CODENAME 15

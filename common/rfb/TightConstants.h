@@ -25,7 +25,8 @@ namespace rfb {
   const unsigned int tightPng = 0x0a;
   const unsigned int tightWebp = 0x0b;
   const unsigned int tightQoi = 0x0c;
-  const unsigned int tightMaxSubencoding = 0x0c;
+  const unsigned int tightIT = 0x0d;
+  const unsigned int tightMaxSubencoding = 0x0d;
 
   // Filters to improve compression efficiency
   const unsigned int tightFilterCopy = 0x00;

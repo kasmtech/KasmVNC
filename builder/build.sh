@@ -40,14 +40,14 @@ EOF
 #sudo apt-get install cmake git libjpeg-dev libgnutls-dev
 
 # Gcc12 builds fail due to bug
-fail_on_gcc_12
+#fail_on_gcc_12
 
 # Ubuntu applies a million patches, but here we use upstream to simplify matters
 cd /tmp
 # default to the version of x in Ubuntu 18.04, otherwise caller will need to specify
 XORG_VER=${XORG_VER:-"1.19.6"}
 XORG_PATCH=$(echo "$XORG_VER" | grep -Po '^\d.\d+' | sed 's#\.##')
-wget --no-check-certificate https://www.x.org/archive/individual/xserver/xorg-server-${XORG_VER}.tar.bz2
+wget --no-check-certificate https://www.x.org/archive/individual/xserver/xorg-server-${XORG_VER}.tar.gz
 
 #git clone https://kasmweb@bitbucket.org/kasmtech/kasmvnc.git
 #cd kasmvnc
@@ -64,9 +64,10 @@ cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
   -DENABLE_GNUTLS:BOOL=OFF
 make -j5
 
-tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.bz2 --strip-components=1
+tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.gz --strip-components=1
 
 cd unix/xserver
+# Apply patches
 patch -Np1 -i ../xserver${XORG_PATCH}.patch
 case "$XORG_VER" in
   1.20.*)
@@ -85,22 +86,42 @@ autoreconf -i
 # everything after that is based on BUILDING.txt to remove unneeded
 # components.
 ensure_crashpad_can_fetch_line_number_by_address
+# Centos7 is too old for dri3
+if [ ! "${KASMVNC_BUILD_OS}" == "centos" ]; then
+  CONFIG_OPTIONS="--enable-dri3"
+fi
 # remove gl check for opensuse
-if [ "${KASMVNC_BUILD_OS}" == "opensuse" ]; then
+if [ "${KASMVNC_BUILD_OS}" == "opensuse" ] || ([ "${KASMVNC_BUILD_OS}" == "oracle" ] && [ "${KASMVNC_BUILD_OS_CODENAME}" == 9 ]); then
   sed -i 's/LIBGL="gl >= 7.1.0"/LIBGL="gl >= 1.1"/g' configure
 fi
-./configure --prefix=/opt/kasmweb \
-	--with-xkb-path=/usr/share/X11/xkb \
-	--with-xkb-output=/var/lib/xkb \
-	--with-xkb-bin-directory=/usr/bin \
-	--with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/100dpi/:unscaled,/usr/share/fonts/X11/75dpi/:unscaled,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi,/usr/share/fonts/X11/75dpi,built-ins" \
-  --with-sha1=libcrypto \
-	--without-dtrace --disable-dri \
-        --disable-static \
-	--disable-xinerama --disable-xvfb --disable-xnest --disable-xorg \
-	--disable-dmx --disable-xwin --disable-xephyr --disable-kdrive \
-	--disable-config-hal --disable-config-udev \
-	--disable-dri2 --enable-glx --disable-xwayland --disable-dri3
+
+# build X11
+./configure \
+    --disable-config-hal \
+    --disable-config-udev \
+    --disable-dmx \
+    --disable-dri \
+    --disable-dri2 \
+    --disable-kdrive \
+    --disable-static \
+    --disable-xephyr \
+    --disable-xinerama \
+    --disable-xnest \
+    --disable-xorg \
+    --disable-xvfb \
+    --disable-xwayland \
+    --disable-xwin \
+    --enable-glx \
+    --prefix=/opt/kasmweb \
+    --with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/100dpi/:unscaled,/usr/share/fonts/X11/75dpi/:unscaled,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi,/usr/share/fonts/X11/75dpi,built-ins" \
+    --without-dtrace \
+    --with-sha1=libcrypto \
+    --with-xkb-bin-directory=/usr/bin \
+    --with-xkb-output=/var/lib/xkb \
+    --with-xkb-path=/usr/share/X11/xkb ${CONFIG_OPTIONS}
+
+# remove array bounds errors for new versions of GCC
+find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
 make -j5
 
 # modifications for the servertarball
@@ -118,6 +139,8 @@ if [ -d /usr/lib/x86_64-linux-gnu/dri ]; then
   ln -s /usr/lib/x86_64-linux-gnu/dri dri
 elif [ -d /usr/lib/aarch64-linux-gnu/dri ]; then
   ln -s /usr/lib/aarch64-linux-gnu/dri dri
+elif [ -d /usr/lib/xorg/modules/dri ]; then
+  ln -s /usr/lib/xorg/modules/dri dri
 else
   ln -s /usr/lib64/dri dri
 fi

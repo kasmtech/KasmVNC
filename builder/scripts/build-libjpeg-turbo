@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+build_and_install() {
+  export MAKEFLAGS=-j`nproc`
+  export CFLAGS="-fpic"
+  cmake -DCMAKE_INSTALL_PREFIX=/usr/local -G"Unix Makefiles"
+  make
+  make install
+}
+
+install_build_dependencies() {
+  install_packages cmake gcc
+  ensure_libjpeg_is_fast
+}
+
+ensure_libjpeg_is_fast() {
+  install_packages nasm
+}
+
+prepare_libjpeg_source() {
+  export JPEG_TURBO_RELEASE=$(curl -sX GET "https://api.github.com/repos/libjpeg-turbo/libjpeg-turbo/releases/latest" \
+  | awk '/tag_name/{print $4;exit}' FS='[""]')
+  mkdir libjpeg-turbo
+  curl -Ls "https://github.com/libjpeg-turbo/libjpeg-turbo/archive/${JPEG_TURBO_RELEASE}.tar.gz" | \
+  tar xzvf - -C libjpeg-turbo/ --strip-components=1
+  cd libjpeg-turbo
+}
+
+source_dir=$(dirname "$0")
+. "$source_dir/common.sh"
+
+install_build_dependencies
+prepare_libjpeg_source
+build_and_install

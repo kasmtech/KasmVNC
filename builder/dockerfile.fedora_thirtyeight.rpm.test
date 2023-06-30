@@ -1,4 +1,4 @@
-FROM ubuntu:bionic
+FROM fedora:38
 
 ENV DISPLAY=:1 \
     VNC_PORT=8443 \
@@ -16,12 +16,12 @@ ENV DISPLAY=:1 \
     VNC_PW=vncpassword \
     VNC_USER=user \
     VNC_VIEW_ONLY_PW=vncviewonlypassword \
-    LD_LIBRARY_PATH=/opt/libjpeg-turbo/lib64/:/usr/local/lib/ \
+    LD_LIBRARY_PATH=/usr/local/lib/ \
     OMP_WAIT_POLICY=PASSIVE \
     SHELL=/bin/bash \
     SINGLE_APPLICATION=0 \
-    KASMVNC_BUILD_OS=ubuntu \
-    KASMVNC_BUILD_OS_CODENAME=bionic
+    KASMVNC_BUILD_OS=fedora \
+    KASMVNC_BUILD_OS_CODENAME=thirtythree
 
 EXPOSE $VNC_PORT
 
@@ -29,10 +29,15 @@ WORKDIR $HOME
 
 ### REQUIRED STUFF ###
 
-RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm libnss-wrapper gettext wget
-RUN apt-get purge -y pm-utils xscreensaver*
-RUN apt-get update && apt-get install -y vim less
-RUN apt-get update && apt-get -y install lsb-release
+RUN dnf install -y openssl xterm gettext wget
+RUN dnf install -y nss_wrapper
+RUN dnf install -y xorg-x11-xauth xkeyboard-config
+# xorg-x11-server-Xorg
+# RUN dnf install -y @xfce-desktop-environment
+RUN dnf erase -y pm-utils xscreensaver*
+RUN dnf install -y redhat-lsb-core
+RUN dnf install -y vim less
+RUN dnf install -y @xfce-desktop-environment
 
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
@@ -41,20 +46,17 @@ COPY builder/startup/ $STARTUPDIR
 
 ### START CUSTOM STUFF ####
 COPY ./builder/scripts/ /tmp/scripts/
-COPY ./debian/changelog /tmp
+COPY ./fedora/kasmvncserver.spec /tmp
 
 ARG KASMVNC_PACKAGE_DIR
-COPY $KASMVNC_PACKAGE_DIR/libjpeg-turbo_*.deb /tmp/
-RUN apt-get install /tmp/libjpeg-turbo*deb
-
-ARG BUILD_DEBIAN_REVISION
-COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*$BUILD_DEBIAN_REVISION*.deb /tmp/
-RUN /tmp/scripts/install_kasmvncserver_package "$BUILD_DEBIAN_REVISION"
+COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp/
+# RUN dnf remove -y tigervnc-server-minimal
+RUN /tmp/scripts/install_kasmvncserver_package
 
 ### END CUSTOM STUFF ###
 
 RUN chown -R 1000:0 $HOME
-USER 1000:ssl-cert
+USER 1000:kasmvnc-cert
 WORKDIR $HOME
 
 ENTRYPOINT [ "/dockerstartup/vnc_startup.sh" ]

@@ -285,6 +285,8 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
   // QOI-specific overrides
   if (supportsQOI)
     useCopyRect = false;
+  if (Server::DLP_WatermarkImage[0])
+    useCopyRect = false;
 }
 
 void ConnParams::setLEDState(unsigned int state)

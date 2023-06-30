@@ -48,6 +48,18 @@ It will install the package inside a new container and run KasmVNC.
 
 Open browser and point to https://localhost:443/ or https://\<ip-address\>:443/
 
+## Debugging
+
+To debug a test container, run `test-deb ubuntu focal -s` or `test-deb ubuntu
+focal --shell`. It runs a shell instead of starting KasmVNC.
+
+## Testing performance
+
+To run a performance test, add `-p` option:
+```
+builder/test-deb ubuntu focal -p
+```
+
 # Package development
 
 ## deb/rpm package building and testing

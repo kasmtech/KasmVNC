@@ -37,6 +37,7 @@
 #include <rfb/Hostname.h>
 #include <rfb/Region.h>
 #include <rfb/ledStates.h>
+#include <rfb/Watermark.h>
 #include <network/iceip.h>
 #include <network/TcpSocket.h>
 #include <network/UnixSocket.h>
@@ -231,6 +232,9 @@ void vncExtensionInit(void)
           dummyX < 16 ||
           dummyY < 16)
           vncFatalError("Invalid value to %s", Server::maxVideoResolution.getName());
+
+      if (!watermarkInit())
+          vncFatalError("Invalid watermark params");
 
       pipe(wakeuppipe);
       const int flags = fcntl(wakeuppipe[0], F_GETFL, 0);

@@ -1171,6 +1171,7 @@ sub DefineFilePathsAndStuff {
 
   $KasmVNC::Users::vncPasswdBin = $exedir . "kasmvncpasswd";
   $KasmVNC::Users::logger = $logger;
+  $KasmVNC::Config::logger = $logger;
 
   $vncSystemConfigDir = "/etc/kasmvnc";
   if ($ENV{KASMVNC_DEVELOPMENT}) {
@@ -1721,6 +1722,50 @@ sub DefineConfigToCLIConversion {
         }
     }),
     KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkImage',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.image",
+            type => KasmVNC::ConfigKey::ANY
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkLocation',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.location",
+            type => KasmVNC::ConfigKey::ANY,
+            validator => KasmVNC::PatternValidator->new({
+              pattern => qr/^\d+,\d+$/,
+              errorMessage => "Must be an x and y offset separated by a comma: 10,10"
+            })
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkTint',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.tint",
+            type => KasmVNC::ConfigKey::ANY,
+            validator => KasmVNC::PatternValidator->new({
+              pattern => qr/^\d{1,3},\d{1,3},\d{1,3},\d{1,3}$/,
+              errorMessage => "Must be RBGA formatted: 255,255,255,128"
+            })
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkRepeatSpace',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.repeat_spacing",
+            type => KasmVNC::ConfigKey::INT
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
         name => 'DLP_Log',
         configKeys => [
           KasmVNC::ConfigKey->new({
@@ -1979,7 +2024,7 @@ sub DefineConfigToCLIConversion {
           $self = shift;
 
           my @values = @{ listify($self->configValues()) };
-          
+
           my $valuesStr = "";
           foreach $value (@values) {
             $valuesStr = $valuesStr . "-http-header '$value' "
@@ -2241,6 +2286,39 @@ sub DefineConfigToCLIConversion {
           my $value = $self->configValue();
           isPresent($value) && $value ne 'auto';
         }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'hw3d',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "desktop.gpu.hw3d",
+            type => KasmVNC::ConfigKey::BOOLEAN
+          })
+        ],
+        toStringSub => sub {
+          $self = shift;
+          my $value = $self->configValue();
+
+          switch($value) {
+            case 'true' {
+              $valuesStr = '-hw3d ';
+            }
+            case 'false' {
+              $valuesStr = ' ';
+            }
+          }
+
+          return $valuesStr;
+        }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'drinode',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "desktop.gpu.drinode",
+            type => KasmVNC::ConfigKey::ANY
+          })
+        ]
     }),
   );
 
@@ -2754,5 +2832,6 @@ sub SetAppSettingsFromConfigAndCli {
 }
 
 sub InitLogger {
-  $logger = KasmVNC::Logger->new();
+  my $debugEnabled = any { $_ eq "-debug" } @ARGV;
+  $logger = KasmVNC::Logger->new({ level => $debugEnabled ? "debug" : "warn" });
 }

@@ -15,6 +15,11 @@ bump_deb() {
   builder/bump-package-version-deb "$new_version"
 }
 
+bump_xvnc_binary() {
+  local cmd="s/#define XVNCVERSION.\+$/#define XVNCVERSION \"KasmVNC $new_version\"/"
+  sed -i -e "$cmd" unix/xserver/hw/vnc/xvnc.c
+}
+
 new_version="$1"
 
 if [[ -z "$new_version" ]]; then
@@ -25,5 +30,6 @@ fi
 cd "$(dirname "$0")/.."
 
 update_version_to_meet_packaging_standards
+bump_xvnc_binary
 bump_rpm
 bump_deb

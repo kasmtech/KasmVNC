@@ -193,6 +193,7 @@ namespace rfb {
     unsigned updates;
     EncoderStats copyStats;
     StatsVector stats;
+    unsigned long long watermarkStats;
     int activeType;
     int beforeLength;
     size_t curMaxUpdateSize;

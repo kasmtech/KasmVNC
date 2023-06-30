@@ -51,7 +51,7 @@ struct dlp_mimetype_t {
   char mime[32];
 };
 
-unsigned dlp_num_mimetypes();
+unsigned dlp_num_mimetypes(void);
 const char *dlp_get_mimetype(const unsigned i);
 
 extern int vncInetdSock;
@@ -70,7 +70,7 @@ int vncGetSendPrimary(void);
 void vncUpdateDesktopName(void);
 
 void vncAnnounceClipboard(int available);
-void vncClearBinaryClipboardData();
+void vncClearBinaryClipboardData(void);
 void vncSendBinaryClipboardData(const char* mime, const unsigned char *data,
                                 const unsigned len);
 void vncGetBinaryClipboardData(const char *mime, const unsigned char **ptr,

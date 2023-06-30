@@ -239,3 +239,8 @@ void rfb::Region::debug_print(const char* prefix) const
             xrgn->rects[i].y2-xrgn->rects[i].y1);
   }
 }
+
+bool rfb::Region::contains(int x, int y) const
+{
+  return XPointInRegion(xrgn, x, y);
+}

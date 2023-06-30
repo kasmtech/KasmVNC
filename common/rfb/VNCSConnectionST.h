@@ -341,6 +341,7 @@ namespace rfb {
     uint32_t udpFramesSinceFull;
 
     char unixRelaySubscriptions[MAX_UNIX_RELAYS][MAX_UNIX_RELAY_NAME_LEN];
+    bool complainedAboutNoViewRights;
   };
 }
 #endif

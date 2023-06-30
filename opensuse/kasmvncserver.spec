@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.0.0
+Version:        1.1.0
 Release:        leap15
 Summary:        VNC server accessible from a web browser
 
@@ -7,18 +7,18 @@ License: GPLv2+
 URL: https://github.com/kasmtech/KasmVNC
 
 BuildRequires: rsync
-Requires: xauth, hostname, libxkbcommon-x11-0, xkeyboard-config, x11-tools, openssl, perl, libpixman-1-0, libjpeg8, libgomp1, libXfont2-2, libXdmcp6, libglvnd, xkbcomp, perl-Switch, perl-YAML-Tiny, perl-Hash-Merge-Simple, perl-Scalar-List-Utils, perl-List-MoreUtils, perl-Try-Tiny
+Requires: xauth, hostname, libxkbcommon-x11-0, xkeyboard-config, x11-tools, openssl, perl, libpixman-1-0, libjpeg8, libgomp1, libXfont2-2, libXdmcp6, libglvnd, xkbcomp, perl-Switch, perl-YAML-Tiny, perl-Hash-Merge-Simple, perl-Scalar-List-Utils, perl-List-MoreUtils, perl-Try-Tiny, libgbm1, libxshmfence1
 Conflicts: tigervnc, tigervnc-x11vnc
 
 %description
-KasmVNC provides remote web-based access to a Desktop or application. 
-While VNC is in the name, KasmVNC differs from other VNC variants such 
-as TigerVNC, RealVNC, and TurboVNC. KasmVNC has broken from the RFB 
-specification which defines VNC, in order to support modern technologies 
-and increase security. KasmVNC is accessed by users from any modern 
-browser and does not support legacy VNC viewer applications. KasmVNC 
-uses a modern YAML based configuration at the server and user level, 
-allowing for ease of management. KasmVNC is maintained by Kasm 
+KasmVNC provides remote web-based access to a Desktop or application.
+While VNC is in the name, KasmVNC differs from other VNC variants such
+as TigerVNC, RealVNC, and TurboVNC. KasmVNC has broken from the RFB
+specification which defines VNC, in order to support modern technologies
+and increase security. KasmVNC is accessed by users from any modern
+browser and does not support legacy VNC viewer applications. KasmVNC
+uses a modern YAML based configuration at the server and user level,
+allowing for ease of management. KasmVNC is maintained by Kasm
 Technologies Corp, www.kasmweb.com.
 
 %prep
@@ -50,7 +50,7 @@ cp $SRC_BIN/kasmxproxy $DESTDIR/usr/bin;
 cp -r $SRC/lib/kasmvnc/ $DESTDIR/usr/lib/kasmvncserver
 cd $DESTDIR/usr/bin && ln -s kasmvncpasswd vncpasswd;
 cp -r $SRC/share/doc/kasmvnc*/* $DESTDIR/usr/share/doc/kasmvncserver/
-rsync -r --exclude '.git*' --exclude po2js --exclude xgettext-html \
+rsync -r --links --safe-links --exclude '.git*' --exclude po2js --exclude xgettext-html \
   --exclude www/utils/ --exclude .eslintrc --exclude configure \
   $SRC/share/kasmvnc $DESTDIR/usr/share
 
@@ -81,6 +81,8 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Wed Apr 05 2023 KasmTech <info@kasmweb.com> - 1.1.0-leap15
+- Upstream release
 * Tue Nov 29 2022 KasmTech <info@kasmweb.com> - 1.0.0-leap15
 - WebRTC UDP transit support with support of STUN servers
 - Lossless compression using multi-threaded WASM QOI decoder client side

@@ -1,4 +1,4 @@
-FROM fedora:33
+FROM fedora:38
 
 ENV STARTUPDIR=/dockerstartup
 
