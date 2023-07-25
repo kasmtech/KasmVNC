@@ -55,6 +55,15 @@ typedef struct gbm_pixmap gbm_pixmap;
 static DevPrivateKeyRec dri3_pixmap_private_key;
 static struct timeval start;
 
+#define MAX_TEXPIXMAPS 32
+static PixmapPtr texpixmaps[MAX_TEXPIXMAPS];
+static uint32_t num_texpixmaps;
+static CARD32 update_texpixmaps(OsTimerPtr timer, CARD32 time, void *arg);
+static OsTimerPtr texpixmaptimer;
+
+void xvnc_sync_dri3_textures(void);
+void xvnc_sync_dri3_pixmap(PixmapPtr pixmap);
+void xvnc_init_dri3(void);
 
 
 static int
@@ -97,6 +106,29 @@ static void dri3_pixmap_set_private(PixmapPtr pixmap, gbm_pixmap *gp)
 static gbm_pixmap *gbm_pixmap_get(PixmapPtr pixmap)
 {
     return dixLookupPrivate(&pixmap->devPrivates, &dri3_pixmap_private_key);
+}
+
+static void add_texpixmap(PixmapPtr pix)
+{
+    uint32_t i;
+    for (i = 0; i < MAX_TEXPIXMAPS; i++) {
+        if (texpixmaps[i] == pix)
+            return;
+    }
+
+    for (i = 0; i < MAX_TEXPIXMAPS; i++) {
+        if (!texpixmaps[i]) {
+            texpixmaps[i] = pix;
+            pix->refcnt++;
+            num_texpixmaps++;
+            // start if not running
+            if (!texpixmaptimer)
+                texpixmaptimer = TimerSet(NULL, 0, 16, update_texpixmaps, NULL);
+            return;
+        }
+    }
+
+    ErrorF("Max number of texpixmaps reached\n");
 }
 
 static PixmapPtr
@@ -164,13 +196,32 @@ xvnc_fds_from_pixmap(ScreenPtr screen, PixmapPtr pixmap, int *fds,
                      uint64_t *modifier)
 {
     gbm_pixmap *gp = gbm_pixmap_get(pixmap);
-    if (!gp)
-        return 0;
+
+    if (!gp) {
+        gp = calloc(1, sizeof(gbm_pixmap));
+        if (!gp)
+            return 0;
+        gp->bo = gbm_bo_create(priv.gbm,
+                               pixmap->drawable.width,
+                               pixmap->drawable.height,
+                               gbm_format_for_depth(pixmap->drawable.depth),
+                               (pixmap->usage_hint == CREATE_PIXMAP_USAGE_SHARED ?
+                                GBM_BO_USE_LINEAR : 0) |
+                                GBM_BO_USE_RENDERING | GBM_BO_USE_SCANOUT);
+        if (!gp->bo) {
+            ErrorF("Failed to create bo\n");
+            return 0;
+        }
+
+        dri3_pixmap_set_private(pixmap, gp);
+    }
 
     fds[0] = gbm_bo_get_fd(gp->bo);
     strides[0] = gbm_bo_get_stride(gp->bo);
     offsets[0] = 0;
     *modifier = DRM_FORMAT_MOD_INVALID;
+
+    add_texpixmap(pixmap);
 
     return 1;
 }
@@ -219,12 +270,13 @@ void xvnc_sync_dri3_pixmap(PixmapPtr pixmap)
     void *ptr;
     uint32_t stride, w, h;
     void *opaque = NULL;
+    gbm_pixmap *gp;
 
     // We may not be running on hw if there's a compositor using PRESENT on llvmpipe
     if (!driNode)
         return;
 
-    gbm_pixmap *gp = gbm_pixmap_get(pixmap);
+    gp = gbm_pixmap_get(pixmap);
     if (!gp) {
         //ErrorF("Present tried to copy from a non-dri3 pixmap\n");
         return;
@@ -250,6 +302,69 @@ void xvnc_sync_dri3_pixmap(PixmapPtr pixmap)
     }
 
     gbm_bo_unmap(gp->bo, opaque);
+}
+
+void xvnc_sync_dri3_textures(void)
+{
+    // Sync the tracked pixmaps into their textures (bos)
+    // This is a bit of an ugly solution, but we don't know
+    // when the pixmaps have changed nor when the textures are read.
+    //
+    // This is called both from the global damage report and the timer,
+    // to account for cases that do not use the damage report.
+
+    uint32_t i, y;
+    gbm_pixmap *gp;
+    uint8_t *src, *dst;
+    uint32_t srcstride, dststride;
+    void *opaque = NULL;
+
+    for (i = 0; i < MAX_TEXPIXMAPS; i++) {
+        if (!texpixmaps[i])
+            continue;
+        if (texpixmaps[i]->refcnt == 1) {
+            // We are the only user left, delete it
+            texpixmaps[i]->drawable.pScreen->DestroyPixmap(texpixmaps[i]);
+            texpixmaps[i] = NULL;
+            num_texpixmaps--;
+            continue;
+        }
+
+        gp = gbm_pixmap_get(texpixmaps[i]);
+        opaque = NULL;
+        dst = gbm_bo_map(gp->bo, 0, 0,
+                         texpixmaps[i]->drawable.width,
+                         texpixmaps[i]->drawable.height,
+                         GBM_BO_TRANSFER_WRITE, &dststride, &opaque);
+        if (!dst) {
+            ErrorF("gbm map failed, errno %d\n", errno);
+            continue;
+        }
+
+        srcstride = texpixmaps[i]->devKind;
+        src = texpixmaps[i]->devPrivate.ptr;
+
+        for (y = 0; y < texpixmaps[i]->drawable.height; y++) {
+            memcpy(dst, src, srcstride);
+            dst += dststride;
+            src += srcstride;
+        }
+
+        gbm_bo_unmap(gp->bo, opaque);
+    }
+}
+
+static CARD32 update_texpixmaps(OsTimerPtr timer, CARD32 time, void *arg)
+{
+    xvnc_sync_dri3_textures();
+
+    if (!num_texpixmaps) {
+        TimerFree(texpixmaptimer);
+        texpixmaptimer = NULL;
+        return 0;
+    }
+
+    return 16; // Reschedule next tick
 }
 
 void xvnc_init_dri3(void)

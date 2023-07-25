@@ -111,3 +111,23 @@ Index: xserver/mi/miinitext.c
      gc = GetScratchGC(drawable->depth, screen);
      if (update) {
          ChangeGCVal     changes[2];
+--- xserver.orig/damageext/damageext.c	2019-02-26 21:28:50.000000000 +0200
++++ xserver/damageext/damageext.c	2023-03-21 12:52:58.411647186 +0200
+@@ -87,6 +87,8 @@
+     *h = draw->height;
+ }
+ 
++void xvnc_sync_dri3_textures(void);
++
+ static void
+ DamageExtNotify(DamageExtPtr pDamageExt, BoxPtr pBoxes, int nBoxes)
+ {
+@@ -97,6 +99,8 @@
+ 
+     damageGetGeometry(pDrawable, &x, &y, &w, &h);
+ 
++    xvnc_sync_dri3_textures();
++
+     UpdateCurrentTimeIf();
+     ev = (xDamageNotifyEvent) {
+         .type = DamageEventBase + XDamageNotify,
