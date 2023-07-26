@@ -2004,6 +2004,8 @@ InitOutput(ScreenInfo *scrInfo, int argc, char **argv)
 #else
         FatalError("DRI3 disabled at compile time\n");
 #endif
+    } else {
+        driNode = NULL;
     }
 } /* end InitOutput */
 
