@@ -154,6 +154,9 @@ find_package(PNG REQUIRED)
 # Check for libjpeg
 find_package(JPEG REQUIRED)
 
+find_package(Freetype REQUIRED)
+include_directories(${FREETYPE_INCLUDE_DIRS})
+
 # Staticly link libjpeg-turbo
 set(JPEG_LIBRARIES "-Wl,-Bstatic -lturbojpeg -Wl,-Bdynamic")
 # Warn if it doesn't seem to be the accelerated libjpeg that's found

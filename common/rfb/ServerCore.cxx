@@ -189,6 +189,18 @@ rfb::IntParameter rfb::Server::DLP_WatermarkRepeatSpace
 ("DLP_WatermarkRepeatSpace",
  "Number of pixels between repeats of the watermark",
  0, 0, 4096);
+rfb::IntParameter rfb::Server::DLP_WatermarkFontSize
+("DLP_WatermarkFontSize",
+ "Font size for -DLP_WatermarkText",
+ 48, 8, 256);
+rfb::IntParameter rfb::Server::DLP_WatermarkTimeOffset
+("DLP_WatermarkTimeOffset",
+ "Offset from UTC for -DLP_WatermarkText",
+ 0, -24, 24);
+rfb::IntParameter rfb::Server::DLP_WatermarkTimeOffsetMinutes
+("DLP_WatermarkTimeOffsetMinutes",
+ "Offset from UTC for -DLP_WatermarkText, minutes",
+ 0, -24 * 60, 24 * 60);
 rfb::StringParameter rfb::Server::DLP_WatermarkImage
 ("DLP_WatermarkImage",
  "PNG file to use as a watermark",
@@ -201,6 +213,14 @@ rfb::StringParameter rfb::Server::DLP_WatermarkTint
 ("DLP_WatermarkTint",
  "Tint the greyscale watermark by this color.",
  "255,255,255,255");
+rfb::StringParameter rfb::Server::DLP_WatermarkText
+("DLP_WatermarkText",
+ "Use this text instead of an image for the watermark, with strftime time formatting",
+ "");
+rfb::StringParameter rfb::Server::DLP_WatermarkFont
+("DLP_WatermarkFont",
+ "Use this font for -DLP_WatermarkText instead of the bundled one",
+ "");
 
 rfb::StringParameter rfb::Server::maxVideoResolution
 ("MaxVideoResolution",

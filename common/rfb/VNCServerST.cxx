@@ -974,6 +974,11 @@ void VNCServerST::writeUpdate()
     blackOut();
   }
 
+  if (watermarkData && Server::DLP_WatermarkText[0] && watermarkTextNeedsUpdate(true)) {
+    // If using a text watermark, we have to mark everything as changed...
+    refreshClients();
+  }
+
   comparer->getUpdateInfo(&ui, pb->getRect());
   toCheck = ui.changed.union_(ui.copied);
 

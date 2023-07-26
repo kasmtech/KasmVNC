@@ -58,7 +58,8 @@ RUN echo 'alias tv="./run-specs spec/vncserver_yaml_validation_spec.py"' >> ~/.b
 RUN echo 'alias ty="./run-specs spec/vncserver_*spec.py"' >> ~/.bashrc
 RUN echo 'alias ta="./run-specs"' >> ~/.bashrc
 RUN echo 'alias vd="vncserver -dry-run"' >> ~/.bashrc
-ENV SET_PASSWORD_FUNC 'sp() { echo -e "$VNC_PW\\n$VNC_PW\\n" | kasmvncpasswd -w -u $USER $HOME/.kasmpasswd; }'
+RUN echo 'alias ss="sp; vncserver -select-de xfce"' >> ~/.bashrc
+ENV SET_PASSWORD_FUNC 'sp() { echo -e "$VNC_PW\\n$VNC_PW\\n" | kasmvncpasswd -w -u $VNC_USER $HOME/.kasmpasswd; }'
 RUN echo $SET_PASSWORD_FUNC >> ~/.bashrc
 
 ENV LC_ALL=C.UTF-8

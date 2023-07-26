@@ -45,6 +45,8 @@ sub isPresent {
 sub deriveBoolean {
   my $value = shift;
 
+  return $value if containsWideSymbols($value);
+
   switch($value) {
     case 'true' {
       return 1;
@@ -61,6 +63,14 @@ sub deriveBoolean {
 sub printStackTrace {
   my $trace = Devel::StackTrace->new;
   print { *STDERR } $trace->as_string;
+}
+
+sub containsWideSymbols {
+	my $string = shift;
+
+  return 1 unless defined($string);
+
+	$string =~ /[^\x00-\xFF]/;
 }
 
 1;

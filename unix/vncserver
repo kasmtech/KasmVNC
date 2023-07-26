@@ -27,6 +27,7 @@
 
 use v5.10;
 use warnings;
+use utf8;
 
 sub DEVENV() { $ENV{KASMVNC_DEVELOPMENT} };
 use if DEVENV, Devel::StackTrace;
@@ -38,11 +39,14 @@ use List::Util qw(first);
 use List::MoreUtils qw(any uniq);
 use Data::Dumper;
 use Try::Tiny;
+use DateTime;
+use DateTime::TimeZone;
 
 use KasmVNC::CliOption;
 use KasmVNC::ConfigKey;
 use KasmVNC::PatternValidator;
 use KasmVNC::EnumValidator;
+use KasmVNC::CallbackValidator;
 use KasmVNC::Config;
 use KasmVNC::Users;
 use KasmVNC::TextOption;
@@ -56,6 +60,7 @@ use constant {
   OPTIONAL_ARG_VALUE => 2
 };
 
+UseUtfStdio();
 InitLogger();
 
 CheckWeCanRunInThisEnvironment();
@@ -1766,6 +1771,79 @@ sub DefineConfigToCLIConversion {
         ]
     }),
     KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkText',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.text.template",
+            validator => KasmVNC::CallbackValidator->new({
+              isValidCallback => sub {
+                my $value = shift;
+
+                isBlank(ConfigValue("data_loss_prevention.watermark.image"));
+              },
+              errorMessage => "Watermark image and text can't be used at the same time"
+            }),
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkFont',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.text.font",
+            type => KasmVNC::ConfigKey::ANY
+          })
+        ],
+        isActiveSub => sub {
+          $self = shift;
+
+          my $value = $self->configValue();
+          isPresent($value) && $value ne "auto";
+        }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkFontSize',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.text.font_size",
+            validator => KasmVNC::CallbackValidator->new({
+              isValidCallback => sub {
+                my $value = shift;
+
+                return 0 unless $value =~ /^\d+$/;
+
+                $value >= 8 && $value <= 256;
+              },
+              errorMessage => "must be in range 8..256"
+            }),
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkTimeOffsetMinutes',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.text.timezone_name",
+            validator => KasmVNC::CallbackValidator->new({
+              isValidCallback => sub {
+                my $timezone_name = shift;
+
+                DateTime::TimeZone->is_valid_name($timezone_name);
+              },
+              errorMessage => "must be a valid timezone name like Australia/Adelaide"
+            })
+          })
+        ],
+        deriveValueSub => sub {
+          my $self = shift;
+          my $timezone_name = $self->configValue();
+          my $dt = DateTime->now(time_zone => $timezone_name);
+          my $offset_in_seconds = $dt->offset();
+
+          $offset_in_seconds/60;
+        }
+    }),
+    KasmVNC::CliOption->new({
         name => 'DLP_Log',
         configKeys => [
           KasmVNC::ConfigKey->new({
@@ -2834,4 +2912,8 @@ sub SetAppSettingsFromConfigAndCli {
 sub InitLogger {
   my $debugEnabled = any { $_ eq "-debug" } @ARGV;
   $logger = KasmVNC::Logger->new({ level => $debugEnabled ? "debug" : "warn" });
+}
+
+sub UseUtfStdio {
+  use open qw( :std :encoding(UTF-8) );
 }

@@ -243,6 +243,8 @@ Default \fB-1\fP.
 .B \-WebpVideoQuality \fInum\fP
 The WEBP quality to use when in video mode.
 Default \fB-1\fP.
+.
+.TP
 .B \-MaxVideoResolution \fI1920x1080\fP
 When in video mode, downscale the screen to max this size. Keeps aspect ratio.
 Default \fB1920x1080\fP.
@@ -370,6 +372,28 @@ repetitions. Cannot be used together with location.
 Tint the greyscale watermark by this color. Default is 255,255,255,255 - full white.
 The color components can be used to colorize the greyscale watermark, and the alpha
 can be used to make it fainter.
+.
+.TP
+.B \-DLP_WatermarkText \fI"foo %H:%M"\fP
+Instead of an image, render this text as the watermark. Takes time formatting options
+for \fBstrftime\fP.
+.
+.TP
+.B \-DLP_WatermarkFont \fI/path/to/font.ttf\fP
+Use a different font for -DLP_WatermarkText than the bundled one. TTF and OTF fonts
+are accepted.
+.
+.TP
+.B \-DLP_WatermarkFontSize \fI48\fP
+Font size for -DLP_WatermarkText. Default \fI48\fP.
+.
+.TP
+.B \-DLP_WatermarkTimeOffset \fI0\fP
+Time offset from UTC, hours. Default \fI0\fP.
+.
+.TP
+.B \-DLP_WatermarkTimeOffsetMinutes \fI0\fP
+Time offset from UTC, minutes. Default \fI0\fP.
 .
 .TP
 .B \-selfBench
