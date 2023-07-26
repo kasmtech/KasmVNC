@@ -2,7 +2,7 @@ import os
 import re
 import shutil
 from os.path import expanduser
-from mamba import description, context, fcontext, it, fit, before, after
+from mamba import description, context, fcontext, it, fit, _it, before, after
 from expects import expect, equal, contain, match
 
 from helper.spec_helper import start_xvnc, kill_xvnc, run_cmd, clean_env, \
@@ -267,6 +267,18 @@ with description('YAML to CLI') as self:
         cli_option = pick_cli_option('geometry',
                                      completed_process.stdout)
         expect(cli_option).to(equal("-geometry '1024x768'"))
+
+    with it("allows wide utf characters"):
+        write_config('''
+        data_loss_prevention:
+            watermark:
+                text:
+                    template: "星街すいせい"
+        ''')
+        completed_process = run_vncserver()
+        cli_option = pick_cli_option('DLP_WatermarkText',
+                                     completed_process.stdout)
+        expect(cli_option).to(equal("-DLP_WatermarkText '星街すいせい'"))
 
     with it("ignores empty section override"):
         write_config('''

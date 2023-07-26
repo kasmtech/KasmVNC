@@ -49,12 +49,17 @@ namespace rfb {
     static IntParameter DLP_ClipDelay;
     static IntParameter DLP_KeyRateLimit;
     static IntParameter DLP_WatermarkRepeatSpace;
+    static IntParameter DLP_WatermarkFontSize;
+    static IntParameter DLP_WatermarkTimeOffset;
+    static IntParameter DLP_WatermarkTimeOffsetMinutes;
     static StringParameter DLP_ClipLog;
     static StringParameter DLP_Region;
     static StringParameter DLP_Clip_Types;
     static StringParameter DLP_WatermarkImage;
     static StringParameter DLP_WatermarkLocation;
     static StringParameter DLP_WatermarkTint;
+    static StringParameter DLP_WatermarkText;
+    static StringParameter DLP_WatermarkFont;
     static BoolParameter DLP_RegionAllowClick;
     static BoolParameter DLP_RegionAllowRelease;
     static IntParameter jpegVideoQuality;

@@ -20,10 +20,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <zlib.h>
 #include <rfb/LogWriter.h>
 #include <rfb/ServerCore.h>
 #include <rfb/VNCServerST.h>
+#include "font.h"
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 #include "Watermark.h"
 
@@ -36,6 +40,10 @@ watermarkInfo_t watermarkInfo;
 uint8_t *watermarkData, *watermarkUnpacked, *watermarkTmp;
 uint32_t watermarkDataLen;
 static uint16_t rw, rh;
+static time_t lastUpdate;
+
+static FT_Library ft = NULL;
+static FT_Face face;
 
 #define MAXW 4096
 #define MAXH 4096
@@ -92,15 +100,151 @@ static bool loadimage(const char path[]) {
 	return true;
 }
 
+// Note: w and h are absolute
+static void str(uint8_t *buf, const char *txt, const uint32_t x_, const uint32_t y_,
+		const uint32_t w, const uint32_t h,
+		const uint32_t stride) {
+
+	unsigned ucs[256], i, ucslen;
+	unsigned len = strlen(txt);
+	i = 0;
+	ucslen = 0;
+	while (len > 0 && txt[i]) {
+		size_t ret = rfb::utf8ToUCS4(&txt[i], len, &ucs[ucslen]);
+		i += ret;
+		len -= ret;
+		ucslen++;
+	}
+
+	uint32_t x, y;
+
+	x = x_;
+	y = y_;
+	for (i = 0; i < ucslen; i++) {
+		if (FT_Load_Char(face, ucs[i], FT_LOAD_RENDER))
+			continue;
+		const FT_Bitmap * const map = &(face->glyph->bitmap);
+
+		if (FT_HAS_KERNING(face) && i) {
+			FT_Vector delta;
+			FT_Get_Kerning(face, ucs[i - 1], ucs[i], ft_kerning_default, &delta);
+			x += delta.x >> 6;
+		}
+
+		uint32_t row, col;
+		for (row = 0; row < (uint32_t) map->rows; row++) {
+			int ny = row + y - face->glyph->bitmap_top;
+			if (ny < 0)
+				continue;
+			if ((unsigned) ny >= h)
+				continue;
+
+			uint8_t *dst = (uint8_t *) buf;
+			dst += ny * stride + x;
+
+			const uint8_t *src = map->buffer + map->pitch * row;
+			for (col = 0; col < (uint32_t) map->width; col++) {
+				if (col + x >= w)
+					continue;
+				const uint8_t out = (src[col] + 8) >> 4;
+				dst[col] = out < 16 ? out : 15;
+			}
+		}
+
+		x += face->glyph->advance.x >> 6;
+	}
+}
+
+static uint32_t drawnwidth(const char *txt) {
+
+	unsigned ucs[256], i, ucslen;
+	unsigned len = strlen(txt);
+	i = 0;
+	ucslen = 0;
+	while (len > 0 && txt[i]) {
+		size_t ret = rfb::utf8ToUCS4(&txt[i], len, &ucs[ucslen]);
+		i += ret;
+		len -= ret;
+		ucslen++;
+	}
+
+	uint32_t x;
+
+	x = 0;
+	for (i = 0; i < ucslen; i++) {
+		if (FT_Load_Char(face, ucs[i], FT_LOAD_DEFAULT))
+			continue;
+
+		if (FT_HAS_KERNING(face) && i) {
+			FT_Vector delta;
+			FT_Get_Kerning(face, ucs[i - 1], ucs[i], ft_kerning_default, &delta);
+			x += delta.x >> 6;
+		}
+
+		x += face->glyph->advance.x >> 6;
+	}
+
+	return x;
+}
+
+static bool drawtext(const char fmt[], const int16_t utcOff, const char fontpath[],
+			const uint8_t fontsize) {
+	char buf[PATH_MAX];
+
+	if (!ft) {
+		if (FT_Init_FreeType(&ft))
+			abort();
+		if (fontpath[0]) {
+			if (FT_New_Face(ft, fontpath, 0, &face))
+				abort();
+		} else {
+			if (FT_New_Memory_Face(ft, font_otf, sizeof(font_otf), 0, &face))
+				abort();
+		}
+		FT_Set_Pixel_Sizes(face, fontsize, fontsize);
+	}
+
+	time_t now = lastUpdate = time(NULL);
+	now += utcOff * 60;
+
+	struct tm *tm = gmtime(&now);
+	size_t len = strftime(buf, PATH_MAX, fmt, tm);
+	if (!len)
+		return false;
+
+	free(watermarkInfo.src);
+	const uint32_t h = fontsize + 4;
+	const uint32_t w = drawnwidth(buf);
+
+	watermarkInfo.w = w;
+	watermarkInfo.h = h;
+	watermarkInfo.src = (uint8_t *) calloc(w, h);
+
+	str(watermarkInfo.src, buf, 0, fontsize, w, h, w);
+
+	return true;
+}
+
 bool watermarkInit() {
 	memset(&watermarkInfo, 0, sizeof(watermarkInfo_t));
 	watermarkData = watermarkUnpacked = watermarkTmp = NULL;
 	rw = rh = 0;
 
-	if (!Server::DLP_WatermarkImage[0])
+	if (!Server::DLP_WatermarkImage[0] && !Server::DLP_WatermarkText[0])
 		return true;
 
-	if (!loadimage(Server::DLP_WatermarkImage))
+	if (Server::DLP_WatermarkImage[0] && Server::DLP_WatermarkText[0]) {
+		vlog.error("WatermarkImage and WatermarkText can't be used together");
+		return false;
+	}
+
+	if (Server::DLP_WatermarkImage[0] && !loadimage(Server::DLP_WatermarkImage))
+		return false;
+
+	if (Server::DLP_WatermarkText[0] &&
+		!drawtext(Server::DLP_WatermarkText,
+				Server::DLP_WatermarkTimeOffset * 60 + Server::DLP_WatermarkTimeOffsetMinutes,
+				Server::DLP_WatermarkFont, Server::DLP_WatermarkFontSize))
 		return false;
 
 	if (Server::DLP_WatermarkRepeatSpace && Server::DLP_WatermarkLocation[0]) {
@@ -136,10 +280,22 @@ bool watermarkInit() {
 }
 
 // update the screen-size rendered watermark whenever the screen is resized
+// or if using text, every frame
 void VNCServerST::updateWatermark() {
 	if (rw == pb->width() &&
-		rh == pb->height())
-		return;
+		rh == pb->height()) {
+
+		if (Server::DLP_WatermarkImage[0])
+			return;
+		if (!watermarkTextNeedsUpdate(false))
+			return;
+	}
+
+	if (Server::DLP_WatermarkText[0] && watermarkTextNeedsUpdate(false)) {
+		drawtext(Server::DLP_WatermarkText,
+				Server::DLP_WatermarkTimeOffset * 60 + Server::DLP_WatermarkTimeOffsetMinutes,
+				Server::DLP_WatermarkFont, Server::DLP_WatermarkFontSize);
+	}
 
 	rw = pb->width();
 	rh = pb->height();
@@ -245,4 +401,16 @@ void packWatermark(const Region &changed) {
 		vlog.error("Zlib compression error");
 
 	watermarkDataLen = destLen;
+}
+
+// Limit changes to once per second
+bool watermarkTextNeedsUpdate(const bool early) {
+	static time_t now;
+
+	// We're called a couple times per frame, only grab the
+	// time on the first time so it doesn't change inside a frame
+	if (early)
+		now = time(NULL);
+
+	return now != lastUpdate;
 }
