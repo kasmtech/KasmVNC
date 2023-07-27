@@ -100,6 +100,12 @@ void SMsgReader::readMsg()
   case msgTypeUpgradeToUdp:
     readUpgradeToUdp();
     break;
+  case msgTypeSubscribeUnixRelay:
+    readSubscribeUnixRelay();
+    break;
+  case msgTypeUnixRelay:
+    readUnixRelay();
+    break;
   default:
     fprintf(stderr, "unknown message type %d\n", msgType);
     throw Exception("unknown message type");
@@ -356,4 +362,43 @@ void SMsgReader::readUpgradeToUdp()
   wuGotHttp(buf, len, resp);
 
   handler->udpUpgrade(resp);
+}
+
+void SMsgReader::readSubscribeUnixRelay()
+{
+  const rdr::U8 namelen = is->readU8();
+  char name[64];
+  if (namelen >= sizeof(name)) {
+    vlog.error("Ignoring subscribe with too large name");
+    is->skip(namelen);
+    return;
+  }
+  is->readBytes(name, namelen);
+  name[namelen] = '\0';
+
+  handler->subscribeUnixRelay(name);
+}
+
+void SMsgReader::readUnixRelay()
+{
+  const rdr::U8 namelen = is->readU8();
+  char name[64];
+  if (namelen >= sizeof(name)) {
+    vlog.error("Ignoring relay packet with too large name");
+    is->skip(namelen);
+    return;
+  }
+  is->readBytes(name, namelen);
+  name[namelen] = '\0';
+
+  const rdr::U32 len = is->readU32();
+  rdr::U8 buf[1024 * 1024];
+  if (len >= sizeof(buf)) {
+    vlog.error("Ignoring relay packet with too large data");
+    is->skip(len);
+    return ;
+  }
+  is->readBytes(buf, len);
+
+  handler->unixRelay(name, buf, len);
 }

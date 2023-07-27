@@ -61,8 +61,11 @@ from the X Consortium.
 #include "input.h"
 #include "mipointer.h"
 #include "micmap.h"
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <errno.h>
 #ifndef WIN32
 #include <sys/param.h>
@@ -162,6 +165,73 @@ static Bool displaySpecified = FALSE;
 static char displayNumStr[16];
 
 static int vncVerbose = DEFAULT_LOG_VERBOSITY;
+
+int unixrelays[MAX_UNIX_RELAYS];
+char unixrelaynames[MAX_UNIX_RELAYS][MAX_UNIX_RELAY_NAME_LEN];
+struct sockaddr_un unixrelayclients[MAX_UNIX_RELAYS];
+
+static unsigned addrelay(const char * const arg)
+{
+    const char *ptr = strchr(arg, ':');
+    if (!ptr) {
+        ErrorF("Invalid unixrelay\n");
+        return 1;
+    }
+
+    const unsigned namelen = ptr - arg;
+    if (namelen >= MAX_UNIX_RELAY_NAME_LEN) {
+        ErrorF("Unix relay name too long\n");
+        return 1;
+    }
+
+    unsigned i;
+    unsigned char found = 0;
+    for (i = 0; i < MAX_UNIX_RELAYS; i++) {
+        if (unixrelays[i] == -1) {
+            found = 1;
+            break;
+        }
+    }
+    if (!found) {
+        ErrorF("Too many unix relays\n");
+        return 1;
+    }
+
+    memcpy(unixrelaynames[i], arg, namelen);
+    unixrelaynames[i][namelen] = '\0';
+
+    unixrelays[i] = socket(AF_UNIX, SOCK_DGRAM, 0);
+    if (unixrelays[i] < 0) {
+        ErrorF("Failed to create unix sock\n");
+        return 1;
+    }
+
+    ptr++;
+    struct sockaddr_un sa;
+    if (strlen(ptr) >= sizeof(sa.sun_path)) {
+        ErrorF("Unix relay path too long\n");
+        return 1;
+    }
+
+    sa.sun_family = AF_UNIX;
+    strcpy(sa.sun_path, ptr);
+
+    // SO_REUSEADDR doesn't exist for unix sockets, if the socket exists
+    // (from our previous run), we need to delete it first. Check it's a
+    // socket so we don't delete wrong files
+    struct stat st;
+    if (stat(ptr, &st) == 0) {
+        if (S_ISSOCK(st.st_mode))
+            unlink(ptr);
+    }
+
+    if (bind(unixrelays[i], (struct sockaddr *) &sa, sizeof(struct sockaddr_un))) {
+        ErrorF("Failed to bind unix sock\n");
+        return 1;
+    }
+
+    return 0;
+}
 
 char *extra_headers = NULL;
 unsigned extra_headers_len = 0;
@@ -374,6 +444,7 @@ void ddxUseMsg(void)
     ErrorF("-inetd                 has been launched from inetd\n");
     ErrorF("-http-header name=val  append this header to all HTTP responses\n");
     ErrorF("-noclipboard           disable clipboard settings modification via vncconfig utility\n");
+    ErrorF("-unixrelay name:path   create a local named unix relay socket\n");
     ErrorF("-verbose [n]           verbose startup messages\n");
     ErrorF("-quiet                 minimal startup messages\n");
     ErrorF("-version               show the server version\n");
@@ -426,6 +497,13 @@ ddxProcessArgument(int argc, char *argv[], int i)
 
         vfbInitializeDefaultScreens();
 	vfbInitializePixmapDepths();
+
+	unsigned r;
+	for (r = 0; r < MAX_UNIX_RELAYS; r++) {
+	    unixrelays[r] = -1;
+	    unixrelaynames[r][0] = '\0';
+	}
+
 	firstTime = FALSE;
 	vncInitRFB();
     }
@@ -690,6 +768,16 @@ ddxProcessArgument(int argc, char *argv[], int i)
     if (strcmp(argv[i], "-noclipboard") == 0) {
 	vncNoClipboard = 1;
 	return 1;
+    }
+
+    if (strcasecmp(argv[i], "-unixrelay") == 0)
+    {
+	fail_unless_args(argc, i, 1);
+	++i;
+
+        if (addrelay(argv[i]))
+	    return 0;
+	return 2;
     }
 
     if (!strcmp(argv[i], "-verbose")) {

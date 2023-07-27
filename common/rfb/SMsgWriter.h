@@ -129,6 +129,9 @@ namespace rfb {
 
     void writeUdpUpgrade(const char *resp);
 
+    void writeSubscribeUnixRelay(const bool success, const char *msg);
+    void writeUnixRelay(const char *name, const rdr::U8 *buf, const unsigned len);
+
   protected:
     void startMsg(int type);
     void endMsg();

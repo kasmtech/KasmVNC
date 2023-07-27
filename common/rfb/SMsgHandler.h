@@ -98,6 +98,9 @@ namespace rfb {
     virtual void udpUpgrade(const char *resp) = 0;
     virtual void udpDowngrade(const bool) = 0;
 
+    virtual void subscribeUnixRelay(const char *name) = 0;
+    virtual void unixRelay(const char *name, const rdr::U8 *buf, const unsigned len) = 0;
+
     ConnParams cp;
   };
 }

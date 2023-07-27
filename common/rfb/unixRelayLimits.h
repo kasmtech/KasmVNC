@@ -1,0 +1,7 @@
+#ifndef UNIX_RELAY_LIMITS_H
+#define UNIX_RELAY_LIMITS_H
+
+#define MAX_UNIX_RELAYS 4
+#define MAX_UNIX_RELAY_NAME_LEN 64
+
+#endif

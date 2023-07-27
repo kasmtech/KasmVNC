@@ -29,6 +29,8 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <fcntl.h>
 #include <sys/utsname.h>
 
@@ -51,6 +53,7 @@ extern "C" {
 void vncSetGlueContext(int screenIndex);
 
 extern int wakeuppipe[2];
+extern struct sockaddr_un unixrelayclients[MAX_UNIX_RELAYS];
 }
 
 using namespace rfb;
@@ -323,6 +326,26 @@ void XserverDesktop::handleSocketEvent(int fd, bool read, bool write)
         return;
       }
 
+      unsigned i;
+      for (i = 0; i < MAX_UNIX_RELAYS; i++) {
+        if (unixrelays[i] == -1)
+            break;
+        if (fd == unixrelays[i]) {
+            do {
+                struct sockaddr_un client;
+                socklen_t addrlen = sizeof(struct sockaddr_un);
+                const ssize_t len = recvfrom(unixrelays[i], unixbuf, sizeof(unixbuf),
+                                         MSG_DONTWAIT,
+                                         (struct sockaddr *) &client, &addrlen);
+                if (len <= 0)
+                    break;
+                memcpy(&unixrelayclients[i], &client, addrlen);
+                server->sendUnixRelayData(unixrelaynames[i], unixbuf, len);
+            } while (1);
+            return;
+        }
+      }
+
       if (handleListenerEvent(fd, &listeners, server))
         return;
     }
@@ -556,4 +579,22 @@ bool XserverDesktop::handleTimeout(Timer* t)
   }
 
   return false;
+}
+
+void XserverDesktop::receivedUnixRelayData(const char name[], const unsigned char *buf,
+                                           const unsigned len)
+{
+  unsigned i;
+  for (i = 0; i < MAX_UNIX_RELAYS; i++) {
+    if (unixrelays[i] == -1)
+      break;
+    if (strcmp(name, unixrelaynames[i]))
+      continue;
+
+    if (sendto(unixrelays[i], buf, len, 0,
+               (struct sockaddr *) &unixrelayclients[i], sizeof(struct sockaddr_un)) == -1)
+      vlog.error("Error writing unix relay data to %s", name);
+
+    break;
+  }
 }

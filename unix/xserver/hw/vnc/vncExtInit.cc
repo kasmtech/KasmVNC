@@ -241,6 +241,14 @@ void vncExtensionInit(void)
       fcntl(wakeuppipe[0], F_SETFL, flags | O_NONBLOCK);
       vncSetNotifyFd(wakeuppipe[0], 0, true, false);
 
+      unsigned i;
+      for (i = 0; i < MAX_UNIX_RELAYS; i++) {
+          if (unixrelays[i] == -1)
+              break;
+          vncSetNotifyFd(unixrelays[i], 0, true, false);
+          vlog.info("Listening to unix relay socket %s", unixrelaynames[i]);
+      }
+
       initialised = true;
     }
 

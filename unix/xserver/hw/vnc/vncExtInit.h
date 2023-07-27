@@ -23,6 +23,8 @@
 #include <stddef.h>
 #include <sys/select.h>
 
+#include <rfb/unixRelayLimits.h>
+
 // Only from C++
 #ifdef __cplusplus
 namespace rfb { class StringParameter; };
@@ -105,6 +107,9 @@ void vncPostScreenResize(int scrIdx, int success, int width, int height);
 void vncRefreshScreenLayout(int scrIdx);
 
 int vncOverrideParam(const char *nameAndValue);
+
+extern int unixrelays[MAX_UNIX_RELAYS];
+extern char unixrelaynames[MAX_UNIX_RELAYS][MAX_UNIX_RELAY_NAME_LEN];
 
 #ifdef __cplusplus
 }

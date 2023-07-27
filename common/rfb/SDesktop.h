@@ -88,6 +88,9 @@ namespace rfb {
 
     virtual void clearLocalClipboards() {}
 
+    virtual void receivedUnixRelayData(const char name[], const unsigned char *buf,
+                                       const unsigned len) {}
+
   protected:
     virtual ~SDesktop() {}
   };
