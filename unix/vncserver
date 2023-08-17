@@ -1403,6 +1403,24 @@ sub DefineConfigToCLIConversion {
         ]
     }),
     KasmVNC::CliOption->new({
+        name => 'UnixRelay',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "network.unix_relay.name",
+            type => KasmVNC::ConfigKey::ANY
+          }),
+          KasmVNC::ConfigKey->new({
+            name => "network.unix_relay.path",
+            type => KasmVNC::ConfigKey::ANY
+          })
+        ],
+        deriveValueSub => sub {
+          my $self = shift;
+
+          $self->{"network.unix_relay.name"} . ":" . $self->{"network.unix_relay.path"};
+        },
+    }),
+    KasmVNC::CliOption->new({
         name => 'AlwaysShared',
         configKeys => [
           KasmVNC::ConfigKey->new({
