@@ -23,6 +23,9 @@ network:
     pem_certificate: /etc/ssl/certs/ssl-cert-snakeoil.pem
     pem_key: /etc/ssl/private/ssl-cert-snakeoil.key
     require_ssl: true
+  # unix_relay:
+  #   name:
+  #   path:
 
 user_session:
   # session_type: shared
