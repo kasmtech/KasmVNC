@@ -35,7 +35,7 @@ sub new {
       },
       toStringSub => $args->{toStringSub}  || sub {
         my $self = shift;
-        
+
         my $derivedValue = $self->deriveValue();
         if (defined($derivedValue)) {
           return "-$self->{name} " . "'$derivedValue'";
