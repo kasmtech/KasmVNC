@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.1.0
+Version:        1.2.0
 Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
@@ -82,6 +82,17 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Fri Aug 25 2023 KasmTech <info@kasmweb.com> - 1.2.0-1
+- Add support for Unix relays for bidirectional communication between noVNC
+  and containerized applications.
+- Text based watermark overlays with date and time support.
+- New builds for Bookworm, Alpine 3.18, and Fedora 38.
+- Multi-language support.
+- Add support for rendering pixmaps via DRI3 GPU acceleration allowing
+  compositing and other 3d accelerated workloads in a KasmVNC session.
+- Fix crash that can occur.
+- Fixed tearing when compositing is enabled with DRI3 hardware acceleration.
+- Fix stuck command key on MacOS clients.
 * Wed Apr 05 2023 KasmTech <info@kasmweb.com> - 1.1.0-1
 - Upstream release
 * Tue Nov 29 2022 KasmTech <info@kasmweb.com> - 1.0.0-1
