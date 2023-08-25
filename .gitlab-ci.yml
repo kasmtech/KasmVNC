@@ -6,7 +6,7 @@ variables:
   KASMVNC_COMMIT_ID: $CI_COMMIT_SHA
   GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
   GIT_SUBMODULE_STRATEGY: normal
-  GIT_FETCH_EXTRA_FLAGS: --tags
+  GIT_FETCH_EXTRA_FLAGS: --tags --force
   # E.g. BUILD_JOBS: build_debian_buster,build_ubuntu_bionic. This will include
   # arm builds, because build_debian_buster_arm matches build_debian_buster.
   # "BUILD_JOBS: none" won't build any build jobs, nor www.
@@ -493,7 +493,7 @@ build_fedora_thirtyeight:
   artifacts:
     paths:
       - output/
-  
+
 build_fedora_thirtyeight_arm:
   stage: build
   allow_failure: true
@@ -573,7 +573,7 @@ build_alpine_318:
   artifacts:
     paths:
       - output/
-  
+
 build_alpine_318_arm:
   stage: build
   allow_failure: true
