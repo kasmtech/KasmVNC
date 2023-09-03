@@ -198,6 +198,7 @@ generate_xstartup() {
 
   cat <<-SCRIPT > "$xstartup_script"
 #!/bin/sh
+set -x
 $de_cmd
 SCRIPT
   chmod +x "$xstartup_script"
