@@ -43,9 +43,9 @@ vncserver :13
 .RE
 
 vncserver can detect desktop environments and prompt the user to select one to
-start with the session. The user can also manually edit the file 
-$HOME/.vnc/xstartup to customize what commands should be run on startup of a 
-new session. 
+start with the session. The user can also manually edit the file
+$HOME/.vnc/xstartup to customize what commands should be run on startup of a
+new session.
 
 .SH OPTIONS
 You can get a list of options by passing \fB\-h\fP as an option to vncserver.
@@ -54,10 +54,17 @@ passed to Xvnc - see the Xvnc man page, or "Xvnc \-help", for details.
 
 .TP
 .B \-select-de [\fIde_name\fP]
-Select Desktop Enviromnent to run. Cinnamon, Mate, LXDE, LXQT, KDE, Gnome, XFCE
-are supported. If \fIde_name\fP isn't specified, a text UI prompt to select a
-Desktop Enviromnent will be shown.
+Select Desktop Enviromnent to run. Cinnamon, Mate, LXDE, LXQT, KDE, Gnome, XFCE,
+are supported.
+
+To trigger a text UI prompt to select a Desktop Enviromnent, run \fBvncserver\fP
+for the first time, or pass this option without arguments. To bypass the prompt,
+pass this option with the Desktop Enviromnent argument.
 Warning: $HOME/.vnc/xstartup will be overwritten.
+
+To run a custom setup (not one of the supported Desktop Enviromnents), create
+$HOME/.vnc/xstartup executable and specify \fB\-select-de manual\fP to signify you
+don't want its contents to be auto-generated.
 
 .TP
 .B \-geometry \fIwidth\fPx\fIheight\fP
