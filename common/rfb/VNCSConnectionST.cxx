@@ -88,7 +88,7 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
   wordfree(&wexp);
 
   user[0] = '\0';
-  const char *at = strchr(peerEndpoint.buf, '@');
+  const char *at = strrchr(peerEndpoint.buf, '@');
   if (at && at - peerEndpoint.buf > 1 && at - peerEndpoint.buf < 32) {
     memcpy(user, peerEndpoint.buf, at - peerEndpoint.buf);
     user[at - peerEndpoint.buf] = '\0';
@@ -1635,7 +1635,7 @@ void VNCSConnectionST::sendStats(const bool toClient) {
 void VNCSConnectionST::handleFrameStats(rdr::U32 all, rdr::U32 render)
 {
   if (server->apimessager) {
-    const char *at = strchr(peerEndpoint.buf, '@');
+    const char *at = strrchr(peerEndpoint.buf, '@');
     if (!at)
       at = peerEndpoint.buf;
     else

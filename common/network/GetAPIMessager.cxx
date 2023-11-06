@@ -550,7 +550,7 @@ void GetAPIMessager::netGetBottleneckStats(char *buf, uint32_t len) {
 		const char *id = it->first.c_str();
 		const char *data = it->second.c_str();
 
-		const char *at = strchr(id, '@');
+		const char *at = strrchr(id, '@');
 		if (!at)
 			continue;
 
