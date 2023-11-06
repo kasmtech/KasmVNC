@@ -33,7 +33,6 @@
 #include <openssl/sha.h> /* sha1 hash */
 #include "websocket.h"
 #include "jsonescape.h"
-#include "kasmpasswd.h"
 #include <network/Blacklist.h>
 
 /*
@@ -1756,7 +1755,7 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
     }
 
     unsigned char owner = 0;
-    char inuser[32] = "-";
+    char inuser[USERNAME_LEN] = "-";
     if (!settings.disablebasicauth) {
         const char *hdr = strstr(handshake, "Authorization: Basic ");
         if (!hdr) {

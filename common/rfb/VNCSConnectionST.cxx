@@ -89,7 +89,7 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
 
   user[0] = '\0';
   const char *at = strrchr(peerEndpoint.buf, '@');
-  if (at && at - peerEndpoint.buf > 1 && at - peerEndpoint.buf < 32) {
+  if (at && at - peerEndpoint.buf > 1 && at - peerEndpoint.buf < USERNAME_LEN) {
     memcpy(user, peerEndpoint.buf, at - peerEndpoint.buf);
     user[at - peerEndpoint.buf] = '\0';
   }
