@@ -1794,7 +1794,7 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
         if (resppw && *resppw)
             resppw++;
         if (settings.passwdfile) {
-            if (resppw && *resppw && resppw - response < 32) {
+            if (resppw && *resppw && resppw - response < USERNAME_LEN + 1) {
                 char pwbuf[4096];
                 struct kasmpasswd_t *set = readkasmpasswd(settings.passwdfile);
                 if (!set->num) {
