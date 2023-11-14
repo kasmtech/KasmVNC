@@ -363,6 +363,9 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
     unsigned screenArea;
 
     updates++;
+    if (conn->cp.supportsUdp)
+      ((network::UdpStream *) conn->getOutStream(conn->cp.supportsUdp))->setFrameNumber(updates);
+
 
     // The video resolution may have changed, check it
     if (conn->cp.kasmPassed[ConnParams::KASM_MAX_VIDEO_RESOLUTION])

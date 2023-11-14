@@ -40,7 +40,7 @@ using namespace network;
 static rfb::LogWriter vlog("WebUdp");
 static WuHost *host = NULL;
 
-rfb::IntParameter udpSize("udpSize", "UDP packet data size", 1300, 500, 1400);
+rfb::IntParameter udpSize("udpSize", "UDP packet data size", 1296, 500, 1400);
 
 extern settings_t settings;
 
@@ -95,10 +95,11 @@ void *udpserver(void *nport) {
 }
 
 // Send one packet, split into N UDP-sized pieces
-static uint8_t udpsend(WuClient *client, const uint8_t *data, unsigned len, uint32_t *id) {
+static uint8_t udpsend(WuClient *client, const uint8_t *data, unsigned len, uint32_t *id,
+			const uint32_t *frame) {
 	const uint32_t DATA_MAX = udpSize;
 
-	uint8_t buf[1400 + sizeof(uint32_t) * 4];
+	uint8_t buf[1400 + sizeof(uint32_t) * 5];
 	const uint32_t pieces = (len / DATA_MAX) + ((len % DATA_MAX) ? 1 : 0);
 
 	uint32_t i;
@@ -111,12 +112,13 @@ static uint8_t udpsend(WuClient *client, const uint8_t *data, unsigned len, uint
 		memcpy(&buf[4], &i, sizeof(uint32_t));
 		memcpy(&buf[8], &pieces, sizeof(uint32_t));
 		memcpy(&buf[12], &hash, sizeof(uint32_t));
+		memcpy(&buf[16], frame, sizeof(uint32_t));
 
-		memcpy(&buf[16], data, curlen);
+		memcpy(&buf[20], data, curlen);
 		data += curlen;
 		len -= curlen;
 
-		if (WuHostSendBinary(host, client, buf, curlen + sizeof(uint32_t) * 4) < 0)
+		if (WuHostSendBinary(host, client, buf, curlen + sizeof(uint32_t) * 5) < 0)
 			return 1;
 	}
 
@@ -125,7 +127,8 @@ static uint8_t udpsend(WuClient *client, const uint8_t *data, unsigned len, uint
 	return 0;
 }
 
-UdpStream::UdpStream(): OutStream(), client(NULL), total_len(0), id(0), failed(false) {
+UdpStream::UdpStream(): OutStream(), client(NULL), total_len(0), id(0), failed(false),
+	                frame(0) {
 	ptr = data;
 	end = data + UDPSTREAM_BUFSIZE;
 
@@ -137,7 +140,7 @@ void UdpStream::flush() {
 	total_len += len;
 
 	if (client) {
-		if (udpsend(client, data, len, &id)) {
+		if (udpsend(client, data, len, &id, &frame)) {
 			vlog.error("Error sending udp, client gone?");
 			failed = true;
 		}

@@ -40,6 +40,10 @@ namespace network {
 				client = cli;
 			}
 
+			void setFrameNumber(const unsigned in) {
+				frame = in;
+			}
+
 			bool isFailed() const;
 			void clearFailed();
 		private:
@@ -48,6 +52,7 @@ namespace network {
 			size_t total_len;
 			uint32_t id;
 			bool failed;
+			uint32_t frame;
 	};
 }
 

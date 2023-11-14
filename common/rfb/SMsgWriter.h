@@ -165,6 +165,7 @@ namespace rfb {
     rdr::OutStream* udps;
 
     int nRectsInUpdate;
+    int dataRectsInUpdate;
     int nRectsInHeader;
 
     bool needSetDesktopSize;
