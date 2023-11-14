@@ -171,6 +171,9 @@ void SMsgReader::readSetMaxVideoResolution()
   if (!rfb::Server::ignoreClientSettingsKasm && handler->canChangeKasmSettings()) {
     sprintf(tmp, "%ux%u", width, height);
     rfb::Server::maxVideoResolution.setParam(tmp);
+    vlog.debug("Client sent config param maxVideoResolution %ux%u, applied", width, height);
+  } else {
+    vlog.debug("Client sent config param maxVideoResolution %ux%u, ignored due to -IgnoreClientSettingsKasm/lacking perms", width, height);
   }
 }
 

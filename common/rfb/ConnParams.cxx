@@ -24,6 +24,7 @@
 #include <rfb/Exception.h>
 #include <rfb/encodings.h>
 #include <rfb/ledStates.h>
+#include <rfb/LogWriter.h>
 #include <rfb/clipboardTypes.h>
 #include <rfb/ConnParams.h>
 #include <rfb/ServerCore.h>
@@ -31,6 +32,19 @@
 #include <rfb/util.h>
 
 using namespace rfb;
+
+static LogWriter vlog("CP");
+
+static void clientparlog(const char name[], const bool applied) {
+  vlog.debug("Client sent config param %s, %s",
+             name,
+             applied ? "applied" : "ignored due to -IgnoreClientSettingsKasm/lacking perms");
+}
+static void clientparlog(const char name[], int val, const bool applied) {
+  vlog.debug("Client sent config param %s %d, %s",
+             name, val,
+             applied ? "applied" : "ignored due to -IgnoreClientSettingsKasm/lacking perms");
+}
 
 ConnParams::ConnParams()
   : majorVersion(0), minorVersion(0),
@@ -147,54 +161,71 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
     switch (encodings[i]) {
     case encodingCopyRect:
       useCopyRect = true;
+      clientparlog("copyrect", true);
       break;
     case pseudoEncodingCursor:
       supportsLocalCursor = true;
+      clientparlog("cursor", true);
       break;
     case pseudoEncodingXCursor:
       supportsLocalXCursor = true;
+      clientparlog("xcursor", true);
       break;
     case pseudoEncodingCursorWithAlpha:
       supportsLocalCursorWithAlpha = true;
+      clientparlog("cursorWithAlpha", true);
       break;
     case pseudoEncodingVMwareCursor:
       supportsVMWareCursor = true;
+      clientparlog("vmwareCursor", true);
       break;
     case pseudoEncodingDesktopSize:
       supportsDesktopResize = true;
+      clientparlog("desktopSize", true);
       break;
     case pseudoEncodingExtendedDesktopSize:
       supportsExtendedDesktopSize = true;
+      clientparlog("extendedDesktopSize", true);
       break;
     case pseudoEncodingVMwareCursorPosition:
       supportsCursorPosition = true;
+      clientparlog("vmwareCursorPosition", true);
       break;
     case pseudoEncodingDesktopName:
       supportsDesktopRename = true;
+      clientparlog("desktopRename", true);
       break;
     case pseudoEncodingLastRect:
       supportsLastRect = true;
+      clientparlog("lastRect", true);
       break;
     case pseudoEncodingLEDState:
       supportsLEDState = true;
+      clientparlog("ledState", true);
       break;
     case pseudoEncodingQEMUKeyEvent:
       supportsQEMUKeyEvent = true;
+      clientparlog("qemuKeyEvent", true);
       break;
     case pseudoEncodingWEBP:
       supportsWEBP = true;
+      clientparlog("webp", true);
       break;
     case pseudoEncodingQOI:
       supportsQOI = true;
+      clientparlog("qoi", true);
       break;
     case pseudoEncodingFence:
       supportsFence = true;
+      clientparlog("fence", true);
       break;
     case pseudoEncodingContinuousUpdates:
       supportsContinuousUpdates = true;
+      clientparlog("continuousUpdates", true);
       break;
     case pseudoEncodingExtendedClipboard:
       supportsExtendedClipboard = true;
+      clientparlog("extendedClipboard", true);
       break;
     case pseudoEncodingSubsamp1X:
       subsampling = subsampleNone;
@@ -215,8 +246,12 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
       subsampling = subsample16X;
       break;
     case pseudoEncodingPreferBandwidth:
-      if (!rfb::Server::ignoreClientSettingsKasm && canChangeSettings)
+      if (!rfb::Server::ignoreClientSettingsKasm && canChangeSettings) {
         Server::preferBandwidth.setParam(true);
+        clientparlog("preferBandwidth", true);
+      } else {
+        clientparlog("preferBandwidth", false);
+      }
       break;
     case pseudoEncodingMaxVideoResolution:
       if (!rfb::Server::ignoreClientSettingsKasm && canChangeSettings)
@@ -225,57 +260,133 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
     }
 
     if (encodings[i] >= pseudoEncodingCompressLevel0 &&
-        encodings[i] <= pseudoEncodingCompressLevel9)
+        encodings[i] <= pseudoEncodingCompressLevel9) {
       compressLevel = encodings[i] - pseudoEncodingCompressLevel0;
+      clientparlog("compressLevel", compressLevel, true);
+    }
 
     if (encodings[i] >= pseudoEncodingQualityLevel0 &&
-        encodings[i] <= pseudoEncodingQualityLevel9)
+        encodings[i] <= pseudoEncodingQualityLevel9) {
       qualityLevel = encodings[i] - pseudoEncodingQualityLevel0;
+      clientparlog("qualityLevel", qualityLevel, true);
+    }
 
     if (encodings[i] >= pseudoEncodingFineQualityLevel0 &&
-        encodings[i] <= pseudoEncodingFineQualityLevel100)
+        encodings[i] <= pseudoEncodingFineQualityLevel100) {
       fineQualityLevel = encodings[i] - pseudoEncodingFineQualityLevel0;
+      clientparlog("fineQualityLevel", fineQualityLevel, true);
+    }
 
     if (!rfb::Server::ignoreClientSettingsKasm && canChangeSettings) {
       if (encodings[i] >= pseudoEncodingJpegVideoQualityLevel0 &&
-          encodings[i] <= pseudoEncodingJpegVideoQualityLevel9)
+          encodings[i] <= pseudoEncodingJpegVideoQualityLevel9) {
           Server::jpegVideoQuality.setParam(encodings[i] - pseudoEncodingJpegVideoQualityLevel0);
+          clientparlog("jpegVideoQuality", encodings[i] - pseudoEncodingJpegVideoQualityLevel0, true);
+      }
 
       if (encodings[i] >= pseudoEncodingWebpVideoQualityLevel0 &&
-          encodings[i] <= pseudoEncodingWebpVideoQualityLevel9)
+          encodings[i] <= pseudoEncodingWebpVideoQualityLevel9) {
           Server::webpVideoQuality.setParam(encodings[i] - pseudoEncodingWebpVideoQualityLevel0);
+          clientparlog("webpVideoQuality", encodings[i] - pseudoEncodingWebpVideoQualityLevel0, true);
+      }
 
       if (encodings[i] >= pseudoEncodingTreatLosslessLevel0 &&
-          encodings[i] <= pseudoEncodingTreatLosslessLevel10)
+          encodings[i] <= pseudoEncodingTreatLosslessLevel10) {
           Server::treatLossless.setParam(encodings[i] - pseudoEncodingTreatLosslessLevel0);
+          clientparlog("treatLossless", encodings[i] - pseudoEncodingTreatLosslessLevel0, true);
+      }
 
       if (encodings[i] >= pseudoEncodingDynamicQualityMinLevel0 &&
-          encodings[i] <= pseudoEncodingDynamicQualityMinLevel9)
+          encodings[i] <= pseudoEncodingDynamicQualityMinLevel9) {
           Server::dynamicQualityMin.setParam(encodings[i] - pseudoEncodingDynamicQualityMinLevel0);
+          clientparlog("dynamicQualityMin", encodings[i] - pseudoEncodingDynamicQualityMinLevel0, true);
+      }
 
       if (encodings[i] >= pseudoEncodingDynamicQualityMaxLevel0 &&
-          encodings[i] <= pseudoEncodingDynamicQualityMaxLevel9)
+          encodings[i] <= pseudoEncodingDynamicQualityMaxLevel9) {
           Server::dynamicQualityMax.setParam(encodings[i] - pseudoEncodingDynamicQualityMaxLevel0);
+          clientparlog("dynamicQualityMax", encodings[i] - pseudoEncodingDynamicQualityMaxLevel0, true);
+      }
 
       if (encodings[i] >= pseudoEncodingVideoAreaLevel1 &&
-          encodings[i] <= pseudoEncodingVideoAreaLevel100)
+          encodings[i] <= pseudoEncodingVideoAreaLevel100) {
           Server::videoArea.setParam(encodings[i] - pseudoEncodingVideoAreaLevel1 + 1);
+          clientparlog("videoArea", encodings[i] - pseudoEncodingVideoAreaLevel1 + 1, true);
+      }
 
       if (encodings[i] >= pseudoEncodingVideoTimeLevel0 &&
-          encodings[i] <= pseudoEncodingVideoTimeLevel100)
+          encodings[i] <= pseudoEncodingVideoTimeLevel100) {
           Server::videoTime.setParam(encodings[i] - pseudoEncodingVideoTimeLevel0);
+          clientparlog("videoTime", encodings[i] - pseudoEncodingVideoTimeLevel0, true);
+      }
 
       if (encodings[i] >= pseudoEncodingVideoOutTimeLevel1 &&
-          encodings[i] <= pseudoEncodingVideoOutTimeLevel100)
+          encodings[i] <= pseudoEncodingVideoOutTimeLevel100) {
           Server::videoOutTime.setParam(encodings[i] - pseudoEncodingVideoOutTimeLevel1 + 1);
+          clientparlog("videoOutTime", encodings[i] - pseudoEncodingVideoOutTimeLevel1 + 1, true);
+      }
 
       if (encodings[i] >= pseudoEncodingFrameRateLevel10 &&
-          encodings[i] <= pseudoEncodingFrameRateLevel60)
+          encodings[i] <= pseudoEncodingFrameRateLevel60) {
           Server::frameRate.setParam(encodings[i] - pseudoEncodingFrameRateLevel10 + 10);
+          clientparlog("frameRate", encodings[i] - pseudoEncodingFrameRateLevel10 + 10, true);
+      }
 
       if (encodings[i] >= pseudoEncodingVideoScalingLevel0 &&
-          encodings[i] <= pseudoEncodingVideoScalingLevel9)
+          encodings[i] <= pseudoEncodingVideoScalingLevel9) {
           Server::videoScaling.setParam(encodings[i] - pseudoEncodingVideoScalingLevel0);
+          clientparlog("videoScaling", encodings[i] - pseudoEncodingVideoScalingLevel0, true);
+      }
+    } else {
+      if (encodings[i] >= pseudoEncodingJpegVideoQualityLevel0 &&
+          encodings[i] <= pseudoEncodingJpegVideoQualityLevel9) {
+          clientparlog("jpegVideoQuality", encodings[i] - pseudoEncodingJpegVideoQualityLevel0, false);
+      }
+
+      if (encodings[i] >= pseudoEncodingWebpVideoQualityLevel0 &&
+          encodings[i] <= pseudoEncodingWebpVideoQualityLevel9) {
+          clientparlog("webpVideoQuality", encodings[i] - pseudoEncodingWebpVideoQualityLevel0, false);
+      }
+
+      if (encodings[i] >= pseudoEncodingTreatLosslessLevel0 &&
+          encodings[i] <= pseudoEncodingTreatLosslessLevel10) {
+          clientparlog("treatLossless", encodings[i] - pseudoEncodingTreatLosslessLevel0, false);
+      }
+
+      if (encodings[i] >= pseudoEncodingDynamicQualityMinLevel0 &&
+          encodings[i] <= pseudoEncodingDynamicQualityMinLevel9) {
+          clientparlog("dynamicQualityMin", encodings[i] - pseudoEncodingDynamicQualityMinLevel0, false);
+      }
+
+      if (encodings[i] >= pseudoEncodingDynamicQualityMaxLevel0 &&
+          encodings[i] <= pseudoEncodingDynamicQualityMaxLevel9) {
+          clientparlog("dynamicQualityMax", encodings[i] - pseudoEncodingDynamicQualityMaxLevel0, false);
+      }
+
+      if (encodings[i] >= pseudoEncodingVideoAreaLevel1 &&
+          encodings[i] <= pseudoEncodingVideoAreaLevel100) {
+          clientparlog("videoArea", encodings[i] - pseudoEncodingVideoAreaLevel1 + 1, false);
+      }
+
+      if (encodings[i] >= pseudoEncodingVideoTimeLevel0 &&
+          encodings[i] <= pseudoEncodingVideoTimeLevel100) {
+          clientparlog("videoTime", encodings[i] - pseudoEncodingVideoTimeLevel0, false);
+      }
+
+      if (encodings[i] >= pseudoEncodingVideoOutTimeLevel1 &&
+          encodings[i] <= pseudoEncodingVideoOutTimeLevel100) {
+          clientparlog("videoOutTime", encodings[i] - pseudoEncodingVideoOutTimeLevel1 + 1, false);
+      }
+
+      if (encodings[i] >= pseudoEncodingFrameRateLevel10 &&
+          encodings[i] <= pseudoEncodingFrameRateLevel60) {
+          clientparlog("frameRate", encodings[i] - pseudoEncodingFrameRateLevel10 + 10, false);
+      }
+
+      if (encodings[i] >= pseudoEncodingVideoScalingLevel0 &&
+          encodings[i] <= pseudoEncodingVideoScalingLevel9) {
+          clientparlog("videoScaling", encodings[i] - pseudoEncodingVideoScalingLevel0, false);
+      }
     }
 
     if (encodings[i] > 0)
