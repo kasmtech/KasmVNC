@@ -814,7 +814,7 @@ static void upgradeClientToUdp(const network::GetAPIMessager::action_data &act,
     inet_ntop(AF_INET, &act.udp.ip, buf, 32);
 
     const char * const who = (*ci)->getPeerEndpoint();
-    const char *start = strchr(who, '@');
+    const char *start = strrchr(who, '@');
     if (!start)
       continue;
     start++;

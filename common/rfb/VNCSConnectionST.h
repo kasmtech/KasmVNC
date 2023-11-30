@@ -35,6 +35,8 @@
 #include <rfb/Timer.h>
 #include <rfb/unixRelayLimits.h>
 
+#include "kasmpasswd.h"
+
 namespace rfb {
   class VNCServerST;
 
@@ -318,7 +320,7 @@ namespace rfb {
     rdr::U64 bstats_total[BS_NUM];
     struct timeval connStart;
 
-    char user[32];
+    char user[USERNAME_LEN];
     char kasmpasswdpath[4096];
     bool needsPermCheck;
 

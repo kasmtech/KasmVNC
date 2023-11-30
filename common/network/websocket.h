@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "GetAPIEnums.h"
 #include "datelog.h"
+#include "kasmpasswd.h"
 
 #define BUFSIZE 65536
 #define DBUFSIZE (BUFSIZE * 3) / 4 - 20
@@ -57,7 +58,7 @@ typedef struct {
     char      *tin_buf;
     char      *tout_buf;
 
-    char      user[32];
+    char      user[USERNAME_LEN];
     char      ip[64];
 } ws_ctx_t;
 

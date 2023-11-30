@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 struct kasmpasswd_entry_t {
-	char user[32];
+	char user[128];
 	char password[128];
 	unsigned char read : 1;
 	unsigned char write : 1;
