@@ -43,6 +43,8 @@ default:
 build_www:
   stage: www
   allow_failure: false
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
   script:
@@ -66,6 +68,8 @@ build_www:
 build_ubuntu_bionic:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -102,6 +106,8 @@ build_ubuntu_bionic_arm:
 build_ubuntu_focal:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -138,6 +144,8 @@ build_ubuntu_focal_arm:
 build_ubuntu_jammy:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -174,6 +182,8 @@ build_ubuntu_jammy_arm:
 build_debian_buster:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -210,6 +220,8 @@ build_debian_buster_arm:
 build_debian_bullseye:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -247,6 +259,8 @@ build_debian_bullseye_arm:
 build_debian_bookworm:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -283,6 +297,8 @@ build_debian_bookworm_arm:
 build_kali_rolling:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -319,6 +335,8 @@ build_kali_rolling_arm:
 build_centos7:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -336,6 +354,8 @@ build_centos7:
 build_oracle_8:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -372,6 +392,8 @@ build_oracle_8_arm:
 build_oracle_9:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -408,6 +430,8 @@ build_oracle_9_arm:
 build_opensuse_15:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -444,6 +468,8 @@ build_opensuse_15_arm:
 build_fedora_thirtyseven:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -480,6 +506,8 @@ build_fedora_thirtyseven_arm:
 build_fedora_thirtyeight:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -516,6 +544,8 @@ build_fedora_thirtyeight_arm:
 build_alpine_317:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -551,6 +581,8 @@ build_alpine_317_arm:
 
 test:
   stage: test
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
   script:
@@ -560,6 +592,8 @@ test:
 build_alpine_318:
   stage: build
   allow_failure: true
+  tags:
+    - oci-fixed-amd64
   before_script:
     - *prepare_build
     - *prepare_www
@@ -593,9 +627,49 @@ build_alpine_318_arm:
     paths:
       - output/
 
+build_alpine_319:
+  stage: build
+  allow_failure: true
+  tags:
+    - oci-fixed-amd64
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package alpine 319;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
+
+build_alpine_319_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - oci-fixed-arm64
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package alpine 319;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
+
 upload:
   stage: upload
   image: ubuntu:focal
+  tags:
+    - oci-fixed-amd64
   artifacts:
     paths:
       - output/
@@ -633,6 +707,8 @@ upload_build_preview:
   needs: ["upload"]
   dependencies: ["upload"]
   image: ubuntu:focal
+  tags:
+    - oci-fixed-amd64
   before_script:
     - . .ci/upload.sh
   resource_group: upload_build_preview
