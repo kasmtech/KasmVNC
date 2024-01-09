@@ -1,4 +1,4 @@
-kasmvnc (1.2.0-1) unstable; urgency=medium
+kasmvnc (1.2.1-1) unstable; urgency=medium
 
   * Add support for Unix relays for bidirectional communication between noVNC
     and containerized applications.

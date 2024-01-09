@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.2.0
+Version:        1.2.1
 Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
