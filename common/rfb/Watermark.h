@@ -35,7 +35,6 @@ struct watermarkInfo_t {
 extern watermarkInfo_t watermarkInfo;
 
 bool watermarkInit();
-void packWatermark(const rfb::Region &changed); // filter and pack the watermark for sending
 bool watermarkTextNeedsUpdate(const bool early);
 
 extern uint8_t *watermarkData;

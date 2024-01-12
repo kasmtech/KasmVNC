@@ -423,9 +423,6 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
           nRects++;
     }
 
-    if (watermarkData)
-        packWatermark(changed);
-
     conn->writer()->writeFramebufferUpdateStart(nRects);
 
     writeCopyRects(copied, copyDelta);
@@ -443,7 +440,7 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
     if (!videoDetected) // In case detection happened between the calls
       writeRects(cursorRegion, renderedCursor);
 
-    if (watermarkData) {
+    if (watermarkData && conn->sendWatermark()) {
       beforeLength = conn->getOutStream(conn->cp.supportsUdp)->length();
 
       const Rect rect(0, 0, pb->width(), pb->height());

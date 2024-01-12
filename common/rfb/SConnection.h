@@ -198,6 +198,10 @@ namespace rfb {
         std::vector<unsigned char> data;
     };
 
+    virtual bool sendWatermark() const {
+        return false;
+    }
+
   protected:
     void setState(stateEnum s) { state_ = s; }
 

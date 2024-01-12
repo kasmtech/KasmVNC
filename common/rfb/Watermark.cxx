@@ -279,6 +279,31 @@ bool watermarkInit() {
 	return true;
 }
 
+static void packWatermark() {
+	// Take the expanded 4-bit data, filter it by the changed rects, pack
+	// to shared bytes, and compress with zlib
+
+	uint16_t x, y;
+	uint8_t pix[2], cur = 0;
+	uint8_t *dst = watermarkTmp;
+
+	for (y = 0; y < rh; y++) {
+		for (x = 0; x < rw; x++) {
+			pix[cur] = watermarkUnpacked[y * rw + x];
+			if (cur || (y == rh - 1 && x == rw - 1))
+				*dst++ = pix[0] | (pix[1] << 4);
+
+			cur ^= 1;
+		}
+	}
+
+	uLong destLen = MAXW * MAXH / 2;
+	if (compress2(watermarkData, &destLen, watermarkTmp, rw * rh / 2 + 1, 1) != Z_OK)
+		vlog.error("Zlib compression error");
+
+	watermarkDataLen = destLen;
+}
+
 // update the screen-size rendered watermark whenever the screen is resized
 // or if using text, every frame
 void VNCServerST::updateWatermark() {
@@ -359,48 +384,10 @@ void VNCServerST::updateWatermark() {
 					rw - sx);
 		}
 	}
-}
 
-void packWatermark(const Region &changed) {
-	// Take the expanded 4-bit data, filter it by the changed rects, pack
-	// to shared bytes, and compress with zlib
+	packWatermark();
 
-	uint16_t x, y;
-	uint8_t pix[2], cur = 0;
-	uint8_t *dst = watermarkTmp;
-
-        const Rect &bounding = changed.get_bounding_rect();
-
-	for (y = 0; y < rh; y++) {
-		// Is the entire line outside the changed area?
-		if (bounding.tl.y > y || bounding.br.y < y) {
-			for (x = 0; x < rw; x++) {
-				pix[cur] = 0;
-
-				if (cur || (y == rh - 1 && x == rw - 1))
-					*dst++ = pix[0] | (pix[1] << 4);
-
-				cur ^= 1;
-			}
-		} else {
-			for (x = 0; x < rw; x++) {
-				pix[cur] = 0;
-				if (bounding.contains(Point(x, y)) && changed.contains(x, y))
-					pix[cur] = watermarkUnpacked[y * rw + x];
-
-				if (cur || (y == rh - 1 && x == rw - 1))
-					*dst++ = pix[0] | (pix[1] << 4);
-
-				cur ^= 1;
-			}
-		}
-	}
-
-	uLong destLen = MAXW * MAXH / 2;
-	if (compress2(watermarkData, &destLen, watermarkTmp, rw * rh / 2 + 1, 1) != Z_OK)
-		vlog.error("Zlib compression error");
-
-	watermarkDataLen = destLen;
+	sendWatermark = true;
 }
 
 // Limit changes to once per second
@@ -412,5 +399,5 @@ bool watermarkTextNeedsUpdate(const bool early) {
 	if (early)
 		now = time(NULL);
 
-	return now != lastUpdate;
+	return now != lastUpdate && strchr(Server::DLP_WatermarkText, '%');
 }

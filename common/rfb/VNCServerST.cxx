@@ -135,7 +135,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
     queryConnectionHandler(0), keyRemapper(&KeyRemapper::defInstance),
     lastConnectionTime(0), disableclients(false),
     frameTimer(this), apimessager(NULL), trackingFrameStats(0),
-    clipboardId(0)
+    clipboardId(0), sendWatermark(false)
 {
   lastUserInputTime = lastDisconnectTime = time(0);
   slog.debug("creating single-threaded server %s", name.buf);
@@ -223,6 +223,9 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
 
   trackingClient[0] = 0;
 
+  if (watermarkData)
+    sendWatermark = true;
+
   if (Server::selfBench)
     SelfBench();
 }
@@ -279,6 +282,9 @@ void VNCServerST::addSocket(network::Socket* sock, bool outgoing)
 
   VNCSConnectionST* client = new VNCSConnectionST(this, sock, outgoing);
   client->init();
+
+  if (watermarkData)
+    sendWatermark = true;
 }
 
 void VNCServerST::removeSocket(network::Socket* sock) {
@@ -975,8 +981,8 @@ void VNCServerST::writeUpdate()
   }
 
   if (watermarkData && Server::DLP_WatermarkText[0] && watermarkTextNeedsUpdate(true)) {
-    // If using a text watermark, we have to mark everything as changed...
-    refreshClients();
+    // The text may have changed
+    sendWatermark = true;
   }
 
   comparer->getUpdateInfo(&ui, pb->getRect());
@@ -1103,6 +1109,8 @@ void VNCServerST::writeUpdate()
       scaletime += (*ci)->getScalingTime();
     }
   }
+
+  sendWatermark = false; // the client now caches it, only send once
 
   if (trackingFrameStats) {
     if (enctime) {
