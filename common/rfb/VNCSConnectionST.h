@@ -215,6 +215,10 @@ namespace rfb {
     virtual void sendUnixRelayData(const char name[], const unsigned char *buf,
                                    const unsigned len);
 
+    bool sendWatermark() const {
+        return server->sendWatermark;
+    }
+
   private:
     // SConnection callbacks
 

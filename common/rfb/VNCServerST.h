@@ -290,6 +290,8 @@ namespace rfb {
 
     void checkAPIMessages(network::GetAPIMessager *apimessager,
                           rdr::U8 &trackingFrameStats, char trackingClient[]);
+
+    bool sendWatermark;
   };
 
 };
