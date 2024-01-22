@@ -1863,6 +1863,24 @@ sub DefineConfigToCLIConversion {
         }
     }),
     KasmVNC::CliOption->new({
+        name => 'DLP_WatermarkTextAngle',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "data_loss_prevention.watermark.text.angle",
+            validator => KasmVNC::CallbackValidator->new({
+              isValidCallback => sub {
+                my $value = shift;
+
+                return 0 unless $value =~ /^\d+$/;
+
+                $value >= -359 && $value <= 359;
+              },
+              errorMessage => "must be in range -359..359"
+            }),
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
         name => 'DLP_Log',
         configKeys => [
           KasmVNC::ConfigKey->new({
