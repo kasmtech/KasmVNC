@@ -100,7 +100,7 @@ data_loss_prevention:
       # font: auto
       # font_size: 48
       # timezone_name: Australia/Adelaide
-      # rotation: 0
+      # angle: 0
   logging:
     # "verbose" SETTING LOGS YOUR PRIVATE INFORMATION. Keypresses and clipboard content
     level: off
