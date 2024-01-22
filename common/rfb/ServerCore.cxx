@@ -201,6 +201,10 @@ rfb::IntParameter rfb::Server::DLP_WatermarkTimeOffsetMinutes
 ("DLP_WatermarkTimeOffsetMinutes",
  "Offset from UTC for -DLP_WatermarkText, minutes",
  0, -24 * 60, 24 * 60);
+rfb::IntParameter rfb::Server::DLP_WatermarkTextAngle
+("DLP_WatermarkTextAngle",
+ "Angle for -DLP_WatermarkText rotation",
+ 0, -359, 359);
 rfb::StringParameter rfb::Server::DLP_WatermarkImage
 ("DLP_WatermarkImage",
  "PNG file to use as a watermark",

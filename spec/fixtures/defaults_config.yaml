@@ -50,6 +50,12 @@ data_loss_prevention:
     # location: 10,10
     # tint: 255,20,20,128
     # repeat_spacing: 10
+    #text:
+      # template: "${USER} %H:%M"
+      # font: auto
+      # font_size: 48
+      # timezone_name: Australia/Adelaide
+      # angle: 0
   logging:
     level: off
 

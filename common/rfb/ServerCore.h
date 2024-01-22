@@ -52,6 +52,7 @@ namespace rfb {
     static IntParameter DLP_WatermarkFontSize;
     static IntParameter DLP_WatermarkTimeOffset;
     static IntParameter DLP_WatermarkTimeOffsetMinutes;
+    static IntParameter DLP_WatermarkTextAngle;
     static StringParameter DLP_ClipLog;
     static StringParameter DLP_Region;
     static StringParameter DLP_Clip_Types;

@@ -16,6 +16,7 @@
  * USA.
  */
 
+#include <math.h>
 #include <png.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,6 +29,7 @@
 #include "font.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_GLYPH_H
 
 #include "Watermark.h"
 
@@ -187,6 +189,149 @@ static uint32_t drawnwidth(const char *txt) {
 	return x;
 }
 
+static void angle2mat(FT_Matrix &mat) {
+	const float angle = Server::DLP_WatermarkTextAngle / 360.f * 2 * -3.14159f;
+
+	mat.xx = (FT_Fixed)( cosf(angle) * 0x10000L);
+	mat.xy = (FT_Fixed)(-sinf(angle) * 0x10000L);
+	mat.yx = (FT_Fixed)( sinf(angle) * 0x10000L);
+	mat.yy = (FT_Fixed)( cosf(angle) * 0x10000L);
+}
+
+// Note: w and h are absolute
+static void angledstr(uint8_t *buf, const char *txt, const uint32_t x_, const uint32_t y_,
+		const uint32_t w, const uint32_t h,
+		const uint32_t stride, const bool invx, const bool invy) {
+
+	unsigned ucs[256], i, ucslen;
+	unsigned len = strlen(txt);
+	i = 0;
+	ucslen = 0;
+	while (len > 0 && txt[i]) {
+		size_t ret = rfb::utf8ToUCS4(&txt[i], len, &ucs[ucslen]);
+		i += ret;
+		len -= ret;
+		ucslen++;
+	}
+
+	FT_Matrix mat;
+	FT_Vector pen;
+
+	angle2mat(mat);
+
+	pen.x = 0;
+	pen.y = 0;
+
+	uint32_t x, y;
+
+	x = x_;
+	y = y_;
+	for (i = 0; i < ucslen; i++) {
+		FT_Set_Transform(face, &mat, &pen);
+
+		if (FT_Load_Char(face, ucs[i], FT_LOAD_RENDER))
+			continue;
+		const FT_Bitmap * const map = &(face->glyph->bitmap);
+
+		uint32_t row, col;
+		for (row = 0; row < (uint32_t) map->rows; row++) {
+			int ny = row + y - face->glyph->bitmap_top;
+			if (ny < 0)
+				continue;
+			if ((unsigned) ny >= h)
+				continue;
+
+			uint8_t *dst = (uint8_t *) buf;
+			dst += ny * stride + x;
+
+			const uint8_t *src = map->buffer + map->pitch * row;
+			for (col = 0; col < (uint32_t) map->width; col++) {
+				if (col + x >= w)
+					continue;
+				const uint8_t out = (src[col] + 8) >> 4;
+				dst[col] |= out < 16 ? out : 15;
+			}
+		}
+
+		x += face->glyph->advance.x >> 6;
+
+		pen.x += face->glyph->advance.x;
+		pen.y += face->glyph->advance.y;
+	}
+}
+
+static void angledsize(const char *txt, uint32_t &w, uint32_t &h,
+			uint32_t &recw, uint32_t &recy,
+			bool &invx, bool &invy) {
+
+	unsigned ucs[256], i, ucslen;
+	unsigned len = strlen(txt);
+	i = 0;
+	ucslen = 0;
+	while (len > 0 && txt[i]) {
+		size_t ret = rfb::utf8ToUCS4(&txt[i], len, &ucs[ucslen]);
+		i += ret;
+		len -= ret;
+		ucslen++;
+	}
+
+	FT_Matrix mat;
+	FT_Vector pen;
+
+	angle2mat(mat);
+
+	pen.x = 0;
+	pen.y = 0;
+
+	FT_BBox firstbox, lastbox;
+
+	for (i = 0; i < ucslen; i++) {
+		FT_Set_Transform(face, &mat, &pen);
+
+		if (FT_Load_Char(face, ucs[i], FT_LOAD_DEFAULT))
+			continue;
+
+		if (i == 0) {
+			FT_Glyph glyph;
+
+			FT_Get_Glyph(face->glyph, &glyph);
+			FT_Glyph_Get_CBox(glyph, FT_GLYPH_BBOX_PIXELS, &firstbox);
+			FT_Done_Glyph(glyph);
+
+			// recommended y; if the angle is steep enough, use the X bearing
+			#define EDGE 22
+			const int angle = abs(Server::DLP_WatermarkTextAngle);
+			if ((angle > (45 + EDGE) && angle < (135 - EDGE)) ||
+				(angle > (225 + EDGE) && angle < (315 - EDGE)))
+				recy = face->glyph->metrics.horiBearingX >> 6;
+			else
+				recy = face->glyph->metrics.horiBearingY >> 6;
+			#undef EDGE
+		} else if (i == ucslen - 1) {
+			FT_Glyph glyph;
+
+			FT_Get_Glyph(face->glyph, &glyph);
+			FT_Glyph_Get_CBox(glyph, FT_GLYPH_BBOX_PIXELS, &lastbox);
+			FT_Done_Glyph(glyph);
+		}
+
+		if (i != ucslen - 1) {
+			pen.x += face->glyph->advance.x;
+			pen.y += face->glyph->advance.y;
+		}
+	}
+
+	// recommended width, used when X is inverted
+	recw = face->size->metrics.max_advance >> 6;
+
+	// The used area is an union of first box, last box, and their relative distance
+	invx = pen.x < 0;
+	invy = pen.y > 0;
+
+	w = (firstbox.xMax - firstbox.xMin) + (lastbox.xMax - lastbox.xMin) + abs(pen.x >> 6);
+	h = (firstbox.yMax - firstbox.yMin) + (lastbox.yMax - lastbox.yMin) + abs(pen.y >> 6);
+}
+
 static bool drawtext(const char fmt[], const int16_t utcOff, const char fontpath[],
 			const uint8_t fontsize) {
 	char buf[PATH_MAX];
@@ -213,14 +358,33 @@ static bool drawtext(const char fmt[], const int16_t utcOff, const char fontpath
 		return false;
 
 	free(watermarkInfo.src);
-	const uint32_t h = fontsize + 4;
-	const uint32_t w = drawnwidth(buf);
+	if (Server::DLP_WatermarkTextAngle) {
+		uint32_t w, h, recw, recy = fontsize;
+		bool invx, invy;
+		angledsize(buf, w, h, recw, recy, invx, invy);
 
-	watermarkInfo.w = w;
-	watermarkInfo.h = h;
-	watermarkInfo.src = (uint8_t *) calloc(w, h);
+		// The max is because a rotated text with the time can change size.
+		// With the max op, at least it will only grow instead of bouncing.
+		w = __rfbmax(w, watermarkInfo.w);
+		h = __rfbmax(h, watermarkInfo.h);
 
-	str(watermarkInfo.src, buf, 0, fontsize, w, h, w);
+		watermarkInfo.w = w;
+		watermarkInfo.h = h;
+		watermarkInfo.src = (uint8_t *) calloc(w, h);
+
+		angledstr(watermarkInfo.src, buf,
+				invx ? w - recw: 0, invy ? h - recy : recy,
+				w, h, w, invx, invy);
+	} else {
+		const uint32_t h = fontsize + 4;
+		const uint32_t w = drawnwidth(buf);
+
+		watermarkInfo.w = w;
+		watermarkInfo.h = h;
+		watermarkInfo.src = (uint8_t *) calloc(w, h);
+
+		str(watermarkInfo.src, buf, 0, fontsize, w, h, w);
+	}
 
 	return true;
 }
