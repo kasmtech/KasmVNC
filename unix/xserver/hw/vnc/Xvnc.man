@@ -384,6 +384,10 @@ Instead of an image, render this text as the watermark. Takes time formatting op
 for \fBstrftime\fP.
 .
 .TP
+.B \-DLP_WatermarkTextAngle \fIangle\fP
+Rotate the text by this many degrees, increasing clockwise. Default \fB0\fP.
+.
+.TP
 .B \-DLP_WatermarkFont \fI/path/to/font.ttf\fP
 Use a different font for -DLP_WatermarkText than the bundled one. TTF and OTF fonts
 are accepted.
