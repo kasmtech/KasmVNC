@@ -997,8 +997,8 @@ void VNCSConnectionST::setDesktopSize(int fb_width, int fb_height,
 {
   unsigned int result;
 
-  if (!(accessRights & AccessSetDesktopSize)) return;
-  if (!rfb::Server::acceptSetDesktopSize) return;
+  if (!(accessRights & AccessSetDesktopSize)) goto justnotify;
+  if (!rfb::Server::acceptSetDesktopSize) goto justnotify;
 
   // Don't bother the desktop with an invalid configuration
   if (!layout.validate(fb_width, fb_height)) {
@@ -1021,6 +1021,14 @@ void VNCSConnectionST::setDesktopSize(int fb_width, int fb_height,
         throw Exception("Desktop configured a different screen layout than requested");
     server->notifyScreenLayoutChange(this);
   }
+
+  return;
+
+  justnotify:
+  writer()->writeExtendedDesktopSize(reasonClient, resultProhibited,
+                                     server->pb->getRect().width(),
+                                     server->pb->getRect().height(),
+                                     server->screenLayout);
 }
 
 void VNCSConnectionST::fence(rdr::U32 flags, unsigned len, const char data[])
