@@ -1871,7 +1871,7 @@ sub DefineConfigToCLIConversion {
               isValidCallback => sub {
                 my $value = shift;
 
-                return 0 unless $value =~ /^\d+$/;
+                return 0 unless $value =~ /^-?\d+$/;
 
                 $value >= -359 && $value <= 359;
               },
