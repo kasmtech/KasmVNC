@@ -27,7 +27,7 @@ wget <package_url>
 sudo apt-get install ./kasmvncserver_*.deb
 
 # Add your user to the ssl-cert group
-sudo addgroup $USER ssl-cert
+sudo adduser $USER ssl-cert
 ```
 
 ### Oracle 8
