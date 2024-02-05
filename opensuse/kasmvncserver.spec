@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.2.0
+Version:        1.3.0
 Release:        leap15
 Summary:        VNC server accessible from a web browser
 
@@ -81,6 +81,13 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Mon Feb 05 2024 KasmTech <info@kasmweb.com> - 1.3.0-1
+- Multi-monitor support.
+- Increased performance with watermark enabled.
+- Added support for Fedora 39 and Alpine 319.
+- Allow special characters in usernames.
+- Better logging of client settings when client connects or changes settings.
+- Add support for rotation of text-based watermark.
 * Fri Aug 25 2023 KasmTech <info@kasmweb.com> - 1.2.0-leap15
 - Add support for Unix relays for bidirectional communication between noVNC
   and containerized applications.
