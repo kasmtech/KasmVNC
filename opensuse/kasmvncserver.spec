@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.3.0
+Version:        1.3.1
 Release:        leap15
 Summary:        VNC server accessible from a web browser
 
@@ -81,6 +81,11 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Tue Mar 12 2024 KasmTech <info@kasmweb.com> - 1.3.1-1
+- Fix exception thrown on Firefox 124 and higher
+- Fix artifacts on high resolution secondary screens
+- Fixes for touch support on primary and secondary screens
+- Fix for Oculus keyboard input
 * Mon Feb 05 2024 KasmTech <info@kasmweb.com> - 1.3.0-1
 - Multi-monitor support.
 - Increased performance with watermark enabled.
