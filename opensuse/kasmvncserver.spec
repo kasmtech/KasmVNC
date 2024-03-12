@@ -81,7 +81,7 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
-* Tue Mar 12 2023 KasmTech <info@kasmweb.com> - 1.2.1-1
+* Tue Mar 12 2024 KasmTech <info@kasmweb.com> - 1.2.1-1
 - Fix exception with Firefox 124 and later
 - Fix bug with watermarking on odd resolutions
 * Fri Aug 25 2023 KasmTech <info@kasmweb.com> - 1.2.0-leap15
