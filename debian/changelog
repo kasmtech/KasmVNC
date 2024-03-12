@@ -1,5 +1,12 @@
 kasmvnc (1.2.1-1) unstable; urgency=medium
 
+  * Fix exception with Firefox 124 and later
+  * Fix bug with watermarking on odd resolutions
+
+ -- Kasm Technologies LLC <info@kasmweb.com>  Tue, 12 Mar 2023 11:38:00 +0000
+
+kasmvnc (1.2.0-1) unstable; urgency=medium
+
   * Add support for Unix relays for bidirectional communication between noVNC
     and containerized applications.
   * Text based watermark overlays with date and time support.
