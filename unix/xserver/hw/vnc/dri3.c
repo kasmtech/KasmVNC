@@ -55,9 +55,12 @@ typedef struct gbm_pixmap gbm_pixmap;
 static DevPrivateKeyRec dri3_pixmap_private_key;
 static struct timeval start;
 
-#define MAX_TEXPIXMAPS 32
-static PixmapPtr texpixmaps[MAX_TEXPIXMAPS];
-static uint32_t num_texpixmaps;
+struct texpixmap {
+    PixmapPtr pixmap;
+    struct xorg_list entry;
+};
+
+static struct xorg_list texpixmaps;
 static CARD32 update_texpixmaps(OsTimerPtr timer, CARD32 time, void *arg);
 static OsTimerPtr texpixmaptimer;
 
@@ -110,25 +113,21 @@ static gbm_pixmap *gbm_pixmap_get(PixmapPtr pixmap)
 
 static void add_texpixmap(PixmapPtr pix)
 {
-    uint32_t i;
-    for (i = 0; i < MAX_TEXPIXMAPS; i++) {
-        if (texpixmaps[i] == pix)
+    struct texpixmap *ptr;
+
+    xorg_list_for_each_entry(ptr, &texpixmaps, entry) {
+        if (ptr->pixmap == pix)
             return;
     }
 
-    for (i = 0; i < MAX_TEXPIXMAPS; i++) {
-        if (!texpixmaps[i]) {
-            texpixmaps[i] = pix;
-            pix->refcnt++;
-            num_texpixmaps++;
-            // start if not running
-            if (!texpixmaptimer)
-                texpixmaptimer = TimerSet(NULL, 0, 16, update_texpixmaps, NULL);
-            return;
-        }
-    }
+    ptr = calloc(1, sizeof(struct texpixmap));
+    ptr->pixmap = pix;
+    pix->refcnt++;
+    xorg_list_append(&ptr->entry, &texpixmaps);
 
-    ErrorF("Max number of texpixmaps reached\n");
+    // start if not running
+    if (!texpixmaptimer)
+        texpixmaptimer = TimerSet(NULL, 0, 16, update_texpixmaps, NULL);
 }
 
 static PixmapPtr
@@ -313,38 +312,41 @@ void xvnc_sync_dri3_textures(void)
     // This is called both from the global damage report and the timer,
     // to account for cases that do not use the damage report.
 
-    uint32_t i, y;
+    uint32_t y;
     gbm_pixmap *gp;
     uint8_t *src, *dst;
     uint32_t srcstride, dststride;
     void *opaque = NULL;
+    struct texpixmap *ptr, *tmpptr;
 
-    for (i = 0; i < MAX_TEXPIXMAPS; i++) {
-        if (!texpixmaps[i])
-            continue;
-        if (texpixmaps[i]->refcnt == 1) {
+    // We may not be running on hw if there's a compositor using PRESENT on llvmpipe
+    if (!driNode)
+        return;
+
+    xorg_list_for_each_entry_safe(ptr, tmpptr, &texpixmaps, entry) {
+        if (ptr->pixmap->refcnt == 1) {
             // We are the only user left, delete it
-            texpixmaps[i]->drawable.pScreen->DestroyPixmap(texpixmaps[i]);
-            texpixmaps[i] = NULL;
-            num_texpixmaps--;
+            ptr->pixmap->drawable.pScreen->DestroyPixmap(ptr->pixmap);
+            xorg_list_del(&ptr->entry);
+            free(ptr);
             continue;
         }
 
-        gp = gbm_pixmap_get(texpixmaps[i]);
+        gp = gbm_pixmap_get(ptr->pixmap);
         opaque = NULL;
         dst = gbm_bo_map(gp->bo, 0, 0,
-                         texpixmaps[i]->drawable.width,
-                         texpixmaps[i]->drawable.height,
+                         ptr->pixmap->drawable.width,
+                         ptr->pixmap->drawable.height,
                          GBM_BO_TRANSFER_WRITE, &dststride, &opaque);
         if (!dst) {
             ErrorF("gbm map failed, errno %d\n", errno);
             continue;
         }
 
-        srcstride = texpixmaps[i]->devKind;
-        src = texpixmaps[i]->devPrivate.ptr;
+        srcstride = ptr->pixmap->devKind;
+        src = ptr->pixmap->devPrivate.ptr;
 
-        for (y = 0; y < texpixmaps[i]->drawable.height; y++) {
+        for (y = 0; y < ptr->pixmap->drawable.height; y++) {
             memcpy(dst, src, srcstride);
             dst += dststride;
             src += srcstride;
@@ -358,7 +360,7 @@ static CARD32 update_texpixmaps(OsTimerPtr timer, CARD32 time, void *arg)
 {
     xvnc_sync_dri3_textures();
 
-    if (!num_texpixmaps) {
+    if (xorg_list_is_empty(&texpixmaps)) {
         TimerFree(texpixmaptimer);
         texpixmaptimer = NULL;
         return 0;
@@ -386,6 +388,8 @@ void xvnc_init_dri3(void)
     priv.gbm = gbm_create_device(priv.fd);
     if (!priv.gbm)
         FatalError("Failed to create gbm\n");
+
+    xorg_list_init(&texpixmaps);
 
     if (!dri3_screen_init(screenInfo.screens[0], &xvnc_dri3_info))
         FatalError("Couldn't init dri3\n");
