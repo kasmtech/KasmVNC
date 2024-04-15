@@ -1,0 +1,57 @@
+FROM ubuntu:noble
+
+ENV DISPLAY=:1 \
+    VNC_PORT=8443 \
+    VNC_RESOLUTION=1280x720 \
+    MAX_FRAME_RATE=24 \
+    VNCOPTIONS="-PreferBandwidth -DynamicQualityMin=4 -DynamicQualityMax=7" \
+    HOME=/home/user \
+    TERM=xterm \
+    STARTUPDIR=/dockerstartup \
+    INST_SCRIPTS=/dockerstartup/install \
+    KASM_RX_HOME=/dockerstartup/kasmrx \
+    DEBIAN_FRONTEND=noninteractive \
+    VNC_COL_DEPTH=24 \
+    VNC_RESOLUTION=1280x1024 \
+    VNC_PW=vncpassword \
+    VNC_USER=user \
+    VNC_VIEW_ONLY_PW=vncviewonlypassword \
+    LD_LIBRARY_PATH=/usr/local/lib/ \
+    OMP_WAIT_POLICY=PASSIVE \
+    SHELL=/bin/bash \
+    SINGLE_APPLICATION=0 \
+    KASMVNC_BUILD_OS=ubuntu \
+    KASMVNC_BUILD_OS_CODENAME=noble
+
+EXPOSE $VNC_PORT
+
+WORKDIR $HOME
+
+### REQUIRED STUFF ###
+
+RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm libnss-wrapper gettext wget
+RUN apt-get purge -y pm-utils xscreensaver*
+RUN apt-get update && apt-get install -y vim less
+RUN apt-get update && apt-get -y install lsb-release
+
+RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
+
+RUN mkdir -p $STARTUPDIR
+COPY builder/startup/ $STARTUPDIR
+
+### START CUSTOM STUFF ####
+
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp/
+RUN rm -f /tmp/kasmvncserver_*+*.deb; dpkg -i /tmp/*.deb; apt-get -yf install
+
+RUN mkdir ~/.vnc && echo '/usr/bin/xfce4-session &' >> ~/.vnc/xstartup && \
+  chmod +x ~/.vnc/xstartup
+
+### END CUSTOM STUFF ###
+
+RUN chown -R 1000:0 $HOME
+USER 1000:ssl-cert
+WORKDIR $HOME
+
+ENTRYPOINT [ "/dockerstartup/vnc_startup.sh" ]

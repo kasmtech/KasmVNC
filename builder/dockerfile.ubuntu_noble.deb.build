@@ -1,0 +1,19 @@
+FROM ubuntu:noble
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update && \
+      apt-get -y install vim build-essential devscripts equivs
+
+# Install build-deps for the package.
+COPY ./debian/control /tmp
+RUN apt-get update && echo YYY | mk-build-deps --install --remove /tmp/control
+
+ARG L_UID
+RUN if [ "$L_UID" -eq 0 ]; then \
+      useradd -m docker; \
+    else \
+      useradd -m docker -u $L_UID;\
+    fi
+
+USER docker
