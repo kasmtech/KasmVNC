@@ -1,0 +1,28 @@
+FROM ubuntu:noble
+
+ENV KASMVNC_BUILD_OS ubuntu
+ENV KASMVNC_BUILD_OS_CODENAME noble
+ENV XORG_VER 1.20.8
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN sed -i 's$Types: deb$Types: deb deb-src$' /etc/apt/sources.list.d/ubuntu.sources
+
+RUN apt-get update && \
+      apt-get -y install sudo
+
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata
+RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
+RUN apt-get update && apt-get -y install cmake git libgnutls28-dev vim wget curl
+RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev
+
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-webp
+RUN $SCRIPTS_DIR/build-libjpeg-turbo
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
+
+COPY --chown=docker:docker . /src/
+
+USER docker
+ENTRYPOINT ["/src/builder/build.sh"]
