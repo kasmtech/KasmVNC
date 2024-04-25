@@ -1,0 +1,13 @@
+FROM fedora:40
+
+RUN dnf install -y fedora-packager fedora-review
+RUN dnf install -y tree vim less
+RUN dnf install -y redhat-lsb-core
+RUN dnf install -y dnf-plugins-core
+
+COPY fedora/*.spec /tmp
+RUN dnf builddep -y /tmp/*.spec
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+USER docker

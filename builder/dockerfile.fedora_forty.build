@@ -1,0 +1,86 @@
+FROM fedora:40
+
+ENV KASMVNC_BUILD_OS fedora
+ENV KASMVNC_BUILD_OS_CODENAME forty
+ENV XORG_VER 1.20.14
+
+RUN \
+  echo "**** install build deps ****" && \
+  dnf group install -y \
+    "C Development Tools and Libraries" \
+    "Development Tools" && \
+  dnf install -y \
+    autoconf \
+    automake \
+    bison \
+    byacc \
+    bzip2 \
+    cmake \
+    diffutils \
+    doxygen \
+    file \
+    flex \
+    fop \
+    gcc \
+    gcc-c++ \
+    git \
+    glibc-devel \
+    libdrm-devel \
+    libepoxy-devel \
+    libmd-devel \
+    libpciaccess-devel \
+    libtool \
+    libwebp-devel \
+    libX11-devel \
+    libXau-devel \
+    libxcb-devel \
+    libXcursor-devel \
+    libxcvt-devel \
+    libXdmcp-devel \
+    libXext-devel \
+    libXfont2-devel \
+    libxkbfile-devel \
+    libXrandr-devel \
+    libxshmfence-devel \
+    libXtst-devel \
+    mesa-libEGL-devel \
+    mesa-libgbm-devel \
+    mesa-libGL-devel \
+    meson \
+    mingw64-binutils \
+    mt-st \
+    nettle-devel \
+    openssl-devel \
+    patch \
+    pixman-devel \
+    wayland-devel \
+    wget \
+    which \
+    xcb-util-devel \
+    xcb-util-image-devel \
+    xcb-util-keysyms-devel \
+    xcb-util-renderutil-devel \
+    xcb-util-wm-devel \
+    xinit \
+    xkbcomp \
+    xkbcomp-devel \
+    xkeyboard-config \
+    xmlto \
+    xorg-x11-font-utils \
+    xorg-x11-proto-devel \
+    xorg-x11-server-common \
+    xorg-x11-server-devel \
+    xorg-x11-xtrans-devel \
+    xsltproc
+
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-webp
+RUN $SCRIPTS_DIR/build-libjpeg-turbo
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+COPY --chown=docker:docker . /src/
+
+USER docker
+ENTRYPOINT ["/src/builder/build.sh"]
