@@ -17,7 +17,6 @@ docker run -it -p "443:$VNC_PORT" --rm \
   -e KASMVNC_VERBOSE_LOGGING=$KASMVNC_VERBOSE_LOGGING \
   -e "VNC_USER=foo" -e "VNC_PW=foobar" \
   -e "VNC_PORT=$VNC_PORT" \
-  --security-opt seccomp=unconfined \
   $entrypoint_executable \
   "$tester_image" \
   $entrypoint_args
