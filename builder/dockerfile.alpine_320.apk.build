@@ -1,0 +1,7 @@
+FROM alpine:3.20
+
+RUN apk add shadow bash
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+USER docker

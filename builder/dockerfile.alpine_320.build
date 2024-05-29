@@ -1,0 +1,82 @@
+FROM alpine:3.20
+
+ENV KASMVNC_BUILD_OS alpine
+ENV KASMVNC_BUILD_OS_CODENAME 320
+ENV XORG_VER 1.20.14
+
+RUN \
+  echo "**** install build deps ****" && \
+  apk add \
+    alpine-release \
+    alpine-sdk \
+    autoconf \
+    automake \
+    bash \
+    ca-certificates \
+    cmake \
+    coreutils \
+    curl \
+    eudev-dev \
+    font-cursor-misc \
+    font-misc-misc \
+    font-util-dev \
+    git \
+    grep \
+    jq \
+    libdrm-dev \
+    libepoxy-dev \
+    libjpeg-turbo-dev \
+    libjpeg-turbo-static \
+    libpciaccess-dev \
+    libtool \
+    libwebp-dev \
+    libx11-dev \
+    libxau-dev \
+    libxcb-dev \
+    libxcursor-dev \
+    libxcvt-dev \
+    libxdmcp-dev \
+    libxext-dev \
+    libxfont2-dev \
+    libxkbfile-dev \
+    libxrandr-dev \
+    libxshmfence-dev \
+    libxtst-dev \
+    mesa-dev \
+    mesa-dri-gallium \
+    meson \
+    nettle-dev \
+    openssl-dev \
+    pixman-dev \
+    procps \
+    shadow \
+    tar \
+    tzdata \
+    wayland-dev \
+    wayland-protocols \
+    xcb-util-dev \
+    xcb-util-image-dev \
+    xcb-util-keysyms-dev \
+    xcb-util-renderutil-dev \
+    xcb-util-wm-dev \
+    xinit \
+    xkbcomp \
+    xkbcomp-dev \
+    xkeyboard-config \
+    xorgproto \
+    xorg-server-common \
+    xorg-server-dev \
+    xtrans
+
+
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-webp
+RUN $SCRIPTS_DIR/build-libjpeg-turbo
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd
+
+COPY --chown=docker:docker . /src/
+
+USER docker
+ENTRYPOINT ["/src/builder/build.sh"]
