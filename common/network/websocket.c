@@ -1658,7 +1658,7 @@ timeout:
 }
 
 ws_ctx_t *do_handshake(int sock, char * const ip) {
-    char handshake[4096], response[4096], sha1[29], trailer[17];
+    char handshake[16 * 1024], response[4096], sha1[29], trailer[17];
     char *scheme, *pre;
     headers_t *headers;
     int len, i, offset;
