@@ -1018,6 +1018,20 @@ static void send403(ws_ctx_t *ws_ctx, const char * const origip, const char * co
     weblog(403, wsthread_handler_id, 0, origip, ip, "-", 1, "-", strlen(buf));
 }
 
+static void send400(ws_ctx_t *ws_ctx, const char * const origip, const char * const ip,
+                    const char *info) {
+    char buf[4096];
+    sprintf(buf, "HTTP/1.1 400 Bad Request\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "%s"
+                 "\r\n"
+                 "400 Bad Request%s", extra_headers ? extra_headers : "", info);
+    ws_send(ws_ctx, buf, strlen(buf));
+    weblog(400, wsthread_handler_id, 0, origip, ip, "-", 1, "-", strlen(buf));
+}
+
 static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in, const char * const user,
                              const char * const ip, const char * const origip) {
     char buf[4096], path[4096];
@@ -1701,6 +1715,7 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
             break;
         } else if (sizeof(handshake) <= (size_t)(offset + 1)) {
             handler_emsg("Oversized handshake\n");
+            send400(ws_ctx, "-", ip, ", too large");
             free_ws_ctx(ws_ctx);
             return NULL;
         } else if (9 == i) {
