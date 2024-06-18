@@ -917,6 +917,12 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in, const char * const user,
 
     percent_decode(path, buf, 1);
 
+    // in case they percent-encoded dots
+    if (strstr(buf, "../")) {
+        handler_msg("Attempted dir traversal attack, rejecting\n", len);
+        goto nope;
+    }
+
     handler_msg("Requested file '%s'\n", buf);
     sprintf(fullpath, "%s/%s", settings.httpdir, buf);
 
