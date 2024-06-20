@@ -4,8 +4,8 @@ ENV KASMVNC_BUILD_OS oracle
 ENV KASMVNC_BUILD_OS_CODENAME 9
 
 RUN dnf config-manager --set-enabled ol9_codeready_builder
-RUN dnf config-manager --set-enabled ol9_distro_builder
-RUN dnf install -y \
+RUN dnf config-manager --nobest --set-enabled ol9_distro_builder
+RUN dnf install --nobest -y \
   gpg* \
   less \
   redhat-lsb-core \
