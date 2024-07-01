@@ -139,6 +139,8 @@ if [ -d /usr/lib/x86_64-linux-gnu/dri ]; then
   ln -s /usr/lib/x86_64-linux-gnu/dri dri
 elif [ -d /usr/lib/aarch64-linux-gnu/dri ]; then
   ln -s /usr/lib/aarch64-linux-gnu/dri dri
+elif [ -d /usr/lib/arm-linux-gnueabihf/dri ]; then
+  ln -s /usr/lib/arm-linux-gnueabihf/dri dri
 elif [ -d /usr/lib/xorg/modules/dri ]; then
   ln -s /usr/lib/xorg/modules/dri dri
 else

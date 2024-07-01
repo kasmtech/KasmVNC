@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <string.h>
 #include <dirent.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -939,15 +940,15 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in, const char * const user,
         goto nope;
     }
 
-    fseek(f, 0, SEEK_END);
-    const uint64_t filesize = ftell(f);
+    fseeko(f, 0, SEEK_END);
+    const uint64_t filesize = ftello(f);
     rewind(f);
 
     sprintf(buf, "HTTP/1.1 200 OK\r\n"
                  "Server: KasmVNC/4.0\r\n"
                  "Connection: close\r\n"
                  "Content-type: %s\r\n"
-                 "Content-length: %lu\r\n"
+                 "Content-length: %" PRIu64 "\r\n"
                  "%s"
                  "\r\n",
                  name2mime(path), filesize, extra_headers ? extra_headers : "");
