@@ -1,4 +1,4 @@
 [submodule "kasmweb"]
 	path = kasmweb
 	url = https://github.com/kasmtech/noVNC.git
-	branch = master
+	branch = release/1.2.2
