@@ -520,6 +520,8 @@ int main(int argc, char **argv) {
 			cursorhash = newhash;
 		}
 
+		XFree(cursor);
+
 		usleep(sleeptime);
 	}
 
