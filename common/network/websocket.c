@@ -783,6 +783,10 @@ static const char *name2mime(const char *name) {
         goto def;
     end++;
 
+    // Everything under Downloads/ should be treated as binary
+    if (strcasestr(name, "Downloads/"))
+        goto def;
+
     #define CMP(s) if (!strncmp(end, s, sizeof(s) - 1))
 
     CMP("htm")
