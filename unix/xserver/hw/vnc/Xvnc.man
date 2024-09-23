@@ -478,7 +478,7 @@ See the GnuTLS manual for possible values. Default is \fBNORMAL\fP.
 .TP
 .B \-BlacklistThreshold \fIcount\fP
 The number of unauthenticated connection attempts allowed from any individual
-host before that host is black-listed.  Default is 5.
+host before that host is black-listed.  Default is 5. Set to 0 to disable.
 .
 .TP
 .B \-BlacklistTimeout \fIseconds\fP
