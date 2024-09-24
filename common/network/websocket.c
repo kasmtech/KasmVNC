@@ -1693,7 +1693,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
                 continue;
 
             char own[LOGIN_NAME_MAX], grp[LOGIN_NAME_MAX], perms[32];
-            sprintf(perms, "%o", st.st_mode & 0777);
+            sprintf(perms, "%03o", st.st_mode & 0777);
 
             struct passwd pwdt, *pwdptr;
             if (getpwuid_r(st.st_uid, &pwdt, buf, sizeof(buf), &pwdptr)) {
