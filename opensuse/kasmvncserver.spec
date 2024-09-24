@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.2.0
+Version:        1.3.2
 Release:        leap15
 Summary:        VNC server accessible from a web browser
 
@@ -81,6 +81,24 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Tue Sep 24 2024 KasmTech <info@kasmweb.com> - 1.3.2-1
+- Disable seamless clipboard on Firefox by default, due to the Firefox overlaying a Paste menu over the canvas.
+- Fixed CVE-2024-38449, directory traversal bug in built-in web server.
+- Allow for larger header sizes, up to 16k. Provide better logging and handling for requests that contain HTTP headers that are larger than the 16k limit.
+- Fixed memory leak in kasmproxy.
+- Fixed mime types of downloads to ensure the browser interprets them as downloads.
+* Tue Mar 12 2024 KasmTech <info@kasmweb.com> - 1.3.1-1
+- Fix exception thrown on Firefox 124 and higher
+- Fix artifacts on high resolution secondary screens
+- Fixes for touch support on primary and secondary screens
+- Fix for Oculus keyboard input
+* Mon Feb 05 2024 KasmTech <info@kasmweb.com> - 1.3.0-1
+- Multi-monitor support.
+- Increased performance with watermark enabled.
+- Added support for Fedora 39 and Alpine 319.
+- Allow special characters in usernames.
+- Better logging of client settings when client connects or changes settings.
+- Add support for rotation of text-based watermark.
 * Fri Aug 25 2023 KasmTech <info@kasmweb.com> - 1.2.0-leap15
 - Add support for Unix relays for bidirectional communication between noVNC
   and containerized applications.
