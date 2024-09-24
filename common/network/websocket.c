@@ -1713,6 +1713,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
                          "\"date_modified\": %lu, "
                          "\"date_created\": %lu, "
                          "\"is_dir\": %s, "
+                         "\"size\": %lu, "
                          "\"owner\": \"%s\", "
                          "\"group\": \"%s\", "
                          "\"perms\": \"%s\" }",
@@ -1721,6 +1722,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
                          st.st_mtime,
                          st.st_ctime,
                          S_ISDIR(st.st_mode) ? "true" : "false",
+                         S_ISDIR(st.st_mode) ? 0 : st.st_size,
                          own,
                          grp,
                          perms);
