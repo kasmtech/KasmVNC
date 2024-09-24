@@ -927,7 +927,7 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in, const char * const user,
 
     // in case they percent-encoded dots
     if (strstr(buf, "../")) {
-        handler_msg("Attempted dir traversal attack, rejecting\n", len);
+        handler_msg("Attempted dir traversal attack, rejecting\n");
         goto nope;
     }
 
