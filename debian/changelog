@@ -1,3 +1,33 @@
+kasmvnc (1.3.2-1) unstable; urgency=medium
+
+  * Disable seamless clipboard on Firefox by default, due to the Firefox overlaying a Paste menu over the canvas.
+  * Fixed CVE-2024-38449, directory traversal bug in built-in web server.
+  * Allow for larger header sizes, up to 16k. Provide better logging and handling for requests that contain HTTP headers that are larger than the 16k limit.
+  * Fixed memory leak in kasmproxy.
+  * Fixed mime types of downloads to ensure the browser interprets them as downloads.
+
+ -- Kasm Technologies LLC <info@kasmweb.com>  Tue, 24 Sep 2024 11:23:00 +0000
+
+kasmvnc (1.3.1-1) unstable; urgency=medium
+
+  * Fix exception thrown on Firefox 124 and higher
+  * Fix artifacts on high resolution secondary screens
+  * Fixes for touch support on primary and secondary screens
+  * Fix for Oculus keyboard input
+
+ -- Kasm Technologies LLC <info@kasmweb.com>  Mon, 12 Mar 2024 11:23:00 +0000
+
+kasmvnc (1.3.0-1) unstable; urgency=medium
+
+  * Multi-monitor support.
+  * Increased performance with watermark enabled.
+  * Added support for Fedora 39 and Alpine 319.
+  * Allow special characters in usernames.
+  * Better logging of client settings when client connects or changes settings.
+  * Add support for rotation of text-based watermark.
+
+ -- Kasm Technologies LLC <info@kasmweb.com>  Mon, 02 Feb 2024 14:33:00 +0000
+
 kasmvnc (1.2.0-1) unstable; urgency=medium
 
   * Add support for Unix relays for bidirectional communication between noVNC
