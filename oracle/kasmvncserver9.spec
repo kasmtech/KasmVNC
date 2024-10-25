@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.3.2
+Version:        1.3.3
 Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
@@ -82,6 +82,9 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Fri Oct 25 2024 KasmTech <info@kasmweb.com> - 1.3.3-1
+- Allow disabling IP blacklist
+- Downloads API for detailed file downloads information
 * Tue Sep 24 2024 KasmTech <info@kasmweb.com> - 1.3.2-1
 - Disable seamless clipboard on Firefox by default, due to the Firefox overlaying a Paste menu over the canvas.
 - Fixed CVE-2024-38449, directory traversal bug in built-in web server.
