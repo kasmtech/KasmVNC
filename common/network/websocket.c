@@ -27,6 +27,9 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <fcntl.h>  // daemonizing
+#include <pwd.h>
+#include <grp.h>
+#include <wordexp.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <openssl/bio.h> /* base64 encode/decode */
@@ -924,7 +927,7 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in, const char * const user,
 
     // in case they percent-encoded dots
     if (strstr(buf, "../")) {
-        handler_msg("Attempted dir traversal attack, rejecting\n", len);
+        handler_msg("Attempted dir traversal attack, rejecting\n");
         goto nope;
     }
 
@@ -1635,6 +1638,103 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
                  "200 OK", extra_headers ? extra_headers : "");
         ws_send(ws_ctx, buf, strlen(buf));
         weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf));
+
+        ret = 1;
+    } else entry("/api/downloads") {
+        char subpath[PATH_MAX] = "", startpath[PATH_MAX] = "~/Downloads", allpath[PATH_MAX];
+        param = parse_get(args, "path", &len);
+        if (len) {
+            memcpy(buf, param, len);
+            buf[len] = '\0';
+            percent_decode(buf, subpath, 0);
+
+            if (strstr(subpath, "../")) {
+                handler_msg("Attempted directory traversal in /api/downloads\n");
+                goto nope;
+            }
+        }
+
+        wordexp_t wexp;
+        if (!wordexp(startpath, &wexp, WRDE_NOCMD))
+            strcpy(startpath, wexp.we_wordv[0]);
+        else
+            goto nope;
+        wordfree(&wexp);
+
+        snprintf(allpath, PATH_MAX, "%s/%s", startpath, subpath);
+        allpath[PATH_MAX - 1] = '\0';
+
+        DIR *dir = opendir(allpath);
+        if (!dir) {
+            handler_msg("Requested dir does not exist\n");
+            goto nope;
+        }
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/json\r\n"
+                 "%s"
+                 "\r\n", extra_headers ? extra_headers : "");
+        ws_send(ws_ctx, buf, strlen(buf));
+        len = 15;
+
+        ws_send(ws_ctx, "{ \"files\": [\n", 13);
+
+        struct dirent *ent;
+        unsigned char sent = 0;
+        while ((ent = readdir(dir))) {
+            if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, ".."))
+                continue;
+
+            sprintf(path, "%s/%s", allpath, ent->d_name);
+            struct stat st;
+            if (lstat(path, &st))
+                continue;
+
+            char own[LOGIN_NAME_MAX], grp[LOGIN_NAME_MAX], perms[32];
+            sprintf(perms, "%03o", st.st_mode & 0777);
+
+            struct passwd pwdt, *pwdptr;
+            if (getpwuid_r(st.st_uid, &pwdt, buf, sizeof(buf), &pwdptr)) {
+                sprintf(own, "(unknown uid %u)", st.st_uid);
+            } else {
+                strcpy(own, pwdt.pw_name);
+            }
+
+            struct group grpt, *grpptr;
+            if (getgrgid_r(st.st_gid, &grpt, buf, sizeof(buf), &grpptr)) {
+                sprintf(grp, "(unknown gid %u)", st.st_gid);
+            } else {
+                strcpy(grp, grpt.gr_name);
+            }
+
+            sprintf(buf, "%s{ \"filename\": \"%s\", "
+                         "\"date_modified\": %lu, "
+                         "\"date_created\": %lu, "
+                         "\"is_dir\": %s, "
+                         "\"size\": %lu, "
+                         "\"owner\": \"%s\", "
+                         "\"group\": \"%s\", "
+                         "\"perms\": \"%s\" }",
+                         sent ? ",\n" : "",
+                         ent->d_name,
+                         st.st_mtime,
+                         st.st_ctime,
+                         S_ISDIR(st.st_mode) ? "true" : "false",
+                         S_ISDIR(st.st_mode) ? 0 : st.st_size,
+                         own,
+                         grp,
+                         perms);
+            sent = 1;
+            ws_send(ws_ctx, buf, strlen(buf));
+            len += strlen(buf);
+        }
+
+        ws_send(ws_ctx, "]}", 2);
+
+        closedir(dir);
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, len);
 
         ret = 1;
     }
