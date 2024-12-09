@@ -371,25 +371,6 @@ build_kali_rolling_arm:
     paths:
       - output/
 
-build_centos7:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package centos core
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
 build_oracle_8:
   stage: build
   allow_failure: true
@@ -811,6 +792,44 @@ build_alpine_320_arm:
     - *prepare_artfacts
   script:
     - bash builder/build-package alpine 320;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
+
+build_alpine_321:
+  stage: build
+  allow_failure: true
+  tags:
+    - oci-fixed-amd
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package alpine 321;
+  only:
+    variables:
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+  artifacts:
+    paths:
+      - output/
+
+build_alpine_321_arm:
+  stage: build
+  allow_failure: true
+  tags:
+    - oci-fixed-arm
+  before_script:
+    - *prepare_build
+    - *prepare_www
+  after_script:
+    - *prepare_artfacts
+  script:
+    - bash builder/build-package alpine 321;
   only:
     variables:
       - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
