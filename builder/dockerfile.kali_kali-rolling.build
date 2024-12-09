@@ -4,8 +4,6 @@ ENV KASMVNC_BUILD_OS kali
 ENV KASMVNC_BUILD_OS_CODENAME kali-rolling
 ENV XORG_VER 1.20.10
 ENV DEBIAN_FRONTEND noninteractive
-ENV CC=gcc-11
-ENV CXX=g++-11
 
 RUN grep '^deb'  /etc/apt/sources.list | sed 's#^deb#deb-src#' >> /etc/apt/sources.list
 
@@ -14,7 +12,7 @@ RUN apt-get update && \
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
-RUN apt-get update && apt-get -y install gcc-11 g++-11 curl
+RUN apt-get update && apt-get -y install gcc g++ curl
 RUN apt-get update && apt-get -y install cmake git libgnutls28-dev vim wget tightvncserver
 RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev
 
