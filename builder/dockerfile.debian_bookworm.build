@@ -2,7 +2,7 @@ FROM debian:bookworm-slim
 
 ENV KASMVNC_BUILD_OS debian
 ENV KASMVNC_BUILD_OS_CODENAME bookworm
-ENV XORG_VER 1.20.10
+ENV XORG_VER 21.1.7
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN \

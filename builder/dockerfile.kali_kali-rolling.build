@@ -2,7 +2,7 @@ FROM kalilinux/kali-rolling:latest
 
 ENV KASMVNC_BUILD_OS kali
 ENV KASMVNC_BUILD_OS_CODENAME kali-rolling
-ENV XORG_VER 1.20.10
+ENV XORG_VER 21.1.14
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN grep '^deb'  /etc/apt/sources.list | sed 's#^deb#deb-src#' >> /etc/apt/sources.list

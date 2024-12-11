@@ -2,7 +2,7 @@ FROM alpine:3.20
 
 ENV KASMVNC_BUILD_OS alpine
 ENV KASMVNC_BUILD_OS_CODENAME 320
-ENV XORG_VER 1.20.14
+ENV XORG_VER 21.1.14
 
 RUN \
   echo "**** install build deps ****" && \
