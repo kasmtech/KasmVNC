@@ -2,7 +2,7 @@ FROM oraclelinux:9
 
 ENV KASMVNC_BUILD_OS oracle
 ENV KASMVNC_BUILD_OS_CODENAME 9
-ENV XORG_VER 1.20.10
+ENV XORG_VER 1.20.11
 
 # Install from stock repos
 RUN \

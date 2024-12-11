@@ -46,7 +46,11 @@ EOF
 cd /tmp
 # default to the version of x in Ubuntu 18.04, otherwise caller will need to specify
 XORG_VER=${XORG_VER:-"1.19.6"}
-XORG_PATCH=$(echo "$XORG_VER" | grep -Po '^\d.\d+' | sed 's#\.##')
+if [[ "${XORG_VER}" == 21* ]]; then
+  XORG_PATCH=21
+else
+  XORG_PATCH=$(echo "$XORG_VER" | grep -Po '^\d.\d+' | sed 's#\.##')
+fi
 wget --no-check-certificate https://www.x.org/archive/individual/xserver/xorg-server-${XORG_VER}.tar.gz
 
 #git clone https://kasmweb@bitbucket.org/kasmtech/kasmvnc.git
