@@ -48,7 +48,7 @@ Build Requirements (Windows)
    You also need the Inno Setup Preprocessor, which is available in the
    Inno Setup QuickStart Pack.
 
-   Add the directory containing iscc.exe (for instance, 
+   Add the directory containing iscc.exe (for instance,
    C:\Program Files\Inno Setup 5) to the system or user PATH environment
    variable prior to building KasmVNC.
 
@@ -90,7 +90,7 @@ but the general outline is as follows.
   > cp -R {xorg_source}/* unix/xserver/
     (NOTE: {xorg_source} is the directory containing the Xorg source for the
     machine on which you are building KasmVNC.  The most recent versions of
-    Red Hat/CentOS/Fedora, for instance, provide an RPM called
+    Red Hat/Fedora, for instance, provide an RPM called
     "xorg-x11-server-source", which installs the Xorg source under
     /usr/share/xorg-x11-server-source.)
 
@@ -113,8 +113,8 @@ but the general outline is as follows.
       --with-serverconfig-path=/usr/lib[64]/xorg \
       --with-dri-driver-path=/usr/lib[64]/dri \
       {additional configure options}
-    (NOTE: This is merely an example that works with Red Hat Enterprise/CentOS
-    6 and recent Fedora releases.  You should customize it for your particular
+    (NOTE: This is merely an example that works with Red Hat Enterprise
+    and recent Fedora releases.  You should customize it for your particular
     system.  In particular, it will be necessary to customize the font, XKB,
     and DRI directories.)
 
@@ -187,7 +187,7 @@ Building TLS Support
 ======================================
 
 TLS requires GnuTLS, which is supplied with most Linux distributions and
-with MinGW for Windows and can be built from source on OS X and other 
+with MinGW for Windows and can be built from source on OS X and other
 Unix variants. However, GnuTLS versions > 2.12.x && < 3.3.x should be
 avoided because of potential incompatibilities during initial handshaking.
 
@@ -314,7 +314,7 @@ X server source (for instance, --host=i686-pc-linux-gnu).
 Add
 
   -DCMAKE_OSX_SYSROOT=/Developer/SDKs/MacOSX10.5.sdk \
-    -DCMAKE_OSX_DEPLOYMENT_TARGET=10.5 
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=10.5
 
 to the CMake command line.  The OS X 10.5 SDK must be installed.
 
@@ -406,7 +406,7 @@ Distribution-Specific Packaging
 ===============================
 
 
-RPM Packages for RHEL / CentOS
+RPM Packages for RHEL
 ------------------------------
 
 The RPM spec files and patches used to create the nightly builds

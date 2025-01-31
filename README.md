@@ -46,22 +46,6 @@ sudo dnf localinstall ./kasmvncserver_*.rpm
 sudo usermod -a -G kasmvnc-cert $USER
 ```
 
-### CentOS 7
-
-```sh
-# Please choose the package for your distro here (under Assets):
-# https://github.com/kasmtech/KasmVNC/releases
-wget <package_url>
-
-# Ensure KasmVNC dependencies are available
-sudo yum install epel-release
-
-sudo yum install ./kasmvncserver_*.rpm
-
-# Add your user to the kasmvnc-cert group
-sudo usermod -a -G kasmvnc-cert $USER
-```
-
 ## Getting Started
 
 The following examples provide basic usage of KasmVNC with the tools provided. For full documentation on all the utilities and the runtime environment, see our [KasmVNC Documentation](https://www.kasmweb.com/kasmvnc/docs/latest/index.html)
@@ -250,7 +234,7 @@ command_line:
     - Keyboard input rate limit
     - Screen region selection
   - Deb packages for Debian, Ubuntu, and Kali Linux included in release.
-  - RPM packages for CentOS, Oracle, OpenSUSE, Fedora. RPM packages are currently not updatable and not released, though you can build and install them. See build documentation.
+  - RPM packages for Oracle, OpenSUSE, Fedora. RPM packages are currently not updatable and not released, though you can build and install them. See build documentation.
   - Web [API](https://github.com/kasmtech/KasmVNC/wiki/API) added for remotely controlling and getting information from KasmVNC
   - Multi-User support with permissions that can be changed via the API
   - Web UI uses a webpack for faster load times.

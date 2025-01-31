@@ -20,14 +20,13 @@ builder/build-package ubuntu focal
 builder/build-package debian buster
 builder/build-package debian bullseye
 builder/build-package kali kali-rolling
-builder/build-package centos core # CentOS 7
 builder/build-package fedora thirtythree
 ```
 
 # Build and test a package
 ```
 builder/build-and-test-deb ubuntu focal
-builder/build-and-test-rpm centos core
+builder/build-and-test-rpm oracle 8
 ```
 
 Open browser and point to https://localhost:443/ or https://\<ip-address\>:443/

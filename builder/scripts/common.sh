@@ -1,9 +1,7 @@
 #!/bin/bash
 
 detect_distro() {
-  if [ -f /etc/centos-release ]; then
-    DISTRO=centos
-  elif [ -f /etc/oracle-release ]; then
+  if [ -f /etc/oracle-release ]; then
     DISTRO=oracle
   elif [ -f /etc/fedora-release ]; then
     DISTRO=fedora
@@ -20,7 +18,6 @@ install_packages() {
   local install_cmd=no-command-defined
 
   case "$DISTRO" in
-    centos) install_cmd="yum install -y" ;;
     oracle) install_cmd="dnf install -y" ;;
     fedora) install_cmd="dnf install -y" ;;
     opensuse) install_cmd="zypper install -y" ;;
