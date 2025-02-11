@@ -32,6 +32,7 @@
 #include <rfb/util.h>
 
 #include <stdint.h>
+#include <atomic>
 #include <sys/time.h>
 
 namespace rfb {
@@ -199,7 +200,7 @@ namespace rfb {
     size_t curMaxUpdateSize;
     unsigned webpFallbackUs;
     unsigned webpBenchResult;
-    bool webpTookTooLong;
+    std::atomic<bool> webpTookTooLong;
     unsigned encodingTime;
     unsigned maxEncodingTime, framesSinceEncPrint;
     unsigned scalingTime;

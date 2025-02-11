@@ -22,6 +22,12 @@
 #include <omp.h>
 #include <stdlib.h>
 
+#include <thread>
+#include <future>
+#include <vector>
+#include <atomic>
+
+
 #include <rfb/cpuid.h>
 #include <rfb/EncCache.h>
 #include <rfb/EncodeManager.h>
@@ -210,6 +216,7 @@ EncodeManager::EncodeManager(SConnection* conn_, EncCache *encCache_) : conn(con
     dynamicQualityMin = Server::dynamicQualityMin;
     dynamicQualityOff = Server::dynamicQualityMax - Server::dynamicQualityMin;
   }
+  std::atomic<bool> webpTookTooLong{false};
 }
 
 EncodeManager::~EncodeManager()
@@ -886,8 +893,7 @@ void EncodeManager::checkWebpFallback(const struct timeval *start) {
         unsigned us;
         us = msSince(start) * 1024;
         if (us > webpFallbackUs)
-            #pragma omp atomic
-            webpTookTooLong |= true;
+            webpTookTooLong = true;
     }
 }
 
@@ -1130,8 +1136,10 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
   std::vector<uint32_t> ms;
   uint32_t i;
 
-  if (rfb::Server::rectThreads > 0)
-    omp_set_num_threads(rfb::Server::rectThreads);
+  int num_threads = std::thread::hardware_concurrency();
+  if (rfb::Server::rectThreads > 0) {
+      num_threads = rfb::Server::rectThreads;
+  }
 
   webpTookTooLong = false;
   changed.get_rects(&rects);
@@ -1249,12 +1257,27 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
   }
   scalingTime = msSince(&scalestart);
 
-  #pragma omp parallel for schedule(dynamic, 1)
+  std::vector<std::future<void>> futures;
+  futures.reserve(subrects.size());
   for (i = 0; i < subrects.size(); ++i) {
-    encoderTypes[i] = getEncoderType(subrects[i], pb, &palettes[i], compresseds[i],
-                                     &isWebp[i], &fromCache[i],
-                                     scaledpb, scaledrects[i], ms[i]);
-    checkWebpFallback(start);
+      Rect subrect = subrects[i];
+      const PixelBuffer* current_pb = pb;
+      uint8_t* current_encoderTypes = &encoderTypes[i];
+      uint8_t* current_fromCache = &fromCache[i];
+      const PixelBuffer* current_scaledpb = scaledpb;
+      Rect current_scaledrect = scaledrects[i];
+      uint32_t* current_ms = &ms[i];
+      const struct timeval* current_start = start;
+      auto task = [this, subrect, current_pb, &palettes, &compresseds, &isWebp, current_encoderTypes, current_fromCache, current_scaledpb, current_scaledrect, current_ms, current_start, i]() {
+          *current_encoderTypes = getEncoderType(subrect, current_pb, &palettes[i], compresseds[i],
+                                                       &isWebp[i], current_fromCache,
+                                                       current_scaledpb, current_scaledrect, *current_ms);
+          checkWebpFallback(current_start);
+      };
+      futures.push_back(std::async(std::launch::async, task));
+  }
+  for (auto& future : futures) {
+      future.get();
   }
 
   for (i = 0; i < subrects.size(); ++i) {
