@@ -16,20 +16,55 @@ set -e
 # for details, see https://www.debian.org/doc/debian-policy/ or
 # the debian-policy package
 
+stop_vncserver_systemd_services_for_all_logged_in_users() {
+  for session in $(list_user_sessions); do
+    stop_user_services "$session"
+  done
+}
+
+list_user_sessions() {
+  loginctl list-sessions --no-legend | awk '{print $1}'
+}
+
+stop_user_services() {
+  local session="$1"
+
+  for service in $(list_active_services); do
+    systemctl --user --machine=$(systemd_user_from_session "$session") stop "$service" || true
+  done
+}
+
+systemd_user_from_session() {
+  local session="$1"
+
+  echo $(loginctl show-session "$session" -p Name --value)@
+}
+
+list_active_services() {
+  systemctl --user --machine=$(systemd_user_from_session "$session") \
+    list-units --type=service --state=active --plain --no-legend | \
+    awk '{ print $1 }' | grep kasmvncserver
+}
+
+remove_vncserver_and_other_alternatives_from_bin() {
+  bindir=/usr/bin
+  mandir=/usr/share/man
+  commands="kasmvncserver kasmvncpasswd kasmvncconfig Xkasmvnc kasmxproxy"
+
+  for kasm_command in $commands; do
+    generic_command=`echo "$kasm_command" | sed -e 's/kasm//'`;
+    update-alternatives --remove "$generic_command" "$bindir/$kasm_command"
+  done
+}
 
 case "$1" in
     remove)
-      bindir=/usr/bin
-      mandir=/usr/share/man
-      commands="kasmvncserver kasmvncpasswd kasmvncconfig Xkasmvnc kasmxproxy"
-
-      for kasm_command in $commands; do
-        generic_command=`echo "$kasm_command" | sed -e 's/kasm//'`;
-        update-alternatives --remove "$generic_command" "$bindir/$kasm_command"
-      done
+      stop_vncserver_systemd_services_for_all_logged_in_users
+      remove_vncserver_and_other_alternatives_from_bin
     ;;
 
     remove|upgrade|deconfigure)
+      stop_vncserver_systemd_services_for_all_logged_in_users
     ;;
 
     failed-upgrade)
