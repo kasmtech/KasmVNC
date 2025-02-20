@@ -49,6 +49,7 @@ cp $SRC_BIN/vncconfig $DESTDIR/usr/bin;
 cp $SRC_BIN/kasmvncpasswd $DESTDIR/usr/bin;
 cp $SRC_BIN/kasmxproxy $DESTDIR/usr/bin;
 cp -r $SRC/lib/kasmvnc/ $DESTDIR/usr/lib/kasmvncserver
+cp -r $SRC/lib/systemd/ $DESTDIR/usr/lib/
 cd $DESTDIR/usr/bin && ln -s kasmvncpasswd vncpasswd;
 cp -r $SRC/share/doc/kasmvnc*/* $DESTDIR/usr/share/doc/kasmvncserver/
 rsync -r --links --safe-links --exclude '.git*' --exclude po2js --exclude xgettext-html \
@@ -68,12 +69,12 @@ cp $SRC/share/man/man1/vncpasswd.1 $DST_MAN;
 cp $SRC/share/man/man1/kasmxproxy.1 $DST_MAN;
 cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 
-
 %files
 %config(noreplace) /etc/kasmvnc
 
 /usr/bin/*
 /usr/lib/kasmvncserver
+/usr/lib/systemd/user/kasmvncserver@.service
 /usr/share/man/man1/*
 /usr/share/perl5/KasmVNC
 /usr/share/kasmvnc
