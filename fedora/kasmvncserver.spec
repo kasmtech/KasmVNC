@@ -6,7 +6,7 @@ Summary:        VNC server accessible from a web browser
 License: GPLv2+
 URL: https://github.com/kasmtech/KasmVNC
 
-BuildRequires: rsync, systemd-rpm-macros
+BuildRequires: rsync
 Requires: xorg-x11-xauth, xkeyboard-config, xkbcomp, openssl, perl, perl-Switch, perl-YAML-Tiny, perl-Hash-Merge-Simple, perl-Scalar-List-Utils, perl-List-MoreUtils, perl-Try-Tiny, perl-DateTime-TimeZone, mesa-libgbm, libxshmfence
 Conflicts: tigervnc-server, tigervnc-server-minimal
 
@@ -71,7 +71,37 @@ cp $SRC/share/man/man1/kasmxproxy.1 $DST_MAN;
 cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 
 %preun
-%systemd_user_preun %{name}@.service
+stop_vncserver_systemd_services_for_all_logged_in_users() {
+  for session in $(list_user_sessions); do
+    stop_user_services "$session"
+  done
+}
+
+list_user_sessions() {
+  loginctl list-sessions --no-legend | awk '{print $1}'
+}
+
+stop_user_services() {
+  local session="$1"
+
+  for service in $(list_active_services); do
+    systemctl --user --machine=$(systemd_user_from_session "$session") stop "$service" || true
+  done
+}
+
+systemd_user_from_session() {
+  local session="$1"
+
+  echo $(loginctl show-session "$session" -p Name --value)@
+}
+
+list_active_services() {
+  systemctl --user --machine=$(systemd_user_from_session "$session") \
+    list-units --type=service --state=active --plain --no-legend | \
+    awk '{ print $1 }' | grep kasmvncserver
+}
+
+stop_vncserver_systemd_services_for_all_logged_in_users
 
 %files
 %config(noreplace) /etc/kasmvnc
