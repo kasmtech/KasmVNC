@@ -59,12 +59,12 @@ remove_vncserver_and_other_alternatives_from_bin() {
 
 case "$1" in
     remove)
-      stop_vncserver_systemd_services_for_all_logged_in_users
+      stop_vncserver_systemd_services_for_all_logged_in_users || true
       remove_vncserver_and_other_alternatives_from_bin
     ;;
 
     remove|upgrade|deconfigure)
-      stop_vncserver_systemd_services_for_all_logged_in_users
+      stop_vncserver_systemd_services_for_all_logged_in_users || true
     ;;
 
     failed-upgrade)
