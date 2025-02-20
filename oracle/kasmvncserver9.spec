@@ -154,10 +154,10 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
   make_self_signed_certificate
 
 %postun
-  local is_uninstall = 0;
+  is_uninstall=0;
 
   if [ "$1" == 0 ]; then
-    is_uninstall = 1;
+    is_uninstall=1;
   fi
   if [ "$is_uninstall" = 1 ]; then
     rm -f /etc/pki/tls/private/kasmvnc.pem
