@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# Contributor:
+# Maintainer: Kasm Technologies LLC <info@kasmweb.com>
+pkgname=kasmvncserver
+pkgver=1.3.3
+pkgrel=0
+pkgdesc="foo"
+url="https://github.com/kasmtech/KasmVNC"
+arch="x86_64"
+license="GPL-2.0-or-later"
+depends="
+        libgomp
+        libjpeg-turbo
+        libwebp
+        libxfont2
+        libxshmfence
+        mesa-gbm
+        pciutils-libs
+        perl
+        perl-datetime
+        perl-hash-merge-simple
+        perl-list-moreutils
+        perl-switch
+        perl-try-tiny
+        perl-yaml-tiny
+        perl-datetime
+        perl-datetime-timezone
+        pixman
+        py3-xdg
+        setxkbmap
+        xauth
+        xf86-video-amdgpu
+        xf86-video-ati
+        xf86-video-nouveau
+        xf86-video-intel
+        xkbcomp
+        xkeyboard-config
+        xterm
+        bash
+				"
+makedepends="
+            rsync
+            binutils
+            mesa-gl
+            libxcursor
+            "
+checkdepends=""
+install=""
+subpackages=""
+source=""
+builddir="$srcdir/"
+
+
+build() {
+	tar -xzf ../kasmvnc.alpine_321_x86_64.tgz -C "$srcdir";
+}
+
+check() {
+	# Replace with proper check command(s).
+	# Remove and add !check option if there is no check command.
+	:
+}
+
+package() {
+  export SRC="$srcdir/usr/local";
+  export SRC_BIN="$SRC/bin";
+  export DESTDIR="$pkgdir";
+  export DST_MAN="$DESTDIR/usr/share/man/man1";
+
+	# Replace with proper package command(s)
+  echo "woo";
+  echo "D: $DESTDIR";
+
+	echo "installing files";
+	mkdir -p $pkgdir/usr/bin $pkgdir/usr/lib \
+		$pkgdir/usr/share/perl5/vendor_perl $pkgdir/etc/kasmvnc;
+#$pkgdir/usr/share/man/man1 \
+#$pkgdir/usr/share/doc/kasmvncserver
+	cp $SRC_BIN/Xvnc $pkgdir/usr/bin/Xkasmvnc;
+  cd $pkgdir/usr/bin/ && ln -s Xkasmvnc Xvnc;
+	cp $SRC_BIN/vncserver $pkgdir/usr/bin/kasmvncserver;
+  cd $pkgdir/usr/bin/ && ln -s kasmvncserver vncserver;
+	cp -r $SRC_BIN/KasmVNC $pkgdir/usr/share/perl5/vendor_perl;
+	cp $SRC_BIN/vncconfig $pkgdir/usr/bin/kasmvncconfig;
+	cp $SRC_BIN/kasmvncpasswd $pkgdir/usr/bin/;
+  cd $pkgdir/usr/bin/ && ln -s kasmvncpasswd vncpasswd;
+	cp $SRC_BIN/kasmxproxy $pkgdir/usr/bin/;
+	cp -r $SRC/lib/kasmvnc/ $pkgdir/usr/lib/kasmvncserver;
+	#cp -r $SRC/share/doc/kasmvnc*/* $pkgdir/usr/share/doc/kasmvncserver/
+	rsync -r --links --safe-links --exclude '.git*' --exclude po2js \
+		--exclude xgettext-html --exclude www/utils/ --exclude .eslintrc \
+	  $SRC/share/kasmvnc $pkgdir/usr/share;
+	sed -e 's/^\([^#]\)/# \1/' $SRC/share/kasmvnc/kasmvnc_defaults.yaml > \
+	  $pkgdir/etc/kasmvnc/kasmvnc.yaml;
+	# cp $SRC/man/man1/Xvnc.1 $pkgdir/usr/share/man/man1/Xkasmvnc.1
+	# cp $SRC/share/man/man1/vncserver.1 $DST_MAN/kasmvncserver.1
+	# cp $SRC/share/man/man1/kasmxproxy.1 $DST_MAN/kasmxproxy.1
+	# cp $SRC/share/man/man1/vncpasswd.1 $DST_MAN/kasmvncpasswd.1
+	# cp $SRC/share/man/man1/vncconfig.1 $DST_MAN/kasmvncconfig.1
+}
