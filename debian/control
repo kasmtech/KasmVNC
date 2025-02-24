@@ -15,6 +15,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, ssl-cert, xauth,
   x11-xkb-utils, xkb-data, procps, libswitch-perl, libyaml-tiny-perl,
   libhash-merge-simple-perl, libscalar-list-utils-perl, liblist-moreutils-perl,
   libtry-tiny-perl, libdatetime-timezone-perl, libgbm1
+Suggests: systemd
 Provides: vnc-server
 Description: KasmVNC provides remote web-based access to a Desktop or application.
   While VNC is in the name, KasmVNC differs from other VNC variants such
