@@ -45,10 +45,11 @@ makedepends="
             binutils
             mesa-gl
             libxcursor
+            gzip
             "
 checkdepends=""
 install="$pkgname.post-install $pkgname.post-deinstall"
-subpackages=""
+subpackages="$pkgname-doc"
 source=""
 builddir="$srcdir/"
 
@@ -69,15 +70,9 @@ package() {
   export DESTDIR="$pkgdir";
   export DST_MAN="$DESTDIR/usr/share/man/man1";
 
-	# Replace with proper package command(s)
-  echo "woo";
-  echo "D: $DESTDIR";
-
 	echo "installing files";
 	mkdir -p $pkgdir/usr/bin $pkgdir/usr/lib \
 		$pkgdir/usr/share/perl5/vendor_perl $pkgdir/etc/kasmvnc;
-#$pkgdir/usr/share/man/man1 \
-#$pkgdir/usr/share/doc/kasmvncserver
 	cp $SRC_BIN/Xvnc $pkgdir/usr/bin/Xkasmvnc;
   cd $pkgdir/usr/bin/ && ln -s Xkasmvnc Xvnc;
 	cp $SRC_BIN/vncserver $pkgdir/usr/bin/kasmvncserver;
@@ -88,7 +83,6 @@ package() {
   cd $pkgdir/usr/bin/ && ln -s kasmvncpasswd vncpasswd;
 	cp $SRC_BIN/kasmxproxy $pkgdir/usr/bin/;
 	cp -r $SRC/lib/kasmvnc/ $pkgdir/usr/lib/kasmvncserver;
-	#cp -r $SRC/share/doc/kasmvnc*/* $pkgdir/usr/share/doc/kasmvncserver/
 	rsync -r --links --safe-links --exclude '.git*' --exclude po2js \
 		--exclude xgettext-html --exclude www/utils/ --exclude .eslintrc \
 	  $SRC/share/kasmvnc $pkgdir/usr/share;
@@ -98,9 +92,25 @@ package() {
     $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml
 	sed -e 's/^\([^#]\)/# \1/' $SRC/share/kasmvnc/kasmvnc_defaults.yaml > \
 	  $pkgdir/etc/kasmvnc/kasmvnc.yaml;
-	# cp $SRC/man/man1/Xvnc.1 $pkgdir/usr/share/man/man1/Xkasmvnc.1
-	# cp $SRC/share/man/man1/vncserver.1 $DST_MAN/kasmvncserver.1
-	# cp $SRC/share/man/man1/kasmxproxy.1 $DST_MAN/kasmxproxy.1
-	# cp $SRC/share/man/man1/vncpasswd.1 $DST_MAN/kasmvncpasswd.1
-	# cp $SRC/share/man/man1/vncconfig.1 $DST_MAN/kasmvncconfig.1
+}
+
+doc() {
+  set -e
+  export SRC="$srcdir/usr/local";
+  export SRC_BIN="$SRC/bin";
+  export DESTDIR="$subpkgdir";
+  export DST_MAN="$DESTDIR/usr/share/man/man1";
+
+  mkdir -p $subpkgdir/usr/share/man/man1 \
+    $subpkgdir/usr/share/doc/kasmvncserver
+	cp -r $SRC/share/doc/kasmvnc*/* $subpkgdir/usr/share/doc/kasmvncserver/
+	cp $SRC/man/man1/Xvnc.1 $subpkgdir/usr/share/man/man1/Xkasmvnc.1
+	cp $SRC/share/man/man1/vncserver.1 $DST_MAN/kasmvncserver.1
+	cp $SRC/share/man/man1/kasmxproxy.1 $DST_MAN/kasmxproxy.1
+	cp $SRC/share/man/man1/vncpasswd.1 $DST_MAN/kasmvncpasswd.1
+	cp $SRC/share/man/man1/vncconfig.1 $DST_MAN/kasmvncconfig.1
+  gzip -9 $DST_MAN/*
+  cd $DST_MAN && ln -s Xkasmvnc.1.gz Xvnc.1.gz && \
+    ln -s kasmvncserver.1.gz vncserver.1.gz && \
+    ln -s kasmvncpasswd.1.gz vncpasswd.1.gz
 }
