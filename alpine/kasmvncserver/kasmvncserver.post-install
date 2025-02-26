@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -e
+
+kasmvnc_group="kasmvnc-cert"
+
+create_kasmvnc_group() {
+  if ! getent group "$kasmvnc_group" >/dev/null; then
+    addgroup --system "$kasmvnc_group"
+  fi
+}
+
+make_self_signed_certificate() {
+  local cert_file=/etc/ssl/private/kasmvnc.pem
+  [ -f "$cert_file" ] && return 0
+
+  openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+    -keyout "$cert_file" \
+    -out "$cert_file" -subj \
+    "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
+  chgrp "$kasmvnc_group" "$cert_file"
+  chmod 640 "$cert_file"
+}
+
+create_kasmvnc_group
+make_self_signed_certificate

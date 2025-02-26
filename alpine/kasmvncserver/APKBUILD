@@ -10,11 +10,13 @@ url="https://github.com/kasmtech/KasmVNC"
 arch="x86_64"
 license="GPL-2.0-or-later"
 depends="
+        bash
         libgomp
         libjpeg-turbo
         libwebp
         libxfont2
         libxshmfence
+        mcookie
         mesa-gbm
         pciutils-libs
         perl
@@ -37,7 +39,6 @@ depends="
         xkbcomp
         xkeyboard-config
         xterm
-        bash
 				"
 makedepends="
             rsync
@@ -46,7 +47,7 @@ makedepends="
             libxcursor
             "
 checkdepends=""
-install=""
+install="$pkgname.post-install $pkgname.post-deinstall"
 subpackages=""
 source=""
 builddir="$srcdir/"
@@ -91,6 +92,10 @@ package() {
 	rsync -r --links --safe-links --exclude '.git*' --exclude po2js \
 		--exclude xgettext-html --exclude www/utils/ --exclude .eslintrc \
 	  $SRC/share/kasmvnc $pkgdir/usr/share;
+  sed -i -e 's!pem_certificate: .\+$!pem_certificate: /etc/ssl/private/kasmvnc.pem!' \
+      $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml
+  sed -i -e 's!pem_key: .\+$!pem_key: /etc/ssl/private/kasmvnc.pem!' \
+    $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml
 	sed -e 's/^\([^#]\)/# \1/' $SRC/share/kasmvnc/kasmvnc_defaults.yaml > \
 	  $pkgdir/etc/kasmvnc/kasmvnc.yaml;
 	# cp $SRC/man/man1/Xvnc.1 $pkgdir/usr/share/man/man1/Xkasmvnc.1
