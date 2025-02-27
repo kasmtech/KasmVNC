@@ -1,6 +1,12 @@
 FROM alpine:3.21
 
 RUN apk add shadow bash
+RUN apk add abuild sudo less
+
+ENV HOME /src/alpine
+WORKDIR $HOME/kasmvncserver
+
+COPY alpine/.abuild/*.pub /etc/apk/keys/
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd
 

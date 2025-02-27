@@ -56,7 +56,8 @@ builddir="$srcdir/"
 
 
 build() {
-	tar -xzf ../kasmvnc.alpine_321_x86_64.tgz -C "$srcdir";
+  local alpine_version=$(cat /etc/alpine-release | awk -F. '{ print $1$2 }')
+	tar -xzf "/src/builder/build/kasmvnc.alpine_$alpine_version.tar.gz" -C "$srcdir";
 }
 
 check() {

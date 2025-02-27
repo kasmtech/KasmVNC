@@ -4,8 +4,10 @@ set -e
 
 os=alpine
 os_codename=$(cat /etc/os-release | awk '/VERSION_ID/' | grep -o '[[:digit:]]' | tr -d '\n' | head -c 3)
+apkbuild_dir=/src/alpine/kasmvncserver/
+
+cd "$apkbuild_dir" && abuild -r
 
 mkdir -p /src/builder/build/${os}_${os_codename}
 mv \
-  /src/builder/build/kasmvnc.${os}_${os_codename}.tar.gz \
-  /src/builder/build/${os}_${os_codename}/kasmvnc.${os}_${os_codename}_$(uname -m).tgz
+  /src/alpine/packages/alpine/x86_64/*.apk /src/builder/build/${os}_${os_codename}/
