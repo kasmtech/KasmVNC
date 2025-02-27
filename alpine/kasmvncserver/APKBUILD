@@ -18,6 +18,7 @@ depends="
         libxshmfence
         mcookie
         mesa-gbm
+        openssl
         pciutils-libs
         perl
         perl-datetime
