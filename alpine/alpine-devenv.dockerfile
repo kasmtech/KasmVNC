@@ -8,6 +8,4 @@ RUN adduser --disabled-password docker
 RUN adduser docker abuild
 RUN echo "docker ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-RUN apk add rsync binutils
-
 USER docker
