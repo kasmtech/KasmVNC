@@ -84,15 +84,22 @@ sudo docker run -it -v ./:/src -p 6901:6901  kasmvnc:dev
 Now from inside the container.
 
 ```bash
-kasm-user@5c2802e4cf1e:/src$ sudo builder/scripts/build-webp
-kasm-user@5c2802e4cf1e:/src$ sudo builder/scripts/build-build-libjpeg-turbo
-kasm-user@5c2802e4cf1e:/src$ builder/build.sh
+# build frontend
+cd kasmweb
+npm install
+npm run build # <-- only run this on subsequent changes to front-end code
+cd ..
+# build dependencies
+sudo builder/scripts/build-webp
+sudo builder/scripts/build-build-libjpeg-turbo
+# Build KasmVNC
+builder/build.sh
 ```
 
 Now run Xvnc and Xfce4 from inside the container
 
 ```bash
-/src/xorg.build/bin/Xvnc -interface 0.0.0.0 -PublicIP 127.0.0.1 -disableBasicAuth -RectThreads 0 -Log *:stdout:100 -httpd /src/kasmweb/dist -sslOnly 0 -SecurityTypes None -websocketPort 6901  :1
+/src/xorg.build/bin/Xvnc -interface 0.0.0.0 -PublicIP 127.0.0.1 -disableBasicAuth -RectThreads 0 -Log *:stdout:100 -httpd /src/kasmweb/dist -sslOnly 0 -SecurityTypes None -websocketPort 6901  :1 &
 /usr/bin/xfce4-session --display :1
 ```
 
