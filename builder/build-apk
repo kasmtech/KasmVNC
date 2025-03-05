@@ -16,6 +16,10 @@ cd "$(dirname "$0")/.."
 L_UID=$(id -u)
 L_GID=$(id -g)
 ABUILD_GID=300
+if [ "$L_UID" = 0 ]; then
+  L_UID=1000
+  L_GID=1000
+fi
 
 builder_image=kasmvnc_apkbuilder_${os}:${os_codename}
 docker build -t $builder_image \
