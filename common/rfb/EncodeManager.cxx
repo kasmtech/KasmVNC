@@ -19,14 +19,7 @@
  * USA.
  */
 
-#include <omp.h>
-#include <stdlib.h>
-
-#include <thread>
-#include <future>
-#include <vector>
-#include <atomic>
-
+#include <cstdlib>
 
 #include <rfb/cpuid.h>
 #include <rfb/EncCache.h>
@@ -50,6 +43,7 @@
 #include <rfb/TightJPEGEncoder.h>
 #include <rfb/TightWEBPEncoder.h>
 #include <rfb/TightQOIEncoder.h>
+#include <execution>
 
 using namespace rfb;
 
@@ -99,9 +93,9 @@ struct RectInfo {
 };
 
 struct QualityInfo {
-  struct timeval lastUpdate;
+  struct timeval lastUpdate{};
   Rect rect;
-  unsigned score;
+  unsigned score{};
 };
 
 };
@@ -216,7 +210,6 @@ EncodeManager::EncodeManager(SConnection* conn_, EncCache *encCache_) : conn(con
     dynamicQualityMin = Server::dynamicQualityMin;
     dynamicQualityOff = Server::dynamicQualityMax - Server::dynamicQualityMin;
   }
-  std::atomic<bool> webpTookTooLong{false};
 }
 
 EncodeManager::~EncodeManager()
@@ -887,13 +880,12 @@ void EncodeManager::findSolidRect(const Rect& rect, Region *changed,
   }
 }
 
-void EncodeManager::checkWebpFallback(const struct timeval *start) {
+void EncodeManager::checkWebpFallback(const timeval *start) {
     // Have we taken too long for the frame? If so, drop from WEBP to JPEG
-    if (start && activeEncoders[encoderFullColour] == encoderTightWEBP && !webpTookTooLong) {
-        unsigned us;
-        us = msSince(start) * 1024;
+    if (start && activeEncoders[encoderFullColour] == encoderTightWEBP && !webpTookTooLong.load(std::memory_order_relaxed)) {
+        const auto us = msSince(start) * 1024;
         if (us > webpFallbackUs)
-            webpTookTooLong = true;
+            webpTookTooLong.store(true, std::memory_order_relaxed);
     }
 }
 
@@ -1128,20 +1120,13 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
                                const bool mainScreen)
 {
   std::vector<Rect> rects, subrects, scaledrects;
-  std::vector<Rect>::const_iterator rect;
   std::vector<uint8_t> encoderTypes;
   std::vector<uint8_t> isWebp, fromCache;
   std::vector<Palette> palettes;
   std::vector<std::vector<uint8_t> > compresseds;
   std::vector<uint32_t> ms;
-  uint32_t i;
 
-  int num_threads = std::thread::hardware_concurrency();
-  if (rfb::Server::rectThreads > 0) {
-      num_threads = rfb::Server::rectThreads;
-  }
-
-  webpTookTooLong = false;
+  webpTookTooLong.store(false, std::memory_order_relaxed);
   changed.get_rects(&rects);
 
   // Update stats
@@ -1156,18 +1141,18 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
 
   subrects.reserve(rects.size() * 1.5f);
 
-  for (rect = rects.begin(); rect != rects.end(); ++rect) {
-    int w, h, sw, sh;
+  for (const auto& rect : rects) {
+    int sw, sh;
     Rect sr;
 
-    w = rect->width();
-    h = rect->height();
+    const auto w = rect.width();
+    const auto h = rect.height();
 
     // No split necessary?
     if ((((w*h) < SubRectMaxArea) && (w < SubRectMaxWidth)) ||
         (videoDetected && !encoders[encoderTightWEBP]->isSupported())) {
-      subrects.push_back(*rect);
-      trackRectQuality(*rect);
+      subrects.push_back(rect);
+      trackRectQuality(rect);
       continue;
     }
 
@@ -1178,15 +1163,15 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
 
     sh = SubRectMaxArea / sw;
 
-    for (sr.tl.y = rect->tl.y; sr.tl.y < rect->br.y; sr.tl.y += sh) {
+    for (sr.tl.y = rect.tl.y; sr.tl.y < rect.br.y; sr.tl.y += sh) {
       sr.br.y = sr.tl.y + sh;
-      if (sr.br.y > rect->br.y)
-        sr.br.y = rect->br.y;
+      if (sr.br.y > rect.br.y)
+        sr.br.y = rect.br.y;
 
-      for (sr.tl.x = rect->tl.x; sr.tl.x < rect->br.x; sr.tl.x += sw) {
+      for (sr.tl.x = rect.tl.x; sr.tl.x < rect.br.x; sr.tl.x += sw) {
         sr.br.x = sr.tl.x + sw;
-        if (sr.br.x > rect->br.x)
-          sr.br.x = rect->br.x;
+        if (sr.br.x > rect.br.x)
+          sr.br.x = rect.br.x;
 
         subrects.push_back(sr);
         trackRectQuality(sr);
@@ -1194,13 +1179,18 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
     }
   }
 
-  encoderTypes.resize(subrects.size());
-  isWebp.resize(subrects.size());
-  fromCache.resize(subrects.size());
-  palettes.resize(subrects.size());
-  compresseds.resize(subrects.size());
-  scaledrects.resize(subrects.size());
-  ms.resize(subrects.size());
+  const size_t subrects_size = subrects.size();
+
+  std::vector<size_t> indices(subrects_size);
+  std::iota(std::begin(indices), std::end(indices), 0);
+
+  encoderTypes.resize(subrects_size);
+  isWebp.resize(subrects_size);
+  fromCache.resize(subrects_size);
+  palettes.resize(subrects_size);
+  compresseds.resize(subrects_size);
+  scaledrects.resize(subrects_size);
+  ms.resize(subrects_size);
 
   // In case the current resolution is above the max video res, and video was detected,
   // scale to that res, keeping aspect ratio
@@ -1232,7 +1222,7 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
       break;
     }
 
-    for (i = 0; i < subrects.size(); ++i) {
+    for (uint32_t i = 0; i < subrects_size; ++i) {
       const Rect old = scaledrects[i] = subrects[i];
       scaledrects[i].br.x *= diff;
       scaledrects[i].br.y *= diff;
@@ -1257,30 +1247,15 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
   }
   scalingTime = msSince(&scalestart);
 
-  std::vector<std::future<void>> futures;
-  futures.reserve(subrects.size());
-  for (i = 0; i < subrects.size(); ++i) {
-      Rect subrect = subrects[i];
-      const PixelBuffer* current_pb = pb;
-      uint8_t* current_encoderTypes = &encoderTypes[i];
-      uint8_t* current_fromCache = &fromCache[i];
-      const PixelBuffer* current_scaledpb = scaledpb;
-      Rect current_scaledrect = scaledrects[i];
-      uint32_t* current_ms = &ms[i];
-      const struct timeval* current_start = start;
-      auto task = [this, subrect, current_pb, &palettes, &compresseds, &isWebp, current_encoderTypes, current_fromCache, current_scaledpb, current_scaledrect, current_ms, current_start, i]() {
-          *current_encoderTypes = getEncoderType(subrect, current_pb, &palettes[i], compresseds[i],
-                                                       &isWebp[i], current_fromCache,
-                                                       current_scaledpb, current_scaledrect, *current_ms);
-          checkWebpFallback(current_start);
-      };
-      futures.push_back(std::async(std::launch::async, task));
-  }
-  for (auto& future : futures) {
-      future.get();
-  }
+    std::for_each(std::execution::par_unseq, std::begin(indices), std::end(indices), [&](size_t i)
+    {
+        encoderTypes[i] = getEncoderType(subrects[i], pb, &palettes[i], compresseds[i],
+                        &isWebp[i], &fromCache[i],
+                        scaledpb, scaledrects[i], ms[i]);
+        checkWebpFallback(start);
+    });
 
-  for (i = 0; i < subrects.size(); ++i) {
+  for (uint32_t i = 0; i < subrects_size; ++i) {
     if (encoderTypes[i] == encoderFullColour) {
       if (isWebp[i])
         webpstats.ms += ms[i];
@@ -1292,7 +1267,7 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
   if (start) {
     encodingTime = msSince(start);
 
-    if (vlog.getLevel() >= vlog.LEVEL_DEBUG) {
+    if (vlog.getLevel() >= rfb::LogWriter::LEVEL_DEBUG) {
       framesSinceEncPrint++;
       if (maxEncodingTime < encodingTime)
         maxEncodingTime = encodingTime;
@@ -1307,11 +1282,11 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
     }
   }
 
-  if (webpTookTooLong)
+  if (webpTookTooLong.load(std::memory_order_relaxed))
     activeEncoders[encoderFullColour] = encoderTightJPEG;
 
-  for (i = 0; i < subrects.size(); ++i) {
-    if (encCache->enabled && compresseds[i].size() && !fromCache[i] &&
+  for (uint32_t i = 0; i < subrects_size; ++i) {
+    if (encCache->enabled && !compresseds[i].empty() && !fromCache[i] &&
         !encoders[encoderTightQOI]->isSupported()) {
       void *tmp = malloc(compresseds[i].size());
       memcpy(tmp, &compresseds[i][0], compresseds[i].size());

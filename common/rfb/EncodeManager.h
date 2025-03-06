@@ -29,7 +29,6 @@
 #include <rfb/Region.h>
 #include <rfb/Timer.h>
 #include <rfb/UpdateTracker.h>
-#include <rfb/util.h>
 
 #include <stdint.h>
 #include <atomic>
@@ -51,7 +50,7 @@ namespace rfb {
   class EncodeManager: public Timer::Callback {
   public:
     EncodeManager(SConnection* conn, EncCache *encCache);
-    ~EncodeManager();
+    ~EncodeManager() override;
 
     void logStats();
 
@@ -73,10 +72,10 @@ namespace rfb {
         encodingTime = 0;
     };
 
-    unsigned getEncodingTime() const {
+    [[nodiscard]] unsigned getEncodingTime() const {
         return encodingTime;
     };
-    unsigned getScalingTime() const {
+    [[nodiscard]] unsigned getScalingTime() const {
         return scalingTime;
     };
 
@@ -125,7 +124,8 @@ namespace rfb {
                            uint8_t *fromCache,
                            const PixelBuffer *scaledpb, const Rect& scaledrect,
                            uint32_t &ms) const;
-    virtual bool handleTimeout(Timer* t);
+
+    bool handleTimeout(Timer* t) override;
 
     bool checkSolidTile(const Rect& r, const rdr::U8* colourValue,
                         const PixelBuffer *pb);
@@ -200,7 +200,7 @@ namespace rfb {
     size_t curMaxUpdateSize;
     unsigned webpFallbackUs;
     unsigned webpBenchResult;
-    std::atomic<bool> webpTookTooLong;
+    std::atomic<bool> webpTookTooLong{false};
     unsigned encodingTime;
     unsigned maxEncodingTime, framesSinceEncPrint;
     unsigned scalingTime;
@@ -209,14 +209,14 @@ namespace rfb {
 
     class OffsetPixelBuffer : public FullFramePixelBuffer {
     public:
-      OffsetPixelBuffer() {}
-      virtual ~OffsetPixelBuffer() {}
+      OffsetPixelBuffer() = default;
+      ~OffsetPixelBuffer() override = default;
 
       void update(const PixelFormat& pf, int width, int height,
                   const rdr::U8* data_, int stride);
 
     private:
-      virtual rdr::U8* getBufferRW(const Rect& r, int* stride);
+      rdr::U8* getBufferRW(const Rect& r, int* stride) override;
     };
   };
 
