@@ -10,7 +10,7 @@ variables:
   # E.g. BUILD_JOBS: build_debian_buster,build_ubuntu_bionic. This will include
   # arm builds, because build_debian_buster_arm matches build_debian_buster.
   # "BUILD_JOBS: none" won't build any build jobs, nor www.
-  BUILD_JOBS: all
+  BUILD_JOBS: build_alpine_319
   DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
 
@@ -198,7 +198,7 @@ build_ubuntu_noble:
   artifacts:
     paths:
       - output/
-    
+
 build_ubuntu_noble_arm:
   stage: build
   allow_failure: true
@@ -209,7 +209,7 @@ build_ubuntu_noble_arm:
     - *prepare_www
   after_script:
     - *prepare_artfacts
-  script: 
+  script:
     - bash builder/build-package ubuntu noble;
   only:
     variables:
@@ -617,13 +617,13 @@ build_fedora_forty:
   artifacts:
     paths:
       - output/
-    
+
 build_fedora_forty_arm:
   stage: build
   allow_failure: true
   tags:
     - oci-fixed-arm
-  before_script: 
+  before_script:
     - *prepare_build
     - *prepare_www
   after_script:
@@ -655,18 +655,18 @@ build_fedora_fortyone:
   artifacts:
     paths:
       - output/
-    
+
 build_fedora_fortyone_arm:
   stage: build
   allow_failure: true
   tags:
     - oci-fixed-arm
-  before_script: 
+  before_script:
     - *prepare_build
     - *prepare_www
   after_script:
     - *prepare_artfacts
-  script: 
+  script:
     - bash builder/build-package fedora fortyone;
   only:
     variables:
