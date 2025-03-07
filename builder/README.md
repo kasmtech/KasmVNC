@@ -7,7 +7,7 @@ Docker CE
 # os_codename is what "lsb_release -c" outputs, e.g. buster, focal.
 #
 # build_tag allows building multiple versions of deb package (rpm not supported)
-# targeting a single distro release (e.g. Ubuntu Bionic). If build_tag is given,
+# targeting a single distro release (e.g. Ubuntu Focal). If build_tag is given,
 # the package name will include build_tag as part of Debian revision. For
 # example:
 # * with build_tag: kasmvncserver_0.9.1~beta-1+libjpeg-turbo-latest_amd64.deb
@@ -16,19 +16,17 @@ Docker CE
 #
 # Packages will be placed under builder/build/
 
-builder/build-package ubuntu bionic
 builder/build-package ubuntu focal
 builder/build-package debian buster
 builder/build-package debian bullseye
 builder/build-package kali kali-rolling
-builder/build-package centos core # CentOS 7
 builder/build-package fedora thirtythree
 ```
 
 # Build and test a package
 ```
 builder/build-and-test-deb ubuntu focal
-builder/build-and-test-rpm centos core
+builder/build-and-test-rpm oracle 8
 ```
 
 Open browser and point to https://localhost:443/ or https://\<ip-address\>:443/
@@ -118,7 +116,7 @@ locally by doing stuff like this:
 ```
 bash -c '
 . .ci/upload.sh;
-prepare_upload_filename "bionic/kasmvncserver_0.9.1~beta-1+libjpeg-turbo-latest_amd64.deb";
+prepare_upload_filename "focal/kasmvncserver_0.9.1~beta-1+libjpeg-turbo-latest_amd64.deb";
 echo $upload_filename;'
 ```
 
@@ -178,7 +176,7 @@ These instructions assume KasmVNC has been cloned at $HOME and ```kasm_www.tar.g
 cd ~
 tar -zxf kasm_www.tar.gz -C KasmVNC/builder/
 cd KasmVNC
-sudo builder/build-package ubuntu bionic
+sudo builder/build-package ubuntu focal
 ```
-The resulting deb package can be found under ~/KasmVNC/builder/build/bionic
-Replace ```bionic``` with ```focal``` to build for Ubuntu 20.04LTS. At this time, only Ubuntu Bionic has been tested, however, other Debian based builds we support should also work.
+The resulting deb package can be found under ~/KasmVNC/builder/build/focal
+Replace ```focal``` with ```noble``` to build for Ubuntu 24.04LTS.
