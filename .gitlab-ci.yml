@@ -780,7 +780,7 @@ build_alpine_319:
     paths:
       - output/
       - alpine/.abuild
-    - when: always
+  - when: always
 
 build_alpine_319_arm:
   stage: build
