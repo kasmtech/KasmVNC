@@ -16,7 +16,7 @@ ENV END_PRIVATE_KEY='-----END PRIVATE KEY-----'
 RUN if echo "$KASMVNC_ALPINE_PRIVATE_KEY" | grep -q -- "$BEGIN_PRIVATE_KEY"; then \
       echo "$KASMVNC_ALPINE_PRIVATE_KEY" > $APK_KEYS_DIR/kasmvnc_signing_key.rsa; \
     else \
-      echo "$BEGIN_PRIVATE_KEY\n$KASMVNC_ALPINE_PRIVATE_KEY\n$END_PRIVATE_KEY" > \
+      echo -e "$BEGIN_PRIVATE_KEY\n$KASMVNC_ALPINE_PRIVATE_KEY\n$END_PRIVATE_KEY" > \
         $APK_KEYS_DIR/kasmvnc_signing_key.rsa; \
     fi
 RUN echo KASMVNC_ALPINE_PRIVATE_KEY "$KASMVNC_ALPINE_PRIVATE_KEY"
