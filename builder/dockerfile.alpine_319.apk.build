@@ -3,6 +3,8 @@ FROM alpine:3.19
 RUN apk add shadow bash
 RUN apk add abuild sudo less
 
+SHELL ["/bin/bash", "-c"]
+
 ENV HOME /src/alpine
 WORKDIR $HOME/kasmvncserver
 
