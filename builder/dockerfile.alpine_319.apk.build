@@ -11,8 +11,10 @@ ARG KASMVNC_ALPINE_PUBLIC_KEY
 ENV APK_KEYS_DIR=/etc/apk/keys
 RUN echo -n "$KASMVNC_ALPINE_PRIVATE_KEY" > \
   $APK_KEYS_DIR/kasmvnc_signing_key.rsa
+RUN echo KASMVNC_ALPINE_PRIVATE_KEY "$KASMVNC_ALPINE_PRIVATE_KEY"
 RUN echo -n "$KASMVNC_ALPINE_PUBLIC_KEY" > \
   $APK_KEYS_DIR/kasmvnc_signing_key.rsa.pub
+RUN echo KASMVNC_ALPINE_PUBLIC_KEY "$KASMVNC_ALPINE_PUBLIC_KEY"
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd
 
