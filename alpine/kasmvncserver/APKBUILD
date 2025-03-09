@@ -36,11 +36,13 @@ depends="
         xf86-video-amdgpu
         xf86-video-ati
         xf86-video-nouveau
-        xf86-video-intel
         xkbcomp
         xkeyboard-config
         xterm
 				"
+if [ $(arch) = x86_64 ]; then
+  depends="$depends xf86-video-intel"
+fi
 makedepends="
             rsync
             binutils
