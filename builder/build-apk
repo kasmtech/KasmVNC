@@ -33,5 +33,6 @@ copy_signing_key_to_user_abuild_dir
 source_dir=$(echo $PWD)
 docker run --rm -v "$source_dir":/src --user $L_UID:$L_GID \
   --group-add $ABUILD_GID \
+  -e CI \
   kasmvnc_apkbuilder_${os}:${os_codename} /bin/bash -c \
   '/src/builder/build-apk-inside-docker'
