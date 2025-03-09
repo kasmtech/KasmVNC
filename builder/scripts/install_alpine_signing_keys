@@ -20,6 +20,7 @@ install_public_signing_key() {
   fi
 }
 
+APK_KEYS_DIR=/etc/apk/keys
 BEGIN_PRIVATE_KEY='-----BEGIN PRIVATE KEY-----'
 END_PRIVATE_KEY='-----END PRIVATE KEY-----'
 BEGIN_PUBLIC_KEY='-----BEGIN PUBLIC KEY-----'
