@@ -779,8 +779,6 @@ build_alpine_319:
   artifacts:
     paths:
       - output/
-      - alpine/.abuild
-    when: always
 
 build_alpine_319_arm:
   stage: build
