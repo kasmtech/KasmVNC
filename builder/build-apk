@@ -21,8 +21,6 @@ if [ "$L_UID" = 0 ]; then
   L_GID=1000
 fi
 
-echo "woo"
-env
 builder_image=kasmvnc_apkbuilder_${os}:${os_codename}
 docker build -t $builder_image \
   --build-arg KASMVNC_ALPINE_PRIVATE_KEY \
