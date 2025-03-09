@@ -10,7 +10,7 @@ variables:
   # E.g. BUILD_JOBS: build_debian_buster,build_ubuntu_bionic. This will include
   # arm builds, because build_debian_buster_arm matches build_debian_buster.
   # "BUILD_JOBS: none" won't build any build jobs, nor www.
-  BUILD_JOBS: build_alpine_317
+  BUILD_JOBS: build_alpine_320
   DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
 
