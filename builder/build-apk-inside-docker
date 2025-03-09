@@ -8,6 +8,7 @@ apkbuild_dir=/src/alpine/kasmvncserver/
 
 cd "$apkbuild_dir" && abuild -r
 
+set -x
 [ -n "$CI" ] && sudo_cmd=sudo || sudo_cmd=
 $sudo_cmd mkdir -p /src/builder/build/${os}_${os_codename}
 $sudo_cmd mv \
