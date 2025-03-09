@@ -30,5 +30,6 @@ RUN if echo "$KASMVNC_ALPINE_PUBLIC_KEY" | grep -q -- "$BEGIN_PUBLIC_KEY"; then 
     fi
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd
+RUN echo 'docker ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
 USER docker
