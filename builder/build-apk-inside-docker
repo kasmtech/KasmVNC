@@ -2,6 +2,12 @@
 
 set -e
 
+add_arch_to_apk_package() {
+  package_name=$(ls *.apk | grep -v kasmvncserver-doc)
+  new_package_name=$(echo "$package_name" | sed -e 's/\(-r[[:digit:]]\+\)/\1_'$(arch)/)
+  $sudo_cmd mv "$package_name" "$new_package_name"
+}
+
 os=alpine
 os_codename=$(cat /etc/os-release | awk '/VERSION_ID/' | grep -o '[[:digit:]]' | tr -d '\n' | head -c 3)
 apkbuild_dir=/src/alpine/kasmvncserver/
@@ -10,5 +16,6 @@ cd "$apkbuild_dir" && abuild -r
 
 [ -n "$CI" ] && sudo_cmd=sudo || sudo_cmd=
 $sudo_cmd mkdir -p /src/builder/build/${os}_${os_codename}
+( cd /src/alpine/packages/alpine/$(arch)/ && add_arch_to_apk_package )
 $sudo_cmd mv \
   /src/alpine/packages/alpine/$(arch)/*.apk /src/builder/build/${os}_${os_codename}/

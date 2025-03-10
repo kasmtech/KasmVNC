@@ -4,8 +4,10 @@ package_name = ARGV.first
 
 DEB_PACKAGE_REGEX = %r!(?<os>[^/]+)/kasmvncserver_.+?_(?<arch>.+?).(?<format>deb)!
 RPM_PACKAGE_REGEX = %r!(?<os>[^/]+)/kasmvncserver-.+?\.(?<arch>[^.]+).(?<format>rpm)!
+ALPINE_PACKAGE_REGEX = %r!(?<os>[^/]+)/kasmvncserver-.+?-r\d+_(?<arch>[^.]+)\.(?<format>apk)!
 
 if matches = package_name.match(DEB_PACKAGE_REGEX)
+elsif matches = package_name.match(ALPINE_PACKAGE_REGEX)
 else matches = package_name.match(RPM_PACKAGE_REGEX)
 end
 
