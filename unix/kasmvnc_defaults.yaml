@@ -18,6 +18,7 @@ network:
   udp:
     public_ip: auto
     port: auto
+    payload_size: auto
     stun_server: auto
   ssl:
     pem_certificate: /etc/ssl/certs/ssl-cert-snakeoil.pem
