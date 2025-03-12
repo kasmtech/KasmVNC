@@ -22,7 +22,6 @@ workflow:
 stages:
   - www
   - build
-  # - test
   - upload
 
 .prepare_build: &prepare_build
