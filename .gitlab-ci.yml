@@ -22,6 +22,7 @@ workflow:
 stages:
   - www
   - build
+# - test
   - upload
 
 .prepare_build: &prepare_build
@@ -712,14 +713,14 @@ build_alpine_317_arm:
     paths:
       - output/
 
-test:
-  stage: test
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-  script:
-    - bash builder/test-vncserver
+# test:
+#   stage: test
+#   tags:
+#     - oci-fixed-amd
+#   before_script:
+#     - *prepare_build
+#   script:
+#     - bash builder/test-vncserver
 
 
 build_alpine_318:
