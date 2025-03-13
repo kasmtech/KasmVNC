@@ -3,7 +3,7 @@
 is_kasmvnc() {
   local package="$1";
 
-  echo "$package" | grep -qP 'kasmvncserver(_|-)[0-9]'
+  echo "$package" | grep -qP 'kasmvncserver(_|-)(doc-)?[0-9]'
 }
 
 detect_deb_package_arch() {
