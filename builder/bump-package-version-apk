@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -eo pipefail
-set -x
 
 new_version="$1"
 spec_file=alpine/kasmvncserver/APKBUILD
