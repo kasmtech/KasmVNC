@@ -12,6 +12,7 @@ RUN \
     bzip2-devel \
     ca-certificates \
     cmake \
+    nasm \
     dnf-plugins-core \
     gcc \
     gcc-c++ \

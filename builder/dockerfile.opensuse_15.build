@@ -9,6 +9,7 @@ RUN zypper install -ny \
   bdftopcf \
   bigreqsproto-devel \
   cmake \
+  nasm \
   curl \
   ffmpeg-4-libavcodec-devel \
   fonttosfnt \

@@ -13,7 +13,7 @@ RUN apt-get update && \
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
 RUN apt-get update && apt-get -y install gcc g++ curl
-RUN apt-get update && apt-get -y install cmake git libgnutls28-dev vim wget tightvncserver
+RUN apt-get update && apt-get -y install ninja-build cmake nasm git libgnutls28-dev vim wget tightvncserver
 RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev
 
 ENV SCRIPTS_DIR=/tmp/scripts
