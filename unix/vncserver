@@ -2367,6 +2367,24 @@ sub DefineConfigToCLIConversion {
         }
     }),
     KasmVNC::CliOption->new({
+        name => 'udpSize',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "network.udp.payload_size",
+            validator => KasmVNC::PatternValidator->new({
+              pattern => qr/^(auto|\d+)$/,
+              errorMessage => "must be 'auto' or an integer"
+            }),
+          })
+        ],
+        isActiveSub => sub {
+          $self = shift;
+
+          my $value = $self->configValue();
+          isPresent($value) && $value ne 'auto';
+        }
+    }),
+    KasmVNC::CliOption->new({
         name => 'udpPort',
         configKeys => [
           KasmVNC::ConfigKey->new({

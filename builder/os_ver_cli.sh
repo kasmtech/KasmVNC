@@ -1,7 +1,7 @@
 #!/bin/bash
 
 default_os=${default_os:-ubuntu}
-default_os_codename=${default_os_codename:-bionic}
+default_os_codename=${default_os_codename:-noble}
 
 os=${1:-$default_os}
 os_codename=${2:-$default_os_codename}

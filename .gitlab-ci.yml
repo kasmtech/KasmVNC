@@ -7,7 +7,7 @@ variables:
   GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
   GIT_SUBMODULE_STRATEGY: normal
   GIT_FETCH_EXTRA_FLAGS: --tags --force
-  # E.g. BUILD_JOBS: build_debian_buster,build_ubuntu_bionic. This will include
+  # E.g. BUILD_JOBS: build_debian_buster,build_ubuntu_focal. This will include
   # arm builds, because build_debian_buster_arm matches build_debian_buster.
   # "BUILD_JOBS: none" won't build any build jobs, nor www.
   BUILD_JOBS: all
@@ -62,44 +62,6 @@ build_www:
   only:
     variables:
       - $BUILD_JOBS !~ /^none$/
-  artifacts:
-    paths:
-      - output/
-
-build_ubuntu_bionic:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package ubuntu bionic
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_ubuntu_bionic_arm:
-  stage: build
-  allow_failure: false
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package ubuntu bionic
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
   artifacts:
     paths:
       - output/
@@ -211,44 +173,6 @@ build_ubuntu_noble_arm:
     - *prepare_artfacts
   script:
     - bash builder/build-package ubuntu noble;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_debian_buster:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package debian buster;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_debian_buster_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package debian buster;
   only:
     variables:
       - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
@@ -485,82 +409,6 @@ build_opensuse_15_arm:
     paths:
       - output/
 
-build_fedora_thirtyseven:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora thirtyseven;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_fedora_thirtyseven_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora thirtyseven;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_fedora_thirtyeight:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora thirtyeight;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_fedora_thirtyeight_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora thirtyeight;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
 build_fedora_thirtynine:
   stage: build
   allow_failure: true
@@ -675,43 +523,6 @@ build_fedora_fortyone_arm:
     paths:
       - output/
 
-build_alpine_317:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 317;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_alpine_317_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 317;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
 
 test:
   stage: test
