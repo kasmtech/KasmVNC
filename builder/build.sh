@@ -44,7 +44,10 @@ if [[ "${XORG_VER}" == 21* ]]; then
 else
   XORG_PATCH=$(echo "$XORG_VER" | grep -Po '^\d.\d+' | sed 's#\.##')
 fi
-wget --no-check-certificate https://www.x.org/archive/individual/xserver/xorg-server-${XORG_VER}.tar.gz
+
+if [ ! -f xorg-server-"${XORG_VER}".tar.gz ]; then
+  wget --no-check-certificate https://www.x.org/archive/individual/xserver/xorg-server-"${XORG_VER}".tar.gz
+fi
 
 #git clone https://kasmweb@bitbucket.org/kasmtech/kasmvnc.git
 #cd kasmvnc
@@ -59,7 +62,7 @@ sed -i -e '/find_package(FLTK/s@^@#@' \
 
 cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
   -DENABLE_GNUTLS:BOOL=OFF
-make -j5
+make -j"$(nproc)"
 
 tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.gz --strip-components=1
 
@@ -114,18 +117,22 @@ fi
 
 # remove array bounds errors for new versions of GCC
 find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
-make -j5
+make -j"$(nproc)"
 
 # modifications for the servertarball
 cd /src
 mkdir -p xorg.build/bin
 cd xorg.build/bin/
-ln -s /src/unix/xserver/hw/vnc/Xvnc Xvnc
+ln -sf /src/unix/xserver/hw/vnc/Xvnc Xvnc
 cd ..
 mkdir -p man/man1
 touch man/man1/Xserver.1
 cp /src/unix/xserver/hw/vnc/Xvnc.man man/man1/Xvnc.1
-mkdir lib
+
+if [ ! -d lib ]; then
+  mkdir lib
+fi
+
 cd lib
 if [ -d /usr/lib/x86_64-linux-gnu/dri ]; then
   ln -s /usr/lib/x86_64-linux-gnu/dri dri
