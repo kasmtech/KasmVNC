@@ -70,6 +70,8 @@ void fatal(char *msg)
     exit(1);
 }
 
+#define WS_MAX_BUF_SIZE 4096
+
 // 2022-05-18 19:51:26,810 [INFO] websocket 0: 71.62.44.0 172.12.15.5 - "GET /api/get_frame_stats?client=auto HTTP/1.1" 403 2
 static void weblog(const unsigned code, const unsigned websocket,
                    const uint8_t debug,
@@ -834,7 +836,7 @@ static uint8_t isValidIp(const char *str, const unsigned len) {
 static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[],
                        const char * const user, const char * const ip,
                        const char * const origip) {
-    char buf[4096];
+    char buf[WS_MAX_BUF_SIZE];
     char enc[PATH_MAX * 3 + 1];
     unsigned i;
 
@@ -895,7 +897,7 @@ static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[
 
 static void servefile(ws_ctx_t *ws_ctx, const char *in, const char * const user,
                       const char * const ip, const char * const origip) {
-    char buf[4096], path[4096], fullpath[4096];
+    char buf[WS_MAX_BUF_SIZE], path[PATH_MAX], fullpath[PATH_MAX];
 
     //fprintf(stderr, "http servefile input '%s'\n", in);
 
@@ -965,7 +967,7 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in, const char * const user,
     //fprintf(stderr, "http servefile output '%s'\n", buf);
 
     unsigned count;
-    while ((count = fread(buf, 1, 4096, f))) {
+    while ((count = fread(buf, 1, WS_MAX_BUF_SIZE, f))) {
         ws_send(ws_ctx, buf, count);
     }
     fclose(f);
@@ -1020,7 +1022,7 @@ notfound:
 }
 
 static void send403(ws_ctx_t *ws_ctx, const char * const origip, const char * const ip) {
-    char buf[4096];
+    char buf[WS_MAX_BUF_SIZE];
     sprintf(buf, "HTTP/1.1 403 Forbidden\r\n"
                  "Server: KasmVNC/4.0\r\n"
                  "Connection: close\r\n"
@@ -1034,7 +1036,7 @@ static void send403(ws_ctx_t *ws_ctx, const char * const origip, const char * co
 
 static void send400(ws_ctx_t *ws_ctx, const char * const origip, const char * const ip,
                     const char *info) {
-    char buf[4096];
+    char buf[WS_MAX_BUF_SIZE];
     sprintf(buf, "HTTP/1.1 400 Bad Request\r\n"
                  "Server: KasmVNC/4.0\r\n"
                  "Connection: close\r\n"
@@ -1048,7 +1050,7 @@ static void send400(ws_ctx_t *ws_ctx, const char * const origip, const char * co
 
 static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in, const char * const user,
                              const char * const ip, const char * const origip) {
-    char buf[4096], path[4096];
+    char buf[WS_MAX_BUF_SIZE], path[PATH_MAX];
     uint8_t ret = 0; // 0 = continue checking
 
     in += 5;
@@ -1237,7 +1239,7 @@ nope:
 
 static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const user,
                         const char * const ip, const char * const origip) {
-    char buf[4096], path[4096], args[4096] = "", origpath[4096];
+    char buf[WS_MAX_BUF_SIZE], path[PATH_MAX], args[PATH_MAX] = "", origpath[PATH_MAX];
     uint8_t ret = 0; // 0 = continue checking
 
     if (strncmp(in, "GET ", 4)) {
