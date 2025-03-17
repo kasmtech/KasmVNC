@@ -1689,7 +1689,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
             if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, ".."))
                 continue;
 
-            sprintf(path, "%s/%s", allpath, ent->d_name);
+            snprintf(path, PATH_MAX, "%s/%s", allpath, ent->d_name);
             struct stat st;
             if (lstat(path, &st))
                 continue;
