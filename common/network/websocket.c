@@ -1673,11 +1673,11 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
         }
 
         sprintf(buf, "HTTP/1.1 200 OK\r\n"
-                 "Server: KasmVNC/4.0\r\n"
-                 "Connection: close\r\n"
-                 "Content-type: text/json\r\n"
-                 "%s"
-                 "\r\n", extra_headers ? extra_headers : "");
+                "Server: KasmVNC/4.0\r\n"
+                "Connection: close\r\n"
+                "Content-type: text/json\r\n"
+                "%s"
+                "\r\n", extra_headers ? extra_headers : "");
         ws_send(ws_ctx, buf, strlen(buf));
         len = 15;
 
@@ -1711,23 +1711,35 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
                 strcpy(grp, grpt.gr_name);
             }
 
-            sprintf(buf, "%s{ \"filename\": \"%s\", "
-                         "\"date_modified\": %lu, "
-                         "\"date_created\": %lu, "
-                         "\"is_dir\": %s, "
-                         "\"size\": %lu, "
-                         "\"owner\": \"%s\", "
-                         "\"group\": \"%s\", "
-                         "\"perms\": \"%s\" }",
-                         sent ? ",\n" : "",
-                         ent->d_name,
-                         st.st_mtime,
-                         st.st_ctime,
-                         S_ISDIR(st.st_mode) ? "true" : "false",
-                         S_ISDIR(st.st_mode) ? 0 : st.st_size,
-                         own,
-                         grp,
-                         perms);
+            sprintf(buf, "%s{ \"filename\": \"", sent ? ",\n" : "");
+            ws_send(ws_ctx, buf, strlen(buf));
+            len += strlen(buf);
+
+            size_t max_out_length = 2 * strlen(ent->d_name) + 1; // worst case scenario
+            char *filename = malloc(max_out_length);
+
+            JSON_escape(ent->d_name, filename);
+            size_t size = strlen(filename);
+            ws_send(ws_ctx, filename, size);
+            len += size;
+
+            free(filename);
+
+            sprintf(buf, "\", "
+                    "\"date_modified\": %lu, "
+                    "\"date_created\": %lu, "
+                    "\"is_dir\": %s, "
+                    "\"size\": %lu, "
+                    "\"owner\": \"%s\", "
+                    "\"group\": \"%s\", "
+                    "\"perms\": \"%s\" }",
+                    st.st_mtime,
+                    st.st_ctime,
+                    S_ISDIR(st.st_mode) ? "true" : "false",
+                    S_ISDIR(st.st_mode) ? 0 : st.st_size,
+                    own,
+                    grp,
+                    perms);
             sent = 1;
             ws_send(ws_ctx, buf, strlen(buf));
             len += strlen(buf);
