@@ -1,6 +1,6 @@
 # KasmVNC - Linux Web Remote Desktop
 
-<a href="https://kasmweb.com"><img src="https://kasm-static-content.s3.amazonaws.com/logo_kasm.png" width="300"><a/>
+<a href="https://kasmweb.com"><img src="https://5856039.fs1.hubspotusercontent-na1.net/hubfs/5856039/kasmvnc_logo.png" width="300"><a/>
 
 KasmVNC provides remote web-based access to a Desktop or application. While VNC is in the name, KasmVNC differs from other VNC variants such as TigerVNC, RealVNC, and TurboVNC. KasmVNC has broken from the RFB specification which defines VNC, in order to support modern technologies and increase security. KasmVNC is accessed by users from any modern browser and does not support legacy VNC viewer applications. KasmVNC uses a modern YAML based configuration at the server and user level, allowing for ease of management.
 
@@ -10,7 +10,7 @@ KasmVNC provides remote web-based access to a Desktop or application. While VNC 
 
 **Do not use the README from the master branch**, unless you are compiling KasmVNC yourself from the tip of master. Use the documentation for your specific release.
 
-  - [KasmVNC 1.0.0 Documentation](https://www.kasmweb.com/kasmvnc/docs/1.0.0/index.html)
+  - [KasmVNC Documentation](https://www.kasmweb.com/kasmvnc/docs/latest/index.html)
 
   For beta releases prior to version 1.0.0, use the README in this github project on the tagged commit for that release.
 
