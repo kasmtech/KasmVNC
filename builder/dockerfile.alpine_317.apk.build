@@ -1,4 +1,4 @@
-FROM alpine:3.21
+FROM alpine:3.17
 
 RUN apk add shadow bash
 RUN apk add abuild sudo less

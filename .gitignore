@@ -28,3 +28,7 @@ debian/kasmvncserver.substvars
 debian/kasmvncserver/
 .pc
 .vscode/
+
+alpine/.abuild/kasmvnc_signing_key.rsa
+alpine/.abuild/kasmvnc_signing_key.rsa.pub
+alpine/packages/
