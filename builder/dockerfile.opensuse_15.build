@@ -14,7 +14,7 @@ RUN zypper install -ny \
   fonttosfnt \
   font-util \
   gcc \
-  gcc-c++ \
+  gcc14-c++ \
   giflib-devel \
   git \
   gzip \
@@ -44,6 +44,8 @@ RUN zypper install -ny \
   xorg-x11-server-sdk \
   xorg-x11-util-devel \
   zlib-devel
+
+RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-14 100
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
