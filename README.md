@@ -46,6 +46,7 @@ sudo dnf localinstall ./kasmvncserver_*.rpm
 sudo usermod -a -G kasmvnc-cert $USER
 ```
 
+
 ## Getting Started
 
 The following examples provide basic usage of KasmVNC with the tools provided. For full documentation on all the utilities and the runtime environment, see our [KasmVNC Documentation](https://www.kasmweb.com/kasmvnc/docs/latest/index.html)
@@ -68,6 +69,21 @@ vncserver -list
 
 # Kill the VNC session with display ID :2
 vncserver -kill :2
+```
+
+### Optional systemd auto-start on boot
+```sh
+# Optionally use systemd to start KasmVNC on boot.
+sudo reboot # Needed for systemd to pick up $USER's ssl-cert or kasmvnc-cert group
+systemctl --user enable kasmvncserver@:1 # :1 is Xorg DISPLAY number.
+systemctl --user start kasmvncserver@:1
+
+# You can run multiple KasmVNC instances via systemd by passing a different
+# DISPLAY number:
+# systemctl --user enable kasmvncserver@:2
+# systemctl --user start kasmvncserver@:2
+# systemctl --user enable kasmvncserver@:3
+# systemctl --user start kasmvncserver@:3
 ```
 
 ## Configuration
