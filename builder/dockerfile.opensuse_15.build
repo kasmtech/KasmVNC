@@ -13,7 +13,7 @@ RUN zypper install -ny \
   ffmpeg-4-libavcodec-devel \
   fonttosfnt \
   font-util \
-  gcc \
+  gcc14 \
   gcc14-c++ \
   giflib-devel \
   git \

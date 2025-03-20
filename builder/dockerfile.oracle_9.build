@@ -15,6 +15,7 @@ RUN \
     dnf-plugins-core \
     gcc \
     gcc-c++ \
+    gcc-toolset-14 \
     git \
     gnutls-devel \
     libjpeg-turbo-devel \
@@ -47,7 +48,10 @@ RUN dnf install -y \
   xorg-x11-xtrans-devel \
   libXrandr-devel \
   libXtst-devel \
-  libXcursor-devel
+  libXcursor-devel \
+  libSM-devel
+
+RUN scl enable gcc-toolset-14 bash
 
 
 ENV SCRIPTS_DIR=/tmp/scripts
