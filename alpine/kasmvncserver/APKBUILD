@@ -4,7 +4,7 @@
 # Maintainer: Kasm Technologies LLC <info@kasmweb.com>
 pkgname=kasmvncserver
 pkgver=1.3.4
-pkgver=0
+pkgrel=0
 pkgdesc="KasmVNC provides remote web-based access to a Desktop or application."
 url="https://github.com/kasmtech/KasmVNC"
 arch="x86_64 aarch64"
