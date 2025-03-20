@@ -21,7 +21,7 @@ include(CheckCSourceRuns)
 
 include(CMakeMacroLibtoolFile)
 
-project(kasmvnc)
+project(kasmvnc LANGUAGES C CXX)
 set(VERSION 0.9)
 
 # The RC version must always be four comma-separated numbers
