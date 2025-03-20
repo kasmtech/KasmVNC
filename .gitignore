@@ -4,6 +4,7 @@
 *.lo
 .deps
 .libs
+*.swp
 
 CMakeFiles
 CMakeCache.txt
@@ -11,6 +12,10 @@ CMakeCache.txt
 Makefile
 Makefile.in
 config.h
+
+libjpeg-turbo/
+xorg.build/
+install_manifest.txt
 
 builder/build/
 builder/www/
@@ -23,3 +28,7 @@ debian/kasmvncserver.substvars
 debian/kasmvncserver/
 .pc
 .vscode/
+
+alpine/.abuild/kasmvnc_signing_key.rsa
+alpine/.abuild/kasmvnc_signing_key.rsa.pub
+alpine/packages/

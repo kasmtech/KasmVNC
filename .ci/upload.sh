@@ -3,7 +3,7 @@
 is_kasmvnc() {
   local package="$1";
 
-  echo "$package" | grep -qP 'kasmvncserver(_|-)[0-9]'
+  echo "$package" | grep -qP 'kasmvncserver(_|-)(doc-)?[0-9]'
 }
 
 detect_deb_package_arch() {
@@ -27,6 +27,13 @@ fetch_xvnc_md5sum() {
   cat DEBIAN/md5sums | grep bin/Xkasmvnc | cut -d' ' -f 1
 }
 
+detect_alpine_doc_package() {
+  is_alpine_doc_package=
+  if [[ $package =~ kasmvncserver-doc ]]; then
+    is_alpine_doc_package=1
+  fi
+}
+
 function prepare_upload_filename() {
   local package="$1";
 
@@ -44,11 +51,13 @@ function prepare_upload_filename() {
     REVISION="_${REVISION}"
   fi
 
+  detect_alpine_doc_package
+
   if [ -n "$RELEASE_BRANCH" ]; then
-    export upload_filename="kasmvncserver_${PACKAGE_OS}_${RELEASE_VERSION}${REVISION}_${OS_ARCH}.${PACKAGE_FORMAT}";
+    export upload_filename="kasmvncserver${is_alpine_doc_package:+_doc}_${PACKAGE_OS}_${RELEASE_VERSION}${REVISION}_${OS_ARCH}.${PACKAGE_FORMAT}";
   else
     export SANITIZED_BRANCH="$(echo $CI_COMMIT_REF_NAME | sed 's/\//_/g')";
-    export upload_filename="kasmvncserver_${PACKAGE_OS}_${RELEASE_VERSION}_${SANITIZED_BRANCH}_${CI_COMMIT_SHA:0:6}${REVISION}_${OS_ARCH}.${PACKAGE_FORMAT}";
+    export upload_filename="kasmvncserver${is_alpine_doc_package:+_doc}_${PACKAGE_OS}_${RELEASE_VERSION}_${SANITIZED_BRANCH}_${CI_COMMIT_SHA:0:6}${REVISION}_${OS_ARCH}.${PACKAGE_FORMAT}";
   fi
 };
 

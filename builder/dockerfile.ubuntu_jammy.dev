@@ -1,0 +1,25 @@
+FROM kasmweb/ubuntu-jammy-desktop:develop
+
+ENV KASMVNC_BUILD_OS ubuntu
+ENV KASMVNC_BUILD_OS_CODENAME jammy
+ENV XORG_VER 21.1.3
+ENV XORG_PATCH 21
+ENV DEBIAN_FRONTEND noninteractive
+
+EXPOSE 6901
+
+USER root
+
+RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list && \
+    apt update && \
+    apt install -y socat sudo libxfont-dev cmake git libgnutls28-dev vim wget tightvncserver curl libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev pkg-config libfreetype6-dev libxtst-dev autoconf automake libtool xutils-dev libpixman-1-dev libxshmfence-dev libxcvt-dev libxkbfile-dev x11proto-dev libgbm-dev inotify-tools && \
+    echo "kasm-user  ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+RUN apt install -y nodejs
+   
+USER 1000
+
+WORKDIR /src
+
+ENTRYPOINT /bin/bash

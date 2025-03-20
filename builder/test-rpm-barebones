@@ -5,8 +5,8 @@ set -e
 cd "$(dirname "$0")"
 . ./process_test_options.sh
 . ./common.sh
-os="${1:-centos}"
-os_codename="${2:-core}"
+os="${1:-oracle}"
+os_codename="${2:-8}"
 
 docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os}_${os_codename}" \
   -t kasmvnctester_barebones_${os}:$os_codename \

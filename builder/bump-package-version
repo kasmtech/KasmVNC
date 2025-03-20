@@ -7,6 +7,11 @@ update_version_to_meet_packaging_standards() {
     sed -e 's/\([0-9]\)-\([a-zA-Z]\)/\1~\2/')
 }
 
+bump_apk() {
+  builder/bump-package-version-apk "$new_version"
+}
+
+
 bump_rpm() {
   builder/bump-package-version-rpm "$new_version"
 }
@@ -33,3 +38,4 @@ update_version_to_meet_packaging_standards
 bump_xvnc_binary
 bump_rpm
 bump_deb
+bump_apk

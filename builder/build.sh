@@ -9,13 +9,6 @@ detect_quilt() {
   fi
 }
 
-ensure_crashpad_can_fetch_line_number_by_address() {
-  if [ ! -f /etc/centos-release ]; then
-    export LDFLAGS="$LDFLAGS -no-pie"
-  fi
-}
-
-
 fail_on_gcc_12() {
   if [[ -n "$CC" && -n "$CXX" ]]; then
     return;
@@ -89,11 +82,6 @@ autoreconf -i
 # The distro paths start after prefix and end with the font path,
 # everything after that is based on BUILDING.txt to remove unneeded
 # components.
-ensure_crashpad_can_fetch_line_number_by_address
-# Centos7 is too old for dri3
-if [ ! "${KASMVNC_BUILD_OS}" == "centos" ]; then
-  CONFIG_OPTIONS="--enable-dri3"
-fi
 # remove gl check for opensuse
 if [ "${KASMVNC_BUILD_OS}" == "opensuse" ] || ([ "${KASMVNC_BUILD_OS}" == "oracle" ] && [ "${KASMVNC_BUILD_OS_CODENAME}" == 9 ]); then
   sed -i 's/LIBGL="gl >= 7.1.0"/LIBGL="gl >= 1.1"/g' configure
