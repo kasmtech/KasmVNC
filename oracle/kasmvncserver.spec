@@ -83,7 +83,10 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 
 %changelog
 * Thu Mar 20 2025 KasmTech <info@kasmweb.com> - 1.3.4-1
-- Upstream release
+- Add configuration key network.udp.payload_size.
+- Remove support for distro versions that reached end-of-life.
+- Add missing dependency on hostname.
+- Remove webpack to reduce security vulnerabilities.
 * Fri Oct 25 2024 KasmTech <info@kasmweb.com> - 1.3.3-1
 - Allow disabling IP blacklist
 - Downloads API for detailed file downloads information
