@@ -47,11 +47,6 @@ RUN zypper install -ny \
 
 RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-14 100
 
-ENV SCRIPTS_DIR=/tmp/scripts
-COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-webp
-RUN $SCRIPTS_DIR/build-libjpeg-turbo
-
 RUN useradd -u 1000 docker && \
   groupadd -g 1000 docker && \
   usermod -a -G docker docker
@@ -69,8 +64,11 @@ RUN ARCH=$(arch) && \
   (echo y; echo n) | bash cmake.sh --prefix=/usr/local --skip-license && \
   rm cmake.sh
 
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-webp && $SCRIPTS_DIR/build-libjpeg-turbo
+
 COPY --chown=docker:docker . /src/
 
-
 USER docker
-ENTRYPOINT ["/src/builder/build.sh"]
+ENTRYPOINT ["bash", "-l", "-c", "/src/builder/build.sh"]

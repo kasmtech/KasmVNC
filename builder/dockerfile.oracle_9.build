@@ -51,17 +51,13 @@ RUN dnf install -y \
   libXcursor-devel \
   libSM-devel
 
-RUN scl enable gcc-toolset-14 bash
-
-
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-webp
-RUN $SCRIPTS_DIR/build-libjpeg-turbo
-
-RUN useradd -m docker && echo "docker:docker" | chpasswd
+RUN echo "source /opt/rh/gcc-toolset-14/enable" > /etc/profile.d/gcc-toolset.sh && \
+  $SCRIPTS_DIR/build-webp && $SCRIPTS_DIR/build-libjpeg-turbo && \
+  useradd -m docker && echo "docker:docker" | chpasswd
 
 COPY --chown=docker:docker . /src/
 
 USER docker
-ENTRYPOINT ["/src/builder/build.sh"]
+ENTRYPOINT ["bash", "-l", "-c", "/src/builder/build.sh"]
