@@ -4,6 +4,7 @@ kasmvnc (1.3.4-1) unstable; urgency=medium
   * Remove support for distro versions that reached end-of-life.
   * Add missing dependency on libdatetime-perl.
   * Remove webpack to reduce security vulnerabilities.
+  * Special characters in filenames are now properly escaped, preventing invalid JSON.
 
  -- Kasm Technologies LLC <info@kasmweb.com>  Thu, 20 Mar 2025 03:21:46 +0000
 
