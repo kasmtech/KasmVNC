@@ -26,27 +26,42 @@
 #include <rfb/TightWEBPEncoder.h>
 #include <rfb/util.h>
 #include <sys/time.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstdlib>
+#include <chrono>
+#include <tinyxml2.h>
 
 using namespace rfb;
 static LogWriter vlog("SelfBench");
 
 static const PixelFormat pfRGBX(32, 24, false, true, 255, 255, 255, 0, 8, 16);
 
-#define RUNS 64
+static constexpr uint32_t RUNS = 64;
 
-#define W 1600
-#define H 1200
+static constexpr uint32_t WIDTH = 1600;
+static constexpr uint32_t HEIGHT = 1200;
+
+template <typename F>
+constexpr bool has_no_args = std::is_invocable_v<F>;
+
+template <typename F, typename T>
+constexpr bool has_one_arg = std::is_invocable_v<F, T>;
 
 void SelfBench() {
+	tinyxml2::XMLDocument doc;
 
-	unsigned i, runs;
-	struct timeval start;
+	auto *root = doc.NewElement("testsuites");
+	root->SetAttribute("name", "Benchmarking");
 
-	ManagedPixelBuffer f1(pfRGBX, W, H);
-	ManagedPixelBuffer f2(pfRGBX, W, H);
-	ManagedPixelBuffer screen(pfRGBX, W, H);
+	auto *test_suits = doc.InsertFirstChild(root);
+
+	auto *test_suit = doc.NewElement("testsuit");
+	test_suit->SetAttribute("name", "SelfBench");
+	test_suits->InsertEndChild(test_suit);
+
+	ManagedPixelBuffer f1(pfRGBX, WIDTH, HEIGHT);
+	ManagedPixelBuffer f2(pfRGBX, WIDTH, HEIGHT);
+	ManagedPixelBuffer screen(pfRGBX, WIDTH, HEIGHT);
 
 	int stride;
 	rdr::U8 *f1ptr = f1.getBufferRW(f1.getRect(), &stride);
@@ -56,7 +71,7 @@ void SelfBench() {
 	rdr::U8 * const f1orig = f1ptr;
 	rdr::U8 * const f2orig = f2ptr;
 
-	for (i = 0; i < W * H * 4; i += 4) {
+	for (uint32_t i = 0; i < WIDTH * HEIGHT * 4; i += 4) {
 		f1ptr[0] = rand();
 		f1ptr[1] = rand();
 		f1ptr[2] = rand();
@@ -74,124 +89,105 @@ void SelfBench() {
 	// Encoding
 	std::vector<uint8_t> vec;
 
-	TightJPEGEncoder jpeg(NULL);
+	TightJPEGEncoder jpeg(nullptr);
 
-	gettimeofday(&start, NULL);
-	runs = RUNS;
-	for (i = 0; i < runs; i++) {
+	auto benchmark = [&doc, &test_suit](const char *name, uint32_t runs, auto func) {
+		auto now = std::chrono::high_resolution_clock::now();
+		for (uint32_t i = 0; i < runs; i++) {
+			func(i);
+		}
+
+		auto value = elapsedMs(now);
+		vlog.info("%s took %lu ms (%u runs)", name, value, RUNS);
+		auto *test_case = doc.NewElement("testcase");
+		test_case->SetAttribute("name", name);
+		test_case->SetAttribute("time", value);
+		test_case->SetAttribute("runs", RUNS);
+		test_suit->InsertEndChild(test_case);
+	};
+
+	benchmark("Jpeg compression at quality 8", RUNS, [&jpeg, &vec, &f1](uint32_t) {
 		jpeg.compressOnly(&f1, 8, vec, false);
-	}
-	vlog.info("Jpeg compression at quality 8 took %u ms (%u runs)", msSince(&start), runs);
+	});
 
-	gettimeofday(&start, NULL);
-	runs = RUNS;
-	for (i = 0; i < runs; i++) {
+	benchmark("Jpeg compression at quality 4", RUNS, [&jpeg, &vec, &f1](uint32_t) {
 		jpeg.compressOnly(&f1, 4, vec, false);
-	}
-	vlog.info("Jpeg compression at quality 4 took %u ms (%u runs)", msSince(&start), runs);
+	});
 
+	TightWEBPEncoder webp(nullptr);
 
-	TightWEBPEncoder webp(NULL);
-
-	gettimeofday(&start, NULL);
-	runs = RUNS / 8;
-	for (i = 0; i < runs; i++) {
+	benchmark("Webp compression at quality 8", RUNS / 8, [&webp,&f1, &vec](uint32_t) {
 		webp.compressOnly(&f1, 8, vec, false);
-	}
-	vlog.info("Webp compression at quality 8 took %u ms (%u runs)", msSince(&start), runs);
+	});
 
-	gettimeofday(&start, NULL);
-	runs = RUNS / 4;
-	for (i = 0; i < runs; i++) {
+	benchmark("Webp compression at quality 4", RUNS / 4, [&webp, &f1, &vec](uint32_t) {
 		webp.compressOnly(&f1, 4, vec, false);
-	}
-	vlog.info("Webp compression at quality 4 took %u ms (%u runs)", msSince(&start), runs);
+	});
 
 	// Scaling
-	gettimeofday(&start, NULL);
-	runs = RUNS;
-	for (i = 0; i < runs; i++) {
-		PixelBuffer *pb = nearestScale(&f1, W * 0.8, H * 0.8, 0.8);
+	benchmark("Nearest scaling to 80%", RUNS, [&f1](uint32_t) {
+		PixelBuffer *pb = nearestScale(&f1, WIDTH * 0.8, HEIGHT * 0.8, 0.8);
 		delete pb;
-	}
-	vlog.info("Nearest scaling to 80%% took %u ms (%u runs)", msSince(&start), runs);
+	});
 
-	gettimeofday(&start, NULL);
-	runs = RUNS;
-	for (i = 0; i < runs; i++) {
-		PixelBuffer *pb = nearestScale(&f1, W * 0.4, H * 0.4, 0.4);
+	benchmark("Nearest scaling to 40%", RUNS, [&f1](uint32_t) {
+		PixelBuffer *pb = nearestScale(&f1, WIDTH * 0.4, HEIGHT * 0.4, 0.4);
 		delete pb;
-	}
-	vlog.info("Nearest scaling to 40%% took %u ms (%u runs)", msSince(&start), runs);
+	});
 
-	gettimeofday(&start, NULL);
-	runs = RUNS;
-	for (i = 0; i < runs; i++) {
-		PixelBuffer *pb = bilinearScale(&f1, W * 0.8, H * 0.8, 0.8);
+	benchmark("Bilinear scaling to 80%", RUNS, [&f1](uint32_t) {
+		PixelBuffer *pb = bilinearScale(&f1, WIDTH * 0.8, HEIGHT * 0.8, 0.8);
 		delete pb;
-	}
-	vlog.info("Bilinear scaling to 80%% took %u ms (%u runs)", msSince(&start), runs);
+	});
 
-	gettimeofday(&start, NULL);
-	runs = RUNS;
-	for (i = 0; i < runs; i++) {
-		PixelBuffer *pb = bilinearScale(&f1, W * 0.4, H * 0.4, 0.4);
+	benchmark("Bilinear scaling to 40%", RUNS, [&f1](uint32_t) {
+		PixelBuffer *pb = bilinearScale(&f1, WIDTH * 0.4, HEIGHT * 0.4, 0.4);
 		delete pb;
-	}
-	vlog.info("Bilinear scaling to 40%% took %u ms (%u runs)", msSince(&start), runs);
+	});
 
-	gettimeofday(&start, NULL);
-	runs = RUNS;
-	for (i = 0; i < runs; i++) {
-		PixelBuffer *pb = progressiveBilinearScale(&f1, W * 0.8, H * 0.8, 0.8);
-		delete pb;
-	}
-	vlog.info("Progressive bilinear scaling to 80%% took %u ms (%u runs)", msSince(&start), runs);
 
-	gettimeofday(&start, NULL);
-	runs = RUNS;
-	for (i = 0; i < runs; i++) {
-		PixelBuffer *pb = progressiveBilinearScale(&f1, W * 0.4, H * 0.4, 0.4);
+	benchmark("Progressive bilinear scaling to 80%", RUNS, [&f1](uint32_t) {
+		PixelBuffer *pb = progressiveBilinearScale(&f1, WIDTH * 0.8, HEIGHT * 0.8, 0.8);
 		delete pb;
-	}
-	vlog.info("Progressive bilinear scaling to 40%% took %u ms (%u runs)", msSince(&start), runs);
+	});
+	benchmark("Progressive bilinear scaling to 40%", RUNS, [&f1](uint32_t) {
+		PixelBuffer *pb = progressiveBilinearScale(&f1, WIDTH * 0.4, HEIGHT * 0.4, 0.4);
+		delete pb;
+	});
 
 	// Analysis
-	ComparingUpdateTracker *comparer = new ComparingUpdateTracker(&screen);
+	auto *comparer = new ComparingUpdateTracker(&screen);
 	Region cursorReg;
 
 	Server::detectScrolling.setParam(false);
 	Server::detectHorizontal.setParam(false);
 
-	gettimeofday(&start, NULL);
-	runs = RUNS;
-	for (i = 0; i < runs; i++) {
-		memcpy(screenptr, i % 2 ? f1orig : f2orig, W * H * 4);
-		comparer->compare(true, cursorReg);
-	}
-	vlog.info("Analysis took %u ms (%u runs) (incl. memcpy overhead)", msSince(&start), runs);
+	benchmark("Analysis (incl. memcpy overhead)", RUNS,
+	          [&screenptr, &comparer, &cursorReg, f1orig, f2orig](uint32_t i) {
+		          memcpy(screenptr, i % 2 ? f1orig : f2orig, WIDTH * HEIGHT * 4);
+		          comparer->compare(true, cursorReg);
+	          });
 
 	Server::detectScrolling.setParam(true);
 
-	gettimeofday(&start, NULL);
-	runs = RUNS;
-	for (i = 0; i < runs; i++) {
-		memcpy(screenptr, i % 2 ? f1orig : f2orig, W * H * 4);
-		comparer->compare(false, cursorReg);
-	}
-	vlog.info("Analysis w/ scroll detection took %u ms (%u runs) (incl. memcpy overhead)", msSince(&start), runs);
+	benchmark("Analysis w/ scroll detection (incl. memcpy overhead)", RUNS,
+	          [&screenptr, &comparer, &cursorReg, f1orig, f2orig](uint32_t i) {
+		          memcpy(screenptr, i % 2 ? f1orig : f2orig, WIDTH * HEIGHT * 4);
+		          comparer->compare(false, cursorReg);
+	          });
 
 	Server::detectHorizontal.setParam(true);
 	delete comparer;
 	comparer = new ComparingUpdateTracker(&screen);
 
-	gettimeofday(&start, NULL);
-	runs = RUNS / 2;
-	for (i = 0; i < runs; i++) {
-		memcpy(screenptr, i % 2 ? f1orig : f2orig, W * H * 4);
-		comparer->compare(false, cursorReg);
-	}
-	vlog.info("Analysis w/ horizontal scroll detection took %u ms (%u runs) (incl. memcpy overhead)", msSince(&start), runs);
+	benchmark("Analysis w/ horizontal scroll detection (incl. memcpy overhead)", RUNS / 2,
+	          [&screenptr, &comparer, &cursorReg, f1orig, f2orig](uint32_t i) {
+		          memcpy(screenptr, i % 2 ? f1orig : f2orig, WIDTH * HEIGHT * 4);
+		          comparer->compare(false, cursorReg);
+	          });
 
+	vlog.info("Before");
+	doc.SaveFile("SelfBench.xml");
+	vlog.info("after");
 	exit(0);
 }
