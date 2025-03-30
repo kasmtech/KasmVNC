@@ -41,12 +41,6 @@ static constexpr uint32_t RUNS = 64;
 static constexpr uint32_t WIDTH = 1600;
 static constexpr uint32_t HEIGHT = 1200;
 
-template <typename F>
-constexpr bool has_no_args = std::is_invocable_v<F>;
-
-template <typename F, typename T>
-constexpr bool has_one_arg = std::is_invocable_v<F, T>;
-
 void SelfBench() {
 	tinyxml2::XMLDocument doc;
 
@@ -98,11 +92,11 @@ void SelfBench() {
 		}
 
 		auto value = elapsedMs(now);
-		vlog.info("%s took %lu ms (%u runs)", name, value, RUNS);
+		vlog.info("%s took %lu ms (%u runs)", name, value, runs);
 		auto *test_case = doc.NewElement("testcase");
 		test_case->SetAttribute("name", name);
 		test_case->SetAttribute("time", value);
-		test_case->SetAttribute("runs", RUNS);
+		test_case->SetAttribute("runs", runs);
 		test_suit->InsertEndChild(test_case);
 	};
 
@@ -186,8 +180,7 @@ void SelfBench() {
 		          comparer->compare(false, cursorReg);
 	          });
 
-	vlog.info("Before");
 	doc.SaveFile("SelfBench.xml");
-	vlog.info("after");
+
 	exit(0);
 }
