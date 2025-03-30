@@ -74,7 +74,6 @@ set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -UNDEBUG")
 
 # Make sure we get a sane C version
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
-set(CMAKE_CXX_STANDARD 20)
 
 # Enable OpenMP
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
@@ -227,6 +226,7 @@ include_directories(${CMAKE_BINARY_DIR})
 
 include(cmake/StaticBuild.cmake)
 
+add_subdirectory(third_party)
 add_subdirectory(common)
 
 if(WIN32)

@@ -1,0 +1,5 @@
+add_library(tinyxml2_objs OBJECT tinyxml2.cpp)
+if (NOT WIN32)
+    set_target_properties(tinyxml2_objs PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif ()
+target_include_directories(tinyxml2_objs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
