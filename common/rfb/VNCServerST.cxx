@@ -129,15 +129,15 @@ static void parseRegionPart(const bool percents, rdr::U16 &pcdest, int &dest,
   *inptr = ptr;
 }
 
-VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
+VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, bool a)
   : blHosts(&blacklist), desktop(desktop_), desktopStarted(false),
-    blockCounter(0), pb(0), blackedpb(0), ledState(ledUnknown),
-    name(strDup(name_)), pointerClient(0), clipboardClient(0),
-    comparer(0), cursor(new Cursor(0, 0, Point(), NULL)),
+    blockCounter(0), pb(nullptr), blackedpb(nullptr), ledState(ledUnknown),
+    name(strDup(name_)), pointerClient(nullptr), clipboardClient(nullptr),
+    comparer(nullptr), cursor(new Cursor(0, 0, Point(), nullptr)),
     renderedCursorInvalid(false),
-    queryConnectionHandler(0), keyRemapper(&KeyRemapper::defInstance),
+    queryConnectionHandler(nullptr), keyRemapper(&KeyRemapper::defInstance),
     lastConnectionTime(0), disableclients(false),
-    frameTimer(this), apimessager(NULL), trackingFrameStats(0),
+    frameTimer(this), apimessager(nullptr), trackingFrameStats(0),
     clipboardId(0), sendWatermark(false)
 {
   lastUserInputTime = lastDisconnectTime = time(0);

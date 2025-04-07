@@ -94,6 +94,13 @@ void benchmark(const std::string &path) {
     rgb_frame->width = codec_ctx->width;
     rgb_frame->height = codec_ctx->height;
 
+    static const rfb::PixelFormat pf{32, 24, false, true, 0xFF, 0xFF, 0xFF, 0, 8, 16};
+    const rfb::Rect rect{0, 0, rgb_frame->width, rgb_frame->height};
+
+    rfb::ManagedPixelBuffer pb{pf, rect.width(), rect.height()};
+
+    server->setPixelBuffer(&pb);
+
     if (av_frame_get_buffer(rgb_frame, 0) != 0)
         throw std::runtime_error("Could not allocate frame data");
 
@@ -105,8 +112,8 @@ void benchmark(const std::string &path) {
                     sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height,
                               rgb_frame->data, rgb_frame->linesize);
 
-                    // Save as BMP
-                    // saveFrameAsBMP(rgb_frame, ++frameNumber);
+
+                    pb.imageRect(rect, rgb_frame->data[0], rect.width());
                 }
             }
         }
