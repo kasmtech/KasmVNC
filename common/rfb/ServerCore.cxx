@@ -117,6 +117,10 @@ rfb::BoolParameter rfb::Server::selfBench
 ("SelfBench",
  "Run self-benchmarks and exit.",
  false);
+rfb::BoolParameter rfb::Server::benchmark (
+    "Benchmark",
+    "Run extended benchmarks and exit.",
+    false);
 rfb::IntParameter rfb::Server::dynamicQualityMin
 ("DynamicQualityMin",
  "The minimum dynamic JPEG quality, 0 = low, 9 = high",

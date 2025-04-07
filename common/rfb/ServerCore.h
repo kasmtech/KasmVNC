@@ -28,73 +28,70 @@
 #include <rfb/util.h>
 
 namespace rfb {
-
-  class Server {
-  public:
-
-    static IntParameter idleTimeout;
-    static IntParameter maxDisconnectionTime;
-    static IntParameter maxConnectionTime;
-    static IntParameter maxIdleTime;
-    static IntParameter clientWaitTimeMillis;
-    static IntParameter compareFB;
-    static IntParameter frameRate;
-    static IntParameter dynamicQualityMin;
-    static IntParameter dynamicQualityMax;
-    static IntParameter treatLossless;
-    static IntParameter scrollDetectLimit;
-    static IntParameter rectThreads;
-    static IntParameter DLP_ClipSendMax;
-    static IntParameter DLP_ClipAcceptMax;
-    static IntParameter DLP_ClipDelay;
-    static IntParameter DLP_KeyRateLimit;
-    static IntParameter DLP_WatermarkRepeatSpace;
-    static IntParameter DLP_WatermarkFontSize;
-    static IntParameter DLP_WatermarkTimeOffset;
-    static IntParameter DLP_WatermarkTimeOffsetMinutes;
-    static IntParameter DLP_WatermarkTextAngle;
-    static StringParameter DLP_ClipLog;
-    static StringParameter DLP_Region;
-    static StringParameter DLP_Clip_Types;
-    static StringParameter DLP_WatermarkImage;
-    static StringParameter DLP_WatermarkLocation;
-    static StringParameter DLP_WatermarkTint;
-    static StringParameter DLP_WatermarkText;
-    static StringParameter DLP_WatermarkFont;
-    static BoolParameter DLP_RegionAllowClick;
-    static BoolParameter DLP_RegionAllowRelease;
-    static IntParameter jpegVideoQuality;
-    static IntParameter webpVideoQuality;
-    static StringParameter maxVideoResolution;
-    static IntParameter videoTime;
-    static IntParameter videoOutTime;
-    static IntParameter videoArea;
-    static IntParameter videoScaling;
-    static IntParameter udpFullFrameFrequency;
-    static IntParameter udpPort;
-    static StringParameter kasmPasswordFile;
-    static StringParameter publicIP;
-    static StringParameter stunServer;
-    static BoolParameter printVideoArea;
-    static BoolParameter protocol3_3;
-    static BoolParameter alwaysShared;
-    static BoolParameter neverShared;
-    static BoolParameter disconnectClients;
-    static BoolParameter acceptKeyEvents;
-    static BoolParameter acceptPointerEvents;
-    static BoolParameter acceptCutText;
-    static BoolParameter sendCutText;
-    static BoolParameter acceptSetDesktopSize;
-    static BoolParameter queryConnect;
-    static BoolParameter detectScrolling;
-    static BoolParameter detectHorizontal;
-    static BoolParameter ignoreClientSettingsKasm;
-    static BoolParameter selfBench;
-    static PresetParameter preferBandwidth;
-    static IntParameter webpEncodingTime;
-  };
-
+    class Server {
+    public:
+        static IntParameter idleTimeout;
+        static IntParameter maxDisconnectionTime;
+        static IntParameter maxConnectionTime;
+        static IntParameter maxIdleTime;
+        static IntParameter clientWaitTimeMillis;
+        static IntParameter compareFB;
+        static IntParameter frameRate;
+        static IntParameter dynamicQualityMin;
+        static IntParameter dynamicQualityMax;
+        static IntParameter treatLossless;
+        static IntParameter scrollDetectLimit;
+        static IntParameter rectThreads;
+        static IntParameter DLP_ClipSendMax;
+        static IntParameter DLP_ClipAcceptMax;
+        static IntParameter DLP_ClipDelay;
+        static IntParameter DLP_KeyRateLimit;
+        static IntParameter DLP_WatermarkRepeatSpace;
+        static IntParameter DLP_WatermarkFontSize;
+        static IntParameter DLP_WatermarkTimeOffset;
+        static IntParameter DLP_WatermarkTimeOffsetMinutes;
+        static IntParameter DLP_WatermarkTextAngle;
+        static StringParameter DLP_ClipLog;
+        static StringParameter DLP_Region;
+        static StringParameter DLP_Clip_Types;
+        static StringParameter DLP_WatermarkImage;
+        static StringParameter DLP_WatermarkLocation;
+        static StringParameter DLP_WatermarkTint;
+        static StringParameter DLP_WatermarkText;
+        static StringParameter DLP_WatermarkFont;
+        static BoolParameter DLP_RegionAllowClick;
+        static BoolParameter DLP_RegionAllowRelease;
+        static IntParameter jpegVideoQuality;
+        static IntParameter webpVideoQuality;
+        static StringParameter maxVideoResolution;
+        static IntParameter videoTime;
+        static IntParameter videoOutTime;
+        static IntParameter videoArea;
+        static IntParameter videoScaling;
+        static IntParameter udpFullFrameFrequency;
+        static IntParameter udpPort;
+        static StringParameter kasmPasswordFile;
+        static StringParameter publicIP;
+        static StringParameter stunServer;
+        static BoolParameter printVideoArea;
+        static BoolParameter protocol3_3;
+        static BoolParameter alwaysShared;
+        static BoolParameter neverShared;
+        static BoolParameter disconnectClients;
+        static BoolParameter acceptKeyEvents;
+        static BoolParameter acceptPointerEvents;
+        static BoolParameter acceptCutText;
+        static BoolParameter sendCutText;
+        static BoolParameter acceptSetDesktopSize;
+        static BoolParameter queryConnect;
+        static BoolParameter detectScrolling;
+        static BoolParameter detectHorizontal;
+        static BoolParameter ignoreClientSettingsKasm;
+        static BoolParameter selfBench;
+        static BoolParameter benchmark;
+        static PresetParameter preferBandwidth;
+        static IntParameter webpEncodingTime;
+    };
 };
 
 #endif // __RFB_SERVER_CORE_H__
-
