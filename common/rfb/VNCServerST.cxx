@@ -73,6 +73,7 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <wordexp.h>
+#include <filesystem>
 
 using namespace rfb;
 
@@ -81,6 +82,8 @@ LogWriter VNCServerST::connectionsLog("Connections");
 EncCache VNCServerST::encCache;
 
 void SelfBench();
+
+void benchmark(const std::string&);
 
 //
 // -=- VNCServerST Implementation
@@ -126,7 +129,7 @@ static void parseRegionPart(const bool percents, rdr::U16 &pcdest, int &dest,
   *inptr = ptr;
 }
 
-VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
+VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, bool a)
   : blHosts(&blacklist), desktop(desktop_), desktopStarted(false),
     blockCounter(0), pb(0), blackedpb(0), ledState(ledUnknown),
     name(strDup(name_)), pointerClient(0), clipboardClient(0),
@@ -223,11 +226,18 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
 
   trackingClient[0] = 0;
 
-  if (watermarkData)
-    sendWatermark = true;
+    if (watermarkData)
+        sendWatermark = true;
 
-  if (Server::selfBench)
-    SelfBench();
+    if (Server::selfBench)
+        SelfBench();
+
+    if (Server::benchmark) {
+        auto *file_name = Server::benchmark.getValueStr();
+        if (std::filesystem::exists(file_name))
+            throw Exception("Benchmarking video file does not exist");
+        benchmark(file_name);
+    }
 }
 
 VNCServerST::~VNCServerST()

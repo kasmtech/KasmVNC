@@ -1,4 +1,5 @@
 set(RFB_SOURCES
+        benchmark.cxx
         Blacklist.cxx
         Congestion.cxx
         CConnection.cxx
@@ -87,7 +88,9 @@ if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_
 endif ()
 
 if (HAVE_PAM)
-    set(RFB_SOURCES ${RFB_SOURCES} UnixPasswordValidator.cxx
+    set(RFB_SOURCES
+            ${RFB_SOURCES}
+            UnixPasswordValidator.cxx
             UnixPasswordValidator.h pam.c pam.h)
     set(RFB_LIBRARIES ${RFB_LIBRARIES} ${PAM_LIBS})
 endif ()
@@ -122,8 +125,13 @@ else ()
     set(RFB_SOURCES
             ${RFB_SOURCES}
             ${SCALE_DUMMY_SOURCES}
+            benchmark.h
     )
 endif ()
+
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libavutil libswscale)
 
 add_library(rfb STATIC ${RFB_SOURCES})
 
@@ -135,7 +143,7 @@ target_include_directories(rfb PRIVATE
         ${CMAKE_SOURCE_DIR}/third_party/tinyxml2
 )
 
-target_link_libraries(rfb PRIVATE ${RFB_LIBRARIES} tinyxml2_objs)
+target_link_libraries(rfb PRIVATE ${RFB_LIBRARIES} tinyxml2_objs  ${FFMPEG_LIBRARIES})
 
 if (UNIX)
     libtool_create_control_file(rfb)
