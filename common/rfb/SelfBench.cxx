@@ -44,14 +44,10 @@ static constexpr uint32_t HEIGHT = 1200;
 void SelfBench() {
 	tinyxml2::XMLDocument doc;
 
-	auto *root = doc.NewElement("testsuites");
-	root->SetAttribute("name", "Benchmarking");
-
-	auto *test_suits = doc.InsertFirstChild(root);
-
-	auto *test_suit = doc.NewElement("testsuit");
+	auto *test_suit = doc.NewElement("testsuite");
 	test_suit->SetAttribute("name", "SelfBench");
-	test_suits->InsertEndChild(test_suit);
+
+	doc.InsertFirstChild(test_suit);
 
 	ManagedPixelBuffer f1(pfRGBX, WIDTH, HEIGHT);
 	ManagedPixelBuffer f2(pfRGBX, WIDTH, HEIGHT);
@@ -85,18 +81,26 @@ void SelfBench() {
 
 	TightJPEGEncoder jpeg(nullptr);
 
-	auto benchmark = [&doc, &test_suit](const char *name, uint32_t runs, auto func) {
+	uint32_t test_cases {};
+	uint64_t total_time {};
+
+	auto benchmark = [&doc, &test_suit, &test_cases, &total_time](const char *name, uint32_t runs, auto func) {
 		auto now = std::chrono::high_resolution_clock::now();
 		for (uint32_t i = 0; i < runs; i++) {
 			func(i);
 		}
 
+		++test_cases;
 		auto value = elapsedMs(now);
+		double junit_value = value / 1000.;
+		total_time += value;
+
 		vlog.info("%s took %lu ms (%u runs)", name, value, runs);
 		auto *test_case = doc.NewElement("testcase");
 		test_case->SetAttribute("name", name);
-		test_case->SetAttribute("time", value);
+		test_case->SetAttribute("time", junit_value);
 		test_case->SetAttribute("runs", runs);
+		test_case->SetAttribute("classname", "KasmVNC");
 		test_suit->InsertEndChild(test_case);
 	};
 
@@ -179,6 +183,10 @@ void SelfBench() {
 		          memcpy(screenptr, i % 2 ? f1orig : f2orig, WIDTH * HEIGHT * 4);
 		          comparer->compare(false, cursorReg);
 	          });
+
+	test_suit->SetAttribute("tests", test_cases);
+	test_suit->SetAttribute("failures", 0);
+	test_suit->SetAttribute("time", total_time);
 
 	doc.SaveFile("SelfBench.xml");
 
