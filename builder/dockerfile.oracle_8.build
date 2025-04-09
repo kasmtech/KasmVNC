@@ -15,6 +15,7 @@ RUN \
     dnf-plugins-core \
     gcc \
     gcc-c++ \
+    gcc-toolset-14 \
     git \
     gnutls-devel \
     libjpeg-turbo-devel \
@@ -38,6 +39,7 @@ RUN dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-
 
 # Install from new repos
 RUN dnf install -y \
+  tbb-devel \
   ffmpeg-devel \
   giflib-devel \
   lbzip2 \
@@ -48,16 +50,16 @@ RUN dnf install -y \
   xorg-x11-xtrans-devel \
   libXrandr-devel \
   libXtst-devel \
-  libXcursor-devel
+  libXcursor-devel \
+  libSM-devel
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-webp
-RUN $SCRIPTS_DIR/build-libjpeg-turbo
-
-RUN useradd -m docker && echo "docker:docker" | chpasswd
+RUN echo "source /opt/rh/gcc-toolset-14/enable" > /etc/profile.d/gcc-toolset.sh && \
+  $SCRIPTS_DIR/build-webp && $SCRIPTS_DIR/build-libjpeg-turbo && \
+  useradd -m docker && echo "docker:docker" | chpasswd
 
 COPY --chown=docker:docker . /src/
 
 USER docker
-ENTRYPOINT ["/src/builder/build.sh"]
+ENTRYPOINT ["bash", "-l", "-c", "/src/builder/build.sh"]

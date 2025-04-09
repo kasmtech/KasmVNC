@@ -21,7 +21,7 @@ include(CheckCSourceRuns)
 
 include(CMakeMacroLibtoolFile)
 
-project(kasmvnc)
+project(kasmvnc LANGUAGES C CXX)
 set(VERSION 0.9)
 
 # The RC version must always be four comma-separated numbers
@@ -74,13 +74,10 @@ set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -UNDEBUG")
 
 # Make sure we get a sane C version
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
+set(CMAKE_CXX_STANDARD 20)
 
 # Enable OpenMP
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
-
-# Enable C++ 11
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
 
 # Tell the compiler to be stringent
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wformat=2")

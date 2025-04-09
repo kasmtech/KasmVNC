@@ -82,6 +82,12 @@ endif(WIN32)
 
 set(RFB_LIBRARIES ${JPEG_LIBRARIES} ${PNG_LIBRARIES} os rdr Xregion)
 
+cmake_host_system_information(RESULT DISTRO QUERY DISTRIB_INFO)
+if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10) OR
+(DISTRO_PLATFORM_ID MATCHES "platform:el8"))
+  set(RFB_LIBRARIES ${RFB_LIBRARIES} tbb)
+endif ()
+
 if(HAVE_PAM)
   set(RFB_SOURCES ${RFB_SOURCES} UnixPasswordValidator.cxx
     UnixPasswordValidator.h pam.c pam.h)
