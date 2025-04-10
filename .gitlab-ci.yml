@@ -276,13 +276,15 @@ build_ubuntu_focal_arm:
 test:
   stage: test
   tags:
-    - oci-fixed-amd
+    - kasmvnc-x86
   before_script:
     - *prepare_build
   artifacts:
     reports:
       junit: SelfBench.xml
   script:
+    - bash wget https://kasmweb-build-artifacts.s3.us-east-1.amazonaws.com/kasmvnc/static/127072-737747495_small.mp4
+    - bash ls -l
     - bash builder/test-vncserver
 
 #build_alpine_318:
