@@ -129,7 +129,7 @@ static void parseRegionPart(const bool percents, rdr::U16 &pcdest, int &dest,
   *inptr = ptr;
 }
 
-VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, bool a)
+VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
   : blHosts(&blacklist), desktop(desktop_), desktopStarted(false),
     blockCounter(0), pb(0), blackedpb(0), ledState(ledUnknown),
     name(strDup(name_)), pointerClient(0), clipboardClient(0),
@@ -201,7 +201,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, bool a)
       }
     }
 
-    DLPRegion.enabled = 1;
+    DLPRegion.enabled = true;
   }
 
   kasmpasswdpath[0] = '\0';
