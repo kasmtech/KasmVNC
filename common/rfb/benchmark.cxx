@@ -20,12 +20,14 @@
 #include <string>
 #include <stdexcept>
 #include <rfb/LogWriter.h>
-#include "VNCServer.h"
-
-static rfb::LogWriter vlog("Benchmarking");
+#include <numeric>
+#include <tinyxml2.h>
 
 void benchmark(const std::string &path) {
     AVFormatContext *format_ctx = nullptr;
+
+    vlog.info("Benchmarking with video file %s", path.c_str());
+
     if (avformat_open_input(&format_ctx, path.c_str(), nullptr, nullptr) < 0)
         throw std::runtime_error("Could not open video file");
 
@@ -53,7 +55,7 @@ void benchmark(const std::string &path) {
     if (!codec)
         throw std::runtime_error("Codec not found");
 
-    CodecCtxGuard codex_ctx_guard{avcodec_alloc_context3(codec)};
+    const CodecCtxGuard codex_ctx_guard{avcodec_alloc_context3(codec)};
     auto *codec_ctx = codex_ctx_guard.get();
 
     if (!codec_ctx || avcodec_parameters_to_context(codec_ctx, codec_parameters) < 0)
@@ -63,10 +65,10 @@ void benchmark(const std::string &path) {
         throw std::runtime_error("Could not open codec");
 
     // Allocate frame and packet
-    FrameGuard frame_guard{av_frame_alloc()};
+    const FrameGuard frame_guard{av_frame_alloc()};
     auto *frame = frame_guard.get();
 
-    PacketGuard packet_guard{av_packet_alloc()};
+    const PacketGuard packet_guard{av_packet_alloc()};
     auto *packet = packet_guard.get();
 
     if (!frame || !packet)
@@ -84,7 +86,7 @@ void benchmark(const std::string &path) {
 
     SwsContextGuard sws_ctx_guard{sws_ctx};
 
-    FrameGuard rgb_frame_guard{av_frame_alloc()};
+    const FrameGuard rgb_frame_guard{av_frame_alloc()};
     auto *rgb_frame = rgb_frame_guard.get();
 
     if (!rgb_frame)
@@ -95,15 +97,19 @@ void benchmark(const std::string &path) {
     rgb_frame->height = codec_ctx->height;
 
     static const rfb::PixelFormat pf{32, 24, false, true, 0xFF, 0xFF, 0xFF, 0, 8, 16};
-    const rfb::Rect rect{0, 0, rgb_frame->width, rgb_frame->height};
 
-    rfb::ManagedPixelBuffer pb{pf, rect.width(), rect.height()};
-
-    server->setPixelBuffer(&pb);
+    auto *pb = new rfb::ManagedPixelBuffer{pf, rgb_frame->width, rgb_frame->height};
+    rfb::MockCConnection connection{pb};
 
     if (av_frame_get_buffer(rgb_frame, 0) != 0)
         throw std::runtime_error("Could not allocate frame data");
 
+    uint64_t frames{};
+    const size_t total_frame_count = format_ctx->streams[video_stream_idx]->nb_frames;
+
+    std::vector<uint64_t> timings(total_frame_count > 0 ? total_frame_count : 2048, 0);
+
+    vlog.info("Reading frames...");
     while (av_read_frame(format_ctx, packet) == 0) {
         if (packet->stream_index == video_stream_idx) {
             if (avcodec_send_packet(codec_ctx, packet) == 0) {
@@ -112,11 +118,104 @@ void benchmark(const std::string &path) {
                     sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height,
                               rgb_frame->data, rgb_frame->linesize);
 
+                    vlog.info("Updating with frame %lu", frames);
+                    connection.framebufferUpdateStart();
+                    vlog.info("Setting frame");
+                    connection.setNewFrame(rgb_frame);
+                    using namespace std::chrono;
 
-                    pb.imageRect(rect, rgb_frame->data[0], rect.width());
+                    auto now = high_resolution_clock::now();
+                    vlog.info("Updating frame...");
+                    connection.framebufferUpdateEnd();
+                    const auto duration = duration_cast<nanoseconds>(high_resolution_clock::now() - now).count();
+
+                    vlog.info("Frame took %lu ns", duration);
+
+                    auto [jpeg_stats, webp_stats, bytes, udp_bytes] = connection.getStats();
+                    vlog.info("JPEG stats: %d ms", jpeg_stats.ms);
+                    vlog.info("JPEG stats: %d rects", jpeg_stats.rects);
+
+                    vlog.info("WebP stats: %d ms", webp_stats.ms);
+                    vlog.info("WebP stats: %d rects", webp_stats.rects);
+
+
+                    timings[frames++] = duration;
                 }
             }
         }
         av_packet_unref(packet);
     }
+    vlog.info("Done reading frames...");
+
+    if (frames > 0) {
+        timings.reserve(frames + 1);
+
+        const auto sum = std::accumulate(timings.begin(), timings.end(), 0.);
+        const auto size = timings.size();
+        const auto average = sum / static_cast<double>(size);
+
+        double median{};
+
+        std::sort(timings.begin(), timings.end());
+        if (size % 2 == 0)
+            median = static_cast<double>(timings[size / 2]);
+        else
+            median = static_cast<double>(timings[size / 2 - 1] + timings[size / 2]) / 2.;
+
+        auto [jpeg_stats, webp_stats, bytes, udp_bytes] = connection.getStats();
+
+        vlog.info("Average time encoding frame: %f ns", average);
+        vlog.info("Median time encoding frame: %f ns", median);
+        vlog.info("Total time: %f ns", sum);
+
+        tinyxml2::XMLDocument doc;
+
+        auto *test_suit = doc.NewElement("testsuite");
+        test_suit->SetAttribute("name", "Benchmark");
+
+        doc.InsertFirstChild(test_suit);
+
+        auto *test_case = doc.NewElement("testcase");
+        test_case->SetAttribute("name", "Average time encoding frame, ms");
+        test_case->SetAttribute("time", average / 1000);
+        test_case->SetAttribute("runs", 1);
+        test_case->SetAttribute("classname", "KasmVNC");
+        test_suit->InsertEndChild(test_case);
+
+        test_case = doc.NewElement("testcase");
+        test_case->SetAttribute("name", "Median time encoding frame, ms");
+        test_case->SetAttribute("time", average / 1000);
+        test_case->SetAttribute("runs", 1);
+        test_case->SetAttribute("classname", "KasmVNC");
+        test_suit->InsertEndChild(test_case);
+
+        test_case = doc.NewElement("testcase");
+        test_case->SetAttribute("name", "Total time encoding, ms");
+        test_case->SetAttribute("time", sum);
+        test_case->SetAttribute("runs", 1);
+        test_case->SetAttribute("classname", "KasmVNC");
+        test_suit->InsertEndChild(test_case);
+
+        test_case = doc.NewElement("testcase");
+        test_case->SetAttribute("name", "KBytes sent");
+        test_case->SetAttribute("time", bytes / 1024);
+        test_case->SetAttribute("runs", 1);
+        test_case->SetAttribute("classname", "KasmVNC");
+        test_suit->InsertEndChild(test_case);
+
+        test_case = doc.NewElement("testcase");
+        test_case->SetAttribute("name", "KBytes sent (UDP)");
+        test_case->SetAttribute("time", udp_bytes / 1024);
+        test_case->SetAttribute("runs", 1);
+        test_case->SetAttribute("classname", "KasmVNC");
+        test_suit->InsertEndChild(test_case);
+
+        test_suit->SetAttribute("tests", 5);
+        test_suit->SetAttribute("failures", 0);
+        //test_suit->SetAttribute("time", total_time);
+
+        doc.SaveFile("Benchmark.xml");
+    }
+
+    exit(0);
 }

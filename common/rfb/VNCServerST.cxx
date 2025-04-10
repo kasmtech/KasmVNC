@@ -129,7 +129,7 @@ static void parseRegionPart(const bool percents, rdr::U16 &pcdest, int &dest,
   *inptr = ptr;
 }
 
-VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, bool a)
+VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
   : blHosts(&blacklist), desktop(desktop_), desktopStarted(false),
     blockCounter(0), pb(nullptr), blackedpb(nullptr), ledState(ledUnknown),
     name(strDup(name_)), pointerClient(nullptr), clipboardClient(nullptr),
@@ -232,9 +232,9 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, bool a)
     if (Server::selfBench)
         SelfBench();
 
-    if (Server::benchmark) {
+    if (Server::benchmark[0]) {
         auto *file_name = Server::benchmark.getValueStr();
-        if (std::filesystem::exists(file_name))
+        if (!std::filesystem::exists(file_name))
             throw Exception("Benchmarking video file does not exist");
         benchmark(file_name);
     }
