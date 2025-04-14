@@ -536,8 +536,6 @@ test:
         - SelfBench.xml
         - Benchmark.xml
   script:
-    - bash wget https://kasmweb-build-artifacts.s3.us-east-1.amazonaws.com/kasmvnc/static/127072-737747495_small.mp4
-    - bash ls -l
     - bash builder/test-vncserver
 
 
