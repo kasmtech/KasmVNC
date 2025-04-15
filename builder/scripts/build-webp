@@ -21,7 +21,7 @@ prepare_source() {
 
 build_and_install() {
   export MAKEFLAGS=-j$(nproc)
-  ./configure --enable-static --disable-shared --enable-threading --enable-sse2
+  ./configure --enable-static --disable-shared --enable-threading --enable-sse2 --enable-neon
   make
   make install
 }
