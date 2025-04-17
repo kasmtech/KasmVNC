@@ -9,5 +9,4 @@ with description("Benchmarking"):
         kill_xvnc()
     with it("runs benchmarks"):
         completed_process = run_cmd("Xvnc -interface 0.0.0.0 :1 -selfBench")
-        clean_locks()
         expect(completed_process.returncode).to(equal(0))
