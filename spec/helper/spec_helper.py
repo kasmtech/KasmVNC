@@ -104,3 +104,4 @@ def kill_xvnc():
 
     run_cmd('vncserver -kill :1', print_stderr=False)
     running_xvnc = False
+    clean_locks()
