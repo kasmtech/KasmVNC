@@ -22,6 +22,7 @@
 #include <rfb/LogWriter.h>
 #include <numeric>
 #include <tinyxml2.h>
+#include <sstream>
 
 void benchmark(const std::string &path) {
     AVFormatContext *format_ctx = nullptr;
@@ -132,12 +133,11 @@ void benchmark(const std::string &path) {
                     vlog.info("Frame took %lu ns", duration);
 
                     auto [jpeg_stats, webp_stats, bytes, udp_bytes] = connection.getStats();
-                    vlog.info("JPEG stats: %d ms", jpeg_stats.ms);
-                    vlog.info("JPEG stats: %d rects", jpeg_stats.rects);
+                    //vlog.info("JPEG stats: %d ms", jpeg_stats.ms);
+                    //vlog.info("JPEG stats: %d rects", jpeg_stats.rects);
 
-                    vlog.info("WebP stats: %d ms", webp_stats.ms);
-                    vlog.info("WebP stats: %d rects", webp_stats.rects);
-
+                    //vlog.info("WebP stats: %d ms", webp_stats.ms);
+                    // vlog.info("WebP stats: %d rects", webp_stats.rects);
 
                     timings[frames++] = duration;
                 }
@@ -175,44 +175,31 @@ void benchmark(const std::string &path) {
 
         doc.InsertFirstChild(test_suit);
 
-        auto *test_case = doc.NewElement("testcase");
-        test_case->SetAttribute("name", "Average time encoding frame, ms");
-        test_case->SetAttribute("time", average / 1000);
-        test_case->SetAttribute("runs", 1);
-        test_case->SetAttribute("classname", "KasmVNC");
-        test_suit->InsertEndChild(test_case);
+        constexpr auto div = 1. / (1000 * 1000);
+        auto total_tests{0};
 
-        test_case = doc.NewElement("testcase");
-        test_case->SetAttribute("name", "Median time encoding frame, ms");
-        test_case->SetAttribute("time", average / 1000);
-        test_case->SetAttribute("runs", 1);
-        test_case->SetAttribute("classname", "KasmVNC");
-        test_suit->InsertEndChild(test_case);
+        auto add_benchmark_item = [&doc, &test_suit, &total_tests](const char *name, auto value) {
+            auto *test_case = doc.NewElement("testcase");
+            test_case->SetAttribute("name", name);
+            test_case->SetAttribute("time", value);
+            test_case->SetAttribute("runs", 1);
+            test_case->SetAttribute("classname", "KasmVNC");
+            test_suit->InsertEndChild(test_case);
 
-        test_case = doc.NewElement("testcase");
-        test_case->SetAttribute("name", "Total time encoding, ms");
-        test_case->SetAttribute("time", sum);
-        test_case->SetAttribute("runs", 1);
-        test_case->SetAttribute("classname", "KasmVNC");
-        test_suit->InsertEndChild(test_case);
+            ++total_tests;
+        };
 
-        test_case = doc.NewElement("testcase");
-        test_case->SetAttribute("name", "KBytes sent");
-        test_case->SetAttribute("time", bytes / 1024);
-        test_case->SetAttribute("runs", 1);
-        test_case->SetAttribute("classname", "KasmVNC");
-        test_suit->InsertEndChild(test_case);
+        add_benchmark_item("Average time encoding frame, ms", average * div);
+        add_benchmark_item("Median time encoding frame, ms", median * div);
+        add_benchmark_item("Total time encoding, ms", sum * div);
 
-        test_case = doc.NewElement("testcase");
-        test_case->SetAttribute("name", "KBytes sent (UDP)");
-        test_case->SetAttribute("time", udp_bytes / 1024);
-        test_case->SetAttribute("runs", 1);
-        test_case->SetAttribute("classname", "KasmVNC");
-        test_suit->InsertEndChild(test_case);
+        std::stringstream ss;
+        ss << "KBytes sent: " << bytes / 1024;
+        add_benchmark_item(ss.str().c_str(), 0);
 
-        test_suit->SetAttribute("tests", 5);
-        test_suit->SetAttribute("failures", 0);
-        //test_suit->SetAttribute("time", total_time);
+        //ss.flush();
+        //ss << "KBytes sent (UDP): " << udp_bytes / 1024;
+        //add_benchmark_item(ss.str().c_str(), 0);
 
         doc.SaveFile("Benchmark.xml");
     }
