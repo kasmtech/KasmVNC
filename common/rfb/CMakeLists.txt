@@ -141,6 +141,7 @@ target_include_directories(rfb PRIVATE
         ${PNG_INCLUDE_DIR}
         ${CMAKE_SOURCE_DIR}/unix/kasmvncpasswd
         ${CMAKE_SOURCE_DIR}/third_party/tinyxml2
+        ${FFMPEG_INCLUDE_DIRS}
 )
 
 target_link_libraries(rfb PRIVATE ${RFB_LIBRARIES} tinyxml2_objs  ${FFMPEG_LIBRARIES})

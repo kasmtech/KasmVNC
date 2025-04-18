@@ -22,6 +22,7 @@
 #include <rfb/LogWriter.h>
 #include <numeric>
 #include <tinyxml2.h>
+#include <algorithm>
 #include <sstream>
 
 void benchmark(const std::string &path) {
