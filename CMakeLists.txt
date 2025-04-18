@@ -242,7 +242,7 @@ if(ENABLE_NLS)
   add_subdirectory(po)
 endif()
 
-####add_subdirectory(tests)
+#############add_subdirectory(tests)
 
 
 include(cmake/BuildPackages.cmake)

@@ -10,13 +10,18 @@ EXPOSE 6901
 
 USER root
 
+COPY builder/conf/nginx_kasm.conf /etc/nginx/conf.d/
+
 RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list && \
     apt update && \
-    apt install -y socat sudo libxfont-dev cmake git libgnutls28-dev vim wget tightvncserver curl libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev pkg-config libfreetype6-dev libxtst-dev autoconf automake libtool xutils-dev libpixman-1-dev libxshmfence-dev libxcvt-dev libxkbfile-dev x11proto-dev libgbm-dev inotify-tools && \
+    apt install -y socat vim wget tightvncserver curl  inotify-tools sudo \
+        libxfont-dev libgnutls28-dev libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev pkg-config libfreetype6-dev \
+        libxtst-dev  xutils-dev libpixman-1-dev libxshmfence-dev libxcvt-dev libxkbfile-dev x11proto-dev libgbm-dev \
+        cmake git autoconf automake libtool && \
     echo "kasm-user  ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-RUN apt install -y nodejs
+RUN apt install -y nodejs nginx
    
 USER 1000
 

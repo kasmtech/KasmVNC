@@ -119,24 +119,25 @@ make -j5
 # modifications for the servertarball
 cd /src
 mkdir -p xorg.build/bin
+mkdir -p xorg.build/lib
 cd xorg.build/bin/
-ln -s /src/unix/xserver/hw/vnc/Xvnc Xvnc
+ln -sf /src/unix/xserver/hw/vnc/Xvnc Xvnc
 cd ..
 mkdir -p man/man1
 touch man/man1/Xserver.1
 cp /src/unix/xserver/hw/vnc/Xvnc.man man/man1/Xvnc.1
-mkdir lib
+
 cd lib
 if [ -d /usr/lib/x86_64-linux-gnu/dri ]; then
-  ln -s /usr/lib/x86_64-linux-gnu/dri dri
+  ln -sfn /usr/lib/x86_64-linux-gnu/dri dri
 elif [ -d /usr/lib/aarch64-linux-gnu/dri ]; then
-  ln -s /usr/lib/aarch64-linux-gnu/dri dri
+  ln -sfn /usr/lib/aarch64-linux-gnu/dri dri
 elif [ -d /usr/lib/arm-linux-gnueabihf/dri ]; then
-  ln -s /usr/lib/arm-linux-gnueabihf/dri dri
+  ln -sfn /usr/lib/arm-linux-gnueabihf/dri dri
 elif [ -d /usr/lib/xorg/modules/dri ]; then
-  ln -s /usr/lib/xorg/modules/dri dri
+  ln -sfn /usr/lib/xorg/modules/dri dri
 else
-  ln -s /usr/lib64/dri dri
+  ln -sfn /usr/lib64/dri dri
 fi
 cd /src
 
