@@ -39,5 +39,5 @@ RUN $SCRIPTS_DIR/build-libjpeg-turbo
 
 COPY --chown=docker:docker . /src/
 
-USER docker
-ENTRYPOINT ["/src/builder/build.sh"]
+#USER docker
+#ENTRYPOINT ["/src/builder/build.sh"]
