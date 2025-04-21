@@ -181,9 +181,21 @@ void benchmark(const std::string &path) {
         auto add_benchmark_item = [&doc, &test_suit, &total_tests](const char *name, auto value) {
             auto *test_case = doc.NewElement("testcase");
             test_case->SetAttribute("name", name);
-            test_case->SetAttribute("filename", value);
+            test_case->SetAttribute("file", value);
             test_case->SetAttribute("runs", 1);
             test_case->SetAttribute("classname", "KasmVNC");
+
+            auto *props = doc.NewElement("properties");
+
+            auto *prop = doc.NewElement("property");
+            prop->SetAttribute("name", name);
+            props->InsertEndChild(prop);
+
+            prop = doc.NewElement("property");
+            prop->SetAttribute("value", value);
+            props->InsertEndChild(prop);
+
+            test_case->InsertEndChild(props);
             test_suit->InsertEndChild(test_case);
 
             ++total_tests;
