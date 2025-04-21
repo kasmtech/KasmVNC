@@ -23,7 +23,6 @@
 #include <numeric>
 #include <tinyxml2.h>
 #include <algorithm>
-#include <sstream>
 
 void benchmark(const std::string &path) {
     AVFormatContext *format_ctx = nullptr;
@@ -133,7 +132,7 @@ void benchmark(const std::string &path) {
 
                     vlog.info("Frame took %lu ns", duration);
 
-                    auto [jpeg_stats, webp_stats, bytes, udp_bytes] = connection.getStats();
+                    // auto [jpeg_stats, webp_stats, bytes, udp_bytes] = connection.getStats();
                     //vlog.info("JPEG stats: %d ms", jpeg_stats.ms);
                     //vlog.info("JPEG stats: %d rects", jpeg_stats.rects);
 
@@ -157,7 +156,7 @@ void benchmark(const std::string &path) {
 
         double median{};
 
-        std::sort(timings.begin(), timings.end());
+        std::ranges::sort(timings);
         if (size % 2 == 0)
             median = static_cast<double>(timings[size / 2]);
         else
@@ -176,13 +175,13 @@ void benchmark(const std::string &path) {
 
         doc.InsertFirstChild(test_suit);
 
-        constexpr auto div = 1. / (1000 * 1000);
+        constexpr auto div = 1. / (1000);
         auto total_tests{0};
 
         auto add_benchmark_item = [&doc, &test_suit, &total_tests](const char *name, auto value) {
             auto *test_case = doc.NewElement("testcase");
             test_case->SetAttribute("name", name);
-            test_case->SetAttribute("time", value);
+            test_case->SetAttribute("filename", value);
             test_case->SetAttribute("runs", 1);
             test_case->SetAttribute("classname", "KasmVNC");
             test_suit->InsertEndChild(test_case);
@@ -194,9 +193,7 @@ void benchmark(const std::string &path) {
         add_benchmark_item("Median time encoding frame, ms", median * div);
         add_benchmark_item("Total time encoding, ms", sum * div);
 
-        std::stringstream ss;
-        ss << "KBytes sent: " << bytes / 1024;
-        add_benchmark_item(ss.str().c_str(), 0);
+        add_benchmark_item("Data sent, KBs", bytes / 1024);
 
         //ss.flush();
         //ss << "KBytes sent (UDP): " << udp_bytes / 1024;
