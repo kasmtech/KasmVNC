@@ -156,7 +156,7 @@ void benchmark(const std::string &path) {
 
         double median{};
 
-        std::ranges::sort(timings);
+        std::sort(timings.begin(), timings.end());
         if (size % 2 == 0)
             median = static_cast<double>(timings[size / 2]);
         else
