@@ -108,7 +108,7 @@ build_ubuntu_jammy:
   stage: build
   allow_failure: true
   tags:
-    - kasmvnc-x86
+    - oci-fixed-amd
   before_script:
     - *prepare_build
     - *prepare_www
