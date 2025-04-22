@@ -289,6 +289,6 @@ rfb::PresetParameter rfb::Server::preferBandwidth
  false, bandwidthPreset);
 
 rfb::IntParameter rfb::Server::webpEncodingTime
-("udpPort",
- "Sets the benchmak WebP encoding time in KasmVNC. Default is calculated in TightWEBPEncoder benchmark function",
+("webpEncodingTime",
+ "Sets a weighted value that determines how much webp is used to balance bandwidth and CPU usage.",
  0, 0, 10000);
