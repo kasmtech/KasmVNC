@@ -395,7 +395,8 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
         screenArea = pb->getRect().width() * pb->getRect().height();
         screenArea *= 1024;
         screenArea /= 256 * 256;
-        screenArea *= screenArea *= Server::webpEncodingTime > 0 ?  Server::webpEncodingTime : webpBenchResult;
+        screenArea *= screenArea;
+        screenArea /=  Server::webpEncodingTime > 1 ?  Server::webpEncodingTime : 1;
         // Encoding the entire screen would take this many 1024*msecs, worst case
 
         // Calculate how many us we can send webp for, before switching to jpeg

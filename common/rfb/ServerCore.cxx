@@ -291,4 +291,4 @@ rfb::PresetParameter rfb::Server::preferBandwidth
 rfb::IntParameter rfb::Server::webpEncodingTime
 ("webpEncodingTime",
  "Sets a weighted value that determines how much webp is used to balance bandwidth and CPU usage.",
- 0, 0, 10000);
+ 1, 1, 1000);
