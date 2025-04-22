@@ -11,7 +11,9 @@ RUN \
   dnf install -y \
     bzip2-devel \
     ca-certificates \
+    ninja-build \
     cmake \
+    nasm \
     dnf-plugins-core \
     gcc \
     gcc-c++ \

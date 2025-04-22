@@ -16,6 +16,7 @@ RUN \
     byacc \
     bzip2 \
     cmake \
+    nasm \
     diffutils \
     doxygen \
     file \

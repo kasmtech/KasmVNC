@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-WEBP_VERSION="1.2.4"
+WEBP_VERSION="1.5.0"
 WEBP_TAR_URL="https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${WEBP_VERSION}.tar.gz"
 WEBP_TAR_FILE="/tmp/libwebp-${WEBP_VERSION}.tar.gz"
 WEBP_SRC_DIR="/tmp/libwebp-${WEBP_VERSION}"
@@ -21,7 +21,7 @@ prepare_source() {
 
 build_and_install() {
   export MAKEFLAGS=-j$(nproc)
-  ./configure --enable-static --disable-shared
+  ./configure --enable-static --disable-shared --enable-threading --enable-sse2 --enable-neon
   make
   make install
 }

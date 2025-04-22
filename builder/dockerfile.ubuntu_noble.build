@@ -12,7 +12,7 @@ RUN apt-get update && \
 
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
-RUN apt-get update && apt-get -y install cmake git libgnutls28-dev vim wget curl
+RUN apt-get update && apt-get -y install ninja-build cmake nasm git libgnutls28-dev vim wget curl
 RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev
 
 ENV SCRIPTS_DIR=/tmp/scripts
