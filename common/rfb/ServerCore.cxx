@@ -287,3 +287,8 @@ rfb::PresetParameter rfb::Server::preferBandwidth
 ("PreferBandwidth",
  "Set various options for lower bandwidth use. The default is off, aka to prefer quality.",
  false, bandwidthPreset);
+
+rfb::IntParameter rfb::Server::webpEncodingTime
+("udpPort",
+ "Sets the benchmak WebP encoding time in KasmVNC. Default is calculated in TightWEBPEncoder benchmark function",
+ 0, 0, 10000);
