@@ -8,7 +8,9 @@ ENV XORG_VER 1.20.3
 RUN zypper install -ny \
   bdftopcf \
   bigreqsproto-devel \
+  ninja \
   cmake \
+  nasm \
   curl \
   ffmpeg-4-libavcodec-devel \
   fonttosfnt \
