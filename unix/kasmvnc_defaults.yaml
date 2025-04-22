@@ -129,7 +129,7 @@ encoding:
     logging:
       level: off
     scaling_algorithm: progressive_bilinear
-    webp_encoding_time: 0
+    webp_encoding_time: 1
 
   compare_framebuffer: auto
   zrle_zlib_level: auto
