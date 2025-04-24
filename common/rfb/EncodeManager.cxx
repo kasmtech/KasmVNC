@@ -360,7 +360,6 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
     int nRects;
     Region changed, cursorRegion;
     struct timeval start;
-    unsigned screenArea;
 
     updates++;
     if (conn->cp.supportsUdp)
@@ -390,17 +389,7 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
     memset(&webpstats, 0, sizeof(codecstats_t));
 
     if (allowLossy && activeEncoders[encoderFullColour] == encoderTightWEBP) {
-        const unsigned rate = 1024 * 1000 / rfb::Server::frameRate;
-
-        screenArea = pb->getRect().width() * pb->getRect().height();
-        screenArea *= 1024;
-        screenArea /= 256 * 256;
-        screenArea *= webpBenchResult;
-        screenArea /=  Server::webpEncodingTime;
-        // Encoding the entire screen would take this many 1024*msecs, worst case
-
-        // Calculate how many us we can send webp for, before switching to jpeg
-        webpFallbackUs = rate * rate / screenArea;
+        webpFallbackUs = (1000 * 1000 / rfb::Server::frameRate) * (static_cast<double>(Server::webpEncodingTime) / 100.0);
     }
 
     /*
@@ -884,7 +873,7 @@ void EncodeManager::findSolidRect(const Rect& rect, Region *changed,
 void EncodeManager::checkWebpFallback(const timeval *start) {
     // Have we taken too long for the frame? If so, drop from WEBP to JPEG
     if (start && activeEncoders[encoderFullColour] == encoderTightWEBP && !webpTookTooLong.load(std::memory_order_relaxed)) {
-        const auto us = msSince(start) * 1024;
+        const auto us = msSince(start) * 1000;
         if (us > webpFallbackUs)
             webpTookTooLong.store(true, std::memory_order_relaxed);
     }

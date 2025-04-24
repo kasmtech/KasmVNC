@@ -92,16 +92,16 @@ data_loss_prevention:
     enabled: true
     rate_limit: unlimited
   watermark:
-  # image: /etc/kasmvnc/picture.png
-  # location: 10,10
-  # tint: 255,20,20,128
-  # repeat_spacing: 10
-  #text:
-  # template: "${USER} %H:%M"
-  # font: auto
-  # font_size: 48
-  # timezone_name: Australia/Adelaide
-  # angle: 0
+    # image: /etc/kasmvnc/picture.png
+    # location: 10,10
+    # tint: 255,20,20,128
+    # repeat_spacing: 10
+    #text:
+      # template: "${USER} %H:%M"
+      # font: auto
+      # font_size: 48
+      # timezone_name: Australia/Adelaide
+      # angle: 0
   logging:
     # "verbose" SETTING LOGS YOUR PRIVATE INFORMATION. Keypresses and clipboard content
     level: off
@@ -129,7 +129,7 @@ encoding:
     logging:
       level: off
     scaling_algorithm: progressive_bilinear
-    webp_encoding_time: auto
+    webp_encoding_time: 30
 
   compare_framebuffer: auto
   zrle_zlib_level: auto

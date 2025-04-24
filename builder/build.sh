@@ -76,45 +76,48 @@ if [ ! -d unix/xserver/include ]; then
         patch -s -p0 < ../CVE-2022-2320-v1.19.patch
         ;;
   esac
-
-  autoreconf -i
-  # Configuring Xorg is long and has many distro-specific paths.
-  # The distro paths start after prefix and end with the font path,
-  # everything after that is based on BUILDING.txt to remove unneeded
-  # components.
-  # remove gl check for opensuse
-  if [ "${KASMVNC_BUILD_OS}" == "opensuse" ] || ([ "${KASMVNC_BUILD_OS}" == "oracle" ] && [ "${KASMVNC_BUILD_OS_CODENAME}" == 9 ]); then
-    sed -i 's/LIBGL="gl >= 7.1.0"/LIBGL="gl >= 1.1"/g' configure
-  fi
-
-  # build X11
-  ./configure \
-      --disable-config-hal \
-      --disable-config-udev \
-      --disable-dmx \
-      --disable-dri \
-      --disable-dri2 \
-      --disable-kdrive \
-      --disable-static \
-      --disable-xephyr \
-      --disable-xinerama \
-      --disable-xnest \
-      --disable-xorg \
-      --disable-xvfb \
-      --disable-xwayland \
-      --disable-xwin \
-      --enable-glx \
-      --prefix=/opt/kasmweb \
-      --with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/100dpi/:unscaled,/usr/share/fonts/X11/75dpi/:unscaled,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi,/usr/share/fonts/X11/75dpi,built-ins" \
-      --without-dtrace \
-      --with-sha1=libcrypto \
-      --with-xkb-bin-directory=/usr/bin \
-      --with-xkb-output=/var/lib/xkb \
-      --with-xkb-path=/usr/share/X11/xkb "${CONFIG_OPTIONS}"
-
-  # remove array bounds errors for new versions of GCC
-  find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
+else
+  cd unix/xserver
 fi
+
+autoreconf -i
+# Configuring Xorg is long and has many distro-specific paths.
+# The distro paths start after prefix and end with the font path,
+# everything after that is based on BUILDING.txt to remove unneeded
+# components.
+# remove gl check for opensuse
+if [ "${KASMVNC_BUILD_OS}" == "opensuse" ] || ([ "${KASMVNC_BUILD_OS}" == "oracle" ] && [ "${KASMVNC_BUILD_OS_CODENAME}" == 9 ]); then
+  sed -i 's/LIBGL="gl >= 7.1.0"/LIBGL="gl >= 1.1"/g' configure
+fi
+
+# build X11
+./configure \
+    --disable-config-hal \
+    --disable-config-udev \
+    --disable-dmx \
+    --disable-dri \
+    --disable-dri2 \
+    --disable-kdrive \
+    --disable-static \
+    --disable-xephyr \
+    --disable-xinerama \
+    --disable-xnest \
+    --disable-xorg \
+    --disable-xvfb \
+    --disable-xwayland \
+    --disable-xwin \
+    --enable-glx \
+    --prefix=/opt/kasmweb \
+    --with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/100dpi/:unscaled,/usr/share/fonts/X11/75dpi/:unscaled,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi,/usr/share/fonts/X11/75dpi,built-ins" \
+    --without-dtrace \
+    --with-sha1=libcrypto \
+    --with-xkb-bin-directory=/usr/bin \
+    --with-xkb-output=/var/lib/xkb \
+    --with-xkb-path=/usr/share/X11/xkb "${CONFIG_OPTIONS}"
+
+# remove array bounds errors for new versions of GCC
+find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
+
 
 make -j"$(nproc)"
 

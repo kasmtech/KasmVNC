@@ -2068,27 +2068,15 @@ sub DefineConfigToCLIConversion {
           $value;
         }
     }),
-     KasmVNC::CliOption->new({
-            name => 'WebpEncodingTime',
-            configKeys => [
-              KasmVNC::ConfigKey->new({
-                name => "encoding.video_encoding_mode.webp_encoding_time",
-                validator => KasmVNC::PatternValidator->new({
-                              pattern => qr/^(auto|[1-9][0-9]{0,2}|1000)$/,
-                              errorMessage => "must be 'auto' or a number in 1..1000"
-                            }),
-              })
-            ],
-            deriveValueSub => sub {
-              my $self = shift;
-              my $value = $self->configValue();
-
-              if ($value eq "auto") {
-                $value = 1;
-              }
-              $value;
-            }
-        }),
+    KasmVNC::CliOption->new({
+        name => 'WebpEncodingTime',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.video_encoding_mode.webp_encoding_time",
+            type => KasmVNC::ConfigKey::INT
+          })
+        ]
+    }),
     KasmVNC::CliOption->new({
         name => 'CompareFB',
         configKeys => [
