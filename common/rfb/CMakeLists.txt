@@ -125,7 +125,6 @@ else ()
     set(RFB_SOURCES
             ${RFB_SOURCES}
             ${SCALE_DUMMY_SOURCES}
-            benchmark.h
     )
 endif ()
 
