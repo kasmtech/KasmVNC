@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <assert.h>
 #include <memory>
 #include <rdr/FileInStream.h>
 #include <rfb/VNCServer.h>
@@ -27,6 +28,7 @@
 #include "EncCache.h"
 #include "EncodeManager.h"
 #include "LogWriter.h"
+#include "screenTypes.h"
 #include "SMsgWriter.h"
 
 namespace rdr {
@@ -95,11 +97,9 @@ namespace rfb {
 
     private:
         void overrun(size_t needed) override {
-            flush();
-
-            /*if (itemSize * nItems > end - ptr)
-                nItems = (end - ptr) / itemSize;
-            return nItems;*/
+            assert(end >= ptr);
+            if (needed > static_cast<size_t>(end - ptr))
+                flush();
         }
 
     public:
@@ -115,10 +115,10 @@ namespace rfb {
 
     private:
         ptrdiff_t offset;
-        rdr::U8 buf[131072]{};
+        rdr::U8 buf[8192]{};
     };
 
-    class MockSConnection : public SConnection {
+    class MockSConnection final : public SConnection {
     public:
         MockSConnection() {
             setStreams(nullptr, &out);
@@ -128,32 +128,70 @@ namespace rfb {
 
         ~MockSConnection() override = default;
 
-        void writeUpdate(const UpdateInfo &ui, const rfb::PixelBuffer *pb) {
-            vlog.info("Writing update");
-            // Drop any lossy tracking that is now outside the framebuffer
+        void writeUpdate(const UpdateInfo &ui, const PixelBuffer *pb) {
             //manager.pruneLosslessRefresh(Region(pb->getRect()));
 
             bytes += out.length();
             udp_bytes += udps.length();
 
-            vlog.info("bytes written: %lu", bytes);
-            vlog.info("udp bytes written: %lu", udp_bytes);
-
             cache.clear();
-            manager.writeUpdate(ui, pb, nullptr);
+
+            manager.clearEncodingTime();
+            if (!ui.is_empty()) {
+                manager.writeUpdate(ui, pb, nullptr);
+            } else {
+                Region region{pb->getRect()};
+                manager.writeLosslessRefresh(region, pb, nullptr, 2000);
+            }
         }
 
-        virtual void setAccessRights(AccessRights ar) {
+        void writeNoDataUpdate() {
+            if (!writer()->needNoDataUpdate())
+                return;
+
+            writer()->writeNoDataUpdate();
+        }
+
+        void WriteDataUpdate() {
+            Region req, pending;
+
+            if (req.is_empty())
+                return;
+
+            if (!pending.is_empty()) {
+                UpdateInfo ui;
+                // However, we might still be able to send a lossless refresh
+                req.assign_subtract(pending);
+                req.assign_subtract(ui.changed);
+                req.assign_subtract(ui.copied);
+
+                ui.changed.clear();
+                ui.copied.clear();
+            }
+        }
+
+        void writeFramebufferUpdate() {
+            manager.clearEncodingTime();
+
+            if (state() != RFBSTATE_NORMAL)
+                return;
+
+            // First, take care of any updates that cannot contain framebuffer data
+            // changes.
+            writeNoDataUpdate();
+
+            // Then real data (if possible)
+            WriteDataUpdate();
         }
 
         void setDesktopSize(int fb_width, int fb_height,
-                            const rfb::ScreenSet &layout) override {
+                            const ScreenSet &layout) override {
             cp.width = fb_width;
             cp.height = fb_height;
             cp.screenLayout = layout;
 
-            writer()->writeExtendedDesktopSize();
-            writer()->writeSetDesktopSize();
+            writer()->writeExtendedDesktopSize(reasonServer, 0, cp.width, cp.height,
+                                               cp.screenLayout);
         }
 
         void sendStats(const bool toClient) override {
@@ -186,8 +224,8 @@ namespace rfb {
             return manager.webpstats;
         }
 
-        uint64_t bytes;
-        uint64_t udp_bytes;
+        uint64_t bytes{};
+        uint64_t udp_bytes{};
 
     protected:
         MockStream out{};
@@ -198,31 +236,17 @@ namespace rfb {
     };
 
     static constexpr rdr::S32 encodings[] = {
-        pseudoEncodingWEBP,
-        pseudoEncodingJpegVideoQualityLevel0,
-        pseudoEncodingJpegVideoQualityLevel9,
-        pseudoEncodingWebpVideoQualityLevel0,
-        pseudoEncodingWebpVideoQualityLevel9,
-        pseudoEncodingTreatLosslessLevel0,
-        pseudoEncodingTreatLosslessLevel10,
-        pseudoEncodingPreferBandwidth,
-        pseudoEncodingDynamicQualityMinLevel0,
-        pseudoEncodingDynamicQualityMinLevel9,
-        pseudoEncodingDynamicQualityMaxLevel0,
-        pseudoEncodingDynamicQualityMaxLevel9,
-        pseudoEncodingVideoAreaLevel1,
-        pseudoEncodingVideoAreaLevel100,
-        pseudoEncodingVideoTimeLevel0,
-        pseudoEncodingVideoTimeLevel100,
-
-        pseudoEncodingFrameRateLevel10,
-        pseudoEncodingFrameRateLevel60,
-        pseudoEncodingMaxVideoResolution,
-        pseudoEncodingVideoScalingLevel0,
-        pseudoEncodingVideoScalingLevel9,
-        pseudoEncodingVideoOutTimeLevel1,
-        pseudoEncodingVideoOutTimeLevel100,
-        pseudoEncodingQOI
+        encodingTight,
+        encodingZRLE,
+        encodingHextile,
+        encodingRRE,
+        encodingRaw,
+        pseudoEncodingCompressLevel9,
+        pseudoEncodingQualityLevel9,
+        pseudoEncodingFineQualityLevel100,
+        pseudoEncodingSubsamp16X
+        //pseudoEncodingWEBP
+        //pseudoEncodingQOI
     };
 
     class MockCConnection final : public CConnection {
@@ -232,18 +256,19 @@ namespace rfb {
 
             // Need to skip the initial handshake and ServerInit
             setState(RFBSTATE_NORMAL);
-            // That also means that the reader and writer weren't setup
+            // That also means that the reader and writer weren't set up
             setReader(new rfb::CMsgReader(this, &in));
             auto &pf = pb->getPF();
             CMsgHandler::setPixelFormat(pf);
 
             MockCConnection::setDesktopSize(pb->width(), pb->height());
-            setFramebuffer(pb);
 
             cp.setPF(pf);
 
             sc.cp.setPF(pf);
             sc.setEncodings(std::size(encodings), encodings);
+
+            setFramebuffer(pb);
         }
 
         void setCursor(int width, int height, const Point &hotspot, const rdr::U8 *data, const bool resizing) override {
@@ -275,9 +300,6 @@ namespace rfb {
                 screen_layout.remove_screen(0);
 
             screen_layout.add_screen(Screen(0, 0, 0, w, h, 0));
-            //cp.screenLayout = screen_layout;
-            //sc.setDesktopSize(w, h, screen_layout);
-            vlog.info("setDesktopSize");
         }
 
         void setNewFrame(const AVFrame *frame) {
@@ -286,7 +308,7 @@ namespace rfb {
             const int height = pb->height();
             const rfb::Rect rect(0, 0, width, height);
 
-            int dstStride;
+            int dstStride{};
             auto *buffer = pb->getBufferRW(rect, &dstStride);
 
             const PixelFormat &pf = pb->getPF();
@@ -295,9 +317,7 @@ namespace rfb {
             const auto *srcData = frame->data[0];
             const int srcStride = frame->linesize[0] / 3; // Convert bytes to pixels
 
-            vlog.info("Frame stride %d", srcStride);
-
-            // Convert from RGB format to the PixelBuffer's format
+            // Convert from the RGB format to the PixelBuffer's format
             pf.bufferFromRGB(buffer, srcData, width, srcStride, height);
 
             // Commit changes
@@ -317,13 +337,9 @@ namespace rfb {
 
             const Region clip(pb->getRect());
 
-            CConnection::framebufferUpdateEnd();
+            updates.add_changed(pb->getRect());
 
-            //updates.add_changed(pb->getRect());
             updates.getUpdateInfo(&ui, clip);
-            vlog.info("%d", ui.changed.numRects());
-            vlog.info("%d", ui.copied.numRects());
-            vlog.info("%lu", ui.copypassed.size());
             sc.writeUpdate(ui, pb);
         }
 

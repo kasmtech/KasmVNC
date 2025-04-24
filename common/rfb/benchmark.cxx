@@ -119,18 +119,15 @@ void benchmark(const std::string &path) {
                     sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height,
                               rgb_frame->data, rgb_frame->linesize);
 
-                    vlog.info("Updating with frame %lu", frames);
                     connection.framebufferUpdateStart();
-                    vlog.info("Setting frame");
                     connection.setNewFrame(rgb_frame);
                     using namespace std::chrono;
 
                     auto now = high_resolution_clock::now();
-                    vlog.info("Updating frame...");
                     connection.framebufferUpdateEnd();
-                    const auto duration = duration_cast<nanoseconds>(high_resolution_clock::now() - now).count();
+                    const auto duration = duration_cast<milliseconds>(high_resolution_clock::now() - now).count();
 
-                    vlog.info("Frame took %lu ns", duration);
+                    vlog.info("Frame took %lu ms", duration);
 
                     // auto [jpeg_stats, webp_stats, bytes, udp_bytes] = connection.getStats();
                     //vlog.info("JPEG stats: %d ms", jpeg_stats.ms);
@@ -166,7 +163,12 @@ void benchmark(const std::string &path) {
 
         vlog.info("Average time encoding frame: %f ns", average);
         vlog.info("Median time encoding frame: %f ns", median);
-        vlog.info("Total time: %f ns", sum);
+        vlog.info("Total time: %f ms", sum);
+        vlog.info("JPEG stats: %d ms", jpeg_stats.ms);
+        vlog.info("JPEG stats: %d rects", jpeg_stats.rects);
+        vlog.info("WebP stats: %d ms", webp_stats.ms);
+        vlog.info("WebP stats: %d rects", webp_stats.rects);
+        vlog.info("Total bytes sent: %lu bytes", bytes);
 
         tinyxml2::XMLDocument doc;
 
