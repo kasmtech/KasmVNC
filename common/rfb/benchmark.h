@@ -18,8 +18,7 @@
 
 #pragma once
 
-#include <assert.h>
-#include <memory>
+#include <cassert>
 #include <rdr/FileInStream.h>
 #include <rfb/VNCServer.h>
 
@@ -30,58 +29,30 @@
 #include "LogWriter.h"
 #include "screenTypes.h"
 #include "SMsgWriter.h"
+#include "ffmpeg.h"
 
 namespace rdr {
     class FileInStream;
 }
 
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libswscale/swscale.h>
-}
-
 static rfb::LogWriter vlog("Benchmarking");
 
-struct AVFormatContextDeleter {
-    void operator()(AVFormatContext *ctx) const {
-        avformat_close_input(&ctx);
-    }
-};
-
-struct AVCodecContextDeleter {
-    void operator()(AVCodecContext *ctx) const {
-        avcodec_free_context(&ctx);
-    }
-};
-
-struct AVFrameDeleter {
-    void operator()(AVFrame *frame) const {
-        av_frame_free(&frame);
-    }
-};
-
-struct SwsContextDeleter {
-    void operator()(SwsContext *ctx) const {
-        sws_freeContext(ctx);
-    }
-};
-
-struct PacketDeleter {
-    void operator()(AVPacket *packet) const {
-        av_packet_free(&packet);
-    }
-};
-
-using FormatCtxGuard = std::unique_ptr<AVFormatContext, AVFormatContextDeleter>;
-using CodecCtxGuard = std::unique_ptr<AVCodecContext, AVCodecContextDeleter>;
-using FrameGuard = std::unique_ptr<AVFrame, AVFrameDeleter>;
-using SwsContextGuard = std::unique_ptr<SwsContext, SwsContextDeleter>;
-using PacketGuard = std::unique_ptr<AVPacket, PacketDeleter>;
-
-
 namespace rfb {
-    class MockBufferStream : public rdr::BufferedInStream {
+    static constexpr rdr::S32 default_encodings[] = {
+        encodingTight,
+        encodingZRLE,
+        encodingHextile,
+        encodingRRE,
+        encodingRaw,
+        pseudoEncodingCompressLevel9,
+        pseudoEncodingQualityLevel9,
+        pseudoEncodingFineQualityLevel100,
+        pseudoEncodingSubsamp16X
+        //pseudoEncodingWEBP
+        //pseudoEncodingQOI
+    };
+
+    class MockBufferStream final : public rdr::BufferedInStream {
         bool fillBuffer(size_t maxSize, bool wait) override {
             return true;
         }
@@ -131,9 +102,6 @@ namespace rfb {
         void writeUpdate(const UpdateInfo &ui, const PixelBuffer *pb) {
             //manager.pruneLosslessRefresh(Region(pb->getRect()));
 
-            bytes += out.length();
-            udp_bytes += udps.length();
-
             cache.clear();
 
             manager.clearEncodingTime();
@@ -143,45 +111,6 @@ namespace rfb {
                 Region region{pb->getRect()};
                 manager.writeLosslessRefresh(region, pb, nullptr, 2000);
             }
-        }
-
-        void writeNoDataUpdate() {
-            if (!writer()->needNoDataUpdate())
-                return;
-
-            writer()->writeNoDataUpdate();
-        }
-
-        void WriteDataUpdate() {
-            Region req, pending;
-
-            if (req.is_empty())
-                return;
-
-            if (!pending.is_empty()) {
-                UpdateInfo ui;
-                // However, we might still be able to send a lossless refresh
-                req.assign_subtract(pending);
-                req.assign_subtract(ui.changed);
-                req.assign_subtract(ui.copied);
-
-                ui.changed.clear();
-                ui.copied.clear();
-            }
-        }
-
-        void writeFramebufferUpdate() {
-            manager.clearEncodingTime();
-
-            if (state() != RFBSTATE_NORMAL)
-                return;
-
-            // First, take care of any updates that cannot contain framebuffer data
-            // changes.
-            writeNoDataUpdate();
-
-            // Then real data (if possible)
-            WriteDataUpdate();
         }
 
         void setDesktopSize(int fb_width, int fb_height,
@@ -224,8 +153,8 @@ namespace rfb {
             return manager.webpstats;
         }
 
-        uint64_t bytes{};
-        uint64_t udp_bytes{};
+        [[nodiscard]] auto bytes() { return out.length(); }
+        [[nodiscard]] auto udp_bytes() { return udps.length(); }
 
     protected:
         MockStream out{};
@@ -235,23 +164,9 @@ namespace rfb {
         EncodeManager manager{this, &cache};
     };
 
-    static constexpr rdr::S32 encodings[] = {
-        encodingTight,
-        encodingZRLE,
-        encodingHextile,
-        encodingRRE,
-        encodingRaw,
-        pseudoEncodingCompressLevel9,
-        pseudoEncodingQualityLevel9,
-        pseudoEncodingFineQualityLevel100,
-        pseudoEncodingSubsamp16X
-        //pseudoEncodingWEBP
-        //pseudoEncodingQOI
-    };
-
     class MockCConnection final : public CConnection {
     public:
-        explicit MockCConnection(ManagedPixelBuffer *pb) {
+        explicit MockCConnection(const std::vector<rdr::S32>& encodings, ManagedPixelBuffer *pb) {
             setStreams(&in, nullptr);
 
             // Need to skip the initial handshake and ServerInit
@@ -266,7 +181,7 @@ namespace rfb {
             cp.setPF(pf);
 
             sc.cp.setPF(pf);
-            sc.setEncodings(std::size(encodings), encodings);
+            sc.setEncodings(std::size(encodings), encodings.data());
 
             setFramebuffer(pb);
         }
@@ -284,12 +199,12 @@ namespace rfb {
             uint64_t udp_bytes;
         };
 
-        [[nodiscard]] stats_t getStats() const {
+        [[nodiscard]] stats_t getStats() {
             return {
                 sc.getJpegStats(),
                 sc.getWebPStats(),
-                sc.bytes,
-                sc.udp_bytes
+                sc.bytes(),
+                sc.udp_bytes()
             };
         }
 

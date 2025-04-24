@@ -89,6 +89,7 @@ namespace rfb {
         static BoolParameter ignoreClientSettingsKasm;
         static BoolParameter selfBench;
         static StringParameter benchmark;
+        static StringParameter benchmarkResults;
         static PresetParameter preferBandwidth;
         static IntParameter webpEncodingTime;
     };

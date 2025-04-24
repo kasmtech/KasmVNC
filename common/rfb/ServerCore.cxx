@@ -121,6 +121,12 @@ rfb::StringParameter rfb::Server::benchmark(
     "Benchmark",
     "Run extended benchmarks and exit.",
     "");
+
+rfb::StringParameter rfb::Server::benchmarkResults(
+    "BenchmarkResults",
+    "The file to save becnhmark results to.",
+    "Benchmark.xml");
+
 rfb::IntParameter rfb::Server::dynamicQualityMin
 ("DynamicQualityMin",
  "The minimum dynamic JPEG quality, 0 = low, 9 = high",

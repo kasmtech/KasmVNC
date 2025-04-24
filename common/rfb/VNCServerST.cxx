@@ -83,7 +83,7 @@ EncCache VNCServerST::encCache;
 
 void SelfBench();
 
-void benchmark(const std::string&);
+void benchmark(const std::string&, const std::string&);
 
 //
 // -=- VNCServerST Implementation
@@ -236,7 +236,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
         auto *file_name = Server::benchmark.getValueStr();
         if (!std::filesystem::exists(file_name))
             throw Exception("Benchmarking video file does not exist");
-        benchmark(file_name);
+        benchmark(file_name, Server::benchmarkResults.getValueStr());
     }
 }
 
