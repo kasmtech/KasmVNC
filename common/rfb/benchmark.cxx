@@ -84,39 +84,30 @@ void report(std::vector<uint64_t> &totals, std::vector<uint64_t> &timings,
     doc.InsertFirstChild(test_suit);
     auto total_tests{0};
 
-    auto add_benchmark_item = [&doc, &test_suit, &total_tests](const char *name, auto value) {
+    auto add_benchmark_item = [&doc, &test_suit, &total_tests](const char *name, auto time_value, auto other_value) {
         auto *test_case = doc.NewElement("testcase");
         test_case->SetAttribute("name", name);
-        test_case->SetAttribute("file", value);
+        test_case->SetAttribute("file", other_value);
+        test_case->SetAttribute("time", time_value);
         test_case->SetAttribute("runs", 1);
         test_case->SetAttribute("classname", "KasmVNC");
 
-        auto *props = doc.NewElement("properties");
-
-        auto *prop = doc.NewElement("property");
-        prop->SetAttribute("name", name);
-        props->InsertEndChild(prop);
-
-        prop = doc.NewElement("property");
-        prop->SetAttribute("value", value);
-        props->InsertEndChild(prop);
-
-        test_case->InsertEndChild(props);
         test_suit->InsertEndChild(test_case);
 
         ++total_tests;
     };
 
-    add_benchmark_item("Average time encoding frame, ms", average);
-    add_benchmark_item("Median time encoding frame, ms", median);
-    add_benchmark_item("Total time encoding, ms", totals_avg);
-    add_benchmark_item("Total time encoding, stddev", stddev);
-    add_benchmark_item("Mean JPEG stats, ms", jpeg_ms);
-    add_benchmark_item("Mean JPEG stats, rects", jpeg_rects);
-    add_benchmark_item("Mean WebP stats, ms", webp_ms);
-    add_benchmark_item("Mean WebP stats, rects", webp_rects);
+    constexpr auto mult = 1 / 1000.;
+    add_benchmark_item("Average time encoding frame, ms", average * mult, "");
+    add_benchmark_item("Median time encoding frame, ms", median * mult, "");
+    add_benchmark_item("Total time encoding, ms", 0, totals_avg);
+    add_benchmark_item("Total time encoding, stddev", 0, stddev);
+    add_benchmark_item("Mean JPEG stats, ms", jpeg_ms, "");
+    add_benchmark_item("Mean JPEG stats, rects", 0., jpeg_rects);
+    add_benchmark_item("Mean WebP stats, ms", webp_ms, "");
+    add_benchmark_item("Mean WebP stats, rects", 0, webp_rects);
 
-    add_benchmark_item("Data sent, KBs", bytes / 1024);
+    add_benchmark_item("Data sent, KBs", 0, bytes / 1024);
 
     doc.SaveFile(results_file.c_str());
 }
