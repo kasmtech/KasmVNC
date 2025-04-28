@@ -2069,6 +2069,15 @@ sub DefineConfigToCLIConversion {
         }
     }),
     KasmVNC::CliOption->new({
+        name => 'WebpEncodingTime',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.video_encoding_mode.webp_encoding_time",
+            type => KasmVNC::ConfigKey::INT
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
         name => 'CompareFB',
         configKeys => [
           KasmVNC::ConfigKey->new({

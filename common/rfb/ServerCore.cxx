@@ -287,3 +287,8 @@ rfb::PresetParameter rfb::Server::preferBandwidth
 ("PreferBandwidth",
  "Set various options for lower bandwidth use. The default is off, aka to prefer quality.",
  false, bandwidthPreset);
+
+rfb::IntParameter rfb::Server::webpEncodingTime
+("webpEncodingTime",
+ "Percentage of time allotted for encoding a frame, that can be used for encoding rects in webp.",
+ 30, 0, 100);

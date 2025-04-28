@@ -259,13 +259,14 @@ void TightWEBPEncoder::writeRect(const PixelBuffer* pb, const Palette& palette)
   WebPMemoryWriterClear(&wrt);
 }
 
-// How many milliseconds would it take to encode a 256x256 block at quality 8
+// How many milliseconds would it take to encode a 256x256 block at quality 5
 rdr::U32 TightWEBPEncoder::benchmark() const
 {
   rdr::U8* buffer;
   struct timeval start;
   int stride, i;
-  const uint8_t quality = 8, method = 2;
+  // the minimum WebP quality settings used in KasmVNC
+  const uint8_t quality = 5, method = 0; 
   WebPConfig cfg;
   WebPPicture pic;
   WebPMemoryWriter wrt;
