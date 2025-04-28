@@ -1,4 +1,6 @@
-/* Copyright (C) 2025 Kasm Technologies Corp
+/* Copyright 2015 Pierre Ossman <ossman@cendio.se> for Cendio AB
+ * Copyright (C) 2015 D. R. Commander.  All Rights Reserved.
+ * Copyright (C) 2025 Kasm Technologies Corp
  *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,10 +32,6 @@
 #include "screenTypes.h"
 #include "SMsgWriter.h"
 #include "ffmpeg.h"
-
-namespace rdr {
-    class FileInStream;
-}
 
 static rfb::LogWriter vlog("Benchmarking");
 
@@ -100,9 +98,7 @@ namespace rfb {
         ~MockSConnection() override = default;
 
         void writeUpdate(const UpdateInfo &ui, const PixelBuffer *pb) {
-            //manager.pruneLosslessRefresh(Region(pb->getRect()));
-
-            cache.clear();
+                cache.clear();
 
             manager.clearEncodingTime();
             if (!ui.is_empty()) {
@@ -191,7 +187,6 @@ namespace rfb {
 
         ~MockCConnection() override = default;
 
-
         struct stats_t {
             EncodeManager::codecstats_t jpeg_stats;
             EncodeManager::codecstats_t webp_stats;
@@ -240,8 +235,6 @@ namespace rfb {
         }
 
         void framebufferUpdateStart() override {
-            CConnection::framebufferUpdateStart();
-
             updates.clear();
         }
 
@@ -249,7 +242,6 @@ namespace rfb {
             const PixelBuffer *pb = getFramebuffer();
 
             UpdateInfo ui;
-
             const Region clip(pb->getRect());
 
             updates.add_changed(pb->getRect());
@@ -259,10 +251,6 @@ namespace rfb {
         }
 
         void dataRect(const Rect &r, int encoding) override {
-            CConnection::dataRect(r, encoding);
-
-            if (encoding != encodingCopyRect) // FIXME
-                updates.add_changed(Region(r));
         }
 
         void setColourMapEntries(int, int, rdr::U16 *) override {

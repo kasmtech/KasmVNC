@@ -242,6 +242,8 @@ void benchmark(const std::string &path, const std::string &results_file) {
 
         totals[run] = total;
         stats[run] = connection.getStats();
+        vlog.info("JPEG stats: %u ms", stats[run].jpeg_stats.ms);
+        vlog.info("WebP stats: %u ms", stats[run].webp_stats.ms);
         vlog.info("RUN %d. Bytes sent %lu..", run, stats[run].bytes);
     }
 
