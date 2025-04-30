@@ -48,8 +48,8 @@
 // otherwise blacklisted connections might be "forgotten".
 
 
-#include <assert.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cstdlib>
 
 #include <network/GetAPI.h>
 #include <network/Udp.h>
@@ -74,6 +74,7 @@
 #include <unistd.h>
 #include <wordexp.h>
 #include <filesystem>
+#include <string_view>
 
 using namespace rfb;
 
@@ -83,7 +84,7 @@ EncCache VNCServerST::encCache;
 
 void SelfBench();
 
-void benchmark(const std::string&, const std::string&);
+void benchmark(std::string_view, std::string_view);
 
 //
 // -=- VNCServerST Implementation

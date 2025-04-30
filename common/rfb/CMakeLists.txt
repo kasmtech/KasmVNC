@@ -68,6 +68,7 @@ set(RFB_SOURCES
         encodings.cxx
         util.cxx
         xxhash.c
+        ffmpeg.cxx
 )
 
 if (UNIX)
@@ -143,7 +144,7 @@ target_include_directories(rfb PRIVATE
         ${FFMPEG_INCLUDE_DIRS}
 )
 
-target_link_libraries(rfb PRIVATE ${RFB_LIBRARIES} tinyxml2_objs  ${FFMPEG_LIBRARIES})
+target_link_libraries(rfb PRIVATE ${RFB_LIBRARIES} tinyxml2_objs)
 
 if (UNIX)
     libtool_create_control_file(rfb)

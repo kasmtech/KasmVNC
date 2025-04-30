@@ -1,4 +1,6 @@
-/* Copyright (C) 2025 Kasm Technologies Corp
+/* Copyright 2015 Pierre Ossman <ossman@cendio.se> for Cendio AB
+ * Copyright (C) 2015 D. R. Commander.  All Rights Reserved.
+ * Copyright (C) 2025 Kasm Technologies Corp
  *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,16 +19,253 @@
  */
 
 #include "benchmark.h"
-#include <string>
-#include <stdexcept>
+#include <string_view>
 #include <rfb/LogWriter.h>
 #include <numeric>
 #include <tinyxml2.h>
 #include <algorithm>
+#include <cassert>
+
 #include "ServerCore.h"
+#include <cmath>
+
+#include "EncCache.h"
+#include "EncodeManager.h"
+#include "SConnection.h"
+#include "screenTypes.h"
+#include "SMsgWriter.h"
+#include "UpdateTracker.h"
+#include "rdr/BufferedInStream.h"
+#include "rdr/OutStream.h"
+#include "ffmpeg.h"
+
+namespace benchmarking {
+    class MockBufferStream final : public rdr::BufferedInStream {
+        bool fillBuffer(size_t maxSize, bool wait) override {
+            return true;
+        }
+    };
+
+    class MockStream final : public rdr::OutStream {
+    public:
+        MockStream() {
+            offset = 0;
+            ptr = buf;
+            end = buf + sizeof(buf);
+        }
+
+    private:
+        void overrun(size_t needed) override {
+            assert(end >= ptr);
+            if (needed > static_cast<size_t>(end - ptr))
+                flush();
+        }
+
+    public:
+        size_t length() override {
+            flush();
+            return offset;
+        }
+
+        void flush() override {
+            offset += ptr - buf;
+            ptr = buf;
+        }
+
+    private:
+        ptrdiff_t offset;
+        rdr::U8 buf[8192]{};
+    };
+
+    class MockSConnection final : public rfb::SConnection {
+    public:
+        MockSConnection() {
+            setStreams(nullptr, &out);
+
+            setWriter(new rfb::SMsgWriter(&cp, &out, &udps));
+        }
+
+        ~MockSConnection() override = default;
+
+        void writeUpdate(const rfb::UpdateInfo &ui, const rfb::PixelBuffer *pb) {
+            cache.clear();
+
+            manager.clearEncodingTime();
+            if (!ui.is_empty()) {
+                manager.writeUpdate(ui, pb, nullptr);
+            } else {
+                rfb::Region region{pb->getRect()};
+                manager.writeLosslessRefresh(region, pb, nullptr, 2000);
+            }
+        }
+
+        void setDesktopSize(int fb_width, int fb_height,
+                            const rfb::ScreenSet &layout) override {
+            cp.width = fb_width;
+            cp.height = fb_height;
+            cp.screenLayout = layout;
+
+            writer()->writeExtendedDesktopSize(rfb::reasonServer, 0, cp.width, cp.height,
+                                               cp.screenLayout);
+        }
+
+        void sendStats(const bool toClient) override {
+        }
+
+        [[nodiscard]] bool canChangeKasmSettings() const override {
+            return false;
+        }
+
+        void udpUpgrade(const char *resp) override {
+        }
+
+        void udpDowngrade(const bool) override {
+        }
+
+        void subscribeUnixRelay(const char *name) override {
+        }
+
+        void unixRelay(const char *name, const rdr::U8 *buf, const unsigned len) override {
+        }
+
+        void handleFrameStats(rdr::U32 all, rdr::U32 render) override {
+        }
+
+        [[nodiscard]] auto getJpegStats() const {
+            return manager.jpegstats;
+        }
+
+        [[nodiscard]] auto getWebPStats() const {
+            return manager.webpstats;
+        }
+
+        [[nodiscard]] auto bytes() { return out.length(); }
+        [[nodiscard]] auto udp_bytes() { return udps.length(); }
+
+    protected:
+        MockStream out{};
+        MockStream udps{};
+
+        EncCache cache{};
+        EncodeManager manager{this, &cache};
+    };
+
+    class MockCConnection final : public MockTestConnection {
+    public:
+        explicit MockCConnection(const std::vector<rdr::S32> &encodings, rfb::ManagedPixelBuffer *pb) {
+            setStreams(&in, nullptr);
+
+            // Need to skip the initial handshake and ServerInit
+            setState(RFBSTATE_NORMAL);
+            // That also means that the reader and writer weren't set up
+            setReader(new rfb::CMsgReader(this, &in));
+            auto &pf = pb->getPF();
+            CMsgHandler::setPixelFormat(pf);
+
+            MockCConnection::setDesktopSize(pb->width(), pb->height());
+
+            cp.setPF(pf);
+
+            sc.cp.setPF(pf);
+            sc.setEncodings(std::size(encodings), encodings.data());
+
+            setFramebuffer(pb);
+        }
+
+        void setCursor(int width, int height, const rfb::Point &hotspot, const rdr::U8 *data,
+                       const bool resizing) override {
+        }
+
+        ~MockCConnection() override = default;
+
+        struct stats_t {
+            EncodeManager::codecstats_t jpeg_stats;
+            EncodeManager::codecstats_t webp_stats;
+            uint64_t bytes;
+            uint64_t udp_bytes;
+        };
+
+        [[nodiscard]] stats_t getStats() {
+            return {
+                sc.getJpegStats(),
+                sc.getWebPStats(),
+                sc.bytes(),
+                sc.udp_bytes()
+            };
+        }
+
+        void setDesktopSize(int w, int h) override {
+            CConnection::setDesktopSize(w, h);
+
+            if (screen_layout.num_screens())
+                screen_layout.remove_screen(0);
+
+            screen_layout.add_screen(rfb::Screen(0, 0, 0, w, h, 0));
+        }
+
+        void setNewFrame(const AVFrame *frame) override {
+            auto *pb = getFramebuffer();
+            const int width = pb->width();
+            const int height = pb->height();
+            const rfb::Rect rect(0, 0, width, height);
+
+            int dstStride{};
+            auto *buffer = pb->getBufferRW(rect, &dstStride);
+
+            const rfb::PixelFormat &pf = pb->getPF();
+
+            // Source data and stride from FFmpeg
+            const auto *srcData = frame->data[0];
+            const int srcStride = frame->linesize[0] / 3; // Convert bytes to pixels
+
+            // Convert from the RGB format to the PixelBuffer's format
+            pf.bufferFromRGB(buffer, srcData, width, srcStride, height);
+
+            // Commit changes
+            pb->commitBufferRW(rect);
+        }
+
+        void framebufferUpdateStart() override {
+            updates.clear();
+        }
+
+        void framebufferUpdateEnd() override {
+            const rfb::PixelBuffer *pb = getFramebuffer();
+
+            rfb::UpdateInfo ui;
+            const rfb::Region clip(pb->getRect());
+
+            updates.add_changed(pb->getRect());
+
+            updates.getUpdateInfo(&ui, clip);
+            sc.writeUpdate(ui, pb);
+        }
+
+        void dataRect(const rfb::Rect &r, int encoding) override {
+        }
+
+        void setColourMapEntries(int, int, rdr::U16 *) override {
+        }
+
+        void bell() override {
+        }
+
+        void serverCutText(const char *, rdr::U32) override {
+        }
+
+        void serverCutText(const char *str) override {
+        }
+
+    protected:
+        MockBufferStream in;
+        rfb::ScreenSet screen_layout;
+        rfb::SimpleUpdateTracker updates;
+        MockSConnection sc;
+    };
+}
 
 void report(std::vector<uint64_t> &totals, std::vector<uint64_t> &timings,
-            std::vector<rfb::MockCConnection::stats_t> &stats, const std::string &results_file) {
+            std::vector<benchmarking::MockCConnection::stats_t> &stats, const std::string_view results_file) {
     auto totals_sum = std::accumulate(totals.begin(), totals.end(), 0.);
     auto totals_avg = totals_sum / static_cast<double>(totals.size());
 
@@ -109,148 +348,52 @@ void report(std::vector<uint64_t> &totals, std::vector<uint64_t> &timings,
 
     add_benchmark_item("Data sent, KBs", 0, bytes / 1024);
 
-    doc.SaveFile(results_file.c_str());
+    doc.SaveFile(results_file.data());
 }
 
-void benchmark(const std::string &path, const std::string &results_file) {
-    AVFormatContext *format_ctx = nullptr;
+void benchmark(std::string_view path, const std::string_view results_file) {
+    try {
+        vlog.info("Benchmarking with video file %s", path.data());
+        FFmpegFrameFeeder frame_feeder{};
+        frame_feeder.open(path);
 
-    vlog.info("Benchmarking with video file %s", path.c_str());
+        static const rfb::PixelFormat pf{32, 24, false, true, 0xFF, 0xFF, 0xFF, 0, 8, 16};
+        const std::vector<rdr::S32> encodings{
+            std::begin(benchmarking::default_encodings), std::end(benchmarking::default_encodings)
+        };
 
-    if (avformat_open_input(&format_ctx, path.c_str(), nullptr, nullptr) < 0)
-        throw std::runtime_error("Could not open video file");
+        // if (rfb::Server::WebPEnabled)
+        //     encodings.push_back(rfb::pseudoEncodingWEBP);
 
-    FormatCtxGuard format_ctx_guard{format_ctx};
+        constexpr auto runs = 20;
+        std::vector<uint64_t> totals(runs, 0);
+        std::vector<benchmarking::MockCConnection::stats_t> stats(runs);
+        std::vector<uint64_t> timings{};
+        auto [width, height] = frame_feeder.get_frame_dimensions();
 
-    // Find stream info
-    if (avformat_find_stream_info(format_ctx, nullptr) < 0)
-        throw std::runtime_error("Could not find stream info");
+        for (int run = 0; run < runs; ++run) {
+            auto *pb = new rfb::ManagedPixelBuffer{pf, width, height};
+            benchmarking::MockCConnection connection{encodings, pb};
 
-    // Find video stream
-    int video_stream_idx = -1;
-    for (uint32_t i = 0; i < format_ctx->nb_streams; ++i) {
-        if (format_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-            video_stream_idx = static_cast<int>(i);
-            break;
+            vlog.info("RUN %d. Reading frames...", run);
+            auto play_stats = frame_feeder.play(&connection);
+            vlog.info("RUN %d. Done reading frames...", run);
+
+            timings.insert(timings.end(), play_stats.timings.begin(), play_stats.timings.end());
+
+            totals[run] = play_stats.total;
+            stats[run] = connection.getStats();
+            vlog.info("JPEG stats: %u ms", stats[run].jpeg_stats.ms);
+            vlog.info("WebP stats: %u ms", stats[run].webp_stats.ms);
+            vlog.info("RUN %d. Bytes sent %lu..", run, stats[run].bytes);
         }
+
+        if (!timings.empty())
+            report(totals, timings, stats, results_file);
+
+        exit(0);
+    } catch (std::exception &e) {
+        vlog.error("Benchmarking failed: %s", e.what());
+        exit(1);
     }
-
-    if (video_stream_idx == -1)
-        throw std::runtime_error("No video stream found");
-
-    // Get codec parameters and decoder
-    const auto *codec_parameters = format_ctx->streams[video_stream_idx]->codecpar;
-    const auto *codec = avcodec_find_decoder(codec_parameters->codec_id);
-    if (!codec)
-        throw std::runtime_error("Codec not found");
-
-    const CodecCtxGuard codex_ctx_guard{avcodec_alloc_context3(codec)};
-    auto *codec_ctx = codex_ctx_guard.get();
-
-    if (!codec_ctx || avcodec_parameters_to_context(codec_ctx, codec_parameters) < 0)
-        throw std::runtime_error("Failed to set up codec context");
-
-    if (avcodec_open2(codec_ctx, codec, nullptr) < 0)
-        throw std::runtime_error("Could not open codec");
-
-    // Allocate frame and packet
-    const FrameGuard frame_guard{av_frame_alloc()};
-    auto *frame = frame_guard.get();
-
-    const PacketGuard packet_guard{av_packet_alloc()};
-    auto *packet = packet_guard.get();
-
-    if (!frame || !packet)
-        throw std::runtime_error("Could not allocate frame or packet");
-
-    // Scaling context to convert to RGB24
-    SwsContext *sws_ctx = sws_getContext(
-        codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt,
-        codec_ctx->width, codec_ctx->height, AV_PIX_FMT_RGB24,
-        SWS_BILINEAR, nullptr, nullptr, nullptr
-    );
-
-    if (!sws_ctx)
-        throw std::runtime_error("Could not create scaling context");
-
-    SwsContextGuard sws_ctx_guard{sws_ctx};
-
-    const FrameGuard rgb_frame_guard{av_frame_alloc()};
-    auto *rgb_frame = rgb_frame_guard.get();
-
-    if (!rgb_frame)
-        throw std::runtime_error("Could not allocate frame");
-
-    rgb_frame->format = AV_PIX_FMT_RGB24;
-    rgb_frame->width = codec_ctx->width;
-    rgb_frame->height = codec_ctx->height;
-
-    static const rfb::PixelFormat pf{32, 24, false, true, 0xFF, 0xFF, 0xFF, 0, 8, 16};
-    std::vector<rdr::S32> encodings{std::begin(rfb::default_encodings), std::end(rfb::default_encodings)};
-
-    // if (rfb::Server::WebPEnabled)
-    //     encodings.push_back(rfb::pseudoEncodingWEBP);
-
-    if (av_frame_get_buffer(rgb_frame, 0) != 0)
-        throw std::runtime_error("Could not allocate frame data");
-
-    constexpr auto runs = 20;
-    std::vector<uint64_t> totals(runs, 0);
-    std::vector<rfb::MockCConnection::stats_t> stats(runs);
-    const size_t total_frame_count = format_ctx->streams[video_stream_idx]->nb_frames;
-    std::vector<uint64_t> timings(total_frame_count > 0 ? total_frame_count * runs : 2048, 0);
-    uint64_t frames{};
-
-    for (int run = 0; run < runs; ++run) {
-        auto *pb = new rfb::ManagedPixelBuffer{pf, rgb_frame->width, rgb_frame->height};
-        rfb::MockCConnection connection{encodings, pb};
-
-        uint64_t total{};
-
-        vlog.info("RUN %d. Reading frames...", run);
-        while (av_read_frame(format_ctx, packet) == 0) {
-            if (packet->stream_index == video_stream_idx) {
-                if (avcodec_send_packet(codec_ctx, packet) == 0) {
-                    while (avcodec_receive_frame(codec_ctx, frame) == 0) {
-                        // Convert to RGB
-                        sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height,
-                                  rgb_frame->data, rgb_frame->linesize);
-
-                        connection.framebufferUpdateStart();
-                        connection.setNewFrame(rgb_frame);
-                        using namespace std::chrono;
-
-                        auto now = high_resolution_clock::now();
-                        connection.framebufferUpdateEnd();
-                        const auto duration = duration_cast<milliseconds>(high_resolution_clock::now() - now).count();
-
-                        //vlog.info("Frame took %lu ms", duration);
-
-                        timings[frames++] = duration;
-                        total += duration;
-                    }
-                }
-            }
-            av_packet_unref(packet);
-        }
-        vlog.info("RUN %d. Done reading frames...", run);
-
-        if (av_seek_frame(format_ctx, video_stream_idx, 0, AVSEEK_FLAG_BACKWARD) < 0)
-            throw std::runtime_error("Could not seek to start of video");
-
-        avcodec_flush_buffers(codec_ctx);
-
-        totals[run] = total;
-        stats[run] = connection.getStats();
-        vlog.info("JPEG stats: %u ms", stats[run].jpeg_stats.ms);
-        vlog.info("WebP stats: %u ms", stats[run].webp_stats.ms);
-        vlog.info("RUN %d. Bytes sent %lu..", run, stats[run].bytes);
-    }
-
-    if (frames > 0)
-        report(totals, timings, stats, results_file);
-
-    avcodec_close(codec_ctx);
-
-    exit(0);
 }
