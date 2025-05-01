@@ -48,7 +48,6 @@ RUN zypper install -ny \
   xorg-x11-server-sdk \
   xorg-x11-util-devel \
   zlib-devel
-#RUN zypper install -ny libavformat-devel libswscale-devel
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 140 \
   --slave /usr/bin/g++ g++ /usr/bin/g++-14 \
