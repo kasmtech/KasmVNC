@@ -358,12 +358,12 @@ void benchmark(std::string_view path, const std::string_view results_file) {
         frame_feeder.open(path);
 
         static const rfb::PixelFormat pf{32, 24, false, true, 0xFF, 0xFF, 0xFF, 0, 8, 16};
-        const std::vector<rdr::S32> encodings{
+        std::vector<rdr::S32> encodings{
             std::begin(benchmarking::default_encodings), std::end(benchmarking::default_encodings)
         };
 
-        // if (rfb::Server::WebPEnabled)
-        //     encodings.push_back(rfb::pseudoEncodingWEBP);
+        if (rfb::Server::webpEncodingTime != 30)
+            encodings.push_back(rfb::pseudoEncodingWEBP);
 
         constexpr auto runs = 20;
         std::vector<uint64_t> totals(runs, 0);
