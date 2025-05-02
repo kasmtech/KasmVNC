@@ -37,6 +37,7 @@ namespace benchmarking {
     };
 
     static constexpr rdr::S32 default_encodings[] = {
+        pseudoEncodingWEBP,
         encodingTight,
         encodingZRLE,
         encodingHextile,
@@ -46,7 +47,5 @@ namespace benchmarking {
         pseudoEncodingQualityLevel9,
         pseudoEncodingFineQualityLevel100,
         pseudoEncodingSubsamp16X
-        //pseudoEncodingWEBP
-        //pseudoEncodingQOI
     };
 }

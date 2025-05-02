@@ -362,9 +362,6 @@ void benchmark(std::string_view path, const std::string_view results_file) {
             std::begin(benchmarking::default_encodings), std::end(benchmarking::default_encodings)
         };
 
-        if (rfb::Server::webpEncodingTime != 30)
-            encodings.push_back(rfb::pseudoEncodingWEBP);
-
         constexpr auto runs = 20;
         std::vector<uint64_t> totals(runs, 0);
         std::vector<benchmarking::MockCConnection::stats_t> stats(runs);

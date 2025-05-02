@@ -535,8 +535,7 @@ test:
     reports:
       junit:
         - SelfBench.xml
-        - JpegBenchmark.xml
-        - WebPBenchmark.xml
+        - Benchmark.xml
   script:
     - bash builder/test-vncserver
 
