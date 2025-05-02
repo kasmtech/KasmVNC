@@ -113,7 +113,7 @@ namespace benchmarking {
         }
 
         [[nodiscard]] bool canChangeKasmSettings() const override {
-            return false;
+            return true;
         }
 
         void udpUpgrade(const char *resp) override {

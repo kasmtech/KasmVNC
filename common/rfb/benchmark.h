@@ -37,15 +37,31 @@ namespace benchmarking {
     };
 
     static constexpr rdr::S32 default_encodings[] = {
-        pseudoEncodingWEBP,
+        
         encodingTight,
-        encodingZRLE,
         encodingHextile,
         encodingRRE,
         encodingRaw,
-        pseudoEncodingCompressLevel9,
-        pseudoEncodingQualityLevel9,
-        pseudoEncodingFineQualityLevel100,
-        pseudoEncodingSubsamp16X
+        pseudoEncodingQualityLevel0 + 6,
+        pseudoEncodingCompressLevel0 + 2,
+        pseudoEncodingDesktopSize,
+        pseudoEncodingLastRect,
+        pseudoEncodingQEMUKeyEvent,
+        pseudoEncodingExtendedDesktopSize,
+        pseudoEncodingFence,
+        pseudoEncodingContinuousUpdates,
+        pseudoEncodingDesktopName,
+        pseudoEncodingExtendedClipboard,
+        pseudoEncodingWEBP,
+        pseudoEncodingJpegVideoQualityLevel0 + 7,
+        pseudoEncodingWebpVideoQualityLevel0 + 7,
+        pseudoEncodingTreatLosslessLevel0 + 7,
+        pseudoEncodingDynamicQualityMinLevel0 + 4,
+        pseudoEncodingDynamicQualityMaxLevel0 + 9,
+        pseudoEncodingVideoAreaLevel1 - 1 + 65,
+        pseudoEncodingVideoTimeLevel0 + 5,
+        pseudoEncodingVideoOutTimeLevel1 - 1 + 3,
+        pseudoEncodingFrameRateLevel10 - 10 + 60,
+        pseudoEncodingMaxVideoResolution
     };
 }
