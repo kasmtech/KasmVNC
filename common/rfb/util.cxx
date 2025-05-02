@@ -21,8 +21,8 @@
 #include <config.h>
 #endif
 
-#include <stdarg.h>
-#include <stdio.h>
+#include <cstdarg>
+#include <cstdio>
 #include <sys/time.h>
 
 #include <rfb/util.h>
@@ -570,6 +570,11 @@ namespace rfb {
     gettimeofday(&now, NULL);
 
     return msBetween(then, &now);
+  }
+
+  uint64_t elapsedMs(std::chrono::high_resolution_clock::time_point start)
+  {
+      return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
   }
 
   bool isBefore(const struct timeval *first,

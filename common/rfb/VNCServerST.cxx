@@ -48,8 +48,8 @@
 // otherwise blacklisted connections might be "forgotten".
 
 
-#include <assert.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cstdlib>
 
 #include <network/GetAPI.h>
 #include <network/Udp.h>
@@ -73,6 +73,8 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <wordexp.h>
+#include <filesystem>
+#include <string_view>
 
 using namespace rfb;
 
@@ -81,6 +83,8 @@ LogWriter VNCServerST::connectionsLog("Connections");
 EncCache VNCServerST::encCache;
 
 void SelfBench();
+
+void benchmark(std::string_view, std::string_view);
 
 //
 // -=- VNCServerST Implementation
@@ -128,13 +132,13 @@ static void parseRegionPart(const bool percents, rdr::U16 &pcdest, int &dest,
 
 VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
   : blHosts(&blacklist), desktop(desktop_), desktopStarted(false),
-    blockCounter(0), pb(0), blackedpb(0), ledState(ledUnknown),
-    name(strDup(name_)), pointerClient(0), clipboardClient(0),
-    comparer(0), cursor(new Cursor(0, 0, Point(), NULL)),
+    blockCounter(0), pb(nullptr), blackedpb(nullptr), ledState(ledUnknown),
+    name(strDup(name_)), pointerClient(nullptr), clipboardClient(nullptr),
+    comparer(nullptr), cursor(new Cursor(0, 0, Point(), nullptr)),
     renderedCursorInvalid(false),
-    queryConnectionHandler(0), keyRemapper(&KeyRemapper::defInstance),
+    queryConnectionHandler(nullptr), keyRemapper(&KeyRemapper::defInstance),
     lastConnectionTime(0), disableclients(false),
-    frameTimer(this), apimessager(NULL), trackingFrameStats(0),
+    frameTimer(this), apimessager(nullptr), trackingFrameStats(0),
     clipboardId(0), sendWatermark(false)
 {
   lastUserInputTime = lastDisconnectTime = time(0);
@@ -198,7 +202,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
       }
     }
 
-    DLPRegion.enabled = 1;
+    DLPRegion.enabled = true;
   }
 
   kasmpasswdpath[0] = '\0';
@@ -223,11 +227,18 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
 
   trackingClient[0] = 0;
 
-  if (watermarkData)
-    sendWatermark = true;
+    if (watermarkData)
+        sendWatermark = true;
 
-  if (Server::selfBench)
-    SelfBench();
+    if (Server::selfBench)
+        SelfBench();
+
+    if (Server::benchmark[0]) {
+        auto *file_name = Server::benchmark.getValueStr();
+        if (!std::filesystem::exists(file_name))
+            throw Exception("Benchmarking video file does not exist");
+        benchmark(file_name, Server::benchmarkResults.getValueStr());
+    }
 }
 
 VNCServerST::~VNCServerST()

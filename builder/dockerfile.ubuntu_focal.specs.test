@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y vim less
 RUN apt-get update && apt-get install -y python3-pip
 RUN apt-get update && apt-get install -y strace silversearcher-ag xfonts-base
 RUN apt-get update && apt-get install -y cinnamon
-RUN apt-get update && apt-get install -y mate
+RUN apt-get update && apt-get install -y mate wget
 
 RUN useradd -m docker
 

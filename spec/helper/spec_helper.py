@@ -23,6 +23,18 @@ def write_config(config_text):
         f.write(config_text)
 
 
+def clean_locks():
+    tmp = '/tmp'
+    temporary_lock_file = os.path.join(tmp, '.X1-lock')
+    if (os.path.exists(temporary_lock_file)):
+        os.remove(temporary_lock_file)
+
+    temporary_lock_file = os.path.join(tmp, '.X11-unix')
+    temporary_lock_file = os.path.join(temporary_lock_file, 'X1')
+    if (os.path.exists(temporary_lock_file)):
+        os.remove(temporary_lock_file)
+
+
 def clean_env():
     clean_kasm_users()
 
@@ -30,6 +42,7 @@ def clean_env():
     vnc_dir = os.path.join(home_dir, ".vnc")
     Path(vnc_dir).rmtree(ignore_errors=True)
 
+    clean_locks()
 
 def clean_kasm_users():
     home_dir = os.environ['HOME']
@@ -91,3 +104,4 @@ def kill_xvnc():
 
     run_cmd('vncserver -kill :1', print_stderr=False)
     running_xvnc = False
+    clean_locks()

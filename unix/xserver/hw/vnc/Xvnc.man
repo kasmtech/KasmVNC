@@ -574,6 +574,16 @@ When \fBNoClipboard\fP parameter is set, allowing override of \fBSendCutText\fP
 and \fBAcceptCutText\fP has no effect.
 
 Default is \fBdesktop,AcceptPointerEvents,SendCutText,AcceptCutText,SendPrimary,SetPrimary\fP.
+.
+TP
+.B -Benchmark <video_file>
+Run the built-in benchmarking routines on the specified video file and exit.
+When this option is used, benchmarking results can be saved to a file specified by the \fB-BenchmarkResults\fP option; otherwise, the results are saved to \fBBenchmark.xml\fP by default.
+.
+.TP
+.B -BenchmarkResults <results_file.xml>
+Save the benchmarking results to the specified file.
+Use this option together with \fB-Benchmark\fP to output the report to a custom file.
 
 .SH USAGE WITH INETD
 By configuring the \fBinetd\fP(1) service appropriately, Xvnc can be launched

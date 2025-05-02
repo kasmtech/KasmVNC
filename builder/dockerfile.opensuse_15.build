@@ -13,6 +13,8 @@ RUN zypper install -ny \
   nasm \
   curl \
   ffmpeg-4-libavcodec-devel \
+  ffmpeg-4-libswscale-devel \
+  ffmpeg-4-libavformat-devel \
   fonttosfnt \
   font-util \
   gcc14 \
@@ -50,7 +52,6 @@ RUN zypper install -ny \
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 140 \
   --slave /usr/bin/g++ g++ /usr/bin/g++-14 \
   --slave /usr/bin/gcov gcov /usr/bin/gcov-14
-
 
 RUN useradd -u 1000 docker && \
   groupadd -g 1000 docker && \

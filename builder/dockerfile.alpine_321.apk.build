@@ -1,7 +1,7 @@
 FROM alpine:3.21
 
 RUN apk add shadow bash
-RUN apk add abuild sudo less
+RUN apk add abuild sudo less ffmpeg-dev
 
 ENV HOME /src/alpine
 WORKDIR $HOME/kasmvncserver

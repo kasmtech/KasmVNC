@@ -32,7 +32,9 @@ RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list && \
     libpng-dev \
     libtiff-dev \
     libgif-dev \
+    libavformat-dev \
     libavcodec-dev \
+    libswscale-dev \
     libssl-dev \
     libxrandr-dev \
     libxcursor-dev \
@@ -61,7 +63,7 @@ COPY builder/common.sh /tmp
 
 RUN chmod +x /tmp/build-webp && /tmp/build-webp
 RUN chmod +x /tmp/build-libjpeg-turbo && /tmp/build-libjpeg-turbo
-   
+
 USER 1000
 
 WORKDIR /src

@@ -29,6 +29,7 @@ stages:
   - pwd
   - apk add bash
   - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
+  - docker login --username $DOCKER_HUB_USERNAME --password $DOCKER_HUB_PASSWORD
 
 .prepare_www: &prepare_www
   - tar -zxf output/www/kasm_www.tar.gz -C builder/
@@ -527,9 +528,14 @@ build_fedora_fortyone_arm:
 test:
   stage: test
   tags:
-    - oci-fixed-amd
+    - kasmvnc-x86
   before_script:
     - *prepare_build
+  artifacts:
+    reports:
+      junit:
+        - SelfBench.xml
+        - Benchmark.xml
   script:
     - bash builder/test-vncserver
 
