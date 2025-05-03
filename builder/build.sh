@@ -44,38 +44,41 @@ if [[ "${XORG_VER}" == 21* ]]; then
 else
   XORG_PATCH=$(echo "$XORG_VER" | grep -Po '^\d.\d+' | sed 's#\.##')
 fi
-wget --no-check-certificate https://www.x.org/archive/individual/xserver/xorg-server-${XORG_VER}.tar.gz
+
+TARBALL="xorg-server-${XORG_VER}.tar.gz"
+
+if [ ! -f "$TARBALL" ]; then
+  wget --no-check-certificate https://www.x.org/archive/individual/xserver/"$TARBALL"
+fi
 
 #git clone https://kasmweb@bitbucket.org/kasmtech/kasmvnc.git
 #cd kasmvnc
 #git checkout dynjpeg
 cd /src
 
-# We only want the server, so FLTK and manual tests aren't useful.
-# Alternatively, install fltk 1.3 and its dev packages.
-sed -i -e '/find_package(FLTK/s@^@#@' \
-	-e '/add_subdirectory(tests/s@^@#@' \
-	CMakeLists.txt
-
 cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
   -DENABLE_GNUTLS:BOOL=OFF
-make -j5
+make -j"$(nproc)"
 
-tar -C unix/xserver -xf /tmp/xorg-server-${XORG_VER}.tar.gz --strip-components=1
+if [ ! -d unix/xserver/include ]; then
+  tar -C unix/xserver -xf /tmp/"$TARBALL" --strip-components=1
 
-cd unix/xserver
-# Apply patches
-patch -Np1 -i ../xserver${XORG_PATCH}.patch
-case "$XORG_VER" in
-  1.20.*)
-      patch -s -p0 < ../CVE-2022-2320-v1.20.patch
-      if [ -f ../xserver120.7.patch ]; then
-        patch -Np1 -i ../xserver120.7.patch
-      fi ;;
-  1.19.*)
-      patch -s -p0 < ../CVE-2022-2320-v1.19.patch
-      ;;
-esac
+  cd unix/xserver
+  # Apply patches
+  patch -Np1 -i ../xserver"${XORG_PATCH}".patch
+  case "$XORG_VER" in
+    1.20.*)
+        patch -s -p0 < ../CVE-2022-2320-v1.20.patch
+        if [ -f ../xserver120.7.patch ]; then
+          patch -Np1 -i ../xserver120.7.patch
+        fi ;;
+    1.19.*)
+        patch -s -p0 < ../CVE-2022-2320-v1.19.patch
+        ;;
+  esac
+else
+  cd unix/xserver
+fi
 
 autoreconf -i
 # Configuring Xorg is long and has many distro-specific paths.
@@ -110,22 +113,26 @@ fi
     --with-sha1=libcrypto \
     --with-xkb-bin-directory=/usr/bin \
     --with-xkb-output=/var/lib/xkb \
-    --with-xkb-path=/usr/share/X11/xkb ${CONFIG_OPTIONS}
+    --with-xkb-path=/usr/share/X11/xkb "${CONFIG_OPTIONS}"
 
 # remove array bounds errors for new versions of GCC
 find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
-make -j5
+
+
+make -j"$(nproc)"
 
 # modifications for the servertarball
 cd /src
 mkdir -p xorg.build/bin
 mkdir -p xorg.build/lib
 cd xorg.build/bin/
-ln -sf /src/unix/xserver/hw/vnc/Xvnc Xvnc
+ln -sfn /src/unix/xserver/hw/vnc/Xvnc Xvnc
 cd ..
 mkdir -p man/man1
 touch man/man1/Xserver.1
 cp /src/unix/xserver/hw/vnc/Xvnc.man man/man1/Xvnc.1
+
+mkdir -p lib
 
 cd lib
 if [ -d /usr/lib/x86_64-linux-gnu/dri ]; then

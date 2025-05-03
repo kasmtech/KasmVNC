@@ -12,13 +12,12 @@ RUN apt-get update && \
 
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
-RUN apt-get update && apt-get -y install cmake git vim wget curl
-RUN apt-get update && apt-get -y install libtbb-dev libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev
+RUN apt-get update && apt-get -y install ninja-build nasm git vim wget curl
+RUN apt-get update && apt-get -y install libtbb-dev libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev \
+    libxcursor-dev libavformat-dev libswscale-dev
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-webp
-RUN $SCRIPTS_DIR/build-libjpeg-turbo
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
 
@@ -34,6 +33,9 @@ RUN ARCH=$(arch) && \
   curl -fsSL $CMAKE_URL -o cmake.sh && \
   (echo y; echo n) | bash cmake.sh --prefix=/usr/local --skip-license && \
   rm cmake.sh
+
+RUN $SCRIPTS_DIR/build-webp
+RUN $SCRIPTS_DIR/build-libjpeg-turbo
 
 COPY --chown=docker:docker . /src/
 

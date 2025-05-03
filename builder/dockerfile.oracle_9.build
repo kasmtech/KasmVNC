@@ -11,7 +11,9 @@ RUN \
   dnf install -y \
     bzip2-devel \
     ca-certificates \
+    ninja-build \
     cmake \
+    nasm \
     dnf-plugins-core \
     gcc \
     gcc-c++ \
@@ -41,6 +43,7 @@ RUN dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-
 # Install from new repos
 RUN dnf install -y \
   giflib-devel \
+  ffmpeg-devel \
   lbzip2 \
   libXfont2-devel \
   libxkbfile-devel \

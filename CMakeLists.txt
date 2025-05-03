@@ -227,6 +227,7 @@ include_directories(${CMAKE_BINARY_DIR})
 
 include(cmake/StaticBuild.cmake)
 
+add_subdirectory(third_party)
 add_subdirectory(common)
 
 if(WIN32)
@@ -239,11 +240,12 @@ else()
 endif()
 
 if(ENABLE_NLS)
-  add_subdirectory(po)
+    add_subdirectory(po)
 endif()
 
-#############add_subdirectory(tests)
-
+if (TESTS)
+    add_subdirectory(tests)
+endif()
 
 include(cmake/BuildPackages.cmake)
 

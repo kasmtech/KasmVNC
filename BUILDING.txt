@@ -91,7 +91,7 @@ npm run build # <-- only run this on subsequent changes to front-end code
 cd ..
 # build dependencies
 sudo builder/scripts/build-webp
-sudo builder/scripts/build-build-libjpeg-turbo
+sudo builder/scripts/build-libjpeg-turbo
 # Build KasmVNC
 builder/build.sh
 ```

@@ -37,7 +37,7 @@ user_session:
 
 keyboard:
   remap_keys:
-    # - 0x22->0x40
+  # - 0x22->0x40
   ignore_numlock: false
   raw_keyboard: false
 
@@ -129,6 +129,7 @@ encoding:
     logging:
       level: off
     scaling_algorithm: progressive_bilinear
+    webp_encoding_time: 30
 
   compare_framebuffer: auto
   zrle_zlib_level: auto
