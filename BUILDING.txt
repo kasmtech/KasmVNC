@@ -78,7 +78,7 @@ Building the KasmVNC Server using Docker
 git submodule init
 git submodule update --remote --merge
 sudo docker build -t kasmvnc:dev -f builder/dockerfile.ubuntu_jammy.dev .
-sudo docker run -it -v ./:/src -p 6901:6901  kasmvnc:dev
+sudo docker run -it --rm -v ./:/src -p 6901:6901 -p 8443:8443 --name kasmvnc_dev kasmvnc:dev
 ```
 
 Now from inside the container.
@@ -89,9 +89,9 @@ cd kasmweb
 npm install
 npm run build # <-- only run this on subsequent changes to front-end code
 cd ..
-# build dependencies
-sudo builder/scripts/build-webp
-sudo builder/scripts/build-libjpeg-turbo
+# build dependencies, this is optional as they are pre-built in the docker image. Only rebuild if you made version changes and need to test.
+# sudo builder/scripts/build-webp
+# sudo builder/scripts/build-libjpeg-turbo
 # Build KasmVNC
 builder/build.sh
 ```
@@ -108,12 +108,7 @@ Now open a browser and navigate to your dev VM on port 6901.
 Running noVNC from source
 -------------------------
 If you need to debug or make changes to the UI code, use the following procedures to use npm to serve the web code. The code will automatically rebuild when changes are made and the code will not be packaged.
-These steps assume you have already built the docker image covered in the previous section named `kasmvnc:dev`.
-
-```bash
-# run an instance of the dev container, expose an additional port
-sudo docker run -it -v ./:/src -p 6901:6901 -p 8443:8443 --name kasmvnc_dev kasmvnc:dev
-```
+These steps assume you are inside the kasmvnc:dev container started in the above steps.
 
 Now from inside the container. **This assumes KasmVNC is already built, follow steps above if you need to build KasmVNC**
 
@@ -124,7 +119,7 @@ Now from inside the container. **This assumes KasmVNC is already built, follow s
 
 sudo nginx
 cd kasmweb
-npm install
+npm install # only needs done first time
 npm run serve # <-- Needs to run in foreground
 ```
 
