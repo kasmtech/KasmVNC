@@ -124,6 +124,7 @@ make -j"$(nproc)"
 # modifications for the servertarball
 cd /src
 mkdir -p xorg.build/bin
+mkdir -p xorg.build/lib
 cd xorg.build/bin/
 ln -sfn /src/unix/xserver/hw/vnc/Xvnc Xvnc
 cd ..

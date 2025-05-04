@@ -78,7 +78,7 @@ Building the KasmVNC Server using Docker
 git submodule init
 git submodule update --remote --merge
 sudo docker build -t kasmvnc:dev -f builder/dockerfile.ubuntu_jammy.dev .
-sudo docker run -it -v ./:/src -p 6901:6901  kasmvnc:dev
+sudo docker run -it --rm -v ./:/src -p 6901:6901 -p 8443:8443 --name kasmvnc_dev kasmvnc:dev
 ```
 
 Now from inside the container.
@@ -89,9 +89,9 @@ cd kasmweb
 npm install
 npm run build # <-- only run this on subsequent changes to front-end code
 cd ..
-# build dependencies
-sudo builder/scripts/build-webp
-sudo builder/scripts/build-libjpeg-turbo
+# build dependencies, this is optional as they are pre-built in the docker image. Only rebuild if you made version changes and need to test.
+# sudo builder/scripts/build-webp
+# sudo builder/scripts/build-libjpeg-turbo
 # Build KasmVNC
 builder/build.sh
 ```
@@ -104,6 +104,34 @@ Now run Xvnc and Xfce4 from inside the container
 ```
 
 Now open a browser and navigate to your dev VM on port 6901.
+
+Running noVNC from source
+-------------------------
+If you need to debug or make changes to the UI code, use the following procedures to use npm to serve the web code. The code will automatically rebuild when changes are made and the code will not be packaged.
+These steps assume you are inside the kasmvnc:dev container started in the above steps.
+
+Now from inside the container. **This assumes KasmVNC is already built, follow steps above if you need to build KasmVNC**
+
+```bash
+# Run KasmVNC
+/src/xorg.build/bin/Xvnc -interface 0.0.0.0 -PublicIP 127.0.0.1 -disableBasicAuth -RectThreads 0 -Log *:stdout:100 -httpd /src/kasmweb/dist -sslOnly 0 -SecurityTypes None -websocketPort 6901  :1 &
+/usr/bin/xfce4-session --display :1 &
+
+sudo nginx
+cd kasmweb
+npm install # only needs done first time
+npm run serve # <-- Needs to run in foreground
+```
+
+Now open a browser and navigate to your dev VM on port 8443 over https. 
+
+NGINX is proxying the websocket to KasmVNC and all other requests go to the node server. NGINX listens on 8443 with ssl.
+
+Since `npm run serve` needs to run in the foreground, you may need to exec into the container from another terminal to run additional commands like stopping Xvnc, rebuilding KasmVNC, etc.
+
+```bash
+sudo docker exec -it kasmvnc_dev /bin/bash
+```
 
 Building the KasmVNC Server on Modern Unix/Linux Systems
 ---------------------------------------------------------

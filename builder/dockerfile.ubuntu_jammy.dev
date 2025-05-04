@@ -10,6 +10,8 @@ EXPOSE 6901
 
 USER root
 
+COPY builder/conf/nginx_kasm.conf /etc/nginx/conf.d/
+
 RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list && \
     apt update && \
     apt install -y \
@@ -55,7 +57,7 @@ RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list && \
     echo "kasm-user  ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-RUN apt install -y nodejs
+RUN apt install -y nodejs nginx
 
 COPY builder/scripts/build-webp /tmp
 COPY builder/scripts/build-libjpeg-turbo /tmp
