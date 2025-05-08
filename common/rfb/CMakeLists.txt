@@ -85,7 +85,7 @@ set(RFB_LIBRARIES ${JPEG_LIBRARIES} ${PNG_LIBRARIES} os rdr Xregion)
 cmake_host_system_information(RESULT DISTRO QUERY DISTRIB_INFO)
 if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10) OR
 (DISTRO_PLATFORM_ID MATCHES "platform:el8"))
-  set(RFB_LIBRARIES ${RFB_LIBRARIES} tbb)
+    set(RFB_LIBRARIES ${RFB_LIBRARIES} tbb)
 endif ()
 
 if (HAVE_PAM)
@@ -132,7 +132,15 @@ endif ()
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libavutil libswscale)
+find_package(TBB)
+if (TBB_FOUND)
+    set(RFB_LIBRARIES ${RFB_LIBRARIES} tbb)
+else ()
+    pkg_check_modules(TBB tbb)
+    set(RFB_LIBRARIES ${RFB_LIBRARIES} ${TBB_LIBRARIES})
+endif ()
 
+message(STATUS ${RFB_LIBRARIES})
 add_library(rfb STATIC ${RFB_SOURCES})
 
 target_include_directories(rfb PRIVATE
@@ -142,9 +150,10 @@ target_include_directories(rfb PRIVATE
         ${CMAKE_SOURCE_DIR}/unix/kasmvncpasswd
         ${CMAKE_SOURCE_DIR}/third_party/tinyxml2
         ${FFMPEG_INCLUDE_DIRS}
+        ${TBB_INCLUDE_DIRS}
 )
 
-target_link_libraries(rfb PRIVATE ${RFB_LIBRARIES} tinyxml2_objs)
+target_link_libraries(rfb PUBLIC ${RFB_LIBRARIES} tinyxml2_objs)
 
 if (UNIX)
     libtool_create_control_file(rfb)
