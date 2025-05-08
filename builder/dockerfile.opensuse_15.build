@@ -47,7 +47,8 @@ RUN zypper install -ny \
   xorg-x11-devel \
   xorg-x11-server-sdk \
   xorg-x11-util-devel \
-  zlib-devel
+  zlib-devel \
+  tbb-devel
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 140 \
   --slave /usr/bin/g++ g++ /usr/bin/g++-14 \

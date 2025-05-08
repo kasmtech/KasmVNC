@@ -14,7 +14,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tz
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
 RUN apt-get update && apt-get -y install ninja-build nasm git libgnutls28-dev vim wget tightvncserver curl
 RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev \
-    libxcursor-dev libavformat-dev libswscale-dev
+    libxcursor-dev libavformat-dev libswscale-dev libtbb-dev
 
 RUN CMAKE_URL="https://cmake.org/files/v3.22/cmake-3.22.0" && \
     ARCH=$(arch) && \

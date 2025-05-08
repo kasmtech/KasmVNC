@@ -34,7 +34,8 @@ RUN \
     tigervnc-server \
     wget \
     xorg-x11-font-utils \
-    zlib-devel
+    zlib-devel \
+    tbb-devel
 
 # Enable additional repos (epel, powertools, and fusion)
 RUN dnf install -y oracle-epel-release-el9

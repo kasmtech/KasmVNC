@@ -75,7 +75,8 @@ RUN \
     xorg-x11-xtrans-devel \
     xsltproc \
     libavformat-free-devel \
-    libswscale-free-devel
+    libswscale-free-devel \
+    tbb-devel
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
