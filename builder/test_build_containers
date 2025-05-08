@@ -1,0 +1,50 @@
+#!/bin/bash
+
+#set -xe
+
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+current_dir="$(pwd)"
+
+images_list=()
+
+for file in "$script_dir"/dockerfile.*.build; do
+    if [[ "$file" == *deb* ]] || [[ "$file" == *apk* ]] || [[ "$file" == *rpm* ]] || [[ "$file" == *www* ]]; then
+        continue
+    fi
+
+    [ -e "$file" ] || continue
+
+    filename="$(basename "$file")"
+    image_name=$(echo "$filename" | sed -E 's/^(dockerfile\.|Dockerfile\.)(.*)\.build$/\2/')
+
+    echo "Building docker image: $image_name using file: $file"
+
+    docker build -f "$file" -t "$image_name" "$current_dir"
+    exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        echo "Build failed for $filename"
+        break
+    fi
+
+    rm -rf .cmake CMakeFiles build.ninja cmake_install.cmake cmake_uninstall.cmake CMakeCache.txt config.h
+
+    echo "Running container from image '$image_name'"
+    # Run the container and capture the exit code
+    docker run --rm -it -v "$current_dir":/src "$image_name"
+    exit_code=$?
+
+    if [ $exit_code -ne 0 ]; then
+        echo "Container for image '$image_name' exited with error (exit code $exit_code)."
+        break
+    else
+        echo "Container for image '$image_name' finished successfully."
+        docker rmi "$image_name"
+    fi
+done
+
+echo "Removing all built docker images..."
+for img in "${images_list[@]}"; do
+    echo "Removing docker image: $img"
+    docker rmi "$img"
+done
