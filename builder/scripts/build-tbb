@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+build_and_install() {
+  cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DTBB_TEST=OFF -GNinja .
+  ninja -C build install
+}
+
+prepare_source() {
+  DIR=tbb
+  cd /tmp
+  TBB_RELEASE=$(curl -sL "https://api.github.com/repos/uxlfoundation/oneTBB/releases/latest" \
+    | grep '"tag_name":' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
+
+  [ -d ./${DIR} ] && rm -rf ./${DIR}
+  mkdir ${DIR}
+  curl -Ls "https://github.com/uxlfoundation/oneTBB/archive/${TBB_RELEASE}.tar.gz" | \
+  tar xzvf - -C ${DIR}/ --strip-components=1
+  cd ${DIR}
+}
+
+prepare_source
+build_and_install

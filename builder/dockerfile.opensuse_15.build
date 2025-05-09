@@ -46,8 +46,7 @@ RUN zypper install -ny \
   xorg-x11-devel \
   xorg-x11-server-sdk \
   xorg-x11-util-devel \
-  zlib-devel \
-  tbb-devel
+  zlib-devel
 
 RUN useradd -u 1000 docker && \
   groupadd -g 1000 docker && \
@@ -71,7 +70,7 @@ ENV CC=/usr/bin/gcc-14
 ENV CXX=/usr/bin/g++-14
 
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-libjpeg-turbo && $SCRIPTS_DIR/build-webp
+RUN $SCRIPTS_DIR/build-deps.sh
 
 COPY --chown=docker:docker . /src/
 

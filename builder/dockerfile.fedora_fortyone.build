@@ -75,13 +75,11 @@ RUN \
     xorg-x11-xtrans-devel \
     xsltproc \
     libavformat-free-devel \
-    libswscale-free-devel \
-    tbb-devel
+    libswscale-free-devel
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-webp
-RUN $SCRIPTS_DIR/build-libjpeg-turbo
+RUN $SCRIPTS_DIR/build-deps.sh
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd
 

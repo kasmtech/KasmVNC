@@ -32,8 +32,7 @@ RUN \
     tigervnc-server \
     wget \
     xorg-x11-font-utils \
-    zlib-devel \
-    tbb-devel
+    zlib-devel
 
 # Enable additional repos (epel, powertools, and fusion)
 RUN dnf config-manager --set-enabled ol8_codeready_builder
@@ -42,7 +41,6 @@ RUN dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-
 
 # Install from new repos
 RUN dnf install -y \
-  tbb-devel \
   ffmpeg-devel \
   giflib-devel \
   lbzip2 \
@@ -59,8 +57,8 @@ RUN dnf install -y \
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
 RUN echo "source /opt/rh/gcc-toolset-14/enable" > /etc/profile.d/gcc-toolset.sh && \
-  $SCRIPTS_DIR/build-webp && $SCRIPTS_DIR/build-libjpeg-turbo && \
-  useradd -m docker && echo "docker:docker" | chpasswd
+    $SCRIPTS_DIR/build-deps.sh  && \
+    useradd -m docker && echo "docker:docker" | chpasswd
 
 COPY --chown=docker:docker . /src/
 

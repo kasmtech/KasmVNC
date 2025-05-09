@@ -15,12 +15,11 @@ RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
 RUN apt-get update && apt-get -y install gcc g++ curl
 RUN apt-get update && apt-get -y install ninja-build cmake nasm git libgnutls28-dev vim wget tightvncserver
 RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev \
-    libxcursor-dev libavformat-dev libswscale-dev libtbb-dev
+    libxcursor-dev libavformat-dev libswscale-dev
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-webp
-RUN $SCRIPTS_DIR/build-libjpeg-turbo
+RUN $SCRIPTS_DIR/build-deps.sh
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
 

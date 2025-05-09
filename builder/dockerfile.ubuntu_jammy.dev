@@ -53,18 +53,16 @@ RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list && \
     libxkbfile-dev \
     x11proto-dev \
     libgbm-dev \
+    htop \
     inotify-tools && \
     echo "kasm-user  ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 RUN apt install -y nodejs nginx
 
-COPY builder/scripts/build-webp /tmp
-COPY builder/scripts/build-libjpeg-turbo /tmp
-COPY builder/common.sh /tmp
-
-RUN chmod +x /tmp/build-webp && /tmp/build-webp
-RUN chmod +x /tmp/build-libjpeg-turbo && /tmp/build-libjpeg-turbo
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-deps.sh
 
 USER 1000
 

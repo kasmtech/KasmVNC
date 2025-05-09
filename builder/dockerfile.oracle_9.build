@@ -34,8 +34,7 @@ RUN \
     tigervnc-server \
     wget \
     xorg-x11-font-utils \
-    zlib-devel \
-    tbb-devel
+    zlib-devel
 
 # Enable additional repos (epel, powertools, and fusion)
 RUN dnf install -y oracle-epel-release-el9
@@ -58,7 +57,7 @@ RUN dnf install -y \
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
 RUN echo "source /opt/rh/gcc-toolset-14/enable" > /etc/profile.d/gcc-toolset.sh && \
-  $SCRIPTS_DIR/build-webp && $SCRIPTS_DIR/build-libjpeg-turbo && \
+  $SCRIPTS_DIR/build-deps.sh && \
   useradd -m docker && echo "docker:docker" | chpasswd
 
 COPY --chown=docker:docker . /src/
