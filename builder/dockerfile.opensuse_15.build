@@ -50,10 +50,6 @@ RUN zypper install -ny \
   zlib-devel \
   tbb-devel
 
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 140 \
-  --slave /usr/bin/g++ g++ /usr/bin/g++-14 \
-  --slave /usr/bin/gcov gcov /usr/bin/gcov-14
-
 RUN useradd -u 1000 docker && \
   groupadd -g 1000 docker && \
   usermod -a -G docker docker
@@ -72,8 +68,11 @@ RUN ARCH=$(arch) && \
   rm cmake.sh
 
 ENV SCRIPTS_DIR=/tmp/scripts
+ENV CC=/usr/bin/gcc-14
+ENV CXX=/usr/bin/g++-14
+
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-webp && $SCRIPTS_DIR/build-libjpeg-turbo
+RUN $SCRIPTS_DIR/build-libjpeg-turbo && $SCRIPTS_DIR/build-webp
 
 COPY --chown=docker:docker . /src/
 
