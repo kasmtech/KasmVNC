@@ -4,7 +4,7 @@ set -euo pipefail
 
 build_and_install() {
   cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DTBB_TEST=OFF -GNinja .
+    -DTBB_TEST=OFF -DBUILD_SHARED_LIBS=OFF -GNinja .
   ninja -C build install
 }
 
