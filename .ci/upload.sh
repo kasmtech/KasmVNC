@@ -79,6 +79,7 @@ upload_directory_to_s3() {
 prepare_functional_tests_source_and_cd_into_it() {
   git clone https://gitlab-ci-token:$CI_JOB_TOKEN@gitlab.com/kasm-technologies/internal/kasmvnc-functional-tests.git
   cd kasmvnc-functional-tests
+  git checkout release/1.0.0
   mkdir output && chown 1000:1000 output
   mkdir report && chown 1000:1000 report
 }
