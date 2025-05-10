@@ -2,7 +2,7 @@ FROM oraclelinux:9
 
 ENV STARTUPDIR=/dockerstartup
 
-RUN dnf install -y \
+RUN [ "$RUN_TEST" = 1 ] || dnf install -y \
   less \
   vim \
   xterm
@@ -17,7 +17,7 @@ RUN dnf install -y crypto-policies-scripts
 RUN update-crypto-policies --set FIPS:SHA1
 
 RUN mkdir -p $STARTUPDIR
-COPY startup/vnc_startup_barebones.sh $STARTUPDIR
+COPY builder/startup/vnc_startup_barebones.sh $STARTUPDIR
 
 RUN useradd -m foo
 USER foo:kasmvnc-cert
