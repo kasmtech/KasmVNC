@@ -20,8 +20,6 @@
 #include <string.h>
 #include <rfb/Exception.h>
 #include <rfb/Security.h>
-#include <rfb/clipboardTypes.h>
-#include <rfb/msgTypes.h>
 #include <rfb/fenceTypes.h>
 #include <rfb/SMsgReader.h>
 #include <rfb/SMsgWriter.h>
@@ -274,19 +272,16 @@ void SConnection::writeConnFailedFromScratch(const char* msg,
   os->flush();
 }
 
-void SConnection::setEncodings(int nEncodings, const rdr::S32* encodings)
-{
-  int i;
-
-  preferredEncoding = encodingRaw;
-  for (i = 0;i < nEncodings;i++) {
-    if (EncodeManager::supported(encodings[i])) {
-      preferredEncoding = encodings[i];
-      break;
+void SConnection::setEncodings(int nEncodings, const rdr::S32 *encodings) {
+    preferredEncoding = encodingRaw;
+    for (int i = 0; i < nEncodings; i++) {
+        if (EncodeManager::supported(encodings[i])) {
+            preferredEncoding = encodings[i];
+            break;
+        }
     }
-  }
 
-  SMsgHandler::setEncodings(nEncodings, encodings);
+    SMsgHandler::setEncodings(nEncodings, encodings);
 }
 
 void SConnection::clearBinaryClipboard()

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+rm -f /etc/ssl/private/kasmvnc.pem

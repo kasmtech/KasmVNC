@@ -1,0 +1,73 @@
+FROM kasmweb/ubuntu-jammy-desktop:develop
+
+ENV KASMVNC_BUILD_OS ubuntu
+ENV KASMVNC_BUILD_OS_CODENAME jammy
+ENV XORG_VER 21.1.3
+ENV XORG_PATCH 21
+ENV DEBIAN_FRONTEND noninteractive
+
+EXPOSE 6901
+
+USER root
+
+COPY builder/conf/nginx_kasm.conf /etc/nginx/conf.d/
+
+RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list && \
+    apt update && \
+    apt install -y \
+    ninja-build \
+    gdb \
+    valgrind \
+    rsync \
+    dos2unix \
+    socat \
+    sudo \
+    libxfont-dev \
+    cmake \
+    nasm \
+    git \
+    libgnutls28-dev \
+    vim \
+    wget \
+    tightvncserver \
+    curl \
+    libpng-dev \
+    libtiff-dev \
+    libgif-dev \
+    libavformat-dev \
+    libavcodec-dev \
+    libswscale-dev \
+    libssl-dev \
+    libxrandr-dev \
+    libxcursor-dev \
+    pkg-config \
+    libfreetype6-dev \
+    libxtst-dev \
+    autoconf \
+    automake \
+    libtool \
+    xutils-dev \
+    libpixman-1-dev \
+    libxshmfence-dev \
+    libxcvt-dev \
+    libxkbfile-dev \
+    x11proto-dev \
+    libgbm-dev \
+    inotify-tools && \
+    echo "kasm-user  ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+RUN apt install -y nodejs nginx
+
+COPY builder/scripts/build-webp /tmp
+COPY builder/scripts/build-libjpeg-turbo /tmp
+COPY builder/common.sh /tmp
+
+RUN chmod +x /tmp/build-webp && /tmp/build-webp
+RUN chmod +x /tmp/build-libjpeg-turbo && /tmp/build-libjpeg-turbo
+
+USER 1000
+
+WORKDIR /src
+
+ENTRYPOINT /bin/bash

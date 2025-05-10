@@ -10,6 +10,10 @@ is_debian() {
   [[ -f /etc/debian_version ]]
 }
 
+is_alpine() {
+  [[ -f /etc/alpine-release ]]
+}
+
 check_package_version_exists() {
   if ! stat /tmp/kasmvncserver_"$package_version"*.deb; then
     >&2 echo "No package found for version $package_version"
@@ -42,7 +46,16 @@ install_package_built_for_current_branch_package_version_deb() {
     --file /tmp/changelog)
 
   check_package_version_exists
-  apt-get install -y /tmp/kasmvncserver_"$package_version"*"$tag"*.deb
+  dpkg_arch=$(dpkg-architecture -q DEB_BUILD_ARCH)
+  apt-get install -y /tmp/kasmvncserver_"$package_version"*"$tag"*_${dpkg_arch}.deb
+}
+
+detect_dnf_command() {
+  if command -v dnf5 >/dev/null; then
+    echo dnf install -y --allowerasing
+  else
+    echo dnf localinstall -y --allowerasing
+  fi
 }
 
 install_package_built_for_current_branch_package_version_rpm() {
@@ -50,15 +63,24 @@ install_package_built_for_current_branch_package_version_rpm() {
   $rpm_package_manager install -y rpmdevtools
 
   package_version=$(rpmspec -q --qf '%{version}\n' /tmp/kasmvncserver.spec 2>/dev/null)
+  package_name=/tmp/kasmvncserver-"$package_version"*.$(arch).rpm
   if [[ $rpm_package_manager = "dnf" ]]; then
-    dnf localinstall -y --allowerasing /tmp/kasmvncserver-"$package_version"*.rpm
+    local dnf_cmd=$(detect_dnf_command)
+    $dnf_cmd $package_name
   else
-    yum install -y /tmp/kasmvncserver-"$package_version"*.rpm
+    yum install -y $package_name
   fi
+}
+
+install_package_built_for_current_branch_package_version_apk() {
+  package_version=$(sed -n 's/pkgver=\(.\+\)/\1/p' /tmp/APKBUILD )
+  apk add /tmp/kasmvncserver-"$package_version"*.apk /tmp/kasmvncserver-doc-"$package_version"*.apk --allow-untrusted
 }
 
 if is_debian ; then
   install_package_built_for_current_branch_package_version_deb
+elif is_alpine; then
+  install_package_built_for_current_branch_package_version_apk
 else
   install_package_built_for_current_branch_package_version_rpm
 fi

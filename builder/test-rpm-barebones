@@ -2,17 +2,22 @@
 
 set -e
 
-cd "$(dirname "$0")"
-. ./process_test_options.sh
-. ./common.sh
-os="${1:-centos}"
-os_codename="${2:-core}"
+cd "$(dirname "$0")/.."
+. ./builder/process_test_options.sh
+. ./builder/common.sh
+os="${1:-oracle}"
+os_codename="${2:-8}"
 
-docker build --build-arg KASMVNC_PACKAGE_DIR="build/${os}_${os_codename}" \
+detect_build_dir
+docker build --build-arg KASMVNC_PACKAGE_DIR="${build_dir}/${os}_${os_codename}" \
+  --build-arg RUN_TEST="$run_test" \
   -t kasmvnctester_barebones_${os}:$os_codename \
-  -f dockerfile.${os}_${os_codename}.barebones.rpm.test .
-docker run -it -p "443:$VNC_PORT" --rm -e "VNC_USER=foo" -e "VNC_PW=foobar" \
+  -f builder/dockerfile.${os}_${os_codename}.barebones.rpm.test .
+
+detect_interactive
+docker run $interactive -p "443:$VNC_PORT" --rm -e "VNC_USER=foo" -e "VNC_PW=foobar" \
   -e "VNC_PORT=$VNC_PORT" \
+  -e RUN_TEST="$run_test" \
   $entrypoint_executable \
   kasmvnctester_barebones_${os}:$os_codename \
   $entrypoint_args

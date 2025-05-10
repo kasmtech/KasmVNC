@@ -14,6 +14,7 @@ RUN \
     bash \
     ca-certificates \
     cmake \
+    nasm \
     coreutils \
     curl \
     eudev-dev \
@@ -66,7 +67,8 @@ RUN \
     xorgproto \
     xorg-server-common \
     xorg-server-dev \
-    xtrans
+    xtrans \
+    ffmpeg-dev
 
 
 ENV SCRIPTS_DIR=/tmp/scripts

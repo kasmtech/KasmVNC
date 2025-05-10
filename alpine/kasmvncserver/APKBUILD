@@ -1,0 +1,120 @@
+#!/bin/bash
+
+# Contributor:
+# Maintainer: Kasm Technologies LLC <info@kasmweb.com>
+pkgname=kasmvncserver
+pkgver=1.3.4
+pkgrel=0
+pkgdesc="KasmVNC provides remote web-based access to a Desktop or application."
+url="https://github.com/kasmtech/KasmVNC"
+arch="x86_64 aarch64"
+license="GPL-2.0-or-later"
+depends="
+        bash
+        libgomp
+        libjpeg-turbo
+        libwebp
+        libxfont2
+        libxshmfence
+        libxtst
+        mcookie
+        mesa-gbm
+        openssl
+        pciutils-libs
+        perl
+        perl-datetime
+        perl-hash-merge-simple
+        perl-list-moreutils
+        perl-switch
+        perl-try-tiny
+        perl-yaml-tiny
+        perl-datetime
+        perl-datetime-timezone
+        pixman
+        py3-xdg
+        setxkbmap
+        xauth
+        xf86-video-amdgpu
+        xf86-video-ati
+        xf86-video-nouveau
+        xkbcomp
+        xkeyboard-config
+        xterm
+				"
+if [ $(arch) = x86_64 ]; then
+  depends="$depends xf86-video-intel"
+fi
+makedepends="
+            rsync
+            binutils
+            mesa-gl
+            libxcursor
+            gzip
+            "
+checkdepends=""
+install="$pkgname.post-install $pkgname.post-deinstall"
+subpackages="$pkgname-doc"
+source=""
+builddir="$srcdir/"
+
+
+build() {
+  local alpine_version=$(cat /etc/alpine-release | awk -F. '{ print $1$2 }')
+	tar -xzf "/src/builder/build/kasmvnc.alpine_$alpine_version.tar.gz" -C "$srcdir";
+}
+
+check() {
+	# Replace with proper check command(s).
+	# Remove and add !check option if there is no check command.
+	:
+}
+
+package() {
+  export SRC="$srcdir/usr/local";
+  export SRC_BIN="$SRC/bin";
+  export DESTDIR="$pkgdir";
+
+	echo "installing files";
+	mkdir -p $DESTDIR/usr/bin $DESTDIR/usr/lib \
+		$DESTDIR/usr/share/perl5/vendor_perl $DESTDIR/etc/kasmvnc;
+	cp $SRC_BIN/Xvnc $DESTDIR/usr/bin/Xkasmvnc;
+  cd $DESTDIR/usr/bin/ && ln -s Xkasmvnc Xvnc;
+	cp $SRC_BIN/vncserver $DESTDIR/usr/bin/kasmvncserver;
+  cd $DESTDIR/usr/bin/ && ln -s kasmvncserver vncserver;
+	cp -r $SRC_BIN/KasmVNC $DESTDIR/usr/share/perl5/vendor_perl;
+	cp $SRC_BIN/vncconfig $DESTDIR/usr/bin/kasmvncconfig;
+	cp $SRC_BIN/kasmvncpasswd $DESTDIR/usr/bin/;
+  cd $DESTDIR/usr/bin/ && ln -s kasmvncpasswd vncpasswd;
+	cp $SRC_BIN/kasmxproxy $DESTDIR/usr/bin/;
+	cp -r $SRC/lib/kasmvnc/ $DESTDIR/usr/lib/kasmvncserver;
+	rsync -r --links --safe-links --exclude '.git*' --exclude po2js \
+		--exclude xgettext-html --exclude www/utils/ --exclude .eslintrc \
+	  $SRC/share/kasmvnc $DESTDIR/usr/share;
+  sed -i -e 's!pem_certificate: .\+$!pem_certificate: /etc/ssl/private/kasmvnc.pem!' \
+      $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml
+  sed -i -e 's!pem_key: .\+$!pem_key: /etc/ssl/private/kasmvnc.pem!' \
+    $DESTDIR/usr/share/kasmvnc/kasmvnc_defaults.yaml
+	sed -e 's/^\([^#]\)/# \1/' $SRC/share/kasmvnc/kasmvnc_defaults.yaml > \
+	  $DESTDIR/etc/kasmvnc/kasmvnc.yaml;
+}
+
+doc() {
+  set -e
+  export SRC="$srcdir/usr/local";
+  export SRC_BIN="$SRC/bin";
+  export DESTDIR="$subpkgdir";
+  export DST_MAN="$DESTDIR/usr/share/man/man1";
+
+  mkdir -p $DESTDIR/usr/share/man/man1 \
+    $DESTDIR/usr/share/doc/kasmvncserver
+	cp -r $SRC/share/doc/kasmvnc*/* $DESTDIR/usr/share/doc/kasmvncserver/
+	cp $SRC/man/man1/Xvnc.1 $DESTDIR/usr/share/man/man1/Xkasmvnc.1
+	cp $SRC/share/man/man1/vncserver.1 $DST_MAN/kasmvncserver.1
+	cp $SRC/share/man/man1/kasmxproxy.1 $DST_MAN/kasmxproxy.1
+	cp $SRC/share/man/man1/vncpasswd.1 $DST_MAN/kasmvncpasswd.1
+	cp $SRC/share/man/man1/vncconfig.1 $DST_MAN/kasmvncconfig.1
+  gzip -9 $DST_MAN/*
+  cd $DST_MAN && ln -s Xkasmvnc.1.gz Xvnc.1.gz && \
+    ln -s kasmvncserver.1.gz vncserver.1.gz && \
+    ln -s kasmvncpasswd.1.gz vncpasswd.1.gz
+}

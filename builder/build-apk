@@ -2,16 +2,35 @@
 
 set -e
 
+copy_signing_key_to_user_abuild_dir() {
+  docker run --rm -v $PWD/alpine/.abuild:/abuild --user $L_UID:$L_GID \
+    $builder_image \
+    cp /etc/apk/keys/kasmvnc_signing_key.rsa.pub \
+      /etc/apk/keys/kasmvnc_signing_key.rsa /abuild
+}
+
 . builder/os_ver_cli.sh
 
 cd "$(dirname "$0")/.."
 
-docker build -t kasmvnc_apkbuilder_${os}:${os_codename} -f \
-  builder/dockerfile.${os}_${os_codename}.apk.build .
-
-source_dir=$(echo $PWD)
 L_UID=$(id -u)
 L_GID=$(id -g)
+ABUILD_GID=300
+if [ "$L_UID" = 0 ]; then
+  L_UID=1000
+  L_GID=1000
+fi
+
+builder_image=kasmvnc_apkbuilder_${os}:${os_codename}
+docker build -t $builder_image \
+  --build-arg KASMVNC_ALPINE_PRIVATE_KEY \
+  --build-arg KASMVNC_ALPINE_PUBLIC_KEY \
+  -f builder/dockerfile.${os}_${os_codename}.apk.build .
+copy_signing_key_to_user_abuild_dir
+
+source_dir=$(echo $PWD)
 docker run --rm -v "$source_dir":/src --user $L_UID:$L_GID \
+  --group-add $ABUILD_GID \
+  -e CI \
   kasmvnc_apkbuilder_${os}:${os_codename} /bin/bash -c \
   '/src/builder/build-apk-inside-docker'

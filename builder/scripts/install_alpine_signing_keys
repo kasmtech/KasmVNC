@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -e
+
+install_private_signing_key() {
+  if echo "$KASMVNC_ALPINE_PRIVATE_KEY" | grep -q -- "$BEGIN_PRIVATE_KEY"; then
+    echo "$KASMVNC_ALPINE_PRIVATE_KEY" > $APK_KEYS_DIR/kasmvnc_signing_key.rsa
+  else
+    echo -e "$BEGIN_PRIVATE_KEY\n$KASMVNC_ALPINE_PRIVATE_KEY\n$END_PRIVATE_KEY" > \
+      $APK_KEYS_DIR/kasmvnc_signing_key.rsa
+  fi
+}
+
+install_public_signing_key() {
+  if echo "$KASMVNC_ALPINE_PUBLIC_KEY" | grep -q -- "$BEGIN_PUBLIC_KEY"; then \
+    echo "$KASMVNC_ALPINE_PUBLIC_KEY" > $APK_KEYS_DIR/kasmvnc_signing_key.rsa.pub
+  else
+    echo -e "$BEGIN_PUBLIC_KEY\n$KASMVNC_ALPINE_PUBLIC_KEY\n$END_PUBLIC_KEY" > \
+      $APK_KEYS_DIR/kasmvnc_signing_key.rsa.pub
+  fi
+}
+
+APK_KEYS_DIR=/etc/apk/keys
+BEGIN_PRIVATE_KEY='-----BEGIN PRIVATE KEY-----'
+END_PRIVATE_KEY='-----END PRIVATE KEY-----'
+BEGIN_PUBLIC_KEY='-----BEGIN PUBLIC KEY-----'
+END_PUBLIC_KEY='-----END PUBLIC KEY-----'
+
+install_private_signing_key
+install_public_signing_key

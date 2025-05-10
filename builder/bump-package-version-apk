@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -eo pipefail
+
+new_version="$1"
+spec_file=alpine/kasmvncserver/APKBUILD
+
+bump_version() {
+  sed -i "s/^pkgver=.\+/pkgver=$new_version/" "$1"
+  sed -i "s/^pkgrel=.\+/pkgrel=0/" "$1"
+}
+
+bump_version $spec_file

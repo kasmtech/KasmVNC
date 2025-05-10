@@ -8,13 +8,17 @@ ENV XORG_VER 1.20.3
 RUN zypper install -ny \
   bdftopcf \
   bigreqsproto-devel \
+  ninja \
   cmake \
+  nasm \
   curl \
   ffmpeg-4-libavcodec-devel \
+  ffmpeg-4-libswscale-devel \
+  ffmpeg-4-libavformat-devel \
   fonttosfnt \
   font-util \
-  gcc \
-  gcc-c++ \
+  gcc14 \
+  gcc14-c++ \
   giflib-devel \
   git \
   gzip \
@@ -45,17 +49,32 @@ RUN zypper install -ny \
   xorg-x11-util-devel \
   zlib-devel
 
-ENV SCRIPTS_DIR=/tmp/scripts
-COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-webp
-RUN $SCRIPTS_DIR/build-libjpeg-turbo
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 140 \
+  --slave /usr/bin/g++ g++ /usr/bin/g++-14 \
+  --slave /usr/bin/gcov gcov /usr/bin/gcov-14
 
 RUN useradd -u 1000 docker && \
   groupadd -g 1000 docker && \
   usermod -a -G docker docker
 
+RUN ARCH=$(arch) && \
+  CMAKE_URL="https://cmake.org/files/v3.22/cmake-3.22.0" && \
+  if [ "$ARCH" = "x86_64" ]; then \
+      CMAKE_URL="${CMAKE_URL}-linux-x86_64.sh"; \
+  elif [ "$ARCH" = "aarch64" ]; then \
+      CMAKE_URL="${CMAKE_URL}-linux-aarch64.sh"; \
+  else \
+      echo "Unsupported architecture: $ARCH" && exit 1; \
+  fi && \
+  curl -fsSL $CMAKE_URL -o cmake.sh && \
+  (echo y; echo n) | bash cmake.sh --prefix=/usr/local --skip-license && \
+  rm cmake.sh
+
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-webp && $SCRIPTS_DIR/build-libjpeg-turbo
+
 COPY --chown=docker:docker . /src/
 
-
 USER docker
-ENTRYPOINT ["/src/builder/build.sh"]
+ENTRYPOINT ["bash", "-l", "-c", "/src/builder/build.sh"]

@@ -1,7 +1,19 @@
 FROM alpine:3.21
 
 RUN apk add shadow bash
+RUN apk add abuild sudo less ffmpeg-dev
+
+ENV HOME /src/alpine
+WORKDIR $HOME/kasmvncserver
+
+ARG KASMVNC_ALPINE_PRIVATE_KEY
+ARG KASMVNC_ALPINE_PUBLIC_KEY
+
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/install_alpine_signing_keys
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd
+RUN echo 'docker ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
 USER docker

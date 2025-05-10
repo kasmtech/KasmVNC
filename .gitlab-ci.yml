@@ -7,7 +7,7 @@ variables:
   GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
   GIT_SUBMODULE_STRATEGY: normal
   GIT_FETCH_EXTRA_FLAGS: --tags --force
-  # E.g. BUILD_JOBS: build_debian_buster,build_ubuntu_bionic. This will include
+  # E.g. BUILD_JOBS: build_debian_buster,build_ubuntu_focal. This will include
   # arm builds, because build_debian_buster_arm matches build_debian_buster.
   # "BUILD_JOBS: none" won't build any build jobs, nor www.
   BUILD_JOBS: all
@@ -22,6 +22,8 @@ workflow:
 stages:
   - www
   - build
+  - functional_test
+  - run_test
   - test
   - upload
 
@@ -29,6 +31,7 @@ stages:
   - pwd
   - apk add bash
   - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
+  - docker login --username $DOCKER_HUB_USERNAME --password $DOCKER_HUB_PASSWORD
 
 .prepare_www: &prepare_www
   - tar -zxf output/www/kasm_www.tar.gz -C builder/
@@ -40,6 +43,24 @@ stages:
 default:
   tags:
     - oci-fixed-amd
+
+functional_test:
+  stage: functional_test
+  image: debian:bookworm
+  tags:
+    - oci-fixed-amd
+  before_script:
+    - . .ci/upload.sh
+  script:
+    - prepare_to_run_functional_tests
+    - ./functional-test
+    - upload_report_to_s3
+    - put_report_into_ci_pipeline
+  dependencies:
+    - build_amd64
+  artifacts:
+    paths:
+      - kasmvnc-functional-tests/output/
 
 build_www:
   stage: www
@@ -66,7 +87,7 @@ build_www:
     paths:
       - output/
 
-build_ubuntu_bionic:
+build_amd64:
   stage: build
   allow_failure: true
   tags:
@@ -77,17 +98,20 @@ build_ubuntu_bionic:
   after_script:
     - *prepare_artfacts
   script:
-    - bash builder/build-package ubuntu bionic
+    - bash builder/build-package $DISTRO;
   only:
     variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ "$DISTRO"
   artifacts:
     paths:
       - output/
+  parallel:
+    matrix:
+      - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
 
-build_ubuntu_bionic_arm:
+build_arm64:
   stage: build
-  allow_failure: false
+  allow_failure: true
   tags:
     - oci-fixed-arm
   before_script:
@@ -96,784 +120,73 @@ build_ubuntu_bionic_arm:
   after_script:
     - *prepare_artfacts
   script:
-    - bash builder/build-package ubuntu bionic
+    - bash builder/build-package $DISTRO;
   only:
     variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ "$DISTRO"
   artifacts:
     paths:
       - output/
+  parallel:
+    matrix:
+      - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
 
-build_ubuntu_focal:
-  stage: build
-  allow_failure: true
+run_test_amd64:
+  stage: run_test
   tags:
     - oci-fixed-amd
   before_script:
     - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
   script:
-    - bash builder/build-package ubuntu focal;
+    - bash builder/test-barebones --run-test $DISTRO
   only:
     variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ "$DISTRO"
+  dependencies:
+    - build_amd64
   artifacts:
-    paths:
-      - output/
+    reports:
+      junit:
+        - run_test/*.xml
+  parallel:
+    matrix:
+      - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
 
-build_ubuntu_focal_arm:
-  stage: build
-  allow_failure: true
+run_test_arm64:
+  stage: run_test
   tags:
     - oci-fixed-arm
   before_script:
     - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
   script:
-    - bash builder/build-package ubuntu focal;
+    - bash builder/test-barebones --run-test $DISTRO
   only:
     variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
+      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ "$DISTRO"
+  dependencies:
+    - build_arm64
   artifacts:
-    paths:
-      - output/
+    reports:
+      junit:
+        - run_test/*.xml
+  parallel:
+    matrix:
+      - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
 
-build_ubuntu_jammy:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package ubuntu jammy;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_ubuntu_jammy_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package ubuntu jammy;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_ubuntu_noble:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package ubuntu noble;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-    
-build_ubuntu_noble_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script: 
-    - bash builder/build-package ubuntu noble;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_debian_buster:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package debian buster;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_debian_buster_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package debian buster;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_debian_bullseye:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package debian bullseye;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_debian_bullseye_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package debian bullseye;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-
-build_debian_bookworm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package debian bookworm;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_debian_bookworm_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package debian bookworm;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_kali_rolling:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package kali kali-rolling;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_kali_rolling_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package kali kali-rolling;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_oracle_8:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package oracle 8;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_oracle_8_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package oracle 8;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_oracle_9:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package oracle 9;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_oracle_9_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package oracle 9;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_opensuse_15:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package opensuse 15;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_opensuse_15_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package opensuse 15;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_fedora_thirtyseven:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora thirtyseven;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_fedora_thirtyseven_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora thirtyseven;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_fedora_thirtyeight:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora thirtyeight;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_fedora_thirtyeight_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora thirtyeight;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_fedora_thirtynine:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora thirtynine;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_fedora_thirtynine_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora thirtynine;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_fedora_forty:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora forty;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-    
-build_fedora_forty_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script: 
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora forty;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_fedora_fortyone:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package fedora fortyone;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-    
-build_fedora_fortyone_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script: 
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script: 
-    - bash builder/build-package fedora fortyone;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_alpine_317:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 317;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_alpine_317_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 317;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-test:
+spec_test:
   stage: test
   tags:
-    - oci-fixed-amd
+    - kasmvnc-x86
   before_script:
     - *prepare_build
+  artifacts:
+    reports:
+      junit:
+        - SelfBench.xml
+        - Benchmark.xml
   script:
     - bash builder/test-vncserver
 
-
-build_alpine_318:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 318;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_alpine_318_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 318;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_alpine_319:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 319;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_alpine_319_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 319;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_alpine_320:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 320;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_alpine_320_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 320;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_alpine_321:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 321;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
-
-build_alpine_321_arm:
-  stage: build
-  allow_failure: true
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-  after_script:
-    - *prepare_artfacts
-  script:
-    - bash builder/build-package alpine 321;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ $CI_JOB_NAME
-  artifacts:
-    paths:
-      - output/
 
 upload:
   stage: upload
@@ -900,7 +213,7 @@ upload:
     - export S3_BUILD_DIRECTORY="kasmvnc/${CI_COMMIT_SHA}"
     - export RELEASE_VERSION=$(.ci/next_release_version "$CI_COMMIT_REF_NAME")
     - uploaded_files=()
-    - for package in `find output/ -type f -name '*.deb' -or -name '*.rpm' -or -name '*.tgz'`; do
+    - for package in `find output/ -type f -name '*.deb' -or -name '*.rpm' -or -name '*.apk'`; do
         prepare_upload_filename "$package";
         upload_filename="${S3_BUILD_DIRECTORY}/$upload_filename";
         echo;

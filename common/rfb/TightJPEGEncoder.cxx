@@ -25,6 +25,12 @@
 #include <rfb/TightJPEGEncoder.h>
 #include <rfb/TightConstants.h>
 
+#include <ctime>
+#include <fstream>
+#include <sstream>
+#include <iomanip>
+
+
 using namespace rfb;
 
 struct TightJPEGConfiguration {

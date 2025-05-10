@@ -24,30 +24,40 @@
 #include "cJSON.h"
 
 void JSON_escape(const char *in, char *out) {
+	if (!in)
+		return;
+
 	for (; *in; in++) {
-		if (in[0] == '\b') {
-			*out++ = '\\';
-			*out++ = 'b';
-		} else if (in[0] == '\f') {
-			*out++ = '\\';
-			*out++ = 'f';
-		} else if (in[0] == '\n') {
-			*out++ = '\\';
-			*out++ = 'n';
-		} else if (in[0] == '\r') {
-			*out++ = '\\';
-			*out++ = 'r';
-		} else if (in[0] == '\t') {
-			*out++ = '\\';
-			*out++ = 't';
-		} else if (in[0] == '"') {
-			*out++ = '\\';
-			*out++ = '"';
-		} else if (in[0] == '\\') {
-			*out++ = '\\';
-			*out++ = '\\';
-		} else {
-			*out++ = *in;
+		switch (*in) {
+			case '\b':
+				*out++ = '\\';
+				*out++ = 'b';
+				break;
+			case '\f':
+				*out++ = '\\';
+				*out++ = 'f';
+			case '\n':
+				*out++ = '\\';
+				*out++ = 'n';
+				break;
+			case '\r':
+				*out++ = '\\';
+				*out++ = 'r';
+				break;
+			case '\t':
+				*out++ = '\\';
+				*out++ = 't';
+				break;
+			case '"':
+				*out++ = '\\';
+				*out++ = '"';
+				break;
+			case '\\':
+				*out++ = '\\';
+				*out++ = '\\';
+				break;
+			default:
+				*out++ = *in;
 		}
 	}
 

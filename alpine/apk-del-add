@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+
+sudo apk del kasmvncserver || true
+rm -r ../packages
+abuild -r || true
+sudo apk add ../packages/src/x86_64/kasmvncserver-1.3.3-r0.apk --allow-untrusted

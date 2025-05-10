@@ -19,4 +19,9 @@ set_xterm_to_run
 create_kasm_user
 
 vncserver -select-de manual -websocketPort "$VNC_PORT"
+vncserver_exit_code=$?
+if [ "$RUN_TEST" = 1 ]; then
+  exit "$vncserver_exit_code"
+fi
+
 tail -f "$config_dir"/*.log

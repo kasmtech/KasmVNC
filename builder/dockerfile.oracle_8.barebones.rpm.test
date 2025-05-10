@@ -2,7 +2,8 @@ FROM oraclelinux:8
 
 ENV STARTUPDIR=/dockerstartup
 
-RUN dnf install -y \
+ARG RUN_TEST
+RUN [ "$RUN_TEST" = 1 ] || dnf install -y \
   less \
   redhat-lsb-core \
   vim \
@@ -10,12 +11,15 @@ RUN dnf install -y \
 RUN dnf config-manager --set-enabled ol8_codeready_builder
 RUN dnf install -y oracle-epel-release-el8
 
+COPY ./builder/scripts/ /tmp/scripts/
+
 ARG KASMVNC_PACKAGE_DIR
-COPY $KASMVNC_PACKAGE_DIR/*.rpm /tmp
-RUN dnf localinstall -y /tmp/*.rpm
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver-*.rpm /tmp/
+COPY fedora/kasmvncserver.spec /tmp/
+RUN /tmp/scripts/install_kasmvncserver_package
 
 RUN mkdir -p $STARTUPDIR
-COPY startup/vnc_startup_barebones.sh $STARTUPDIR
+COPY builder/startup/vnc_startup_barebones.sh $STARTUPDIR
 
 RUN useradd -m foo
 USER foo:kasmvnc-cert

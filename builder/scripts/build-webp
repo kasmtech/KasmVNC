@@ -2,22 +2,30 @@
 
 set -euo pipefail
 
-webp_tar_url=https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.2.4.tar.gz
+WEBP_VERSION="1.5.0"
+WEBP_TAR_URL="https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${WEBP_VERSION}.tar.gz"
+WEBP_TAR_FILE="/tmp/libwebp-${WEBP_VERSION}.tar.gz"
+WEBP_SRC_DIR="/tmp/libwebp-${WEBP_VERSION}"
 
 prepare_source() {
   cd /tmp
-  wget "$webp_tar_url"
-  tar -xzf /tmp/libwebp-*
-  rm /tmp/libwebp-*.tar.gz
-  cd /tmp/libwebp-*
+
+  # Remove old files if they exist
+  [ -f "$WEBP_TAR_FILE" ] && rm "$WEBP_TAR_FILE"
+  [ -d "$WEBP_SRC_DIR" ] && rm -rf "$WEBP_SRC_DIR"
+
+  wget "$WEBP_TAR_URL"
+  tar -xzf "$WEBP_TAR_FILE"
+  cd "$WEBP_SRC_DIR"
 }
 
 build_and_install() {
-  export MAKEFLAGS=-j`nproc`
-  ./configure --enable-static --disable-shared
+  export MAKEFLAGS=-j$(nproc)
+  ./configure --enable-static --disable-shared --enable-threading --enable-sse2 --enable-neon
   make
   make install
 }
 
 prepare_source
 build_and_install
+

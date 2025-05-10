@@ -28,8 +28,9 @@
 #include <config.h>
 #endif
 
-#include <limits.h>
-#include <string.h>
+#include <climits>
+#include <cstring>
+#include <chrono>
 
 struct timeval;
 
@@ -126,6 +127,15 @@ namespace rfb {
 
   // Returns time elapsed since given moment in milliseconds.
   unsigned msSince(const struct timeval *then);
+
+  /**
+   * Calculates the number of milliseconds elapsed since a given starting point.
+   *
+   * @param start The starting time point of type `std::chrono::high_resolution_clock::time_point`.
+   *
+   * @return The elapsed time in milliseconds as an unsigned 64-bit integer.
+   */
+  uint64_t elapsedMs(std::chrono::high_resolution_clock::time_point start);
 
   // Returns true if first happened before seconds
   bool isBefore(const struct timeval *first,
