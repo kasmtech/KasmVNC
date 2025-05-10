@@ -1,4 +1,4 @@
-FROM oraclelinux:8
+FROM fedora:41
 
 ENV STARTUPDIR=/dockerstartup
 
@@ -8,8 +8,6 @@ RUN [ "$RUN_TEST" = 1 ] || dnf install -y \
   redhat-lsb-core \
   vim \
   xterm
-RUN dnf config-manager --set-enabled ol8_codeready_builder
-RUN dnf install -y oracle-epel-release-el8
 
 COPY ./builder/scripts/ /tmp/scripts/
 
