@@ -140,7 +140,6 @@ else ()
     set(RFB_LIBRARIES ${RFB_LIBRARIES} ${TBB_LIBRARIES})
 endif ()
 
-message(STATUS ${RFB_LIBRARIES})
 add_library(rfb STATIC ${RFB_SOURCES})
 
 target_include_directories(rfb PRIVATE
