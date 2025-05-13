@@ -57,7 +57,7 @@ RUN dnf install -y \
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
 RUN echo "source /opt/rh/gcc-toolset-14/enable" > /etc/profile.d/gcc-toolset.sh && \
-  $SCRIPTS_DIR/build-webp && $SCRIPTS_DIR/build-libjpeg-turbo && \
+  $SCRIPTS_DIR/build-deps.sh && \
   useradd -m docker && echo "docker:docker" | chpasswd
 
 COPY --chown=docker:docker . /src/

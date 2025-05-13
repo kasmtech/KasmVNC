@@ -44,6 +44,7 @@
 #include <rfb/TightWEBPEncoder.h>
 #include <rfb/TightQOIEncoder.h>
 #include <execution>
+#include <tbb/parallel_for.h>
 
 using namespace rfb;
 
@@ -210,6 +211,9 @@ EncodeManager::EncodeManager(SConnection* conn_, EncCache *encCache_) : conn(con
     dynamicQualityMin = Server::dynamicQualityMin;
     dynamicQualityOff = Server::dynamicQualityMax - Server::dynamicQualityMin;
   }
+
+    const auto num_cores = tbb::this_task_arena::max_concurrency() / 2;
+    arena.initialize(num_cores);
 }
 
 EncodeManager::~EncodeManager()
@@ -1237,12 +1241,13 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
   }
   scalingTime = msSince(&scalestart);
 
-    std::for_each(std::execution::par_unseq, std::begin(indices), std::end(indices), [&](size_t i)
-    {
-        encoderTypes[i] = getEncoderType(subrects[i], pb, &palettes[i], compresseds[i],
+    arena.execute([&] {
+        tbb::parallel_for(static_cast<size_t>(0), subrects_size, [&](size_t i) {
+            encoderTypes[i] = getEncoderType(subrects[i], pb, &palettes[i], compresseds[i],
                         &isWebp[i], &fromCache[i],
                         scaledpb, scaledrects[i], ms[i]);
-        checkWebpFallback(start);
+            checkWebpFallback(start);
+        });
     });
 
   for (uint32_t i = 0; i < subrects_size; ++i) {

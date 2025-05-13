@@ -32,6 +32,7 @@
 
 #include <stdint.h>
 #include <atomic>
+#include <tbb/task_arena.h>
 #include <sys/time.h>
 
 namespace rfb {
@@ -167,6 +168,7 @@ namespace rfb {
 
   protected:
     SConnection *conn;
+    tbb::task_arena arena;
 
     std::vector<Encoder*> encoders;
     std::vector<int> activeEncoders;

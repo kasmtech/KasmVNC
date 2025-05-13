@@ -18,8 +18,7 @@ RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libav
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-webp
-RUN $SCRIPTS_DIR/build-libjpeg-turbo
+RUN $SCRIPTS_DIR/build-deps.sh
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
 
