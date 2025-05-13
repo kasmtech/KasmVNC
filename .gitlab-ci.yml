@@ -50,7 +50,7 @@ functional_test:
   tags:
     - oci-fixed-amd
   before_script:
-    - . .ci/upload.sh
+    - . .ci/helpers.sh
   script:
     - prepare_to_run_functional_tests
     - ./functional-test
@@ -197,7 +197,7 @@ upload:
     paths:
       - output/
   before_script:
-    - . .ci/upload.sh
+    - . .ci/helpers.sh
   script:
     - prepare_to_run_scripts_and_s3_uploads
     - S3_CRASHPAD_BUILD_DIRECTORY="kasmvnc/crashpad/${CI_COMMIT_SHA}"
@@ -233,7 +233,7 @@ upload_build_preview:
   tags:
     - oci-fixed-amd
   before_script:
-    - . .ci/upload.sh
+    - . .ci/helpers.sh
   resource_group: upload_build_preview
   only:
     variables:

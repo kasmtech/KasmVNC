@@ -115,7 +115,7 @@ locally by doing stuff like this:
 
 ```
 bash -c '
-. .ci/upload.sh;
+. .ci/helpers.sh;
 prepare_upload_filename "focal/kasmvncserver_0.9.1~beta-1+libjpeg-turbo-latest_amd64.deb";
 echo $upload_filename;'
 ```
