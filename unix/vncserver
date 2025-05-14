@@ -1246,6 +1246,10 @@ sub DefineConfigToCLIConversion {
     pattern => qr/^(never|\d+)$/,
     errorMessage => "must be a number or 'never'"
   });
+  my $percentValidator = KasmVNC::PatternValidator->new({
+    pattern => qr/^(\d+%)$/,
+    errorMessage => "must be a number, followed by %"
+  });
   my $allConfigKeysValidatorSub = sub {
     my @allConfigKeys = map { $_->configKeyNames() } @xvncOptions;
 
@@ -1999,10 +2003,7 @@ sub DefineConfigToCLIConversion {
         configKeys => [
           KasmVNC::ConfigKey->new({
             name => "encoding.video_encoding_mode.enter_video_encoding_mode.area_threshold",
-            validator => KasmVNC::PatternValidator->new({
-              pattern => qr/^(\d+%)$/,
-              errorMessage => "must be a number, followed by %"
-            }),
+            validator => $percentValidator
           })
         ],
         deriveValueSub => sub {
