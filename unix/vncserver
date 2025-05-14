@@ -2464,6 +2464,56 @@ sub DefineConfigToCLIConversion {
           })
         ]
     }),
+    KasmVNC::CliOption->new({
+        name => 'DetectScrolling',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.scrolling.detect_vertical_scrolling",
+            type => KasmVNC::ConfigKey::BOOLEAN
+          })
+        ],
+        isActiveSub => sub {
+          $self = shift;
+
+          my $value = $self->configValue();
+          isPresent($value) && $value eq 'true';
+        }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DetectHorizontal',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.scrolling.detect_horizontal_scrolling",
+            type => KasmVNC::ConfigKey::BOOLEAN,
+            validator => KasmVNC::CallbackValidator->new({
+              isValidCallback => sub {
+                my $value = shift;
+
+                return 1 if $value eq "false";
+
+                ConfigValue("encoding.scrolling.detect_vertical_scrolling") eq "true";
+              },
+              errorMessage => "Detection of horizontal scrolling requires detection of vertical scrolling enabled"
+            }),
+          })
+        ],
+        isActiveSub => sub {
+          $self = shift;
+
+          my $value = $self->configValue();
+          isPresent($value) && $value eq 'true';
+        }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'ScrollDetectLimit',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.scrolling.scroll_detect_threshold",
+            validator => $percentValidator
+          })
+        ],
+        deriveValueSub => $deriveValueStripPercentSub
+    }),
   );
 
   %cliArgMap = map { ("-" . $_->{name}) => $_ } @xvncOptions;
