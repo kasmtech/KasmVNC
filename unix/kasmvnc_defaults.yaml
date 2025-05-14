@@ -134,6 +134,10 @@ encoding:
   compare_framebuffer: auto
   zrle_zlib_level: auto
   hextile_improved_compression: true
+  scrolling:
+    detect_vertical_scrolling: false
+    detect_horizontal_scrolling: false
+    scroll_detect_threshold: 25%
 
 server:
   http:

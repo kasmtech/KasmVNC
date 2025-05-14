@@ -32,13 +32,6 @@ sub validate {
 
   return if $self->isValueBlank();
 
-  if ($self->{validator}) {
-    $self->resolveValidatorFromFunction() if (ref $self->{validator} eq "CODE");
-
-    $self->{validator}->validate($self);
-    return;
-  }
-
   switch($self->{type}) {
     case INT {
       $self->validateInt();
@@ -46,6 +39,13 @@ sub validate {
     case BOOLEAN {
       $self->validateBoolean();
     }
+  }
+
+  if ($self->{validator}) {
+    $self->resolveValidatorFromFunction() if (ref $self->{validator} eq "CODE");
+
+    $self->{validator}->validate($self);
+    return;
   }
 }
 

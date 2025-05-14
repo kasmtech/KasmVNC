@@ -584,6 +584,23 @@ When this option is used, benchmarking results can be saved to a file specified 
 .B -BenchmarkResults <results_file.xml>
 Save the benchmarking results to the specified file.
 Use this option together with \fB-Benchmark\fP to output the report to a custom file.
+.
+.TP
+.B \-DetectScrolling
+Try to detect scrolled sections in a changed area.
+
+Detect vertical scrolling on the screen and then use copyRects instead of
+sending jpeg.  A copy rect tells the client to copy a section of the screen and
+paste it somewhere else. This significantly reduces bandwidth usage when someone
+is scrolling down a page.
+.
+.TP
+.B \-DetectHorizontal
+With \fB-DetectScrolling\fP enabled, try to detect horizontal scrolls too, not just vertical.
+.
+.TP
+.B \-ScrollDetectLimit
+At least this % of the screen must change for scroll detection to happen, default 25.
 
 .SH USAGE WITH INETD
 By configuring the \fBinetd\fP(1) service appropriately, Xvnc can be launched

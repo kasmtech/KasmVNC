@@ -1246,12 +1246,24 @@ sub DefineConfigToCLIConversion {
     pattern => qr/^(never|\d+)$/,
     errorMessage => "must be a number or 'never'"
   });
+  my $percentValidator = KasmVNC::PatternValidator->new({
+    pattern => qr/^(\d+%)$/,
+    errorMessage => "must be a number, followed by %"
+  });
   my $allConfigKeysValidatorSub = sub {
     my @allConfigKeys = map { $_->configKeyNames() } @xvncOptions;
 
     KasmVNC::EnumValidator->new({
       allowedValues => [flatten(@allConfigKeys)]
     })
+  };
+  my $deriveValueStripPercentSub = sub {
+    $self = shift;
+
+    my $value = $self->configValue();
+    $value =~ s/%$//;
+
+    $value;
   };
   KasmVNC::CliOption::beforeIsActive(\&limitVncModeOptions);
   my $ipv4_regexp = '((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}';
@@ -1999,20 +2011,10 @@ sub DefineConfigToCLIConversion {
         configKeys => [
           KasmVNC::ConfigKey->new({
             name => "encoding.video_encoding_mode.enter_video_encoding_mode.area_threshold",
-            validator => KasmVNC::PatternValidator->new({
-              pattern => qr/^(\d+%)$/,
-              errorMessage => "must be a number, followed by %"
-            }),
+            validator => $percentValidator
           })
         ],
-        deriveValueSub => sub {
-          $self = shift;
-
-          my $value = $self->configValue();
-          $value =~ s/%$//;
-
-          $value;
-        }
+        deriveValueSub => $deriveValueStripPercentSub
     }),
     KasmVNC::CliOption->new({
         name => 'VideoOutTime',
@@ -2461,6 +2463,56 @@ sub DefineConfigToCLIConversion {
             type => KasmVNC::ConfigKey::ANY
           })
         ]
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DetectScrolling',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.scrolling.detect_vertical_scrolling",
+            type => KasmVNC::ConfigKey::BOOLEAN
+          })
+        ],
+        isActiveSub => sub {
+          $self = shift;
+
+          my $value = $self->configValue();
+          isPresent($value) && $value eq 'true';
+        }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DetectHorizontal',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.scrolling.detect_horizontal_scrolling",
+            type => KasmVNC::ConfigKey::BOOLEAN,
+            validator => KasmVNC::CallbackValidator->new({
+              isValidCallback => sub {
+                my $value = shift;
+
+                return 1 if $value eq "false";
+
+                ConfigValue("encoding.scrolling.detect_vertical_scrolling") eq "true";
+              },
+              errorMessage => "Detection of horizontal scrolling requires detection of vertical scrolling enabled"
+            }),
+          })
+        ],
+        isActiveSub => sub {
+          $self = shift;
+
+          my $value = $self->configValue();
+          isPresent($value) && $value eq 'true';
+        }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'ScrollDetectLimit',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.scrolling.scroll_detect_threshold",
+            validator => $percentValidator
+          })
+        ],
+        deriveValueSub => $deriveValueStripPercentSub
     }),
   );
 
