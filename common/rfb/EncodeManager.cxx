@@ -20,7 +20,6 @@
  */
 
 #include <cstdlib>
-
 #include <rfb/cpuid.h>
 #include <rfb/EncCache.h>
 #include <rfb/EncodeManager.h>
@@ -212,7 +211,7 @@ EncodeManager::EncodeManager(SConnection* conn_, EncCache *encCache_) : conn(con
     dynamicQualityOff = Server::dynamicQualityMax - Server::dynamicQualityMin;
   }
 
-    const auto num_cores = tbb::this_task_arena::max_concurrency() / 2;
+    const auto num_cores = cpu_info::cores_count;
     arena.initialize(num_cores);
 }
 
