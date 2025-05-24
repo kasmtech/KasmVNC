@@ -1016,7 +1016,7 @@ PixelBuffer *rfb::progressiveBilinearScale(const PixelBuffer *pb,
                                  const uint16_t tgtw, const uint16_t tgth,
                                  const float tgtdiff)
 {
-  if (supportsSSE2()) {
+  if (cpu_info::has_sse2) {
     if (tgtdiff >= 0.5f) {
       ManagedPixelBuffer *newpb = new ManagedPixelBuffer(pb->getPF(), tgtw, tgth);
 
@@ -1173,9 +1173,6 @@ void EncodeManager::writeRects(const Region& changed, const PixelBuffer* pb,
   }
 
   const size_t subrects_size = subrects.size();
-
-  std::vector<size_t> indices(subrects_size);
-  std::iota(std::begin(indices), std::end(indices), 0);
 
   encoderTypes.resize(subrects_size);
   isWebp.resize(subrects_size);
