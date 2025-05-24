@@ -16,10 +16,12 @@
  * USA.
  */
 
-#include <stdint.h>
+#include "cpuid.h"
+#include <cstdint>
+#include "LogWriter.h"
 
-static uint32_t cpuid[4] = { 0 };
-static uint32_t extcpuid[4] = { 0 };
+static uint32_t cpuid[4] = {};
+static uint32_t extcpuid[4] = {};
 
 static void getcpuid() {
 	if (cpuid[0])
@@ -68,3 +70,28 @@ bool supportsAVX512f() {
 }
 
 }; // namespace rfb
+
+namespace cpu_info {
+    static rfb::LogWriter log("CpuFeatures");
+    inline CpuFeatures::CpuFeatures()
+    {
+        if (!cpuid_present())
+        {
+            log.error("CPU does not support CPUID.");
+            return;
+        }
+
+        cpu_raw_data_t raw{};
+
+        if (cpuid_get_raw_data(&raw) < 0)
+        {
+            log.error("Cannot get CPUID raw data.");
+            return;
+        }
+
+        if (cpu_identify(&raw, &data) < 0)
+        {
+            log.error("Cannot identify CPU.");
+        }
+    }
+} // namespace cpu_info

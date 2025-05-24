@@ -132,6 +132,8 @@ endif ()
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(FFMPEG REQUIRED libavcodec libavformat libavutil libswscale)
+pkg_check_modules(CPUID REQUIRED libcpuid)
+
 find_package(TBB)
 if (TBB_FOUND)
     set(RFB_LIBRARIES ${RFB_LIBRARIES} tbb)
@@ -150,9 +152,10 @@ target_include_directories(rfb PRIVATE
         ${CMAKE_SOURCE_DIR}/third_party/tinyxml2
         ${FFMPEG_INCLUDE_DIRS}
         ${TBB_INCLUDE_DIRS}
+        ${CPUID_INCLUDE_DIRS}
 )
 
-target_link_libraries(rfb PUBLIC ${RFB_LIBRARIES} tinyxml2_objs)
+target_link_libraries(rfb PUBLIC ${RFB_LIBRARIES} tinyxml2_objs ${TBB_LIBRARIES} ${CPUID_LIBRARIES})
 
 if (UNIX)
     libtool_create_control_file(rfb)
