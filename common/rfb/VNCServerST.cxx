@@ -141,11 +141,17 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
     frameTimer(this), apimessager(nullptr), trackingFrameStats(0),
     clipboardId(0), sendWatermark(false)
 {
-  lastUserInputTime = lastDisconnectTime = time(0);
-  slog.debug("creating single-threaded server %s", name.buf);
-  slog.info("CPU capability: SSE2 %s, AVX512f %s",
-            supportsSSE2() ? "yes" : "no",
-            supportsAVX512f() ? "yes" : "no");
+    auto to_string = [](const bool value) {
+        return value ? "yes" : "no";
+    };
+
+    lastUserInputTime = lastDisconnectTime = time(nullptr);
+    slog.debug("creating single-threaded server %s", name.buf);
+    slog.info("CPU capability: SSE2 %s, SSE4.1 %s, SSE4.2 %s, AVX512f %s",
+              to_string(cpu_info::has_sse2),
+              to_string(cpu_info::has_sse4_1),
+              to_string(cpu_info::has_sse4_2),
+              to_string(cpu_info::has_avx512f));
 
   DLPRegion.enabled = DLPRegion.percents = false;
 
