@@ -114,6 +114,11 @@ install_packages_needed_for_functional_tests() {
   apt-get install -y python3 python3-pip python3-boto3 curl pkg-config libxmlsec1-dev
 }
 
+is_build_this_distro() {
+  local distro="$1"
+  [[ "$BUILD_DISTROS_REGEX" = 'all' ]] || [[ "$distro" =~ $BUILD_DISTROS_REGEX ]]
+}
+
 function upload_to_s3() {
   local file_to_upload="$1";
   local s3_url_for_file="$2";
@@ -132,7 +137,7 @@ function prepare_s3_uploader() {
 function prepare_to_run_scripts_and_s3_uploads() {
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
-  apt-get install -y ruby2.7 git wget
+  apt-get install -y ruby3.1 git wget
   apt-get install -y python3 python3-pip python3-boto3 curl pkg-config libxmlsec1-dev
   prepare_s3_uploader
 }
