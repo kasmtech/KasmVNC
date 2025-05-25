@@ -7,10 +7,15 @@ variables:
   GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
   GIT_SUBMODULE_STRATEGY: normal
   GIT_FETCH_EXTRA_FLAGS: --tags --force
-  # E.g. BUILD_JOBS: build_debian_buster,build_ubuntu_focal. This will include
-  # arm builds, because build_debian_buster_arm matches build_debian_buster.
-  # "BUILD_JOBS: none" won't build any build jobs, nor www.
-  BUILD_JOBS: all
+  # For example, BUILD_DISTROS_REGEX: "jammy|focal".
+  # "BUILD_DISTROS_REGEX: none" won't build any distros, nor www.
+  # "BUILD_DISTROS_REGEX: all" would build all distros.
+  # Make sure you quote any whitespace characters you use.
+  # E.g. BUILD_DISTROS_REGEX: "jammy|\ focal".
+  BUILD_DISTROS_REGEX: all
+  # To debug upload stage, you can limit BUILD_DISTROS_REGEX to jammy and allow
+  # run_test distros to fail, by setting ALLOW_RUN_TESTS_TO_FAIL to true.
+  ALLOW_RUN_TESTS_TO_FAIL: false
   DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
 
@@ -29,8 +34,8 @@ stages:
 
 .prepare_build: &prepare_build
   - pwd
-  - apk add bash
   - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
+  - apt-get update && apt-get install -y docker.io
   - docker login --username $DOCKER_HUB_USERNAME --password $DOCKER_HUB_PASSWORD
 
 .prepare_www: &prepare_www
@@ -46,7 +51,7 @@ default:
 
 functional_test:
   stage: functional_test
-  image: debian:bookworm
+  image: debian:bookworm-slim
   tags:
     - oci-fixed-amd
   before_script:
@@ -82,7 +87,7 @@ build_www:
     - tar -zcvf ../output/www/kasm_www.tar.gz www
   only:
     variables:
-      - $BUILD_JOBS !~ /^none$/
+      - $BUILD_DISTROS_REGEX !~ /^none$/
   artifacts:
     paths:
       - output/
@@ -90,18 +95,18 @@ build_www:
 build_amd64:
   stage: build
   allow_failure: true
+  image: debian:bookworm-slim
   tags:
     - oci-fixed-amd
   before_script:
     - *prepare_build
     - *prepare_www
+    - . .ci/helpers.sh
   after_script:
     - *prepare_artfacts
   script:
-    - bash builder/build-package $DISTRO;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ "$DISTRO"
+    - set -e
+    - is_build_this_distro "$DISTRO" && builder/build-package $DISTRO
   artifacts:
     paths:
       - output/
@@ -112,18 +117,18 @@ build_amd64:
 build_arm64:
   stage: build
   allow_failure: true
+  image: debian:bookworm-slim
   tags:
     - oci-fixed-arm
   before_script:
     - *prepare_build
     - *prepare_www
+    - . .ci/helpers.sh
   after_script:
     - *prepare_artfacts
   script:
-    - bash builder/build-package $DISTRO;
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ "$DISTRO"
+    - set -e
+    - is_build_this_distro "$DISTRO" && builder/build-package $DISTRO
   artifacts:
     paths:
       - output/
@@ -133,15 +138,19 @@ build_arm64:
 
 run_test_amd64:
   stage: run_test
+  image: debian:bookworm-slim
   tags:
     - oci-fixed-amd
   before_script:
     - *prepare_build
+    - . .ci/helpers.sh
   script:
-    - bash builder/test-barebones --run-test $DISTRO
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ "$DISTRO"
+    - set -e
+    - is_build_this_distro "$DISTRO" && builder/test-barebones --run-test $DISTRO
+  rules:
+    - if: $ALLOW_RUN_TESTS_TO_FAIL == "false"
+    - if: $ALLOW_RUN_TESTS_TO_FAIL == "true"
+      allow_failure: true
   dependencies:
     - build_amd64
   artifacts:
@@ -154,15 +163,19 @@ run_test_amd64:
 
 run_test_arm64:
   stage: run_test
+  image: debian:bookworm-slim
   tags:
     - oci-fixed-arm
   before_script:
     - *prepare_build
+    - . .ci/helpers.sh
   script:
-    - bash builder/test-barebones --run-test $DISTRO
-  only:
-    variables:
-      - $BUILD_JOBS == 'all' || $BUILD_JOBS =~ "$DISTRO"
+    - set -e
+    - is_build_this_distro "$DISTRO" && builder/test-barebones --run-test $DISTRO
+  rules:
+    - if: $ALLOW_RUN_TESTS_TO_FAIL == "false"
+    - if: $ALLOW_RUN_TESTS_TO_FAIL == "true"
+      allow_failure: true
   dependencies:
     - build_arm64
   artifacts:
@@ -175,6 +188,7 @@ run_test_arm64:
 
 spec_test:
   stage: test
+  image: debian:bookworm-slim
   tags:
     - kasmvnc-x86
   before_script:
@@ -185,12 +199,12 @@ spec_test:
         - SelfBench.xml
         - Benchmark.xml
   script:
-    - bash builder/test-vncserver
+    - builder/test-vncserver
 
 
 upload:
   stage: upload
-  image: ubuntu:focal
+  image: debian:bookworm-slim
   tags:
     - oci-fixed-amd
   artifacts:
@@ -229,7 +243,7 @@ upload_build_preview:
   stage: upload
   needs: ["upload"]
   dependencies: ["upload"]
-  image: ubuntu:focal
+  image: debian:bookworm-slim
   tags:
     - oci-fixed-amd
   before_script:

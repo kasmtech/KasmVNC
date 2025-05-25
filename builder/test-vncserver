@@ -3,7 +3,7 @@
 set -e
 
 default_os=ubuntu
-default_os_codename=focal
+default_os_codename=jammy
 
 . ./builder/os_ver_cli.sh
 
