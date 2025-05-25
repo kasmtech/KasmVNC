@@ -3,7 +3,7 @@
 set -euo pipefail
 
 build_and_install() {
-    cmake -S . -B build -DLIBCPUID_ENABLE_TESTS=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -GNinja
+    cmake -S . -B build -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLIBCPUID_ENABLE_TESTS=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -GNinja
     ninja -C build install
 }
 
