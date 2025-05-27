@@ -646,7 +646,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     strncpy(headers->path, start, end-start);
     headers->path[end-start] = '\0';
 
-    start = strstr(handshake, "\r\nHost: ");
+    start = strcasestr(handshake, "\r\nHost: ");
     if (!start) { err("missing Host header"); return 0; }
     start += 8;
     end = strstr(start, "\r\n");
@@ -683,7 +683,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         strncpy(headers->key1, start, end-start);
         headers->key1[end-start] = '\0';
 
-        start = strstr(handshake, "\r\nConnection: ");
+        start = strcasestr(handshake, "\r\nConnection: ");
         if (!start) { err("missing Connection header"); return 0; }
         start += 14;
         end = strstr(start, "\r\n");
@@ -1897,7 +1897,7 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
     unsigned char owner = 0;
     char inuser[USERNAME_LEN] = "-";
     if (!settings.disablebasicauth) {
-        const char *hdr = strstr(handshake, "Authorization: Basic ");
+        const char *hdr = strcasestr(handshake, "Authorization: Basic ");
         if (!hdr) {
             bl_addFailure(ip);
             wserr("Authentication attempt failed, BasicAuth required, but client didn't send any\n");
