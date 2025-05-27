@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+build_and_install() {
+    cmake -S . -B build -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLIBCPUID_ENABLE_TESTS=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -GNinja
+    ninja -C build install
+}
+
+prepare_source() {
+    DIR=tbb
+    cd /tmp
+    [ -d ./${DIR} ] && rm -rf ./${DIR}
+    mkdir ${DIR}
+
+    LIBCPUID_RELEASE=$(curl -sL "https://api.github.com/repos/anrieff/libcpuid/releases/latest" \
+        | grep '"tag_name":' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
+
+    curl -Ls "https://github.com/anrieff/libcpuid/archive/${LIBCPUID_RELEASE}.tar.gz" | \
+
+    tar xzvf - -C ${DIR}/ --strip-components=1
+    cd ${DIR}
+}
+
+prepare_source
+build_and_install

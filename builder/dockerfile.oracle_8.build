@@ -55,6 +55,8 @@ RUN dnf install -y \
   libSM-devel
 
 ENV SCRIPTS_DIR=/tmp/scripts
+ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:${PKG_CONFIG_PATH:-/opt/rh/gcc-toolset-14/root/usr/lib64/pkgconfig}
+
 COPY builder/scripts $SCRIPTS_DIR
 RUN echo "source /opt/rh/gcc-toolset-14/enable" > /etc/profile.d/gcc-toolset.sh && \
     $SCRIPTS_DIR/build-deps.sh  && \
