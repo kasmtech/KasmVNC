@@ -5,7 +5,8 @@ services:
 variables:
   KASMVNC_COMMIT_ID: $CI_COMMIT_SHA
   GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
-  GIT_SUBMODULE_STRATEGY: normal
+  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_FORCE_HTTPS: "true"
   GIT_FETCH_EXTRA_FLAGS: --tags --force
   # For example, BUILD_DISTROS_REGEX: "jammy|focal".
   # "BUILD_DISTROS_REGEX: none" won't build any distros, nor www.
