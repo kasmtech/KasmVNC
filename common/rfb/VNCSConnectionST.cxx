@@ -997,6 +997,8 @@ void VNCSConnectionST::setDesktopSize(int fb_width, int fb_height,
 {
   unsigned int result;
 
+  server->sendWatermark = true;
+
   if (!(accessRights & AccessSetDesktopSize)) goto justnotify;
   if (!rfb::Server::acceptSetDesktopSize) goto justnotify;
 
