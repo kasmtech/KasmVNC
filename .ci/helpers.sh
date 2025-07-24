@@ -89,9 +89,14 @@ upload_report_to_s3() {
 }
 
 put_report_into_ci_pipeline() {
-  report_name="Functional%20test%20report"
-  report_url="https://${S3_BUCKET}.s3.amazonaws.com/${s3_tests_directory}/report/index.html"
-  curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=${report_name}&target_url=${report_url}"
+  local functional_tests_exit_code="$1"
+  local report_name="Functional%20test%20report"
+  local report_url="https://${S3_BUCKET}.s3.amazonaws.com/${s3_tests_directory}/report/index.html"
+  local state="success"
+  if [ "$functional_tests_exit_code" -ne 0 ]; then
+    state="failed"
+  fi
+  curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=${state}&name=${report_name}&target_url=${report_url}"
 }
 
 prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages() {

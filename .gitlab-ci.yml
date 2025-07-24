@@ -59,9 +59,10 @@ functional_test:
     - . .ci/helpers.sh
   script:
     - prepare_to_run_functional_tests
-    - ./functional-test
+    - set +e; ./functional-test; exit_code=$?; set -e
     - upload_report_to_s3
-    - put_report_into_ci_pipeline
+    - put_report_into_ci_pipeline "$exit_code"
+    - exit "$exit_code"
   dependencies:
     - build_amd64
   artifacts:
