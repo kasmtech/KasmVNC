@@ -65,6 +65,7 @@
 #include <rfb/Watermark.h>
 #include <rfb/util.h>
 #include <rfb/ledStates.h>
+#include <rfb/SMsgWriter.h>
 
 #include <rdr/types.h>
 
@@ -773,6 +774,27 @@ void VNCServerST::stopDesktop()
   }
 }
 
+std::vector<SessionInfo> VNCServerST::getSessionUsers() {
+  std::vector<SessionInfo> users;
+
+  for ( auto client :  clients) {
+    if (!client->authenticated()) {
+      continue;
+    }
+    users.push_back(SessionInfo(client->getUsername(),client->getConnectionTime()));
+  }
+  return users;
+}
+
+void VNCServerST::updateSessionUsersList()
+{
+  auto sessionUsers = getSessionUsers();
+  if (!sessionUsers.empty()) {
+    std::string sessionUsersJson = formatUsersToJson(sessionUsers);
+    apimessager->mainUpdateSessionsInfo(sessionUsersJson);
+  }
+}
+
 int VNCServerST::authClientCount() {
   int count = 0;
   std::list<VNCSConnectionST*>::iterator ci;
@@ -1158,9 +1180,6 @@ void VNCServerST::writeUpdate()
   }
 }
 
-// checkUpdate() is called by clients to see if it is safe to read from
-// the framebuffer at this time.
-
 Region VNCServerST::getPendingRegion()
 {
   UpdateInfo ui;
@@ -1232,6 +1251,15 @@ void VNCServerST::notifyScreenLayoutChange(VNCSConnectionST* requester)
   }
 }
 
+bool VNCServerST::checkClientOwnerships() {
+  std::list<VNCSConnectionST*>::iterator i;
+  for (i = clients.begin(); i != clients.end(); i++) {
+    if ((*i)->is_owner())
+      return true;
+  }
+  return false;
+}
+
 bool VNCServerST::getComparerState()
 {
   if (rfb::Server::compareFB == 0)
@@ -1289,4 +1317,41 @@ void VNCServerST::sendUnixRelayData(const char name[],
       (*i)->sendUnixRelayData(name, buf, len);
     }
   }
+}
+
+void VNCServerST::notifyUserAction(const VNCSConnectionST* newConnection, std::string& username, const UserActionType actionType)
+{
+  if (username.empty()) {
+    username = "username_unavailable";
+  }
+
+  std::string actionTypeStr = actionType == Join ? "joined" : "left";
+  int notificationsSent = 0;
+
+  std::string msgNotification = "Sent user " +  actionTypeStr +  "   notification to client";
+  std::string errNotification = "Failed to send user " +  actionTypeStr +  "  notification to client: ";
+  std::string logNotification = "User " + username + " " + actionTypeStr + "  - sent notifications to ";
+
+  for (auto client : clients ) {
+    // Don't notify the connection that just joined, and only notify authenticated connections
+    if (client != newConnection && client->authenticated() &&
+        client->state() == SConnection::RFBSTATE_NORMAL) {
+      try {
+        if (actionType == Join) {
+          client->writer()->writeUserJoinedSession(username);
+        }
+        else {
+          client->writer()->writeUserLeftSession(username);
+        }
+        notificationsSent++;
+
+        slog.debug(msgNotification.c_str());
+      } catch (rdr::Exception& e) {
+         errNotification.append( e.str());
+        slog.error(errNotification.c_str());
+      }
+        }
+  }
+  logNotification.append( std::to_string(notificationsSent) + " clients");
+  slog.info(logNotification.c_str());
 }

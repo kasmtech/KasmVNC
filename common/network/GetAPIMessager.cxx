@@ -28,6 +28,8 @@
 #include <rfb/xxhash.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
+#include <utility>
 
 using namespace network;
 using namespace rfb;
@@ -55,7 +57,8 @@ static const struct TightJPEGConfiguration conf[10] = {
 GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_),
 					screenW(0), screenH(0), screenHash(0),
 					cachedW(0), cachedH(0), cachedQ(0),
-					ownerConnected(0), activeUsers(0) {
+					ownerConnected(0), activeUsers(0),
+					sessionsInfo( "{\"users\":[]}"){
 
 	pthread_mutex_init(&screenMutex, NULL);
 	pthread_mutex_init(&userMutex, NULL);
@@ -169,6 +172,15 @@ void GetAPIMessager::mainUpdateUserInfo(const uint8_t ownerConn, const uint8_t n
 	activeUsers = numUsers;
 
 	pthread_mutex_unlock(&userInfoMutex);
+}
+
+void GetAPIMessager::mainUpdateSessionsInfo(std::string newSessionsInfo)
+{
+	 std::unique_lock<std::mutex> lock (sessionInfoMutex,std::defer_lock);
+	if (!lock.try_lock())
+		return;
+	sessionsInfo = std::move(newSessionsInfo);
+	lock.unlock();
 }
 
 // from network threads
@@ -514,6 +526,12 @@ void GetAPIMessager::netGetUsers(const char **outptr) {
 	*outptr = buf;
 }
 
+
+const std::string_view GetAPIMessager::netGetSessions()
+{
+	return sessionsInfo;
+}
+
 void GetAPIMessager::netGetBottleneckStats(char *buf, uint32_t len) {
 /*
 {
@@ -819,3 +837,4 @@ void GetAPIMessager::netClearClipboard() {
 
 	pthread_mutex_unlock(&userMutex);
 }
+

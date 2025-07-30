@@ -18,6 +18,7 @@
  * USA.
  */
 #include <stdio.h>
+#include <string>
 #include <rdr/OutStream.h>
 #include <rdr/MemOutStream.h>
 #include <rdr/ZlibOutStream.h>
@@ -774,5 +775,19 @@ void SMsgWriter::writeUnixRelay(const char *name, const rdr::U8 *buf, const unsi
   os->writeU32(len);
   os->writeBytes(buf, len);
 
+  endMsg();
+}
+
+void SMsgWriter::writeUserJoinedSession(const std::string& username)
+{
+  startMsg(msgTypeUserAddedToSession);
+  os->writeString(username.c_str());
+  endMsg();
+}
+
+void SMsgWriter::writeUserLeftSession(const std::string& username)
+{
+  startMsg(msgTypeUserRemovedFromSession);
+  os->writeString(username.c_str());
   endMsg();
 }

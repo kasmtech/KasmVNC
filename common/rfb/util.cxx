@@ -630,4 +630,57 @@ namespace rfb {
                     sizeof(iecPrefixes)/sizeof(*iecPrefixes),
                     precision);
   }
+
+  std::string get_default_name(const std::string& str) {
+    std::string default_name =str;
+    //Remove IP and other network info since only username needed
+    auto atPos = default_name.find('@');
+    if (atPos != std::string::npos) {
+      default_name.erase(atPos);
+    }
+
+    if (default_name.empty()) {
+      default_name = "username_unavailable";
+    }
+    else {
+      // Replace special characters
+      for (size_t i = 0; i < default_name.length(); i++) {
+        if (default_name[i] == '.' || default_name[i] == ':') {
+          default_name[i] = '_';
+        }
+      }
+    }
+
+    return default_name;
+
+  }
+  std::string formatUsersToJson(const std::vector<SessionInfo> & users)
+  {
+    std::string usersList = "[";
+    bool firstUser = true;
+    for (const auto&[userName, connectionTime] : users)
+    {
+      std::string username =userName;
+      time_t connTime = connectionTime;
+      char timeStr[32];
+      strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", gmtime(&connTime));
+
+      if (!firstUser) {
+        usersList.append( ",");
+      }
+      firstUser = false;
+
+      std::string userEntry = "{\"username\":\"";
+      userEntry.append(username);
+      userEntry.append( "\", \"connected_since\":\"");
+      userEntry.append(timeStr);
+      userEntry.append("\"}");
+
+      usersList.append(userEntry);
+    }
+    usersList += "]";
+    usersList = "{\"users\": " + usersList + "} ";
+    return usersList;
+  }
 };
+

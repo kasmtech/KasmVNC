@@ -1511,7 +1511,8 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
 
         handler_msg("Sent bottleneck stats to API caller\n");
         ret = 1;
-    } else entry("/api/get_users") {
+    } else entry("/api/get_users")
+    {
         const char *ptr;
         settings.getUsersCb(settings.messager, &ptr);
 
@@ -1529,6 +1530,26 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
         free((char *) ptr);
 
         handler_msg("Sent user list to API caller\n");
+        ret = 1;
+    } else entry("/api/get_sessions") {
+
+        char *sessionData;
+        settings.getSessionsCb(settings.messager, &sessionData);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: %lu\r\n"
+                 "%s"
+                 "\r\n", strlen(sessionData), extra_headers ? extra_headers : "");
+        ws_send(ws_ctx, buf, strlen(buf));
+        ws_send(ws_ctx, sessionData, strlen(sessionData));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf) + strlen(sessionData));
+
+        free((char *) sessionData);
+
+        handler_msg("Sent session list to API caller\n");
         ret = 1;
     } else entry("/api/get_frame_stats") {
         char statbuf[4096], decname[1024];
