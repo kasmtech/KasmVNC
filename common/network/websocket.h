@@ -108,6 +108,8 @@ typedef struct {
     uint8_t (*serverFrameStatsReadyCb)(void *messager);
 
     void (*clearClipboardCb)(void *messager);
+
+    void (*getSessionsCb)(void *messager, char **buf);
 } settings_t;
 
 #ifdef __cplusplus

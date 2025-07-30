@@ -23,6 +23,7 @@
 #ifndef __RFB_SMSGWRITER_H__
 #define __RFB_SMSGWRITER_H__
 
+#include <string>
 #include <rdr/types.h>
 #include <rfb/encodings.h>
 #include <rfb/ScreenSet.h>
@@ -131,6 +132,9 @@ namespace rfb {
 
     void writeSubscribeUnixRelay(const bool success, const char *msg);
     void writeUnixRelay(const char *name, const rdr::U8 *buf, const unsigned len);
+
+    void writeUserJoinedSession(const std::string& username);
+    void writeUserLeftSession(const std::string& username);
 
   protected:
     void startMsg(int type);

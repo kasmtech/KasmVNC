@@ -31,6 +31,8 @@
 #include <climits>
 #include <cstring>
 #include <chrono>
+#include <string>
+#include <vector>
 
 struct timeval;
 
@@ -66,6 +68,17 @@ namespace rfb {
     CharArray(const CharArray&);
     CharArray& operator=(const CharArray&);
   };
+
+  struct SessionInfo {
+    std::string userName;
+    time_t connectionTime;
+    SessionInfo(const std::string& name, const time_t& time)
+    {
+      userName = name;
+      connectionTime = time;
+    }
+
+    };
 
   char* strDup(const char* s);
   void strFree(char* s);
@@ -145,6 +158,10 @@ namespace rfb {
                   char *buffer, size_t maxlen, int precision=6);
   size_t iecPrefix(long long value, const char *unit,
                    char *buffer, size_t maxlen, int precision=6);
+
+  std::string get_default_name(const std::string& str);
+  std::string formatUsersToJson(const std::vector<SessionInfo> & users);
+
 }
 
 // Some platforms (e.g. Windows) include max() and min() macros in their

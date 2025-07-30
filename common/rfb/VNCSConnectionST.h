@@ -219,12 +219,26 @@ namespace rfb {
         return server->sendWatermark;
     }
 
+    const std::string& getUsername() const { return clientUsername; }
+    void setUsername(const std::string& username) {
+      clientUsername = username.empty() ? "" : username;
+    }
+
+    // Returns connection time
+    time_t getConnectionTime() const { return connectionTime; }
+
+    // Returns access rights
+    AccessRights getAccessRights() const { return accessRights; }
   private:
     // SConnection callbacks
 
     // These methods are invoked as callbacks from processMsg().  Note that
     // none of these methods should call any of the above methods which may
     // delete the SConnectionST object.
+
+    // Connection timestamp when user was authenticated
+    time_t connectionTime;
+
 
     virtual void authSuccess();
     virtual void queryConnection(const char* userName);
@@ -348,6 +362,7 @@ namespace rfb {
 
     char unixRelaySubscriptions[MAX_UNIX_RELAYS][MAX_UNIX_RELAY_NAME_LEN];
     bool complainedAboutNoViewRights;
+    std::string clientUsername;
   };
 }
 #endif
