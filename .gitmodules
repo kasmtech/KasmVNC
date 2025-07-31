@@ -1,7 +1,7 @@
 [submodule "kasmweb"]
 	path = kasmweb
 	url = https://github.com/kasmtech/noVNC.git
-	branch = feature/VNC-196-shared-session-connect-msg
+	branch = master
 [submodule "kasmvnc-functional-tests"]
 	path = kasmvnc-functional-tests
 	url = git@gitlab.com:kasm-technologies/internal/kasmvnc-functional-tests.git
