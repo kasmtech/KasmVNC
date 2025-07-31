@@ -125,10 +125,44 @@ void SSE2_scale(const uint8_t *oldpx,
 	const __m128i high = _mm_set_epi32(0xffffffff, 0xffffffff, 0, 0);
 	const float invdiff = 1 / tgtdiff;
 
+	// Calculate source dimensions from target dimensions and scaling factor
+	const uint16_t srcw = (uint16_t)(tgtw * invdiff);
+	const uint16_t srch = (uint16_t)(tgth * invdiff);
+
 	for (y = 0; y < tgth; y++) {
 		const float ny = y * invdiff;
 		const uint16_t lowy = ny;
 		const uint16_t highy = lowy + 1;
+
+		// Handle Y-coordinate boundary case with safe fallback
+		if (highy >= srch) {
+			// Safe fallback: Use only the last valid row (lowy) for interpolation
+			const uint16_t safe_lowy = (lowy < srch) ? lowy : srch - 1;
+			const uint32_t * const row0 = (uint32_t *) (oldpx + oldstride * safe_lowy * 4);
+			const uint8_t * const brow0 = (uint8_t *) row0;
+
+			uint8_t * const dst = newpx + newstride * y * 4;
+
+			// Process entire row with C fallback (no vertical interpolation needed)
+			for (x = 0; x < tgtw; x++) {
+				const float nx = x * invdiff;
+				const uint16_t lowx = nx;
+				const uint16_t highx = (lowx + 1 < srcw) ? lowx + 1 : lowx;
+				const uint16_t right = (nx - lowx) * 256;
+				const uint16_t left = 256 - right;
+
+				uint8_t i;
+				for (i = 0; i < 4; i++) {
+					// Only horizontal interpolation since we're at bottom edge
+					uint32_t val = brow0[lowx * 4 + i] * left;
+					val += brow0[highx * 4 + i] * right;
+					dst[x * 4 + i] = val >> 8;
+				}
+			}
+			continue; // Skip to next row
+		}
+
+		// Normal case: both lowy and highy are valid
 		const uint16_t bot = (ny - lowy) * 256;
 		const uint16_t top = 256 - bot;
 		const uint32_t * const row0 = (uint32_t *) (oldpx + oldstride * lowy * 4);
@@ -154,6 +188,35 @@ void SSE2_scale(const uint8_t *oldpx,
 				(uint16_t) (lowx[0] + 1),
 				(uint16_t) (lowx[1] + 1),
 			};
+
+			// Critical bounds check for X coordinates
+			if (highx[0] >= srcw || highx[1] >= srcw) {
+				// Fall back to C implementation for boundary pixels
+				for (int i = 0; i < 2 && (x + i) < tgtw; i++) {
+					const float nx_safe = (x + i) * invdiff;
+					const uint16_t lowx_safe = nx_safe;
+					const uint16_t highx_safe = (lowx_safe + 1 < srcw) ? lowx_safe + 1 : lowx_safe;
+					const uint16_t right_safe = (nx_safe - lowx_safe) * 256;
+					const uint16_t left_safe = 256 - right_safe;
+
+					uint8_t j;
+					uint32_t val, val2;
+					for (j = 0; j < 4; j++) {
+						val = brow0[lowx_safe * 4 + j] * left_safe;
+						val += brow0[highx_safe * 4 + j] * right_safe;
+						val >>= 8;
+
+						val2 = brow1[lowx_safe * 4 + j] * left_safe;
+						val2 += brow1[highx_safe * 4 + j] * right_safe;
+						val2 >>= 8;
+
+						dst[(x + i) * 4 + j] = (val * top + val2 * bot) >> 8;
+					}
+				}
+				x++; // Skip the second pixel since we processed both
+				continue;
+			}
+
 			const uint16_t right[2] = {
 				(uint16_t) ((nx[0] - lowx[0]) * 256),
 				(uint16_t) ((nx[1] - lowx[1]) * 256),
@@ -185,6 +248,8 @@ void SSE2_scale(const uint8_t *oldpx,
 			);
 
 			__m128i lo, hi, a, b, c, d;
+
+			// Now safe to access these indices - bounds already checked
 			lo = _mm_setr_epi32(row0[lowx[0]],
 						row0[highx[0]],
 						row0[lowx[1]],
@@ -229,10 +294,10 @@ void SSE2_scale(const uint8_t *oldpx,
 		}
 
 		for (; x < tgtw; x++) {
-			// Remainder in C
+			// Remainder in C with bounds checking
 			const float nx = x * invdiff;
 			const uint16_t lowx = nx;
-			const uint16_t highx = lowx + 1;
+			const uint16_t highx = (lowx + 1 < srcw) ? lowx + 1 : lowx;
 			const uint16_t right = (nx - lowx) * 256;
 			const uint16_t left = 256 - right;
 
