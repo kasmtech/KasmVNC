@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.3.4
+Version:        1.4.0
 Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
@@ -83,6 +83,31 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Fri Aug 01 2025 KasmTech <info@kasmweb.com> - 1.4.0-1
+- Added new API call for retrieving active sessions.
+- Added message propagation to clients other users connect or disconnect from the same session.
+- Enhanced detection of physical cores vs virtual cores for better tuning of thread counts on multi-threaded processes.
+- Significant enhancements of multi-threading performance.
+- Upgraded libwebp library to 1.5.0.
+- Updated to C++ 20 standard.
+- Added network.udp.payload_size to kasm yaml configuration.
+- Added build for Debian Trixie.
+- Refactor of code to decrease memory usage on client browsers.
+- Added support for the Keyboard API for Chromium browsers.
+- Added multi-threaded asynchronous decoding of image rects, increasing client side performance.
+- Fixed bug with watermark not getting displayed in certain scenarios.
+- Fixed bug with case sensitivity of HTTP headers
+- Fixed bug with the downloads API not escaping certain characters in returned json.
+- Fixed bug causing a segmentation fault on the get_screenshot API handler in certain conditions.
+- Bug fixes with multi-monitor, adding and removing displays
+- Fix bug with secondary display still showing content after session disconnect in certain scenarios.
+- Fixed bug with Ctrl key not working on foreign language keyboards with Chromium based browsers.
+- Fix bug with secondary display interaction not counting toward interaction with respect to the idle disconnect setting.
+- Fixed memory leak in Firefox.
+- Fixed bug with Firefox displaying scrollbars at odd resolutions.
+- Fixes to Korean translations.
+- Multiple fixes to IME foreign language support.
+- Fixed a race condition causing an error message to be displayed erroneously on the client.
 * Thu Mar 20 2025 KasmTech <info@kasmweb.com> - 1.3.4-1
 - Add configuration key network.udp.payload_size.
 - Remove support for distro versions that reached end-of-life.
