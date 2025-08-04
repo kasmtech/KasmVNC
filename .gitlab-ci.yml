@@ -3,6 +3,7 @@ services:
   - docker:dind
 
 variables:
+  DEBUG: true
   KASMVNC_COMMIT_ID: $CI_COMMIT_SHA
   GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
   GIT_SUBMODULE_STRATEGY: recursive
