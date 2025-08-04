@@ -108,6 +108,17 @@ prepare_to_run_functional_tests() {
   prepare_functional_tests_source_and_cd_into_it
   prepare_s3_uploader
   prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages
+  heed_debug_variable_and_toggle_debug_in_functional_tests
+}
+
+heed_debug_variable_and_toggle_debug_in_functional_tests() {
+  if [ -z "$CI" ]; then
+    return
+  fi
+
+  if [ "$DEBUG" = "true" ]; then
+    export KASMVNC_FUNC_TESTS_DEBUG=1
+  fi
 }
 
 install_packages_needed_for_functional_tests() {
