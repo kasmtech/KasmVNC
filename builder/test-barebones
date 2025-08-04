@@ -19,6 +19,13 @@ write_gitlab_report() {
 	echo "$failure_report" > run_test/"${os}_${os_codename}.xml"
 }
 
+create_core_dumps_dir_writeable_by_container() {
+  mkdir -p "$core_dumps_dir_on_host"
+  if [[ -n "$CI" && $(id -u) = 0 ]]; then
+    chown 1000:1000 "$core_dumps_dir_on_host"
+  fi
+}
+
 saved_options=("$@")
 . ./builder/process_test_options.sh
 . ./builder/common.sh
@@ -33,7 +40,7 @@ if [ "$run_test" != 1 ]; then
    exit $?
 fi
 
-mkdir -p run_test
+create_core_dumps_dir_writeable_by_container
 if ! builder/test-${package_format}-barebones "${saved_options[@]}" 2>&1 | \
    tee run_test/"${os_fullname}.log"; then
    create_gitlab_report "$(tail -1 run_test/${os_fullname}.log)"

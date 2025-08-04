@@ -46,6 +46,9 @@ stages:
   - cp -r builder/build/* output/
   - rm output/*.tar.gz
 
+.enable_core_dumps: &enable_core_dumps
+  - echo core > /proc/sys/kernel/core_pattern
+
 default:
   tags:
     - oci-fixed-amd
@@ -145,6 +148,7 @@ run_test_amd64:
     - oci-fixed-amd
   before_script:
     - *prepare_build
+    - *enable_core_dumps
     - . .ci/helpers.sh
   script:
     - set -e
@@ -156,6 +160,9 @@ run_test_amd64:
   dependencies:
     - build_amd64
   artifacts:
+    when: always
+    paths:
+      - run_test/core_dumps/*/core
     reports:
       junit:
         - run_test/*.xml
@@ -170,6 +177,7 @@ run_test_arm64:
     - oci-fixed-arm
   before_script:
     - *prepare_build
+    - *enable_core_dumps
     - . .ci/helpers.sh
   script:
     - set -e
@@ -181,6 +189,10 @@ run_test_arm64:
   dependencies:
     - build_arm64
   artifacts:
+  artifacts:
+    when: always
+    paths:
+      - run_test/core_dumps/*/core
     reports:
       junit:
         - run_test/*.xml
