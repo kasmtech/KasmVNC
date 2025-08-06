@@ -1,7 +1,7 @@
 [submodule "kasmweb"]
 	path = kasmweb
 	url = https://github.com/kasmtech/noVNC.git
-	branch = master
+	branch = release/1.3.0
 [submodule "kasmvnc-functional-tests"]
 	path = kasmvnc-functional-tests
 	url = git@gitlab.com:kasm-technologies/internal/kasmvnc-functional-tests.git
