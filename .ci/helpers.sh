@@ -85,7 +85,6 @@ prepare_functional_tests_source_and_cd_into_it() {
 upload_report_to_s3() {
   s3_tests_directory="kasmvnc/${CI_COMMIT_SHA}/tests"
   upload_directory_to_s3 report "$s3_tests_directory" "$S3_BUCKET"
-  aws s3 cp report/index.html "s3://${S3_BUCKET}/${s3_tests_directory}/report/index.html" --metadata-directive REPLACE --content-type "text/html"
 }
 
 put_report_into_ci_pipeline() {
@@ -106,15 +105,23 @@ prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages() {
 prepare_to_run_functional_tests() {
   install_packages_needed_for_functional_tests
   prepare_functional_tests_source_and_cd_into_it
-  prepare_s3_uploader
   prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages
+  heed_debug_variable_and_toggle_debug_in_functional_tests
+}
+
+heed_debug_variable_and_toggle_debug_in_functional_tests() {
+  if [ -z "$CI" ]; then
+    return
+  fi
+
+  if [ "$DEBUG" = "true" ]; then
+    export KASMVNC_FUNC_TESTS_DEBUG=1
+  fi
 }
 
 install_packages_needed_for_functional_tests() {
-  export DEBIAN_FRONTEND=noninteractive
-  apt-get update && apt-get install -y git tree curl docker.io awscli
-  apt-get install -y ruby3.1 wget
-  apt-get install -y python3 python3-pip python3-boto3 curl pkg-config libxmlsec1-dev
+  prepare_to_run_scripts_and_s3_uploads
+  apt-get install -y tree docker.io
 }
 
 is_build_this_distro() {
@@ -128,21 +135,18 @@ function upload_to_s3() {
   local s3_bucket="$3";
 
   # Transfer to S3
-  python3 amazon-s3-bitbucket-pipelines-python/s3_upload.py "$s3_bucket" "$file_to_upload" "$s3_url_for_file";
+  aws s3 cp "$file_to_upload" \
+    "s3://${S3_BUCKET}/${s3_url_for_file}" \
+    --metadata-directive REPLACE \
+    --content-type "$(file --mime-type -b \"$file_to_upload\")"
   # Use the Gitlab API to tell Gitlab where the artifact was stored
   export S3_URL="https://${s3_bucket}.s3.amazonaws.com/${s3_url_for_file}";
 };
 
-function prepare_s3_uploader() {
-  git clone https://bitbucket.org/awslabs/amazon-s3-bitbucket-pipelines-python.git
-}
-
 function prepare_to_run_scripts_and_s3_uploads() {
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
-  apt-get install -y ruby3.1 git wget
-  apt-get install -y python3 python3-pip python3-boto3 curl pkg-config libxmlsec1-dev
-  prepare_s3_uploader
+  apt-get install -y ruby3.1 wget curl file awscli
 }
 
 detect_release_branch() {

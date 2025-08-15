@@ -1,4 +1,7 @@
 VNC_PORT=8443
+core_dumps_dir_inside_container="/core_dumps"
+core_dumps_dir_on_host="run_test/core_dumps"
+core_dumps_dir_volume_option="-v ${PWD}/${core_dumps_dir_on_host}:/${core_dumps_dir_inside_container}"
 
 detect_build_dir() {
   if [ -n "$CI" ]; then
