@@ -72,6 +72,9 @@ functional_test:
   artifacts:
     paths:
       - kasmvnc-functional-tests/output/
+    reports:
+      junit:
+        - kasmvnc-functional-tests/report/*.xml
 
 build_www:
   stage: www
