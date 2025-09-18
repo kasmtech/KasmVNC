@@ -221,7 +221,7 @@ command_line:
   - Multi-threaded image encoding for smoother frame rate for servers with more cores
   - WebRTC UDP Transit
   - Lossless QOI Image format for Local LAN
-  - [Full screen video detection](https://github.com/kasmtech/KasmVNC/wiki/Video-Rendering-Options#video-mode), goes into configurable video mode for better full screen videoo playback performance.
+  - [Full screen video detection](https://github.com/kasmtech/KasmVNC/wiki/Video-Rendering-Options#video-mode), goes into configurable video mode for better full screen video playback performance.
   - [Dynamic jpeg/webp image coompression](https://github.com/kasmtech/KasmVNC/wiki/Video-Rendering-Options#dynamic-image-quality) quality settings based on screen change rates
   - Seemless clipboard support (on Chromium based browsers)
   - Binary clipboard support for text, images, and formatted text (on Chromium based browsers)
@@ -243,7 +243,7 @@ command_line:
   - Cursor lock
   - IME support for languages with extended characters
   - Better mobile support
-  - DRI3 GPU acceleration with open source drivers (AMDGPU,Intel,ATI,ARM)
+  - DRI3 GPU acceleration with open source drivers (AMDGPU, Intel, ATI, ARM)
 
 Future Goals:
 
