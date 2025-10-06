@@ -33,7 +33,7 @@
  * as we have too much noise for it to be reliable.
  */
 
-#include <assert.h>
+#include <cassert>
 #include <sys/time.h>
 
 #ifdef __linux__
@@ -75,16 +75,13 @@ static inline bool isAfter(unsigned a, unsigned b) {
 
 static LogWriter vlog("Congestion");
 
-Congestion::Congestion() :
-    lastPosition(0), extraBuffer(0),
-    baseRTT(-1), congWindow(INITIAL_WINDOW), inSlowStart(true),
-    safeBaseRTT(-1), measurements(0), minRTT(-1), minCongestedRTT(-1)
-{
-  gettimeofday(&lastUpdate, NULL);
-  gettimeofday(&lastSent, NULL);
-  memset(&lastPong, 0, sizeof(lastPong));
-  gettimeofday(&lastPongArrival, NULL);
-  gettimeofday(&lastAdjustment, NULL);
+Congestion::Congestion() : lastPosition(0), extraBuffer(0),
+                           baseRTT(-1), congWindow(INITIAL_WINDOW), inSlowStart(true),
+                           safeBaseRTT(-1), measurements(0), minRTT(-1), minCongestedRTT(-1) {
+    gettimeofday(&lastUpdate, nullptr);
+    gettimeofday(&lastSent, nullptr);
+    gettimeofday(&lastPongArrival, nullptr);
+    gettimeofday(&lastAdjustment, nullptr);
 }
 
 void Congestion::updatePosition(unsigned pos)
