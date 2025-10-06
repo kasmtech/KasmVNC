@@ -22,49 +22,50 @@
 #include <list>
 
 namespace rfb {
-  class Congestion {
-  public:
-    Congestion();
-    ~Congestion();
+    class Congestion {
+    public:
+        Congestion();
+
         ~Congestion() = default;
 
-    // updatePosition() registers the current stream position and can
-    // and should be called often.
-    void updatePosition(unsigned pos);
+        // updatePosition() registers the current stream position and can
+        // and should be called often.
+        void updatePosition(unsigned pos);
 
-    // sentPing() must be called when a marker is placed on the
-    // outgoing stream. gotPong() must be called when the response for
-    // such a marker is received.
-    void sentPing();
-    void gotPong();
+        // sentPing() must be called when a marker is placed on the
+        // outgoing stream. gotPong() must be called when the response for
+        // such a marker is received.
+        void sentPing();
+
+        void gotPong();
 
         // isCongested() determines if the transport is currently congested
         // or if more data can be sent.
         bool isCongested() const;
 
-    // getUncongestedETA() returns the number of milliseconds until the
-    // transport is no longer congested. Returns 0 if there is no
-    // congestion, and -1 if it is unknown when the transport will no
-    // longer be congested.
-    int getUncongestedETA();
+        // getUncongestedETA() returns the number of milliseconds until the
+        // transport is no longer congested. Returns 0 if there is no
+        // congestion, and -1 if it is unknown when the transport will no
+        // longer be congested.
+        int getUncongestedETA();
 
         // getBandwidth() returns the current bandwidth estimation in bytes
         // per second.
         size_t getBandwidth() const;
 
-    unsigned getPingTime() const;
+        unsigned getPingTime() const;
 
-    // debugTrace() writes the current congestion window, as well as the
-    // congestion window of the underlying TCP layer, to the specified
-    // file
-    void debugTrace(const char* filename, int fd);
+        // debugTrace() writes the current congestion window, as well as the
+        // congestion window of the underlying TCP layer, to the specified
+        // file
+        void debugTrace(const char *filename, int fd);
 
     protected:
         unsigned getExtraBuffer() const;
 
         unsigned getInFlight() const;
 
-    void updateCongestion();
+        void updateCongestion();
 
     private:
         unsigned lastPosition;
@@ -72,20 +73,20 @@ namespace rfb {
         timeval lastUpdate{};
         timeval lastSent{};
 
-    unsigned baseRTT;
-    unsigned congWindow;
-    bool inSlowStart;
+        unsigned baseRTT;
+        unsigned congWindow;
+        bool inSlowStart;
 
-    unsigned safeBaseRTT;
+        unsigned safeBaseRTT;
 
-    struct RTTInfo {
-      struct timeval tv;
-      unsigned pos;
-      unsigned extra;
-      bool congested;
-    };
+        struct RTTInfo {
+            timeval tv;
+            unsigned pos;
+            unsigned extra;
+            bool congested;
+        };
 
-    std::list<struct RTTInfo> pings;
+        std::list<RTTInfo> pings;
 
         RTTInfo lastPong{};
         timeval lastPongArrival{};

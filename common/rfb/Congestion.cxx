@@ -70,7 +70,7 @@ static constexpr unsigned MAXIMUM_WINDOW = 4194304;
 
 // Compare position even when wrapped around
 static inline bool isAfter(unsigned a, unsigned b) {
-  return a != b && a - b <= UINT_MAX / 2;
+    return a != b && a - b <= UINT_MAX / 2;
 }
 
 static LogWriter vlog("Congestion");
@@ -84,216 +84,199 @@ Congestion::Congestion() : lastPosition(0), extraBuffer(0),
     gettimeofday(&lastAdjustment, nullptr);
 }
 
-void Congestion::updatePosition(unsigned pos)
-{
-  struct timeval now;
-  unsigned delta, consumed;
+void Congestion::updatePosition(unsigned pos) {
+    timeval now;
 
     gettimeofday(&now, nullptr);
 
-  delta = pos - lastPosition;
-  if ((delta > 0) || (extraBuffer > 0))
-    lastSent = now;
+    const unsigned delta = pos - lastPosition;
+    if (delta > 0 || extraBuffer > 0)
+        lastSent = now;
 
-  // Idle for too long?
-  // We use a very crude RTO calculation in order to keep things simple
-  // FIXME: should implement RFC 2861
-  if (msBetween(&lastSent, &now) > __rfbmax(baseRTT*2, 100)) {
-
+    // Idle for too long?
+    // We use a very crude RTO calculation in order to keep things simple
+    // FIXME: should implement RFC 2861
+    if (msBetween(&lastSent, &now) > __rfbmax(baseRTT*2, 100)) {
 #ifdef CONGESTION_DEBUG
-    vlog.debug("Connection idle for %d ms, resetting congestion control",
-               msBetween(&lastSent, &now));
+        vlog.debug("Connection idle for %d ms, resetting congestion control",
+                   msBetween(&lastSent, &now));
 #endif
 
-    // Close congestion window and redo wire latency measurement
-    congWindow = __rfbmin(INITIAL_WINDOW, congWindow);
-    baseRTT = -1;
-    measurements = 0;
-    gettimeofday(&lastAdjustment, NULL);
-    minRTT = minCongestedRTT = -1;
-    inSlowStart = true;
-  }
+        // Close congestion window and redo wire latency measurement
+        congWindow = __rfbmin(INITIAL_WINDOW, congWindow);
+        baseRTT = -1;
+        measurements = 0;
+        gettimeofday(&lastAdjustment, nullptr);
+        minRTT = minCongestedRTT = -1;
+        inSlowStart = true;
+    }
 
-  // Commonly we will be in a state of overbuffering. We need to
-  // estimate the extra delay that causes so we can separate it from
-  // the delay caused by an incorrect congestion window.
-  // (we cannot do this until we have a RTT measurement though)
-  if (baseRTT != (unsigned)-1) {
-    extraBuffer += delta;
-    consumed = msBetween(&lastUpdate, &now) * congWindow / baseRTT;
-    if (extraBuffer < consumed)
-      extraBuffer = 0;
-    else
-      extraBuffer -= consumed;
-  }
+    // Commonly we will be in a state of overbuffering. We need to
+    // estimate the extra delay that causes so we can separate it from
+    // the delay caused by an incorrect congestion window.
+    // (we cannot do this until we have a RTT measurement though)
+    if (baseRTT != (unsigned) -1) {
+        extraBuffer += delta;
+        unsigned consumed = msBetween(&lastUpdate, &now) * congWindow / baseRTT;
+        if (extraBuffer < consumed)
+            extraBuffer = 0;
+        else
+            extraBuffer -= consumed;
+    }
 
-  lastPosition = pos;
-  lastUpdate = now;
+    lastPosition = pos;
+    lastUpdate = now;
 }
 
-void Congestion::sentPing()
-{
-  struct RTTInfo rttInfo;
+void Congestion::sentPing() {
+    RTTInfo rttInfo{};
 
     gettimeofday(&rttInfo.tv, nullptr);
     rttInfo.pos = lastPosition;
     rttInfo.extra = getExtraBuffer();
     rttInfo.congested = isCongested();
 
-  pings.push_back(rttInfo);
+    pings.push_back(rttInfo);
 }
 
-void Congestion::gotPong()
-{
+void Congestion::gotPong() {
     timeval now;
     RTTInfo rttInfo;
 
-  if (pings.empty())
-    return;
+    if (pings.empty())
+        return;
 
     gettimeofday(&now, nullptr);
 
-  rttInfo = pings.front();
-  pings.pop_front();
+    rttInfo = pings.front();
+    pings.pop_front();
 
-  lastPong = rttInfo;
-  lastPongArrival = now;
+    lastPong = rttInfo;
+    lastPongArrival = now;
 
-  if (rtt < 1)
-    rtt = 1;
     unsigned rtt = msBetween(&rttInfo.tv, &now);
+    if (rtt < 1)
+        rtt = 1;
 
-  // Try to estimate wire latency by tracking lowest seen latency
-  if (rtt < baseRTT)
-    safeBaseRTT = baseRTT = rtt;
+    // Try to estimate wire latency by tracking lowest seen latency
+    if (rtt < baseRTT)
+        safeBaseRTT = baseRTT = rtt;
 
-  // Pings sent before the last adjustment aren't interesting as they
-  // aren't a measurement of the current congestion window
-  if (isBefore(&rttInfo.tv, &lastAdjustment))
-    return;
+    // Pings sent before the last adjustment aren't interesting as they
+    // aren't a measurement of the current congestion window
+    if (isBefore(&rttInfo.tv, &lastAdjustment))
+        return;
 
-  // Estimate added delay because of overtaxed buffers (see above)
-  if (delay < rtt)
-    rtt -= delay;
-  else
-    rtt = 1;
+    // Estimate added delay because of overtaxed buffers (see above)
     unsigned delay = rttInfo.extra * baseRTT / congWindow;
+    if (delay < rtt)
+        rtt -= delay;
+    else
+        rtt = 1;
 
-  // A latency less than the wire latency means that we've
-  // understimated the congestion window. We can't really determine
-  // how much, so pretend that we got no buffer latency at all.
-  if (rtt < baseRTT)
-    rtt = baseRTT;
+    // A latency less than the wire latency means that we've
+    // understimated the congestion window. We can't really determine
+    // how much, so pretend that we got no buffer latency at all.
+    if (rtt < baseRTT)
+        rtt = baseRTT;
 
-  // Record the minimum seen delay (hopefully ignores jitter) and let
-  // the congestion control do its thing.
-  //
-  // Note: We are delay based rather than loss based, which means we
-  //       need to look at pongs even if they weren't limited by the
-  //       current window ("congested"). Otherwise we will fail to
-  //       detect increasing congestion until the application exceeds
-  //       the congestion window.
-  if (rtt < minRTT)
-    minRTT = rtt;
-  if (rttInfo.congested) {
-    if (rtt < minCongestedRTT)
-      minCongestedRTT = rtt;
-  }
+    // Record the minimum seen delay (hopefully ignores jitter) and let
+    // the congestion control do its thing.
+    //
+    // Note: We are delay based rather than loss based, which means we
+    //       need to look at pongs even if they weren't limited by the
+    //       current window ("congested"). Otherwise we will fail to
+    //       detect increasing congestion until the application exceeds
+    //       the congestion window.
+    if (rtt < minRTT)
+        minRTT = rtt;
+    if (rttInfo.congested) {
+        if (rtt < minCongestedRTT)
+            minCongestedRTT = rtt;
+    }
 
-  measurements++;
-  updateCongestion();
+    measurements++;
+    updateCongestion();
 }
 
 bool Congestion::isCongested() const {
     if (getInFlight() < congWindow)
         return false;
 
-  return true;
+    return true;
 }
 
-int Congestion::getUncongestedETA()
-{
-  unsigned targetAcked;
+int Congestion::getUncongestedETA() {
+    const unsigned targetAcked = lastPosition - congWindow;
 
-  const struct RTTInfo* prevPing;
-  unsigned eta, elapsed;
-  unsigned etaNext, delay;
+    // Simple case?
+    if (isAfter(lastPong.pos, targetAcked))
+        return 0;
 
-  std::list<struct RTTInfo>::const_iterator iter;
-
-  targetAcked = lastPosition - congWindow;
-
-  // Simple case?
-  if (isAfter(lastPong.pos, targetAcked))
-    return 0;
-
-  // No measurements yet?
-  if (baseRTT == (unsigned)-1)
-    return -1;
+    // No measurements yet?
+    if (baseRTT == (unsigned) -1)
+        return -1;
 
     const RTTInfo *prevPing = &lastPong;
     unsigned eta = 0;
     unsigned elapsed = msSince(&lastPongArrival);
 
-  // Walk the ping queue and figure out which one we are waiting for to
-  // get to an uncongested state
+    // Walk the ping queue and figure out which one we are waiting for to
+    // get to an uncongested state
 
     for (auto iter = pings.begin(); ; ++iter) {
         RTTInfo curPing;
 
-    // If we aren't waiting for a pong that will clear the congested
-    // state then we have to estimate the final bit by pretending that
-    // we had a ping just after the last position update.
-    if (iter == pings.end()) {
-      curPing.tv = lastUpdate;
-      curPing.pos = lastPosition;
-      curPing.extra = extraBuffer;
-    } else {
-      curPing = *iter;
-    }
+        // If we aren't waiting for a pong that will clear the congested
+        // state then we have to estimate the final bit by pretending that
+        // we had a ping just after the last position update.
+        if (iter == pings.end()) {
+            curPing.tv = lastUpdate;
+            curPing.pos = lastPosition;
+            curPing.extra = extraBuffer;
+        } else {
+            curPing = *iter;
+        }
 
-    etaNext = msBetween(&prevPing->tv, &curPing.tv);
-    // Compensate for buffering delays
-    delay = curPing.extra * baseRTT / congWindow;
-    etaNext += delay;
-    delay = prevPing->extra * baseRTT / congWindow;
-    if (delay >= etaNext)
-      etaNext = 0;
-    else
-      etaNext -= delay;
         unsigned etaNext = msBetween(&prevPing->tv, &curPing.tv);
+        // Compensate for buffering delays
         unsigned delay = curPing.extra * baseRTT / congWindow;
+        etaNext += delay;
+        delay = prevPing->extra * baseRTT / congWindow;
+        if (delay >= etaNext)
+            etaNext = 0;
+        else
+            etaNext -= delay;
 
-    // Found it?
-    if (isAfter(curPing.pos, targetAcked)) {
-      eta += etaNext * (curPing.pos - targetAcked) / (curPing.pos - prevPing->pos);
-      if (elapsed > eta)
-        return 0;
-      else
-        return eta - elapsed;
+        // Found it?
+        if (isAfter(curPing.pos, targetAcked)) {
+            eta += etaNext * (curPing.pos - targetAcked) / (curPing.pos - prevPing->pos);
+            if (elapsed > eta)
+                return 0;
+            else
+                return eta - elapsed;
+        }
+
+        assert(iter != pings.end());
+
+        eta += etaNext;
+        prevPing = &*iter;
     }
-
-    assert(iter != pings.end());
-
-    eta += etaNext;
-    prevPing = &*iter;
-  }
 }
 
-  // No measurements yet? Guess RTT of 60 ms
-  if (safeBaseRTT == (unsigned)-1)
-    return congWindow * 1000 / 60;
 size_t Congestion::getBandwidth() const {
+    // No measurements yet? Guess RTT of 60 ms
+    if (safeBaseRTT == (unsigned) -1)
+        return congWindow * 1000 / 60;
 
-  return congWindow * 1000 / safeBaseRTT;
+    return congWindow * 1000 / safeBaseRTT;
 }
 
 unsigned Congestion::getPingTime() const {
     return safeBaseRTT;
 }
 
-void Congestion::debugTrace(const char* filename, int fd)
-{
+void Congestion::debugTrace(const char *filename, int fd) {
 #ifdef CONGESTION_TRACE
 #ifdef __linux__
     FILE *f;
@@ -326,64 +309,64 @@ unsigned Congestion::getExtraBuffer() const {
     unsigned elapsed = msSince(&lastUpdate);
     unsigned consumed = elapsed * congWindow / baseRTT;
 
-  if (consumed >= extraBuffer)
-    return 0;
-  else
-    return extraBuffer - consumed;
+    if (consumed >= extraBuffer)
+        return 0;
+    else
+        return extraBuffer - consumed;
 }
 
 unsigned Congestion::getInFlight() const {
     RTTInfo nextPong{};
     unsigned acked;
 
-  // Simple case?
-  if (lastPosition == lastPong.pos)
-    return 0;
+    // Simple case?
+    if (lastPosition == lastPong.pos)
+        return 0;
 
-  // No measurements yet?
-  if (baseRTT == (unsigned)-1) {
-    if (!pings.empty())
-      return lastPosition - pings.front().pos;
-    return 0;
-  }
+    // No measurements yet?
+    if (baseRTT == (unsigned) -1) {
+        if (!pings.empty())
+            return lastPosition - pings.front().pos;
+        return 0;
+    }
 
-  // If we aren't waiting for any pong then we have to estimate things
-  // by pretending that we had a ping just after the last position
-  // update.
-  if (pings.empty()) {
-    nextPong.tv = lastUpdate;
-    nextPong.pos = lastPosition;
-    nextPong.extra = extraBuffer;
-  } else {
-    nextPong = pings.front();
-  }
+    // If we aren't waiting for any pong then we have to estimate things
+    // by pretending that we had a ping just after the last position
+    // update.
+    if (pings.empty()) {
+        nextPong.tv = lastUpdate;
+        nextPong.pos = lastPosition;
+        nextPong.extra = extraBuffer;
+    } else {
+        nextPong = pings.front();
+    }
 
-  // First we need to estimate how many bytes have made it through
-  // completely. Look at the next ping that should arrive and figure
-  // out how far behind it should be and interpolate the positions.
+    // First we need to estimate how many bytes have made it through
+    // completely. Look at the next ping that should arrive and figure
+    // out how far behind it should be and interpolate the positions.
 
-  // Compensate for buffering delays
-  etaNext += delay;
-  delay = lastPong.extra * baseRTT / congWindow;
-  if (delay >= etaNext)
-    etaNext = 0;
-  else
-    etaNext -= delay;
     unsigned etaNext = msBetween(&lastPong.tv, &nextPong.tv);
+    // Compensate for buffering delays
     unsigned delay = nextPong.extra * baseRTT / congWindow;
+    etaNext += delay;
+    delay = lastPong.extra * baseRTT / congWindow;
+    if (delay >= etaNext)
+        etaNext = 0;
+    else
+        etaNext -= delay;
 
     unsigned elapsed = msSince(&lastPongArrival);
 
-  // The pong should be here any second. Be optimistic and assume
-  // we can already use its value.
-  if (etaNext <= elapsed)
-    acked = nextPong.pos;
-  else {
-    acked = lastPong.pos;
-    acked += (nextPong.pos - lastPong.pos) * elapsed / etaNext;
-  }
+    // The pong should be here any second. Be optimistic and assume
+    // we can already use its value.
+    if (etaNext <= elapsed)
+        acked = nextPong.pos;
+    else {
+        acked = lastPong.pos;
+        acked += (nextPong.pos - lastPong.pos) * elapsed / etaNext;
+    }
 
-  return lastPosition - acked;
+    return lastPosition - acked;
 }
 
 void Congestion::updateCongestion() {
@@ -391,76 +374,76 @@ void Congestion::updateCongestion() {
     if (measurements < 3)
         return;
 
-  assert(minRTT >= baseRTT);
-  assert(minCongestedRTT >= baseRTT);
+    assert(minRTT >= baseRTT);
+    assert(minCongestedRTT >= baseRTT);
 
-  // The goal is to have a slightly too large congestion window since
-  // a "perfect" one cannot be distinguished from a too small one. This
-  // translates to a goal of a few extra milliseconds of delay.
+    // The goal is to have a slightly too large congestion window since
+    // a "perfect" one cannot be distinguished from a too small one. This
+    // translates to a goal of a few extra milliseconds of delay.
 
     unsigned diff = minRTT - baseRTT;
 
-  if (diff > __rfbmax(100, baseRTT/2)) {
-    // We have no way of detecting loss, so assume massive latency
-    // spike means packet loss. Adjust the window and go directly
-    // to congestion avoidance.
+    if (diff > __rfbmax(100, baseRTT/2)) {
+        // We have no way of detecting loss, so assume massive latency
+        // spike means packet loss. Adjust the window and go directly
+        // to congestion avoidance.
 #ifdef CONGESTION_DEBUG
-    vlog.debug("Latency spike! Backing off...");
+        vlog.debug("Latency spike! Backing off...");
 #endif
-    congWindow = congWindow * baseRTT / minRTT;
-    inSlowStart = false;
-  }
-
-  if (inSlowStart) {
-    // Slow start. Aggressive growth until we see congestion.
-
-    if (diff > 25) {
-      // If we see an increased latency then we assume we've hit the
-      // limit and it's time to leave slow start and switch to
-      // congestion avoidance
-      congWindow = congWindow * baseRTT / minRTT;
-      inSlowStart = false;
-    } else {
-      // It's not safe to increase unless we actually used the entire
-      // congestion window, hence we look at minCongestedRTT and not
-      // minRTT
-
-      diff = minCongestedRTT - baseRTT;
-      if (diff < 25)
-        congWindow *= 2;
+        congWindow = congWindow * baseRTT / minRTT;
+        inSlowStart = false;
     }
-  } else {
-    // Congestion avoidance (VEGAS)
 
-    if (diff > 50) {
-      // Slightly too fast
-      congWindow -= 4096;
+    if (inSlowStart) {
+        // Slow start. Aggressive growth until we see congestion.
+
+        if (diff > 25) {
+            // If we see an increased latency then we assume we've hit the
+            // limit and it's time to leave slow start and switch to
+            // congestion avoidance
+            congWindow = congWindow * baseRTT / minRTT;
+            inSlowStart = false;
+        } else {
+            // It's not safe to increase unless we actually used the entire
+            // congestion window, hence we look at minCongestedRTT and not
+            // minRTT
+
+            diff = minCongestedRTT - baseRTT;
+            if (diff < 25)
+                congWindow *= 2;
+        }
     } else {
-      // Only the "congested" pongs are checked to see if the
-      // window is too small.
+        // Congestion avoidance (VEGAS)
 
-      diff = minCongestedRTT - baseRTT;
+        if (diff > 50) {
+            // Slightly too fast
+            congWindow -= 4096;
+        } else {
+            // Only the "congested" pongs are checked to see if the
+            // window is too small.
 
-      if (diff < 5) {
-        // Way too slow
-        congWindow += 8192;
-      } else if (diff < 25) {
-        // Too slow
-        congWindow += 4096;
-      }
+            diff = minCongestedRTT - baseRTT;
+
+            if (diff < 5) {
+                // Way too slow
+                congWindow += 8192;
+            } else if (diff < 25) {
+                // Too slow
+                congWindow += 4096;
+            }
+        }
     }
-  }
 
-  if (congWindow < MINIMUM_WINDOW)
-    congWindow = MINIMUM_WINDOW;
-  if (congWindow > MAXIMUM_WINDOW)
-    congWindow = MAXIMUM_WINDOW;
+    if (congWindow < MINIMUM_WINDOW)
+        congWindow = MINIMUM_WINDOW;
+    if (congWindow > MAXIMUM_WINDOW)
+        congWindow = MAXIMUM_WINDOW;
 
 #ifdef CONGESTION_DEBUG
-  vlog.debug("RTT: %d/%d ms (%d ms), Window: %d KiB, Bandwidth: %g Mbps%s",
-             minRTT, minCongestedRTT, baseRTT, congWindow / 1024,
-             congWindow * 8.0 / baseRTT / 1000.0,
-             inSlowStart ? " (slow start)" : "");
+    vlog.debug("RTT: %d/%d ms (%d ms), Window: %d KiB, Bandwidth: %g Mbps%s",
+               minRTT, minCongestedRTT, baseRTT, congWindow / 1024,
+               congWindow * 8.0 / baseRTT / 1000.0,
+               inSlowStart ? " (slow start)" : "");
 #endif
 
     measurements = 0;
