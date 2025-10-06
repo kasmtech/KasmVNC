@@ -89,7 +89,7 @@ void Congestion::updatePosition(unsigned pos)
   struct timeval now;
   unsigned delta, consumed;
 
-  gettimeofday(&now, NULL);
+    gettimeofday(&now, nullptr);
 
   delta = pos - lastPosition;
   if ((delta > 0) || (extraBuffer > 0))
@@ -141,6 +141,7 @@ void Congestion::sentPing()
   rttInfo.pos = lastPosition;
   rttInfo.extra = getExtraBuffer();
   rttInfo.congested = isCongested();
+    gettimeofday(&rttInfo.tv, nullptr);
 
   pings.push_back(rttInfo);
 }
@@ -154,7 +155,7 @@ void Congestion::gotPong()
   if (pings.empty())
     return;
 
-  gettimeofday(&now, NULL);
+    gettimeofday(&now, nullptr);
 
   rttInfo = pings.front();
   pings.pop_front();
@@ -319,6 +320,8 @@ void Congestion::debugTrace(const char* filename, int fd)
     }
     fclose(f);
   }
+    if (f != nullptr) {
+            gettimeofday(&now, nullptr);
 #endif
 #endif
 }
@@ -478,5 +481,6 @@ void Congestion::updateCongestion()
   measurements = 0;
   gettimeofday(&lastAdjustment, NULL);
   minRTT = minCongestedRTT = -1;
+    gettimeofday(&lastAdjustment, nullptr);
 }
 
