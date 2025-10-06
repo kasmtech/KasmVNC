@@ -41,6 +41,7 @@ namespace rfb {
     // isCongested() determines if the transport is currently congested
     // or if more data can be sent.
     bool isCongested();
+        bool isCongested() const;
 
     // getUncongestedETA() returns the number of milliseconds until the
     // transport is no longer congested. Returns 0 if there is no
@@ -51,6 +52,7 @@ namespace rfb {
     // getBandwidth() returns the current bandwidth estimation in bytes
     // per second.
     size_t getBandwidth();
+        size_t getBandwidth() const;
 
     unsigned getPingTime() const;
 
@@ -62,6 +64,8 @@ namespace rfb {
   protected:
     unsigned getExtraBuffer();
     unsigned getInFlight();
+        unsigned getExtraBuffer() const;
+        unsigned getInFlight() const;
 
     void updateCongestion();
 

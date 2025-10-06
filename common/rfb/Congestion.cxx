@@ -135,13 +135,10 @@ void Congestion::sentPing()
 {
   struct RTTInfo rttInfo;
 
-  memset(&rttInfo, 0, sizeof(struct RTTInfo));
-
-  gettimeofday(&rttInfo.tv, NULL);
-  rttInfo.pos = lastPosition;
-  rttInfo.extra = getExtraBuffer();
-  rttInfo.congested = isCongested();
     gettimeofday(&rttInfo.tv, nullptr);
+    rttInfo.pos = lastPosition;
+    rttInfo.extra = getExtraBuffer();
+    rttInfo.congested = isCongested();
 
   pings.push_back(rttInfo);
 }
@@ -301,38 +298,35 @@ void Congestion::debugTrace(const char* filename, int fd)
 {
 #ifdef CONGESTION_TRACE
 #ifdef __linux__
-  FILE *f;
-  f = fopen(filename, "ab");
-  if (f != NULL) {
-    struct tcp_info info;
-    int buffered;
-    socklen_t len;
-    len = sizeof(info);
-    if ((getsockopt(fd, IPPROTO_TCP,
-                    TCP_INFO, &info, &len) == 0) &&
-        (ioctl(fd, SIOCOUTQ, &buffered) == 0)) {
-      struct timeval now;
-      gettimeofday(&now, NULL);
-      fprintf(f, "%u.%06u,%u,%u,%u,%u\n",
-              (unsigned)now.tv_sec, (unsigned)now.tv_usec,
-              congWindow, info.tcpi_snd_cwnd * info.tcpi_snd_mss,
-              getInFlight(), buffered);
-    }
-    fclose(f);
-  }
+    FILE *f;
+    f = fopen(filename, "ab");
     if (f != nullptr) {
+        struct tcp_info info;
+        int buffered;
+        socklen_t len;
+        len = sizeof(info);
+        if ((getsockopt(fd, IPPROTO_TCP,
+                        TCP_INFO, &info, &len) == 0) &&
+            (ioctl(fd, SIOCOUTQ, &buffered) == 0)) {
+            struct timeval now;
             gettimeofday(&now, nullptr);
+            fprintf(f, "%u.%06u,%u,%u,%u,%u\n",
+                    (unsigned) now.tv_sec, (unsigned) now.tv_usec,
+                    congWindow, info.tcpi_snd_cwnd * info.tcpi_snd_mss,
+                    getInFlight(), buffered);
+        }
+        fclose(f);
+    }
 #endif
 #endif
 }
 
-unsigned Congestion::getExtraBuffer()
-{
   unsigned elapsed;
   unsigned consumed;
 
   if (baseRTT == (unsigned)-1)
     return 0;
+unsigned Congestion::getExtraBuffer() const {
 
   elapsed = msSince(&lastUpdate);
   consumed = elapsed * congWindow / baseRTT;
@@ -343,10 +337,9 @@ unsigned Congestion::getExtraBuffer()
     return extraBuffer - consumed;
 }
 
-unsigned Congestion::getInFlight()
-{
   struct RTTInfo nextPong;
   unsigned etaNext, delay, elapsed, acked;
+unsigned Congestion::getInFlight() const {
 
   // Simple case?
   if (lastPosition == lastPong.pos)
@@ -478,9 +471,8 @@ void Congestion::updateCongestion()
              inSlowStart ? " (slow start)" : "");
 #endif
 
-  measurements = 0;
-  gettimeofday(&lastAdjustment, NULL);
-  minRTT = minCongestedRTT = -1;
+    measurements = 0;
     gettimeofday(&lastAdjustment, nullptr);
+    minRTT = minCongestedRTT = -1;
 }
 
