@@ -145,9 +145,8 @@ void Congestion::sentPing()
 
 void Congestion::gotPong()
 {
-  struct timeval now;
-  struct RTTInfo rttInfo;
-  unsigned rtt, delay;
+    timeval now;
+    RTTInfo rttInfo;
 
   if (pings.empty())
     return;
@@ -160,9 +159,9 @@ void Congestion::gotPong()
   lastPong = rttInfo;
   lastPongArrival = now;
 
-  rtt = msBetween(&rttInfo.tv, &now);
   if (rtt < 1)
     rtt = 1;
+    unsigned rtt = msBetween(&rttInfo.tv, &now);
 
   // Try to estimate wire latency by tracking lowest seen latency
   if (rtt < baseRTT)
@@ -174,11 +173,11 @@ void Congestion::gotPong()
     return;
 
   // Estimate added delay because of overtaxed buffers (see above)
-  delay = rttInfo.extra * baseRTT / congWindow;
   if (delay < rtt)
     rtt -= delay;
   else
     rtt = 1;
+    unsigned delay = rttInfo.extra * baseRTT / congWindow;
 
   // A latency less than the wire latency means that we've
   // understimated the congestion window. We can't really determine
@@ -205,10 +204,9 @@ void Congestion::gotPong()
   updateCongestion();
 }
 
-bool Congestion::isCongested()
-{
-  if (getInFlight() < congWindow)
-    return false;
+bool Congestion::isCongested() const {
+    if (getInFlight() < congWindow)
+        return false;
 
   return true;
 }
@@ -233,15 +231,15 @@ int Congestion::getUncongestedETA()
   if (baseRTT == (unsigned)-1)
     return -1;
 
-  prevPing = &lastPong;
-  eta = 0;
-  elapsed = msSince(&lastPongArrival);
+    const RTTInfo *prevPing = &lastPong;
+    unsigned eta = 0;
+    unsigned elapsed = msSince(&lastPongArrival);
 
   // Walk the ping queue and figure out which one we are waiting for to
   // get to an uncongested state
 
-  for (iter = pings.begin(); ;++iter) {
-    struct RTTInfo curPing;
+    for (auto iter = pings.begin(); ; ++iter) {
+        RTTInfo curPing;
 
     // If we aren't waiting for a pong that will clear the congested
     // state then we have to estimate the final bit by pretending that
@@ -263,6 +261,8 @@ int Congestion::getUncongestedETA()
       etaNext = 0;
     else
       etaNext -= delay;
+        unsigned etaNext = msBetween(&prevPing->tv, &curPing.tv);
+        unsigned delay = curPing.extra * baseRTT / congWindow;
 
     // Found it?
     if (isAfter(curPing.pos, targetAcked)) {
@@ -280,18 +280,16 @@ int Congestion::getUncongestedETA()
   }
 }
 
-size_t Congestion::getBandwidth()
-{
   // No measurements yet? Guess RTT of 60 ms
   if (safeBaseRTT == (unsigned)-1)
     return congWindow * 1000 / 60;
+size_t Congestion::getBandwidth() const {
 
   return congWindow * 1000 / safeBaseRTT;
 }
 
-unsigned Congestion::getPingTime() const
-{
-  return safeBaseRTT;
+unsigned Congestion::getPingTime() const {
+    return safeBaseRTT;
 }
 
 void Congestion::debugTrace(const char* filename, int fd)
@@ -321,15 +319,12 @@ void Congestion::debugTrace(const char* filename, int fd)
 #endif
 }
 
-  unsigned elapsed;
-  unsigned consumed;
-
-  if (baseRTT == (unsigned)-1)
-    return 0;
 unsigned Congestion::getExtraBuffer() const {
+    if (baseRTT == (unsigned) -1)
+        return 0;
 
-  elapsed = msSince(&lastUpdate);
-  consumed = elapsed * congWindow / baseRTT;
+    unsigned elapsed = msSince(&lastUpdate);
+    unsigned consumed = elapsed * congWindow / baseRTT;
 
   if (consumed >= extraBuffer)
     return 0;
@@ -337,9 +332,9 @@ unsigned Congestion::getExtraBuffer() const {
     return extraBuffer - consumed;
 }
 
-  struct RTTInfo nextPong;
-  unsigned etaNext, delay, elapsed, acked;
 unsigned Congestion::getInFlight() const {
+    RTTInfo nextPong{};
+    unsigned acked;
 
   // Simple case?
   if (lastPosition == lastPong.pos)
@@ -367,17 +362,17 @@ unsigned Congestion::getInFlight() const {
   // completely. Look at the next ping that should arrive and figure
   // out how far behind it should be and interpolate the positions.
 
-  etaNext = msBetween(&lastPong.tv, &nextPong.tv);
   // Compensate for buffering delays
-  delay = nextPong.extra * baseRTT / congWindow;
   etaNext += delay;
   delay = lastPong.extra * baseRTT / congWindow;
   if (delay >= etaNext)
     etaNext = 0;
   else
     etaNext -= delay;
+    unsigned etaNext = msBetween(&lastPong.tv, &nextPong.tv);
+    unsigned delay = nextPong.extra * baseRTT / congWindow;
 
-  elapsed = msSince(&lastPongArrival);
+    unsigned elapsed = msSince(&lastPongArrival);
 
   // The pong should be here any second. Be optimistic and assume
   // we can already use its value.
@@ -391,13 +386,10 @@ unsigned Congestion::getInFlight() const {
   return lastPosition - acked;
 }
 
-void Congestion::updateCongestion()
-{
-  unsigned diff;
-
-  // We want at least three measurements to avoid noise
-  if (measurements < 3)
-    return;
+void Congestion::updateCongestion() {
+    // We want at least three measurements to avoid noise
+    if (measurements < 3)
+        return;
 
   assert(minRTT >= baseRTT);
   assert(minCongestedRTT >= baseRTT);
@@ -406,7 +398,7 @@ void Congestion::updateCongestion()
   // a "perfect" one cannot be distinguished from a too small one. This
   // translates to a goal of a few extra milliseconds of delay.
 
-  diff = minRTT - baseRTT;
+    unsigned diff = minRTT - baseRTT;
 
   if (diff > __rfbmax(100, baseRTT/2)) {
     // We have no way of detecting loss, so assume massive latency
@@ -475,4 +467,3 @@ void Congestion::updateCongestion()
     gettimeofday(&lastAdjustment, nullptr);
     minRTT = minCongestedRTT = -1;
 }
-

@@ -38,9 +38,8 @@ namespace rfb {
     void sentPing();
     void gotPong();
 
-    // isCongested() determines if the transport is currently congested
-    // or if more data can be sent.
-    bool isCongested();
+        // isCongested() determines if the transport is currently congested
+        // or if more data can be sent.
         bool isCongested() const;
 
     // getUncongestedETA() returns the number of milliseconds until the
@@ -49,9 +48,8 @@ namespace rfb {
     // longer be congested.
     int getUncongestedETA();
 
-    // getBandwidth() returns the current bandwidth estimation in bytes
-    // per second.
-    size_t getBandwidth();
+        // getBandwidth() returns the current bandwidth estimation in bytes
+        // per second.
         size_t getBandwidth() const;
 
     unsigned getPingTime() const;
@@ -61,10 +59,9 @@ namespace rfb {
     // file
     void debugTrace(const char* filename, int fd);
 
-  protected:
-    unsigned getExtraBuffer();
-    unsigned getInFlight();
+    protected:
         unsigned getExtraBuffer() const;
+
         unsigned getInFlight() const;
 
     void updateCongestion();
