@@ -69,6 +69,8 @@ namespace rfb {
     unsigned extraBuffer;
     struct timeval lastUpdate;
     struct timeval lastSent;
+        timeval lastUpdate{};
+        timeval lastSent{};
 
     unsigned baseRTT;
     unsigned congWindow;
@@ -87,11 +89,14 @@ namespace rfb {
 
     struct RTTInfo lastPong;
     struct timeval lastPongArrival;
+        RTTInfo lastPong{};
+        timeval lastPongArrival{};
 
     int measurements;
     struct timeval lastAdjustment;
     unsigned minRTT, minCongestedRTT;
   };
+        timeval lastAdjustment{};
 }
 
 #endif
