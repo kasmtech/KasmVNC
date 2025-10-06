@@ -58,15 +58,15 @@ using namespace rfb;
 
 // This window should get us going fairly fast on a decent bandwidth network.
 // If it's too high, it will rapidly be reduced and stay low.
-static const unsigned INITIAL_WINDOW = 16384;
+static constexpr unsigned INITIAL_WINDOW = 16384;
 
 // TCP's minimal window is 3*MSS. But since we don't know the MSS, we
 // make a guess at 4 KiB (it's probably a bit higher).
-static const unsigned MINIMUM_WINDOW = 4096;
+static constexpr unsigned MINIMUM_WINDOW = 4096;
 
 // The current default maximum window for Linux (4 MiB). Should be a good
 // limit for now...
-static const unsigned MAXIMUM_WINDOW = 4194304;
+static constexpr unsigned MAXIMUM_WINDOW = 4194304;
 
 // Compare position even when wrapped around
 static inline bool isAfter(unsigned a, unsigned b) {
