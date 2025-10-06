@@ -26,6 +26,7 @@ namespace rfb {
   public:
     Congestion();
     ~Congestion();
+        ~Congestion() = default;
 
     // updatePosition() registers the current stream position and can
     // and should be called often.
@@ -64,11 +65,9 @@ namespace rfb {
 
     void updateCongestion();
 
-  private:
-    unsigned lastPosition;
-    unsigned extraBuffer;
-    struct timeval lastUpdate;
-    struct timeval lastSent;
+    private:
+        unsigned lastPosition;
+        unsigned extraBuffer;
         timeval lastUpdate{};
         timeval lastSent{};
 
@@ -87,16 +86,13 @@ namespace rfb {
 
     std::list<struct RTTInfo> pings;
 
-    struct RTTInfo lastPong;
-    struct timeval lastPongArrival;
         RTTInfo lastPong{};
         timeval lastPongArrival{};
 
-    int measurements;
-    struct timeval lastAdjustment;
-    unsigned minRTT, minCongestedRTT;
-  };
+        int measurements;
         timeval lastAdjustment{};
+        unsigned minRTT, minCongestedRTT;
+    };
 }
 
 #endif

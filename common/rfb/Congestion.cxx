@@ -87,10 +87,6 @@ Congestion::Congestion() :
   gettimeofday(&lastAdjustment, NULL);
 }
 
-Congestion::~Congestion()
-{
-}
-
 void Congestion::updatePosition(unsigned pos)
 {
   struct timeval now;
