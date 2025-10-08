@@ -153,6 +153,7 @@ server:
     no_user_session_timeout: never
     active_user_session_timeout: never
     inactive_user_session_timeout: never
+  allow_environment_variables_to_override_config_settings: false
 
 command_line:
   prompt: true

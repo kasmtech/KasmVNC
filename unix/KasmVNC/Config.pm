@@ -53,6 +53,14 @@ sub get {
   $value;
 }
 
+sub set {
+  my ($self, $absoluteKey, $value) = @_;
+  my $path = absoluteKeyToHashPath($absoluteKey);
+  my $config = $self->{data};
+
+  eval "\$config$path = \$value";
+}
+
 sub exists {
   my ($self, $absoluteKey) = @_;
   my $path = absoluteKeyToHashPath($absoluteKey);

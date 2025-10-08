@@ -21,6 +21,9 @@ builder/build/
 builder/www/
 spec/tmp
 
+Benchmark.xml
+SelfBench.xml
+
 # Deb building artefacts
 debian/.debhelper/
 debian/files

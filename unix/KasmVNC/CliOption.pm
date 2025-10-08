@@ -10,10 +10,13 @@ use Data::Dumper;
 
 use KasmVNC::DataClumpValidator;
 use KasmVNC::Utils;
+use KasmVNC::SettingValidation;
 
-our $fetchValueSub;
-$KasmVNC::CliOption::dataClumpValidator = KasmVNC::DataClumpValidator->new();
-@KasmVNC::CliOption::isActiveCallbacks = ();
+our @ISA = ('KasmVNC::SettingValidation');
+
+our $ConfigValue;
+our $dataClumpValidator = KasmVNC::DataClumpValidator->new();
+our @isActiveCallbacks = ();
 
 sub new {
     my ($class, $args) = @_;
@@ -56,20 +59,20 @@ sub activate {
 sub beforeIsActive {
   my $callback = shift;
 
-  push @KasmVNC::CliOption::isActiveCallbacks, $callback;
+  push @isActiveCallbacks, $callback;
 }
 
 sub isActiveByCallbacks {
   my $self = shift;
 
-  all { $_->($self) } @KasmVNC::CliOption::isActiveCallbacks;
+  all { $_->($self) } @isActiveCallbacks;
 }
 
 sub makeKeysWithValuesAccessible {
   my $self = shift;
 
   foreach my $name (@{ $self->configKeyNames() }) {
-    my $value = $self->fetchValue($name);
+    my $value = $ConfigValue->($name);
     $self->{$name} = $value if defined($value);
   }
 }
@@ -100,38 +103,10 @@ sub deriveValue {
   my $self = shift;
 
   my $value = $self->{deriveValueSub}->($self);
-  $self->interpolateEnvVars($value);
-}
-
-sub interpolateEnvVars {
-  my $self = shift;
-  my $value = shift;
-
-  return $value unless defined($value);
-
-  while ($value =~ /\$\{(\w+)\}/) {
-    my $envValue = $ENV{$1};
-    $value =~ s/\Q$&\E/$envValue/;
-  }
-
-  $value;
-}
-
-sub errorMessages {
-  my $self = shift;
-
-  join "\n", @{ $self->{errors} };
+  interpolateEnvVars($value);
 }
 
 # private
-
-sub isValid {
-  my $self = shift;
-
-  $self->validate() unless $self->{validated};
-
-  $self->isNoErrorsPresent();
-}
 
 sub validate {
   my $self = shift;
@@ -142,22 +117,16 @@ sub validate {
   $self->{validated} = 1;
 }
 
-sub isNoErrorsPresent {
-  my $self = shift;
-
-  scalar @{ $self->{errors} } == 0;
-}
-
 sub validateDataClump {
   my $self = shift;
 
-  $KasmVNC::CliOption::dataClumpValidator->validate($self);
+  $dataClumpValidator->validate($self);
 }
 
 sub configValues {
   my $self = shift;
 
-  map { $self->fetchValue($_->{name}) } @{ $self->{configKeys} };
+  map { $ConfigValue->($_->{name}) } @{ $self->{configKeys} };
 }
 
 sub configValue {
@@ -183,22 +152,10 @@ sub hasKey {
   first { $_ eq $configKey } @{ $self->configKeyNames() };
 }
 
-sub addErrorMessage {
-  my ($self, $errorMessage) = @_;
-
-  push @{ $self->{errors} }, $errorMessage;
-}
-
 sub validateConfigValues {
   my $self = shift;
 
   map { $_->validate($self) } @{ $self->{configKeys} };
-}
-
-sub fetchValue {
-  my $self = shift;
-
-  &$fetchValueSub(shift);
 }
 
 1;
