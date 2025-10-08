@@ -1,48 +1,19 @@
-import os
-import re
-import shutil
-from os.path import expanduser
 from mamba import description, context, fcontext, it, fit, _it, before, after
 from expects import expect, equal, contain, match
 
 from helper.spec_helper import start_xvnc, kill_xvnc, run_cmd, clean_env, \
     add_kasmvnc_user_docker, clean_kasm_users, start_xvnc_pexpect, \
-    write_config, config_filename
-
-home_dir = expanduser("~")
-vnc_dir = f'{home_dir}/.vnc'
-user_config = f'{vnc_dir}/kasmvnc.yaml'
-
-
-def run_vncserver():
-    return run_cmd(f'vncserver -dry-run -config {config_filename}')
-
-
-def pick_cli_option(cli_option, xvnc_cmd):
-    cli_option_regex = re.compile(f'\'?-{cli_option}\'?(?:\s+[^-][^\s]*|$)')
-    results = cli_option_regex.findall(xvnc_cmd)
-    if len(results) == 0:
-        return None
-
-    return ' '.join(results)
-
-
-def prepare_env():
-    os.makedirs(vnc_dir, exist_ok=True)
-    shutil.copyfile('spec/kasmvnc.yaml', user_config)
-
+    write_config, config_filename, pick_cli_option, \
+    run_vncserver_to_print_xvnc_cli_options
 
 with description('YAML to CLI') as self:
-    with before.all:
-        prepare_env()
-
     with context("convert a boolean key"):
         with it("convert true to 1"):
             write_config('''
             desktop:
                 allow_resize: true
             ''')
-            completed_process = run_vncserver()
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
             cli_option = pick_cli_option('AcceptSetDesktopSize',
                                          completed_process.stdout)
             expect(cli_option).to(equal("-AcceptSetDesktopSize '1'"))
@@ -52,7 +23,7 @@ with description('YAML to CLI') as self:
             desktop:
                 allow_resize: false
             ''')
-            completed_process = run_vncserver()
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
             cli_option = pick_cli_option('AcceptSetDesktopSize',
                                          completed_process.stdout)
             expect(cli_option).to(equal("-AcceptSetDesktopSize '0'"))
@@ -63,7 +34,7 @@ with description('YAML to CLI') as self:
             brute_force_protection:
                 blacklist_threshold: 2
         ''')
-        completed_process = run_vncserver()
+        completed_process = run_vncserver_to_print_xvnc_cli_options()
         cli_option = pick_cli_option('BlacklistThreshold',
                                      completed_process.stdout)
         expect(cli_option).to(equal("-BlacklistThreshold '2'"))
@@ -74,7 +45,7 @@ with description('YAML to CLI') as self:
             ssl:
                pem_certificate: /etc/ssl/certs/ssl-cert-snakeoil.pem
         ''')
-        completed_process = run_vncserver()
+        completed_process = run_vncserver_to_print_xvnc_cli_options()
         cli_option = pick_cli_option('cert',
                                      completed_process.stdout)
         expect(cli_option).to(
@@ -87,7 +58,7 @@ with description('YAML to CLI') as self:
                 - 0x22->0x40
                 - 0x24->0x40
         ''')
-        completed_process = run_vncserver()
+        completed_process = run_vncserver_to_print_xvnc_cli_options()
         cli_option = pick_cli_option('RemapKeys',
                                      completed_process.stdout)
         expect(cli_option).to(
@@ -100,7 +71,7 @@ with description('YAML to CLI') as self:
                 server_to_client:
                     size: 20
         ''')
-        completed_process = run_vncserver()
+        completed_process = run_vncserver_to_print_xvnc_cli_options()
         cli_option = pick_cli_option('DLP_ClipSendMax',
                                      completed_process.stdout)
         expect(cli_option).to(equal("-DLP_ClipSendMax '20'"))
@@ -111,7 +82,7 @@ with description('YAML to CLI') as self:
             network:
                 websocket_port: auto
             ''')
-            completed_process = run_vncserver()
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
             cli_option = pick_cli_option('websocketPort',
                                          completed_process.stdout)
             expect(["-websocketPort '8444'", "-websocketPort '8445'"]). \
@@ -122,7 +93,7 @@ with description('YAML to CLI') as self:
             network:
                 websocket_port: 8555
             ''')
-            completed_process = run_vncserver()
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
             cli_option = pick_cli_option('websocketPort',
                                          completed_process.stdout)
             expect(cli_option).to(equal("-websocketPort '8555'"))
@@ -130,7 +101,7 @@ with description('YAML to CLI') as self:
         with it("no key - no CLI option"):
             write_config('''
             ''')
-            completed_process = run_vncserver()
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
             cli_option = pick_cli_option('websocketPort',
                                          completed_process.stdout)
             expect(cli_option).to(equal(None))
@@ -141,7 +112,7 @@ with description('YAML to CLI') as self:
             network:
                 protocol: http
             ''')
-            completed_process = run_vncserver()
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
             cli_option = pick_cli_option('noWebsocket',
                                          completed_process.stdout)
             expect(cli_option).to(equal(None))
@@ -151,7 +122,7 @@ with description('YAML to CLI') as self:
             network:
                 protocol: vnc
             ''')
-            completed_process = run_vncserver()
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
             cli_option = pick_cli_option('noWebsocket',
                                          completed_process.stdout)
             expect(cli_option).to(equal("-noWebsocket '1'"))
@@ -162,7 +133,7 @@ with description('YAML to CLI') as self:
             advanced:
                 kasm_password_file: ${HOME}/.kasmpasswd
         ''')
-        completed_process = run_vncserver()
+        completed_process = run_vncserver_to_print_xvnc_cli_options()
         cli_option = pick_cli_option('KasmPasswordFile',
                                         completed_process.stdout)
         expect(cli_option).to(equal("-KasmPasswordFile '/home/docker/.kasmpasswd'"))
@@ -174,7 +145,7 @@ with description('YAML to CLI') as self:
             log_dest: logfile
             level: 40
         ''')
-        completed_process = run_vncserver()
+        completed_process = run_vncserver_to_print_xvnc_cli_options()
         cli_option = pick_cli_option('Log',
                                         completed_process.stdout)
         expect(cli_option).to(equal("-Log '*:stdout:40'"))
@@ -188,7 +159,7 @@ with description('YAML to CLI') as self:
                 right: 40%
                 bottom: 40
         ''')
-        completed_process = run_vncserver()
+        completed_process = run_vncserver_to_print_xvnc_cli_options()
         cli_option = pick_cli_option('DLP_Region',
                                         completed_process.stdout)
         expect(cli_option).to(equal("-DLP_Region '10,-10,40%,40'"))
@@ -200,7 +171,7 @@ with description('YAML to CLI') as self:
                 advanced:
                     x_font_path: auto
             ''')
-            completed_process = run_vncserver()
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
             cli_option = pick_cli_option('fp',
                                         completed_process.stdout)
             expect(cli_option).to(match(r'/usr/share/fonts'))
@@ -208,7 +179,7 @@ with description('YAML to CLI') as self:
         with it("none specified"):
             write_config('''
             ''')
-            completed_process = run_vncserver()
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
             cli_option = pick_cli_option('fp',
                                         completed_process.stdout)
             expect(cli_option).to(match(r'/usr/share/fonts'))
@@ -219,7 +190,7 @@ with description('YAML to CLI') as self:
                 advanced:
                     x_font_path: /src
             ''')
-            completed_process = run_vncserver()
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
             cli_option = pick_cli_option('fp', completed_process.stdout)
             expect(cli_option).to(equal("-fp '/src'"))
 
@@ -239,7 +210,7 @@ with description('YAML to CLI') as self:
         network:
             interface: 0.0.0.0
         ''')
-        completed_process = run_vncserver()
+        completed_process = run_vncserver_to_print_xvnc_cli_options()
         cli_option = pick_cli_option('interface',
                                     completed_process.stdout)
         expect(cli_option).to(equal("-interface '0.0.0.0'"))
@@ -263,7 +234,7 @@ with description('YAML to CLI') as self:
                 width: 1024
                 height: 768
         ''')
-        completed_process = run_vncserver()
+        completed_process = run_vncserver_to_print_xvnc_cli_options()
         cli_option = pick_cli_option('geometry',
                                      completed_process.stdout)
         expect(cli_option).to(equal("-geometry '1024x768'"))
@@ -275,7 +246,7 @@ with description('YAML to CLI') as self:
                 text:
                     template: "星街すいせい"
         ''')
-        completed_process = run_vncserver()
+        completed_process = run_vncserver_to_print_xvnc_cli_options()
         cli_option = pick_cli_option('DLP_WatermarkText',
                                      completed_process.stdout)
         expect(cli_option).to(equal("-DLP_WatermarkText '星街すいせい'"))

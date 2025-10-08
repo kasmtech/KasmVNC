@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import shutil
 import subprocess
@@ -15,6 +16,16 @@ config_filename = os.path.join(config_dir, "config.yaml")
 if os.getenv('KASMVNC_SPEC_DEBUG_OUTPUT'):
     debug_output = True
 
+def run_vncserver_to_print_xvnc_cli_options(env=os.environ):
+    return run_cmd(f'vncserver -dry-run -config {config_filename}', env=env)
+
+def pick_cli_option(cli_option, xvnc_cmd):
+    cli_option_regex = re.compile(f'\'?-{cli_option}\'?(?:\s+[^-][^\s]*|$)')
+    results = cli_option_regex.findall(xvnc_cmd)
+    if len(results) == 0:
+        return None
+
+    return ' '.join(results)
 
 def write_config(config_text):
     os.makedirs(config_dir, exist_ok=True)
