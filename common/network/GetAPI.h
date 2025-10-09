@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <os/SystemStats.h>
 
 namespace network {
 
@@ -140,28 +141,8 @@ namespace network {
       uint8_t inprogress;
     };
 
-    struct cpu_stats_t {
-      int user;
-      int nice;
-      int system;
-      int idle;
-      int iowait;
-      int irq;
-      int softirq;
-      int steal;
-      int guest;
-    };
-    struct mem_stats_t {
-      uint64_t total;
-      uint64_t free;
-      uint64_t cached;
-      uint64_t buffers;
-      uint64_t shared;
-      uint64_t slab;
-    };
-
-    cpu_stats_t cpuStats;
-    mem_stats_t memStats;
+    cpu_stats_t last_cpu_stats;
+    mem_stats_t last_mem_stats;
 
     std::map<std::string, clientFrameStats_t> clientFrameStats;
     serverFrameStats_t serverFrameStats;
@@ -172,7 +153,7 @@ namespace network {
     pthread_mutex_t userInfoMutex;
     std::mutex sessionInfoMutex;
     std::string sessionsInfo;
-    std::string systemStat;
+    std::string systems_stat;
   };
 
 }

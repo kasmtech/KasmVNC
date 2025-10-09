@@ -849,9 +849,39 @@ void GetAPIMessager::netClearClipboard() {
 }
 
 void GetAPIMessager::netUpdateSystemStats() {
+	auto cpu_stats = SystemStats::read_cpu_stats();
+	const auto cpu_usage = SystemStats::get_cpu_usage(last_cpu_stats, cpu_stats);
 
+	sprintf( systems_stat.data(),
+		"{\n"
+		"\t\"cpu\":{\n"
+		"\t\t\"usage_percent\": %lu},\n"
+		"\t\"memory\":{\n"
+		"\t\t\"total\": %lu,\n"
+		"\t\t\"used\": %lu,\n"
+		"\t\t\"available\": %lu,\n"
+		"\t\t\"used_percent\": %lu\n}"
+		"}", cpu_usage, 0l, 0l, 0l, 0l);
+
+	// {
+	// 	"cpu": {
+	// 		"usage_percent": 27.3
+	// 	  },
+	// 	  "memory": {
+	// 	  	"total": 16320460,
+	// 		  "used": 8758540,
+	// 		  "available": 7561920,
+	// 		  "used_percent": 53.7
+	// 		},
+	// 		"load_average": {
+	// 			"1min": 0.41,
+	// 			"5min": 0.37,
+	// 			"15min": 0.33
+	// 		  },
+	// 		  "uptime_seconds": 14522.9
+	// 		}
 }
 
 const char *GetAPIMessager::netGetSystemStats() {
-	return systemStat.c_str();
+	return systems_stat.c_str();
 }
