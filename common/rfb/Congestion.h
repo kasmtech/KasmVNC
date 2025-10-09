@@ -19,11 +19,61 @@
 #ifndef __RFB_CONGESTION_H__
 #define __RFB_CONGESTION_H__
 
-#include <list>
+#include <array>
 
 namespace rfb {
+    template<typename T, size_t N>
+    class CircularBuffer {
+        std::array<T, N> buffer;
+
+        size_t head{};
+        size_t tail{};
+
+    public:
+        CircularBuffer() = default;
+
+        CircularBuffer(const CircularBuffer &) = delete;
+
+        CircularBuffer &operator=(const CircularBuffer &) = delete;
+
+        CircularBuffer(const CircularBuffer &&) = delete;
+
+        CircularBuffer &operator=(const CircularBuffer &&) = delete;
+
+        bool empty() const { return size() == 0; }
+
+        size_t size() const { return tail >= head ? tail - head : N + tail - head; }
+        static size_t capacity() { return N; }
+
+        void push_back(T value) {
+            buffer[tail] = value;
+            tail = ++tail % N;
+        }
+
+        T pop_front() {
+            T value = buffer[head];
+            head = ++head % N;
+            return value;
+        }
+
+        T &front() { return buffer[head]; }
+        const T &front() const { return buffer[head]; }
+
+
+        using iterator = std::array<T, N>::iterator;
+        using const_iterator = std::array<T, N>::const_iterator;
+
+        iterator begin() { return buffer.begin() + head; }
+        iterator end() { return buffer.begin() + tail; }
+
+        const_iterator cbegin() const { return buffer.cbegin() + head; }
+        const_iterator cend() const { return buffer.cbegin() + tail; }
+    };
+
     class Congestion {
     public:
+        constexpr static size_t MAX_VALUES = 120;
+
         Congestion();
 
         ~Congestion() = default;
@@ -86,7 +136,7 @@ namespace rfb {
             bool congested;
         };
 
-        std::list<RTTInfo> pings;
+        CircularBuffer<RTTInfo, MAX_VALUES> pings;
 
         RTTInfo lastPong{};
         timeval lastPongArrival{};

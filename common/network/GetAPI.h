@@ -31,7 +31,7 @@ namespace network {
 
   class GetAPIMessager {
   public:
-    GetAPIMessager(const char *passwdfile_);
+    explicit GetAPIMessager(const char *passwdfile_);
 
     // from main thread
     void mainUpdateScreen(rfb::PixelBuffer *pb);
@@ -69,6 +69,8 @@ namespace network {
     uint8_t netServerFrameStatsReady();
     void netUdpUpgrade(void *client, uint32_t ip);
     void netClearClipboard();
+    void netUpdateSystemStats();
+    const char *netGetSystemStats();
 
     enum USER_ACTION {
       NONE,
@@ -137,6 +139,30 @@ namespace network {
 
       uint8_t inprogress;
     };
+
+    struct cpu_stats_t {
+      int user;
+      int nice;
+      int system;
+      int idle;
+      int iowait;
+      int irq;
+      int softirq;
+      int steal;
+      int guest;
+    };
+    struct mem_stats_t {
+      uint64_t total;
+      uint64_t free;
+      uint64_t cached;
+      uint64_t buffers;
+      uint64_t shared;
+      uint64_t slab;
+    };
+
+    cpu_stats_t cpuStats;
+    mem_stats_t memStats;
+
     std::map<std::string, clientFrameStats_t> clientFrameStats;
     serverFrameStats_t serverFrameStats;
     pthread_mutex_t frameStatMutex;
@@ -146,6 +172,7 @@ namespace network {
     pthread_mutex_t userInfoMutex;
     std::mutex sessionInfoMutex;
     std::string sessionsInfo;
+    std::string systemStat;
   };
 
 }

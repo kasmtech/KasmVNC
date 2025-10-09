@@ -67,6 +67,8 @@ GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_)
 	pthread_mutex_init(&userInfoMutex, NULL);
 
 	serverFrameStats.inprogress = 0;
+
+	netUpdateSystemStats();
 }
 
 // from main thread
@@ -846,3 +848,10 @@ void GetAPIMessager::netClearClipboard() {
 	pthread_mutex_unlock(&userMutex);
 }
 
+void GetAPIMessager::netUpdateSystemStats() {
+
+}
+
+const char *GetAPIMessager::netGetSystemStats() {
+	return systemStat.c_str();
+}

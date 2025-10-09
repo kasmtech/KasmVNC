@@ -148,8 +148,7 @@ void Congestion::gotPong() {
 
     gettimeofday(&now, nullptr);
 
-    rttInfo = pings.front();
-    pings.pop_front();
+    rttInfo = pings.pop_front();
 
     lastPong = rttInfo;
     lastPongArrival = now;

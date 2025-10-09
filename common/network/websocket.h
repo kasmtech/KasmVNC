@@ -110,6 +110,8 @@ typedef struct {
     void (*clearClipboardCb)(void *messager);
 
     void (*getSessionsCb)(void *messager, char **buf);
+
+    const char * (*get_system_stats_cb)(void *messager);
 } settings_t;
 
 #ifdef __cplusplus

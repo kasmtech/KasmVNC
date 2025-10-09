@@ -287,6 +287,7 @@ namespace rfb {
 
     Timer frameTimer;
     Timer screenshotTimer;
+    Timer stats;
 
     int inotify_fd{-1};
 

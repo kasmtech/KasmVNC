@@ -1772,6 +1772,9 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
         weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, len);
 
         ret = 1;
+    } else entry("/api/system/stats") {
+        const char *response = settings.get_system_stats_cb(settings.messager);
+        ws_send(ws_ctx, response, strlen(response));
     }
 
     #undef entry
