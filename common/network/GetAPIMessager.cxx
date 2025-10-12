@@ -849,7 +849,7 @@ void GetAPIMessager::netClearClipboard() {
 }
 
 void GetAPIMessager::netUpdateSystemStats() {
-	auto cpu_stats = SystemStats::read_cpu_stats();
+	const auto cpu_stats = SystemStats::read_cpu_stats();
 	const auto cpu_usage = SystemStats::get_cpu_usage(last_cpu_stats, cpu_stats);
 
 	sprintf( systems_stat.data(),
@@ -858,10 +858,9 @@ void GetAPIMessager::netUpdateSystemStats() {
 		"\t\t\"usage_percent\": %lu},\n"
 		"\t\"memory\":{\n"
 		"\t\t\"total\": %lu,\n"
-		"\t\t\"used\": %lu,\n"
-		"\t\t\"available\": %lu,\n"
-		"\t\t\"used_percent\": %lu\n}"
-		"}", cpu_usage, 0l, 0l, 0l, 0l);
+		"\t\t\"free\": %lu,\n"
+		"\t\t\"available\": %lu,\n}"
+		"}", cpu_usage, 0l, 0l, 0l);
 
 	// {
 	// 	"cpu": {

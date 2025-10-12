@@ -47,12 +47,14 @@ namespace rfb {
 
         void push_back(T value) {
             buffer[tail] = value;
-            tail = ++tail % N;
+            ++tail;
+            tail %= N;
         }
 
         T pop_front() {
             T value = buffer[head];
-            head = ++head % N;
+            ++head;
+            head %= N;
             return value;
         }
 
