@@ -51,6 +51,7 @@ stages:
   - echo core > /proc/sys/kernel/core_pattern
 
 default:
+  retry: 2
   tags:
     - oci-fixed-amd
 
