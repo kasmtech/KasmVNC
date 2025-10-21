@@ -153,7 +153,10 @@ namespace network {
     pthread_mutex_t userInfoMutex;
     std::mutex sessionInfoMutex;
     std::string sessionsInfo;
-    std::string systems_stat;
+
+    SystemStats system_stats;
+    std::mutex system_stats_mutex;
+    std::string systems_stats_json;
   };
 
 }

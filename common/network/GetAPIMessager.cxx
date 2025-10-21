@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <string>
 #include <utility>
+#include <fmt/format.h>
 
 using namespace network;
 using namespace rfb;
@@ -849,18 +850,11 @@ void GetAPIMessager::netClearClipboard() {
 }
 
 void GetAPIMessager::netUpdateSystemStats() {
-	const auto cpu_stats = SystemStats::read_cpu_stats();
-	const auto cpu_usage = SystemStats::get_cpu_usage(last_cpu_stats, cpu_stats);
+/*
+	*
 
-	sprintf( systems_stat.data(),
-		"{\n"
-		"\t\"cpu\":{\n"
-		"\t\t\"usage_percent\": %lu},\n"
-		"\t\"memory\":{\n"
-		"\t\t\"total\": %lu,\n"
-		"\t\t\"free\": %lu,\n"
-		"\t\t\"available\": %lu,\n}"
-		"}", cpu_usage, 0l, 0l, 0l);
+
+	// "}""}"
 
 	// {
 	// 	"cpu": {
@@ -879,8 +873,44 @@ void GetAPIMessager::netUpdateSystemStats() {
 	// 		  },
 	// 		  "uptime_seconds": 14522.9
 	// 		}
+ */
+
+	const auto cpu_stats = SystemStats::read_cpu_stats();
+	const auto cpu_usage = SystemStats::get_cpu_usage(last_cpu_stats, cpu_stats);
+	const auto mem_stats = system_stats.get_mem_stats();
+	const auto io_stats = system_stats.get_io_stats();
+
+	fmt::memory_buffer buf;
+
+	fmt::format_to(std::back_inserter(buf),
+	               "{{\n"
+	               "\t\"cpu\":{{\n"
+	               "\t\t\"usage_percent\": {}}},\n"
+	               "\t\"memory\":{{\n"
+	               "\t\t\"total\": {},\n"
+	               "\t\t\"free\": {},\n"
+	               "\t\t\"cached\": {},\n"
+	               "\t\t\"used\": {}}},\n"
+	               "\t\"io_stats\":{{\n",
+	               cpu_usage, mem_stats.total, mem_stats.free, mem_stats.cached, mem_stats.used);
+
+	for (size_t i = 0; i < io_stats.size(); ++i) {
+		const auto& dev_io_stats = io_stats[i];
+		fmt::format_to(std::back_inserter(buf),
+			"\t\t\"{}\": {{\n"
+			"\t\t\t\"read_bytes\": {},\n"
+			"\t\t\t\"write_bytes\": {},\n"
+			"\t\t\t\"iowait\": {} }}{} \n",
+			dev_io_stats.disk_name, dev_io_stats.read_bytes, dev_io_stats.write_bytes, dev_io_stats.iowait, (i + 1 < io_stats.size()) ? "," : "}}");
+	}
+
+	std::lock_guard lock(system_stats_mutex);
+
+	systems_stats_json = fmt::to_string(buf);
 }
 
 const char *GetAPIMessager::netGetSystemStats() {
-	return systems_stat.c_str();
+	std::lock_guard lock(system_stats_mutex);
+
+	return systems_stats_json.c_str();
 }
