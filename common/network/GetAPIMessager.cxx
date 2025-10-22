@@ -62,10 +62,10 @@ GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_)
 					sessionsInfo( "{\"users\":[]}"){
 
 	pthread_mutex_init(&screenMutex, nullptr);
-	pthread_mutex_init(&userMutex, NULL);
-	pthread_mutex_init(&statMutex, NULL);
-	pthread_mutex_init(&frameStatMutex, NULL);
-	pthread_mutex_init(&userInfoMutex, NULL);
+	pthread_mutex_init(&userMutex, nullptr);
+	pthread_mutex_init(&statMutex, nullptr);
+	pthread_mutex_init(&frameStatMutex, nullptr);
+	pthread_mutex_init(&userInfoMutex, nullptr);
 
 	serverFrameStats.inprogress = 0;
 }
@@ -554,7 +554,7 @@ void GetAPIMessager::netGetBottleneckStats(char *buf, uint32_t len) {
 }
 */
 	std::map<std::string, std::string>::const_iterator it;
-	const char *prev = NULL;
+    const char *prev = nullptr;
 	FILE *f;
 
 	if (pthread_mutex_lock(&statMutex)) {
