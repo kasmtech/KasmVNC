@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <cstdlib>
 #include <fcntl.h>
 #include <unistd.h>
 #include <statgrab.h>
@@ -34,8 +33,10 @@ struct mem_stats_t {
 
 struct disk_stats_t {
     std::string_view disk_name;
-    uint64_t read_bytes;
-    uint64_t write_bytes;
+    uint64_t bytes_read;
+    uint64_t bytes_written;
+    uint64_t bytes_read_per_sec;
+    uint64_t bytes_written_per_sec;
     uint64_t iowait;
 };
 
@@ -122,28 +123,37 @@ public:
     }
 
     std::vector<disk_stats_t> get_io_stats() {
-        auto *curr = sg_get_disk_io_stats_diff(&dev_count);
+        const auto *diff = sg_get_disk_io_stats_diff(&dev_count);
+        const auto *curr = sg_get_disk_io_stats(&dev_count);
         cpu = sg_get_cpu_percents(nullptr);
 
         std::vector<disk_stats_t> stats;
         stats.reserve(dev_count);
 
-        double r_s = 0.0, w_s = 0.0;
-        double rkB_s = 0.0, wkB_s = 0.0;
-
         for (size_t i = 0; i < dev_count; i++) {
-            const auto *device_stats = &curr[i];
+            double read_per_sec = 0.0, write_per_sec = 0.0;
+            if (const auto systime = static_cast<double>(diff[i].systime); systime > 0) {
+                read_per_sec = static_cast<double>(diff[i].read_bytes) / systime;
+                write_per_sec = static_cast<double>(diff[i].write_bytes) / systime;
+            }
 
-            stats.emplace_back(device_stats->disk_name, device_stats->read_bytes, device_stats->write_bytes, cpu->iowait);
+            stats.emplace_back(diff[i].disk_name, curr[i].read_bytes, curr[i].write_bytes, read_per_sec, write_per_sec,
+                               cpu->iowait);
         }
 
         return stats;
     }
 
-    static uint64_t get_cpu_usage(const cpu_stats_t &last, const cpu_stats_t &now) {
-        const auto delta = now.total() - last.total();
-        const auto idle = now.idle - last.idle;
-        const auto used = delta - idle;
+    static double get_cpu_usage() {
+        const auto cpu = sg_get_cpu_percents(nullptr);
+        // const auto delta = static_cast<double>(now.total() - last_cpu_stats.total());
+        // const auto idle = static_cast<double>(now.idle - last_cpu_stats.idle);
+        // const auto used = delta - idle;
+        //
+        // if (delta > 0)
+        //     return 1000 * used / delta;
+        //
+        // return 0;
 
         return used / delta * 100;
     }

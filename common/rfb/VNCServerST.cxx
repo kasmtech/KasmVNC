@@ -264,7 +264,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, const video_enco
         benchmark(file_name, Server::benchmarkResults.getValueStr());
     }
 
-    stats.start(1000);
+    stats.start(STATS_INTERVAL_MS);
 
     screenshotTimer.start(FIRST_SCREENSHOT_INTERVAL_MS);
 }
@@ -786,6 +786,7 @@ bool VNCServerST::handleTimeout(Timer* t)
 
     if (t == &stats) {
         apimessager->netUpdateSystemStats();
+        stats.start(STATS_INTERVAL_MS);
     }
 
   return false;

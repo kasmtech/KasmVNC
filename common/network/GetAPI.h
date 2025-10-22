@@ -141,9 +141,6 @@ namespace network {
       uint8_t inprogress;
     };
 
-    cpu_stats_t last_cpu_stats;
-    mem_stats_t last_mem_stats;
-
     std::map<std::string, clientFrameStats_t> clientFrameStats;
     serverFrameStats_t serverFrameStats;
     pthread_mutex_t frameStatMutex;

@@ -68,8 +68,6 @@ GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_)
 	pthread_mutex_init(&userInfoMutex, NULL);
 
 	serverFrameStats.inprogress = 0;
-
-	netUpdateSystemStats();
 }
 
 // from main thread
@@ -875,8 +873,7 @@ void GetAPIMessager::netUpdateSystemStats() {
 	// 		}
  */
 
-	const auto cpu_stats = SystemStats::read_cpu_stats();
-	const auto cpu_usage = SystemStats::get_cpu_usage(last_cpu_stats, cpu_stats);
+	const auto cpu_usage = SystemStats::get_cpu_usage();
 	const auto mem_stats = system_stats.get_mem_stats();
 	const auto io_stats = system_stats.get_io_stats();
 
@@ -898,10 +895,12 @@ void GetAPIMessager::netUpdateSystemStats() {
 		const auto& dev_io_stats = io_stats[i];
 		fmt::format_to(std::back_inserter(buf),
 			"\t\t\"{}\": {{\n"
-			"\t\t\t\"read_bytes\": {},\n"
-			"\t\t\t\"write_bytes\": {},\n"
+			"\t\t\t\"bytes_read\": {},\n"
+			"\t\t\t\"bytes_read_per_sec\": {},\n"
+			"\t\t\t\"bytes_written\": {},\n"
+			"\t\t\t\"bytes_written_per_sec\": {},\n"
 			"\t\t\t\"iowait\": {} }}{} \n",
-			dev_io_stats.disk_name, dev_io_stats.read_bytes, dev_io_stats.write_bytes, dev_io_stats.iowait, (i + 1 < io_stats.size()) ? "," : "}}");
+			dev_io_stats.disk_name, dev_io_stats.bytes_read, dev_io_stats.bytes_read_per_sec, dev_io_stats.bytes_written,  dev_io_stats.bytes_written_per_sec, dev_io_stats.iowait, i + 1 < io_stats.size() ? "," : "}}");
 	}
 
 	std::lock_guard lock(system_stats_mutex);
