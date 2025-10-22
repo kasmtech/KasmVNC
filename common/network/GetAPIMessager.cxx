@@ -572,7 +572,7 @@ void GetAPIMessager::netGetBottleneckStats(char *buf, uint32_t len) {
 
 	fprintf(f, "{\n");
 
-	for (it = bottleneckStats.begin(); it != bottleneckStats.end(); it++) {
+	for (auto it = bottleneckStats.begin(); it != bottleneckStats.end(); it++) {
 		// user@127.0.0.1_1627311208.791752::websocket
 		const char *id = it->first.c_str();
 		const char *data = it->second.c_str();
@@ -634,8 +634,7 @@ void GetAPIMessager::netGetFrameStats(char *buf, uint32_t len) {
 	}
 }
 */
-	std::map<std::string, clientFrameStats_t>::const_iterator it;
-	unsigned i = 0;
+    unsigned i = 0;
 	FILE *f;
 
 	if (pthread_mutex_lock(&frameStatMutex)) {
@@ -686,7 +685,7 @@ void GetAPIMessager::netGetFrameStats(char *buf, uint32_t len) {
 
 	fprintf(f, "\t\"client_side\" : [\n");
 
-	for (it = clientFrameStats.begin(); it != clientFrameStats.end(); it++, i++) {
+	for (auto it = clientFrameStats.begin(); it != clientFrameStats.end(); it++, i++) {
 		const char *id = it->first.c_str();
 		const clientFrameStats_t &s = it->second;
 
@@ -767,12 +766,10 @@ uint8_t GetAPIMessager::netRequestFrameStats(USER_ACTION what, const char *clien
 }
 
 uint8_t GetAPIMessager::netOwnerConnected() {
-	uint8_t ret;
-
 	if (pthread_mutex_lock(&userInfoMutex))
 		return 0;
 
-	ret = ownerConnected;
+	uint8_t ret = ownerConnected;
 
 	pthread_mutex_unlock(&userInfoMutex);
 
@@ -780,12 +777,10 @@ uint8_t GetAPIMessager::netOwnerConnected() {
 }
 
 uint8_t GetAPIMessager::netNumActiveUsers() {
-	uint8_t ret;
-
 	if (pthread_mutex_lock(&userInfoMutex))
 		return 0;
 
-	ret = activeUsers;
+	uint8_t ret = activeUsers;
 
 	pthread_mutex_unlock(&userInfoMutex);
 
@@ -793,12 +788,10 @@ uint8_t GetAPIMessager::netNumActiveUsers() {
 }
 
 uint8_t GetAPIMessager::netGetClientFrameStatsNum() {
-	uint8_t ret;
-
 	if (pthread_mutex_lock(&frameStatMutex))
 		return 0;
 
-	ret = clientFrameStats.size();
+	uint8_t ret = clientFrameStats.size();
 
 	pthread_mutex_unlock(&frameStatMutex);
 
@@ -806,12 +799,10 @@ uint8_t GetAPIMessager::netGetClientFrameStatsNum() {
 }
 
 uint8_t GetAPIMessager::netServerFrameStatsReady() {
-	uint8_t ret;
-
 	if (pthread_mutex_lock(&frameStatMutex))
 		return 0;
 
-	ret = serverFrameStats.w != 0;
+	uint8_t ret = serverFrameStats.w != 0;
 
 	pthread_mutex_unlock(&frameStatMutex);
 
