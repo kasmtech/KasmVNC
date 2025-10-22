@@ -155,7 +155,7 @@ public:
         //
         // return 0;
 
-        return used / delta * 100;
+        return 100. - cpu->idle;
     }
 
     static const char *seek(const char *ptr) {
