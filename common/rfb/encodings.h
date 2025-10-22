@@ -79,8 +79,8 @@ namespace rfb {
   constexpr int pseudoEncodingVideoTimeLevel0 = -870;
   constexpr int pseudoEncodingVideoTimeLevel100 = -770;
 
-  constexpr int pseudoEncodingFrameRateLevel10 = -2048;
-  constexpr int pseudoEncodingFrameRateLevel60 = -1998;
+  constexpr int pseudoEncodingFrameRateLevel10 = -4096;
+  constexpr int pseudoEncodingFrameRateLevel120 = -3986;
   constexpr int pseudoEncodingMaxVideoResolution = -1997;
   constexpr int pseudoEncodingVideoScalingLevel0 = -1996;
   constexpr int pseudoEncodingVideoScalingLevel9 = -1987;
