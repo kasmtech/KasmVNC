@@ -17,6 +17,7 @@ RUN \
     byacc \
     bzip2 \
     cmake \
+    nasm \
     diffutils \
     doxygen \
     file \
@@ -72,12 +73,13 @@ RUN \
     xorg-x11-server-common \
     xorg-x11-server-devel \
     xorg-x11-xtrans-devel \
-    xsltproc
+    xsltproc \
+    libavformat-free-devel \
+    libswscale-free-devel
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-webp
-RUN $SCRIPTS_DIR/build-libjpeg-turbo
+RUN $SCRIPTS_DIR/build-deps.sh
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd
 

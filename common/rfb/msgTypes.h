@@ -37,6 +37,9 @@ namespace rfb {
   const int msgTypeUnixRelay = 183;
 
   const int msgTypeServerFence = 248;
+  const int msgTypeUserAddedToSession = 253;
+  const int msgTypeUserRemovedFromSession = 254;
+
 
   // client to server
 

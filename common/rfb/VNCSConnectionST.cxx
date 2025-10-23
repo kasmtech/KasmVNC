@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
  * USA.
  */
-
+ 
 #include <network/GetAPI.h>
 #include <network/TcpSocket.h>
 
@@ -62,11 +62,11 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s,
     losslessTimer(this), kbdLogTimer(this), binclipTimer(this),
     server(server_), updates(false),
     updateRenderedCursor(false), removeRenderedCursor(false),
-    continuousUpdates(false), encodeManager(this, &server_->encCache),
+    continuousUpdates(false), encodeManager(this, &VNCServerST::encCache),
     needsPermCheck(false), pointerEventTime(0),
     clientHasCursor(false),
     accessRights(AccessDefault), startTime(time(0)), frameTracking(false),
-    udpFramesSinceFull(0), complainedAboutNoViewRights(false)
+    udpFramesSinceFull(0), complainedAboutNoViewRights(false), clientUsername("username_unavailable")
 {
   setStreams(&sock->inStream(), &sock->outStream());
   peerEndpoint.buf = sock->getPeerEndpoint();
@@ -177,6 +177,19 @@ void VNCSConnectionST::close(const char* reason)
 
   if (authenticated()) {
       server->lastDisconnectTime = time(0);
+
+      // First update the client state to CLOSING to ensure it's not included in user lists
+      setState(RFBSTATE_CLOSING);
+
+      // Notify other clients about the user leaving
+      server->notifyUserAction(this, clientUsername, VNCServerST::Leave);
+      vlog.info("Notifying other clients that user '%s' left: %s",
+                clientUsername.c_str(), reason ? reason : "connection closed");
+
+      if (server->apimessager)
+      {
+        server->updateSessionUsersList();
+      }
   }
 
   try {
@@ -190,11 +203,12 @@ void VNCSConnectionST::close(const char* reason)
     vlog.error("Failed to flush remaining socket data on close: %s", e.str());
   }
 
-  // Just shutdown the socket and mark our state as closing.  Eventually the
-  // calling code will call VNCServerST's removeSocket() method causing us to
-  // be deleted.
+  // Just shutdown the socket and mark our state as closing if not already done.
+  // Eventually the calling code will call VNCServerST's removeSocket() method
+  // causing us to be deleted.
   sock->shutdown();
-  setState(RFBSTATE_CLOSING);
+  if (state() != RFBSTATE_CLOSING)
+    setState(RFBSTATE_CLOSING);
 }
 
 
@@ -631,6 +645,8 @@ void VNCSConnectionST::approveConnectionOrClose(bool accept,
 void VNCSConnectionST::authSuccess()
 {
   lastEventTime = time(0);
+  connectionTime = time(0); // Record when the user connected
+  vlog.info("User %s connected at %ld", clientUsername.c_str(), connectionTime);
 
   server->startDesktop();
 
@@ -649,11 +665,27 @@ void VNCSConnectionST::authSuccess()
 
   // - Mark the entire display as "dirty"
   updates.add_changed(server->pb->getRect());
-  startTime = time(0);
+  startTime = time(nullptr);
+
+  if (clientUsername.empty())
+  {
+    setUsername(get_default_name(sock->getPeerAddress()));
+  }
+    vlog.info("Authentication successful for user: %s", clientUsername.c_str());
 }
 
 void VNCSConnectionST::queryConnection(const char* userName)
 {
+  if (userName && strlen(userName) > 0) {
+    setUsername(userName);
+    vlog.info("Setting username for connection: %s", userName);
+  } else {
+    // Generate a default username based on connection info
+    setUsername(get_default_name(sock->getPeerAddress()));
+
+    vlog.info("Generated username: %s", clientUsername.c_str());
+  }
+
   // - Authentication succeeded - clear from blacklist
   CharArray name; name.buf = sock->getPeerAddress();
   server->blHosts->clearBlackmark(name.buf);
@@ -708,6 +740,15 @@ void VNCSConnectionST::clientInit(bool shared)
     }
   }
   SConnection::clientInit(shared);
+  if (shared && authenticated()) {
+    server->notifyUserAction(this, clientUsername, VNCServerST::Join);
+    vlog.info("Notifying other clients that user '%s' joined the shared session",
+              clientUsername.c_str());
+  }
+
+  if (server->apimessager && authenticated()) {
+   server->updateSessionUsersList();
+  }
 }
 
 void VNCSConnectionST::setPixelFormat(const PixelFormat& pf)
@@ -996,6 +1037,8 @@ void VNCSConnectionST::setDesktopSize(int fb_width, int fb_height,
                                       const ScreenSet& layout)
 {
   unsigned int result;
+
+  server->sendWatermark = true;
 
   if (!(accessRights & AccessSetDesktopSize)) goto justnotify;
   if (!rfb::Server::acceptSetDesktopSize) goto justnotify;

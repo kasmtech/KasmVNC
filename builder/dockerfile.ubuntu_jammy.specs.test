@@ -1,0 +1,30 @@
+FROM ubuntu:jammy
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y vim less
+RUN apt-get update && apt-get install -y python3-pip
+RUN apt-get update && apt-get install -y strace silversearcher-ag xfonts-base
+RUN apt-get update && apt-get install -y cinnamon
+RUN apt-get update && apt-get install -y mate wget
+
+RUN useradd -m docker
+
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp/
+RUN apt-get install -y /tmp/*$(dpkg --print-architecture).deb
+
+ENV USER docker
+ENV HOME /home/docker
+
+RUN chown -R 1000:0 $HOME
+USER 1000:ssl-cert
+WORKDIR $HOME
+
+RUN pip3 install --user pipenv
+RUN echo 'PATH="~/.local/bin/:$PATH"' >> ~/.bashrc
+
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+
+ENTRYPOINT ["/bin/bash", "-ic", "/src/builder/run-specs-inside-docker"]

@@ -6,7 +6,7 @@ usage() {
 }
 
 process_options() {
-   local sorted_options=$(getopt -o psh --long perf-test --long shell --long help -- "$@")
+   local sorted_options=$(getopt -o prsh --long perf-test --long run-test --long shell --long help -- "$@")
    eval set -- $sorted_options
 
    while : ; do
@@ -14,6 +14,10 @@ process_options() {
          -p|--perf-test)
             entrypoint_args='-interface 0.0.0.0 -selfBench :1'
             entrypoint_executable="--entrypoint=/usr/bin/Xvnc"
+            shift
+            ;;
+         -r|--run-test)
+            run_test=1
             shift
             ;;
          -s|--shell)

@@ -3,20 +3,8 @@
 set -euo pipefail
 
 build_and_install() {
-  export MAKEFLAGS=-j`nproc`
-  export CFLAGS="-fpic"
-  cmake -DCMAKE_INSTALL_PREFIX=/usr/local -G"Unix Makefiles"
-  make
-  make install
-}
-
-install_build_dependencies() {
-  install_packages cmake gcc
-  ensure_libjpeg_is_fast
-}
-
-ensure_libjpeg_is_fast() {
-  install_packages nasm
+  cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POSITION_INDEPENDENT_CODE=ON -GNinja .
+  ninja -C build install
 }
 
 prepare_libjpeg_source() {
@@ -32,6 +20,5 @@ prepare_libjpeg_source() {
 source_dir=$(dirname "$0")
 . "$source_dir/common.sh"
 
-install_build_dependencies
 prepare_libjpeg_source
 build_and_install

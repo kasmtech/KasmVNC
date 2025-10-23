@@ -184,7 +184,7 @@ static void parseClipTypes()
 
     vlog.debug("Adding DLP binary mime type %s", m.mime);
   }
-  vlog.debug("Total %u binary mime types", dlp_mimetypes.size());
+  vlog.debug("Total %lu binary mime types", dlp_mimetypes.size());
 
   free(origstr);
 }

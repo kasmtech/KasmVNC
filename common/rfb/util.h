@@ -28,8 +28,11 @@
 #include <config.h>
 #endif
 
-#include <limits.h>
-#include <string.h>
+#include <climits>
+#include <cstring>
+#include <chrono>
+#include <string>
+#include <vector>
 
 struct timeval;
 
@@ -65,6 +68,17 @@ namespace rfb {
     CharArray(const CharArray&);
     CharArray& operator=(const CharArray&);
   };
+
+  struct SessionInfo {
+    std::string userName;
+    time_t connectionTime;
+    SessionInfo(const std::string& name, const time_t& time)
+    {
+      userName = name;
+      connectionTime = time;
+    }
+
+    };
 
   char* strDup(const char* s);
   void strFree(char* s);
@@ -127,6 +141,15 @@ namespace rfb {
   // Returns time elapsed since given moment in milliseconds.
   unsigned msSince(const struct timeval *then);
 
+  /**
+   * Calculates the number of milliseconds elapsed since a given starting point.
+   *
+   * @param start The starting time point of type `std::chrono::high_resolution_clock::time_point`.
+   *
+   * @return The elapsed time in milliseconds as an unsigned 64-bit integer.
+   */
+  uint64_t elapsedMs(std::chrono::high_resolution_clock::time_point start);
+
   // Returns true if first happened before seconds
   bool isBefore(const struct timeval *first,
                 const struct timeval *second);
@@ -135,6 +158,10 @@ namespace rfb {
                   char *buffer, size_t maxlen, int precision=6);
   size_t iecPrefix(long long value, const char *unit,
                    char *buffer, size_t maxlen, int precision=6);
+
+  std::string get_default_name(const std::string& str);
+  std::string formatUsersToJson(const std::vector<SessionInfo> & users);
+
 }
 
 // Some platforms (e.g. Windows) include max() and min() macros in their

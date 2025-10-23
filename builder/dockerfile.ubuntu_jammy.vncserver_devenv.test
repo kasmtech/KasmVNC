@@ -1,0 +1,68 @@
+FROM ubuntu:jammy
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV VNC_PORT 8443
+ENV VNC_PORT2 8444
+ENV VNC_PORT3 8445
+EXPOSE $VNC_PORT
+EXPOSE $VNC_PORT2
+EXPOSE $VNC_PORT3
+
+RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal xterm libnss-wrapper gettext wget
+RUN apt-get update && apt-get install -y vim less
+RUN apt-get update && apt-get -y install lsb-release
+RUN apt-get update && apt-get -y install net-tools
+
+# RUN mkdir -p /usr/share/man/man1
+# RUN apt-get update && apt-get install -y apt-utils openjdk-11-jre
+RUN apt-get update && apt-get install -y ubuntu-mate-desktop
+RUN apt-get update && apt-get install -y lxde
+RUN apt-get update && apt-get install -y lxqt
+RUN apt-get update && apt-get install -y kde-plasma-desktop
+RUN apt-get update && apt-get install -y cinnamon
+RUN apt-get update && apt-get install -y gnome-session
+RUN apt-get purge -y pm-utils xscreensaver*
+RUN apt-get purge -y clipit magnus kgpg
+
+RUN apt-get update && apt-get install -y python3-pip
+RUN apt-get update && apt-get install -y strace
+RUN apt-get update && apt-get install -y silversearcher-ag
+RUN apt-get update && apt-get install -y libdevel-stacktrace-perl
+
+RUN useradd -m docker
+ENV USER docker
+
+COPY ./builder/scripts/ /tmp/scripts/
+COPY ./debian/changelog /tmp
+
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp/
+RUN /tmp/scripts/install_kasmvncserver_package
+
+ENV KASMVNC_DEVELOPMENT 1
+ENV HOME /home/docker
+RUN chown -R 1000:0 $HOME
+USER 1000:ssl-cert
+WORKDIR $HOME
+
+RUN pip3 install --user pipenv
+RUN echo 'PATH="/src/unix:~/.local/bin/:$PATH"' >> ~/.bashrc
+RUN echo 'export PERL5LIB="/src/unix"' >> ~/.bashrc
+RUN echo 'ulimit -c 0' >> ~/.bashrc
+RUN echo 'alias s="vncserver"' >> ~/.bashrc
+RUN echo 'alias k="vncserver -kill :1; pkill baloo_file; pkill gpg-agent; pkill ssh-agent; pkill xiccd"' >> ~/.bashrc
+RUN echo 'alias r="k; s"' >> ~/.bashrc
+RUN echo 'alias go="vncserver; vncserver -kill :1"' >> ~/.bashrc
+RUN echo 'alias ns="netstat -nltup"' >> ~/.bashrc
+RUN echo 'alias tv="./run-specs spec/vncserver_yaml_validation_spec.py"' >> ~/.bashrc
+RUN echo 'alias ty="./run-specs spec/vncserver_*spec.py"' >> ~/.bashrc
+RUN echo 'alias ta="./run-specs"' >> ~/.bashrc
+RUN echo 'alias vd="vncserver -dry-run"' >> ~/.bashrc
+RUN echo 'alias ss="sp; vncserver -select-de xfce"' >> ~/.bashrc
+ENV SET_PASSWORD_FUNC 'sp() { echo -e "$VNC_PW\\n$VNC_PW\\n" | kasmvncpasswd -w -u $VNC_USER $HOME/.kasmpasswd; }'
+RUN echo $SET_PASSWORD_FUNC >> ~/.bashrc
+
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+
+ENTRYPOINT ["bash", "-ic", "cd /src && pipenv install; exec bash"]

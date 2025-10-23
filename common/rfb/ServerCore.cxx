@@ -32,15 +32,15 @@ rfb::IntParameter rfb::Server::idleTimeout
  0, 0);
 rfb::IntParameter rfb::Server::maxDisconnectionTime
 ("MaxDisconnectionTime",
- "Terminate when no client has been connected for s seconds", 
+ "Terminate when no client has been connected for s seconds",
  0, 0);
 rfb::IntParameter rfb::Server::maxConnectionTime
 ("MaxConnectionTime",
- "Terminate when a client has been connected for s seconds", 
+ "Terminate when a client has been connected for s seconds",
  0, 0);
 rfb::IntParameter rfb::Server::maxIdleTime
 ("MaxIdleTime",
- "Terminate after s seconds of user inactivity", 
+ "Terminate after s seconds of user inactivity",
  0, 0);
 rfb::IntParameter rfb::Server::clientWaitTimeMillis
 ("ClientWaitTimeMillis",
@@ -117,6 +117,16 @@ rfb::BoolParameter rfb::Server::selfBench
 ("SelfBench",
  "Run self-benchmarks and exit.",
  false);
+rfb::StringParameter rfb::Server::benchmark(
+    "Benchmark",
+    "Run extended benchmarks and exit.",
+    "");
+
+rfb::StringParameter rfb::Server::benchmarkResults(
+    "BenchmarkResults",
+    "The file to save becnhmark results to.",
+    "Benchmark.xml");
+
 rfb::IntParameter rfb::Server::dynamicQualityMin
 ("DynamicQualityMin",
  "The minimum dynamic JPEG quality, 0 = low, 9 = high",
@@ -271,19 +281,24 @@ rfb::IntParameter rfb::Server::udpFullFrameFrequency
 ("udpFullFrameFrequency",
  "Send a full frame every N frames for clients using UDP. 0 to disable",
  0, 0, 1000);
- 
+
 rfb::IntParameter rfb::Server::udpPort
 ("udpPort",
  "Which port to use for UDP. Default same as websocket",
  0, 0, 65535);
 
 static void bandwidthPreset() {
-  rfb::Server::dynamicQualityMin.setParam(2);
-  rfb::Server::dynamicQualityMax.setParam(9);
-  rfb::Server::treatLossless.setParam(8);
+    rfb::Server::dynamicQualityMin.setParam(2);
+    rfb::Server::dynamicQualityMax.setParam(9);
+    rfb::Server::treatLossless.setParam(8);
 }
 
 rfb::PresetParameter rfb::Server::preferBandwidth
 ("PreferBandwidth",
  "Set various options for lower bandwidth use. The default is off, aka to prefer quality.",
  false, bandwidthPreset);
+
+rfb::IntParameter rfb::Server::webpEncodingTime
+("webpEncodingTime",
+ "Percentage of time allotted for encoding a frame, that can be used for encoding rects in webp.",
+ 30, 0, 100);

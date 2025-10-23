@@ -11,7 +11,7 @@ use Exporter;
 @KasmVNC::Utils::ISA = qw(Exporter);
 
 our @EXPORT = ('listify', 'flatten', 'isBlank', 'isPresent', 'deriveBoolean',
-  'printStackTrace');
+  'printStackTrace', 'interpolateEnvVars');
 
 sub listify {
     # Implementation based on Hyper::Functions
@@ -71,6 +71,19 @@ sub containsWideSymbols {
   return 1 unless defined($string);
 
 	$string =~ /[^\x00-\xFF]/;
+}
+
+sub interpolateEnvVars {
+  my $value = shift;
+
+  return $value unless defined($value);
+
+  while ($value =~ /\$\{(\w+)\}/) {
+    my $envValue = $ENV{$1};
+    $value =~ s/\Q$&\E/$envValue/;
+  }
+
+  $value;
 }
 
 1;

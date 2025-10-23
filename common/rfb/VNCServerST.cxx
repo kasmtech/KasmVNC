@@ -48,8 +48,8 @@
 // otherwise blacklisted connections might be "forgotten".
 
 
-#include <assert.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cstdlib>
 
 #include <network/GetAPI.h>
 #include <network/Udp.h>
@@ -65,6 +65,7 @@
 #include <rfb/Watermark.h>
 #include <rfb/util.h>
 #include <rfb/ledStates.h>
+#include <rfb/SMsgWriter.h>
 
 #include <rdr/types.h>
 
@@ -73,6 +74,8 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <wordexp.h>
+#include <filesystem>
+#include <string_view>
 
 using namespace rfb;
 
@@ -81,6 +84,8 @@ LogWriter VNCServerST::connectionsLog("Connections");
 EncCache VNCServerST::encCache;
 
 void SelfBench();
+
+void benchmark(std::string_view, std::string_view);
 
 //
 // -=- VNCServerST Implementation
@@ -128,20 +133,26 @@ static void parseRegionPart(const bool percents, rdr::U16 &pcdest, int &dest,
 
 VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
   : blHosts(&blacklist), desktop(desktop_), desktopStarted(false),
-    blockCounter(0), pb(0), blackedpb(0), ledState(ledUnknown),
-    name(strDup(name_)), pointerClient(0), clipboardClient(0),
-    comparer(0), cursor(new Cursor(0, 0, Point(), NULL)),
+    blockCounter(0), pb(nullptr), blackedpb(nullptr), ledState(ledUnknown),
+    name(strDup(name_)), pointerClient(nullptr), clipboardClient(nullptr),
+    comparer(nullptr), cursor(new Cursor(0, 0, Point(), nullptr)),
     renderedCursorInvalid(false),
-    queryConnectionHandler(0), keyRemapper(&KeyRemapper::defInstance),
+    queryConnectionHandler(nullptr), keyRemapper(&KeyRemapper::defInstance),
     lastConnectionTime(0), disableclients(false),
-    frameTimer(this), apimessager(NULL), trackingFrameStats(0),
+    frameTimer(this), apimessager(nullptr), trackingFrameStats(0),
     clipboardId(0), sendWatermark(false)
 {
-  lastUserInputTime = lastDisconnectTime = time(0);
-  slog.debug("creating single-threaded server %s", name.buf);
-  slog.info("CPU capability: SSE2 %s, AVX512f %s",
-            supportsSSE2() ? "yes" : "no",
-            supportsAVX512f() ? "yes" : "no");
+    auto to_string = [](const bool value) {
+        return value ? "yes" : "no";
+    };
+
+    lastUserInputTime = lastDisconnectTime = time(nullptr);
+    slog.debug("creating single-threaded server %s", name.buf);
+    slog.info("CPU capability: SSE2 %s, SSE4.1 %s, SSE4.2 %s, AVX512f %s",
+              to_string(cpu_info::has_sse2),
+              to_string(cpu_info::has_sse4_1),
+              to_string(cpu_info::has_sse4_2),
+              to_string(cpu_info::has_avx512f));
 
   DLPRegion.enabled = DLPRegion.percents = false;
 
@@ -198,7 +209,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
       }
     }
 
-    DLPRegion.enabled = 1;
+    DLPRegion.enabled = true;
   }
 
   kasmpasswdpath[0] = '\0';
@@ -223,11 +234,18 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_)
 
   trackingClient[0] = 0;
 
-  if (watermarkData)
-    sendWatermark = true;
+    if (watermarkData)
+        sendWatermark = true;
 
-  if (Server::selfBench)
-    SelfBench();
+    if (Server::selfBench)
+        SelfBench();
+
+    if (Server::benchmark[0]) {
+        auto *file_name = Server::benchmark.getValueStr();
+        if (!std::filesystem::exists(file_name))
+            throw Exception("Benchmarking video file does not exist");
+        benchmark(file_name, Server::benchmarkResults.getValueStr());
+    }
 }
 
 VNCServerST::~VNCServerST()
@@ -756,6 +774,27 @@ void VNCServerST::stopDesktop()
   }
 }
 
+std::vector<SessionInfo> VNCServerST::getSessionUsers() {
+  std::vector<SessionInfo> users;
+
+  for ( auto client :  clients) {
+    if (!client->authenticated()) {
+      continue;
+    }
+    users.push_back(SessionInfo(client->getUsername(),client->getConnectionTime()));
+  }
+  return users;
+}
+
+void VNCServerST::updateSessionUsersList()
+{
+  auto sessionUsers = getSessionUsers();
+  if (!sessionUsers.empty()) {
+    std::string sessionUsersJson = formatUsersToJson(sessionUsers);
+    apimessager->mainUpdateSessionsInfo(sessionUsersJson);
+  }
+}
+
 int VNCServerST::authClientCount() {
   int count = 0;
   std::list<VNCSConnectionST*>::iterator ci;
@@ -1141,9 +1180,6 @@ void VNCServerST::writeUpdate()
   }
 }
 
-// checkUpdate() is called by clients to see if it is safe to read from
-// the framebuffer at this time.
-
 Region VNCServerST::getPendingRegion()
 {
   UpdateInfo ui;
@@ -1215,6 +1251,15 @@ void VNCServerST::notifyScreenLayoutChange(VNCSConnectionST* requester)
   }
 }
 
+bool VNCServerST::checkClientOwnerships() {
+  std::list<VNCSConnectionST*>::iterator i;
+  for (i = clients.begin(); i != clients.end(); i++) {
+    if ((*i)->is_owner())
+      return true;
+  }
+  return false;
+}
+
 bool VNCServerST::getComparerState()
 {
   if (rfb::Server::compareFB == 0)
@@ -1272,4 +1317,41 @@ void VNCServerST::sendUnixRelayData(const char name[],
       (*i)->sendUnixRelayData(name, buf, len);
     }
   }
+}
+
+void VNCServerST::notifyUserAction(const VNCSConnectionST* newConnection, std::string& username, const UserActionType actionType)
+{
+  if (username.empty()) {
+    username = "username_unavailable";
+  }
+
+  std::string actionTypeStr = actionType == Join ? "joined" : "left";
+  int notificationsSent = 0;
+
+  std::string msgNotification = "Sent user " +  actionTypeStr +  "   notification to client";
+  std::string errNotification = "Failed to send user " +  actionTypeStr +  "  notification to client: ";
+  std::string logNotification = "User " + username + " " + actionTypeStr + "  - sent notifications to ";
+
+  for (auto client : clients ) {
+    // Don't notify the connection that just joined, and only notify authenticated connections
+    if (client != newConnection && client->authenticated() &&
+        client->state() == SConnection::RFBSTATE_NORMAL) {
+      try {
+        if (actionType == Join) {
+          client->writer()->writeUserJoinedSession(username);
+        }
+        else {
+          client->writer()->writeUserLeftSession(username);
+        }
+        notificationsSent++;
+
+        slog.debug(msgNotification.c_str());
+      } catch (rdr::Exception& e) {
+         errNotification.append( e.str());
+        slog.error(errNotification.c_str());
+      }
+        }
+  }
+  logNotification.append( std::to_string(notificationsSent) + " clients");
+  slog.info(logNotification.c_str());
 }

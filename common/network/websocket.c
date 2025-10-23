@@ -70,6 +70,8 @@ void fatal(char *msg)
     exit(1);
 }
 
+#define WS_MAX_BUF_SIZE 4096
+
 // 2022-05-18 19:51:26,810 [INFO] websocket 0: 71.62.44.0 172.12.15.5 - "GET /api/get_frame_stats?client=auto HTTP/1.1" 403 2
 static void weblog(const unsigned code, const unsigned websocket,
                    const uint8_t debug,
@@ -644,7 +646,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     strncpy(headers->path, start, end-start);
     headers->path[end-start] = '\0';
 
-    start = strstr(handshake, "\r\nHost: ");
+    start = strcasestr(handshake, "\r\nHost: ");
     if (!start) { err("missing Host header"); return 0; }
     start += 8;
     end = strstr(start, "\r\n");
@@ -681,7 +683,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         strncpy(headers->key1, start, end-start);
         headers->key1[end-start] = '\0';
 
-        start = strstr(handshake, "\r\nConnection: ");
+        start = strcasestr(handshake, "\r\nConnection: ");
         if (!start) { err("missing Connection header"); return 0; }
         start += 14;
         end = strstr(start, "\r\n");
@@ -834,7 +836,7 @@ static uint8_t isValidIp(const char *str, const unsigned len) {
 static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[],
                        const char * const user, const char * const ip,
                        const char * const origip) {
-    char buf[4096];
+    char buf[WS_MAX_BUF_SIZE];
     char enc[PATH_MAX * 3 + 1];
     unsigned i;
 
@@ -895,7 +897,7 @@ static void dirlisting(ws_ctx_t *ws_ctx, const char fullpath[], const char path[
 
 static void servefile(ws_ctx_t *ws_ctx, const char *in, const char * const user,
                       const char * const ip, const char * const origip) {
-    char buf[4096], path[4096], fullpath[4096];
+    char buf[WS_MAX_BUF_SIZE], path[PATH_MAX], fullpath[PATH_MAX];
 
     //fprintf(stderr, "http servefile input '%s'\n", in);
 
@@ -965,7 +967,7 @@ static void servefile(ws_ctx_t *ws_ctx, const char *in, const char * const user,
     //fprintf(stderr, "http servefile output '%s'\n", buf);
 
     unsigned count;
-    while ((count = fread(buf, 1, 4096, f))) {
+    while ((count = fread(buf, 1, WS_MAX_BUF_SIZE, f))) {
         ws_send(ws_ctx, buf, count);
     }
     fclose(f);
@@ -1020,7 +1022,7 @@ notfound:
 }
 
 static void send403(ws_ctx_t *ws_ctx, const char * const origip, const char * const ip) {
-    char buf[4096];
+    char buf[WS_MAX_BUF_SIZE];
     sprintf(buf, "HTTP/1.1 403 Forbidden\r\n"
                  "Server: KasmVNC/4.0\r\n"
                  "Connection: close\r\n"
@@ -1034,7 +1036,7 @@ static void send403(ws_ctx_t *ws_ctx, const char * const origip, const char * co
 
 static void send400(ws_ctx_t *ws_ctx, const char * const origip, const char * const ip,
                     const char *info) {
-    char buf[4096];
+    char buf[WS_MAX_BUF_SIZE];
     sprintf(buf, "HTTP/1.1 400 Bad Request\r\n"
                  "Server: KasmVNC/4.0\r\n"
                  "Connection: close\r\n"
@@ -1048,7 +1050,7 @@ static void send400(ws_ctx_t *ws_ctx, const char * const origip, const char * co
 
 static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in, const char * const user,
                              const char * const ip, const char * const origip) {
-    char buf[4096], path[4096];
+    char buf[WS_MAX_BUF_SIZE], path[PATH_MAX];
     uint8_t ret = 0; // 0 = continue checking
 
     in += 5;
@@ -1237,7 +1239,7 @@ nope:
 
 static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const user,
                         const char * const ip, const char * const origip) {
-    char buf[4096], path[4096], args[4096] = "", origpath[4096];
+    char buf[WS_MAX_BUF_SIZE], path[PATH_MAX], args[PATH_MAX] = "", origpath[PATH_MAX];
     uint8_t ret = 0; // 0 = continue checking
 
     if (strncmp(in, "GET ", 4)) {
@@ -1509,7 +1511,8 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
 
         handler_msg("Sent bottleneck stats to API caller\n");
         ret = 1;
-    } else entry("/api/get_users") {
+    } else entry("/api/get_users")
+    {
         const char *ptr;
         settings.getUsersCb(settings.messager, &ptr);
 
@@ -1527,6 +1530,26 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
         free((char *) ptr);
 
         handler_msg("Sent user list to API caller\n");
+        ret = 1;
+    } else entry("/api/get_sessions") {
+
+        char *sessionData;
+        settings.getSessionsCb(settings.messager, &sessionData);
+
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                 "Server: KasmVNC/4.0\r\n"
+                 "Connection: close\r\n"
+                 "Content-type: text/plain\r\n"
+                 "Content-length: %lu\r\n"
+                 "%s"
+                 "\r\n", strlen(sessionData), extra_headers ? extra_headers : "");
+        ws_send(ws_ctx, buf, strlen(buf));
+        ws_send(ws_ctx, sessionData, strlen(sessionData));
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, strlen(buf) + strlen(sessionData));
+
+        free((char *) sessionData);
+
+        handler_msg("Sent session list to API caller\n");
         ret = 1;
     } else entry("/api/get_frame_stats") {
         char statbuf[4096], decname[1024];
@@ -1671,11 +1694,11 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
         }
 
         sprintf(buf, "HTTP/1.1 200 OK\r\n"
-                 "Server: KasmVNC/4.0\r\n"
-                 "Connection: close\r\n"
-                 "Content-type: text/json\r\n"
-                 "%s"
-                 "\r\n", extra_headers ? extra_headers : "");
+                "Server: KasmVNC/4.0\r\n"
+                "Connection: close\r\n"
+                "Content-type: text/json\r\n"
+                "%s"
+                "\r\n", extra_headers ? extra_headers : "");
         ws_send(ws_ctx, buf, strlen(buf));
         len = 15;
 
@@ -1687,7 +1710,7 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
             if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, ".."))
                 continue;
 
-            sprintf(path, "%s/%s", allpath, ent->d_name);
+            snprintf(path, PATH_MAX, "%s/%s", allpath, ent->d_name);
             struct stat st;
             if (lstat(path, &st))
                 continue;
@@ -1709,23 +1732,35 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
                 strcpy(grp, grpt.gr_name);
             }
 
-            sprintf(buf, "%s{ \"filename\": \"%s\", "
-                         "\"date_modified\": %lu, "
-                         "\"date_created\": %lu, "
-                         "\"is_dir\": %s, "
-                         "\"size\": %lu, "
-                         "\"owner\": \"%s\", "
-                         "\"group\": \"%s\", "
-                         "\"perms\": \"%s\" }",
-                         sent ? ",\n" : "",
-                         ent->d_name,
-                         st.st_mtime,
-                         st.st_ctime,
-                         S_ISDIR(st.st_mode) ? "true" : "false",
-                         S_ISDIR(st.st_mode) ? 0 : st.st_size,
-                         own,
-                         grp,
-                         perms);
+            sprintf(buf, "%s{ \"filename\": \"", sent ? ",\n" : "");
+            ws_send(ws_ctx, buf, strlen(buf));
+            len += strlen(buf);
+
+            size_t max_out_length = 2 * strlen(ent->d_name) + 1; // worst case scenario
+            char *filename = malloc(max_out_length);
+
+            JSON_escape(ent->d_name, filename);
+            size_t size = strlen(filename);
+            ws_send(ws_ctx, filename, size);
+            len += size;
+
+            free(filename);
+
+            sprintf(buf, "\", "
+                    "\"date_modified\": %lu, "
+                    "\"date_created\": %lu, "
+                    "\"is_dir\": %s, "
+                    "\"size\": %lu, "
+                    "\"owner\": \"%s\", "
+                    "\"group\": \"%s\", "
+                    "\"perms\": \"%s\" }",
+                    st.st_mtime,
+                    st.st_ctime,
+                    S_ISDIR(st.st_mode) ? "true" : "false",
+                    S_ISDIR(st.st_mode) ? 0 : st.st_size,
+                    own,
+                    grp,
+                    perms);
             sent = 1;
             ws_send(ws_ctx, buf, strlen(buf));
             len += strlen(buf);
@@ -1883,7 +1918,7 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
     unsigned char owner = 0;
     char inuser[USERNAME_LEN] = "-";
     if (!settings.disablebasicauth) {
-        const char *hdr = strstr(handshake, "Authorization: Basic ");
+        const char *hdr = strcasestr(handshake, "Authorization: Basic ");
         if (!hdr) {
             bl_addFailure(ip);
             wserr("Authentication attempt failed, BasicAuth required, but client didn't send any\n");

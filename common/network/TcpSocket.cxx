@@ -551,6 +551,18 @@ static void clearClipboardCb(void *messager)
   msgr->netClearClipboard();
 }
 
+static void getSessionsCb(void *messager,  char **ptr)
+{
+  GetAPIMessager *msgr =  (GetAPIMessager *) messager;
+  std::string_view sessionInfoView = msgr->netGetSessions();
+  //Since this data is being returned to a c function using char array
+  //memmoery needs to be freeded by calling function
+  char *sessionInfo = (char *) calloc(sessionInfoView.size() + 1, sizeof(char));
+  memcpy(sessionInfo, sessionInfoView.data(), sessionInfoView.size());
+  sessionInfo[sessionInfoView.size()] = '\0';
+  *ptr = sessionInfo;
+}
+
 #if OPENSSL_VERSION_NUMBER < 0x1010000f
 
 static pthread_mutex_t *sslmutex;
@@ -700,6 +712,7 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
   settings.serverFrameStatsReadyCb = serverFrameStatsReadyCb;
 
   settings.clearClipboardCb = clearClipboardCb;
+  settings.getSessionsCb = getSessionsCb;
 
   openssl_threads();
 

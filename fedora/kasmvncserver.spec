@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.3.3
+Version:        1.3.4
 Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
@@ -117,6 +117,12 @@ stop_vncserver_systemd_services_for_all_logged_in_users
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Thu Mar 20 2025 KasmTech <info@kasmweb.com> - 1.3.4-1
+- Add configuration key network.udp.payload_size.
+- Remove support for distro versions that reached end-of-life.
+- Add missing dependency on hostname.
+- Remove webpack to reduce security vulnerabilities.
+- Special characters in filenames are now properly escaped, preventing invalid JSON.
 * Fri Oct 25 2024 KasmTech <info@kasmweb.com> - 1.3.3-1
 - Allow disabling IP blacklist
 - Downloads API for detailed file downloads information

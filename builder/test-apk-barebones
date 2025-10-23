@@ -1,0 +1,37 @@
+#!/bin/bash
+
+set -e
+
+detect_base_image() {
+  BASE_IMAGE=$(echo "${os}:${os_codename}" | sed 's/\([0-9]\{2\}\)$/.\1/')
+}
+
+cd "$(dirname "$0")/.."
+. ./builder/process_test_options.sh
+. ./builder/common.sh
+os="${1:-alpine}"
+os_codename="${2:-321}"
+distro="${os}_${os_codename}"
+
+detect_build_dir
+detect_base_image
+docker build --build-arg KASMVNC_PACKAGE_DIR="${build_dir}/${distro}" \
+  --build-arg RUN_TEST="$run_test" \
+  --build-arg BASE_IMAGE="$BASE_IMAGE" \
+  -t kasmvnctester_barebones_${os}:$os_codename \
+  -f builder/dockerfile.${distro}.barebones.apk.test .
+echo
+
+detect_interactive
+docker run $interactive -p "443:$VNC_PORT" --rm -e "VNC_USER=foo" -e "VNC_PW=foobar" \
+  $core_dumps_dir_volume_option \
+  -e "VNC_PORT=$VNC_PORT" \
+  -e RUN_TEST="$run_test" \
+  -e CORE_DUMP_DIR_ON_HOST="$core_dumps_dir_on_host/${distro}" \
+  -e CORE_DUMP_DIR_INSIDE_CONTAINER="${core_dumps_dir_inside_container}/${distro}" \
+  --cap-add=SYS_PTRACE \
+  --cap-add=SYS_RESOURCE \
+  --ulimit core=-1 \
+  $entrypoint_executable \
+  kasmvnctester_barebones_${os}:$os_codename \
+  $entrypoint_args

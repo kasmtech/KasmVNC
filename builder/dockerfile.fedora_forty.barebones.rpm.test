@@ -1,0 +1,25 @@
+FROM fedora:40
+
+ENV STARTUPDIR=/dockerstartup
+
+ARG RUN_TEST
+RUN [ "$RUN_TEST" = 1 ] || dnf install -y \
+  less \
+  redhat-lsb-core \
+  vim \
+  xterm
+
+COPY ./builder/scripts/ /tmp/scripts/
+
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver-*.rpm /tmp/
+COPY fedora/kasmvncserver.spec /tmp/
+RUN /tmp/scripts/install_kasmvncserver_package
+
+RUN mkdir -p $STARTUPDIR
+COPY builder/startup/vnc_startup_barebones.sh $STARTUPDIR
+
+RUN useradd -m foo
+USER foo:kasmvnc-cert
+
+ENTRYPOINT "/$STARTUPDIR/vnc_startup_barebones.sh"

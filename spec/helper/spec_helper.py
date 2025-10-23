@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import shutil
 import subprocess
@@ -15,12 +16,34 @@ config_filename = os.path.join(config_dir, "config.yaml")
 if os.getenv('KASMVNC_SPEC_DEBUG_OUTPUT'):
     debug_output = True
 
+def run_vncserver_to_print_xvnc_cli_options(env=os.environ):
+    return run_cmd(f'vncserver -dry-run -config {config_filename}', env=env)
+
+def pick_cli_option(cli_option, xvnc_cmd):
+    cli_option_regex = re.compile(f'\'?-{cli_option}\'?(?:\s+[^-][^\s]*|$)')
+    results = cli_option_regex.findall(xvnc_cmd)
+    if len(results) == 0:
+        return None
+
+    return ' '.join(results)
 
 def write_config(config_text):
     os.makedirs(config_dir, exist_ok=True)
 
     with open(config_filename, "w") as f:
         f.write(config_text)
+
+
+def clean_locks():
+    tmp = '/tmp'
+    temporary_lock_file = os.path.join(tmp, '.X1-lock')
+    if (os.path.exists(temporary_lock_file)):
+        os.remove(temporary_lock_file)
+
+    temporary_lock_file = os.path.join(tmp, '.X11-unix')
+    temporary_lock_file = os.path.join(temporary_lock_file, 'X1')
+    if (os.path.exists(temporary_lock_file)):
+        os.remove(temporary_lock_file)
 
 
 def clean_env():
@@ -30,6 +53,7 @@ def clean_env():
     vnc_dir = os.path.join(home_dir, ".vnc")
     Path(vnc_dir).rmtree(ignore_errors=True)
 
+    clean_locks()
 
 def clean_kasm_users():
     home_dir = os.environ['HOME']
@@ -91,3 +115,4 @@ def kill_xvnc():
 
     run_cmd('vncserver -kill :1', print_stderr=False)
     running_xvnc = False
+    clean_locks()

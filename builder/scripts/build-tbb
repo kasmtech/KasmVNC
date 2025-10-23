@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+build_and_install() {
+    if [ $older_release -eq 1 ]; then
+        make extra_inc=big_iron.inc work_dir="$PWD"/ tbb_root="$PWD"
+
+        if [ -d /usr/lib/x86_64-linux-gnu ]; then
+            LIBS=lib/x86_64-linux-gnu
+        elif [ -d /usr/lib/aarch64-linux-gnu ]; then
+            LIBS=lib/aarch64-linux-gnu
+        elif [ -d /usr/lib/arm-linux-gnueabihf ]; then
+            LIBS=lib/arm-linux-gnu
+        fi
+
+        PC_FILE=/usr/${LIBS}/pkgconfig/tbb.pc
+        echo "prefix=/usr" > "${PC_FILE}"
+        echo "exec_prefix=\${prefix}" >> "${PC_FILE}"
+        echo "libdir=\${exec_prefix}/lib/${LIBS}" >> "${PC_FILE}"
+        echo "includedir=\${prefix}/include" >> "${PC_FILE}"
+        echo "Name: Threading Building Blocks" >> "${PC_FILE}"
+        echo "Description: Intel's parallelism library for C++" >> "${PC_FILE}"
+        echo "URL: http://www.threadingbuildingblocks.org/" >> "${PC_FILE}"
+        echo "Version: v2020.3.3" >> "${PC_FILE}"
+        echo "Libs: -ltbb -latomic" >> "${PC_FILE}"
+        echo "Cflags: -I\${includedir}" >> "${PC_FILE}"
+
+        cp _release/*.a /usr/"${LIBS}"/
+        cp -r include/* /usr/include/
+    else
+        cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DTBB_TEST=OFF -DBUILD_SHARED_LIBS=OFF -GNinja .
+        ninja -C build install
+    fi
+}
+
+prepare_source() {
+    DIR=tbb
+    cd /tmp
+    [ -d ./${DIR} ] && rm -rf ./${DIR}
+    mkdir ${DIR}
+
+    if [ $older_release -eq 1 ]; then
+        TBB_RELEASE="v2020.3.3"
+    else
+        TBB_RELEASE=$(curl -sL "https://api.github.com/repos/uxlfoundation/oneTBB/releases/latest" \
+        | grep '"tag_name":' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
+    fi
+
+    curl -Ls "https://github.com/uxlfoundation/oneTBB/archive/${TBB_RELEASE}.tar.gz" | \
+
+    tar xzvf - -C ${DIR}/ --strip-components=1
+    cd ${DIR}
+}
+
+older_release=0
+if grep -q 'Ubuntu 20.04\|Debian GNU/Linux 11' /etc/os-release 2>/dev/null; then
+    older_release=1
+fi
+
+prepare_source
+build_and_install

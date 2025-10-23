@@ -12,15 +12,29 @@ RUN apt-get update && \
 
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
-RUN apt-get update && apt-get -y install cmake git vim wget curl
-RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev libxcursor-dev
+RUN apt-get update && apt-get -y install ninja-build nasm git vim wget curl
+RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev \
+    libxcursor-dev libavformat-dev libswscale-dev
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-webp
-RUN $SCRIPTS_DIR/build-libjpeg-turbo
 
 RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
+
+RUN ARCH=$(arch) && \
+  CMAKE_URL="https://cmake.org/files/v3.22/cmake-3.22.0" && \
+  if [ "$ARCH" = "x86_64" ]; then \
+      CMAKE_URL="${CMAKE_URL}-linux-x86_64.sh"; \
+  elif [ "$ARCH" = "aarch64" ]; then \
+      CMAKE_URL="${CMAKE_URL}-linux-aarch64.sh"; \
+  else \
+      echo "Unsupported architecture: $ARCH" && exit 1; \
+  fi && \
+  curl -fsSL $CMAKE_URL -o cmake.sh && \
+  (echo y; echo n) | bash cmake.sh --prefix=/usr/local --skip-license && \
+  rm cmake.sh
+
+RUN $SCRIPTS_DIR/build-deps.sh
 
 COPY --chown=docker:docker . /src/
 

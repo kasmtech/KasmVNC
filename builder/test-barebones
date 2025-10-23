@@ -1,0 +1,49 @@
+#!/bin/bash
+
+set -eo pipefail
+
+create_gitlab_report() {
+  local error="$1"
+failure_report=$(cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Run test" tests="1" failures="1" errors="0" skipped="0">
+    <testcase classname="$os_fullname" name="Test run">
+        <failure type="description">${error}</failure>
+    </testcase>
+</testsuite>
+EOF
+)
+}
+
+write_gitlab_report() {
+	echo "$failure_report" > run_test/"${os}_${os_codename}.xml"
+}
+
+create_core_dumps_dir_writeable_by_container() {
+  mkdir -p "$core_dumps_dir_on_host"
+  if [[ -n "$CI" && $(id -u) = 0 ]]; then
+    chown 1000:1000 "$core_dumps_dir_on_host"
+  fi
+}
+
+saved_options=("$@")
+. ./builder/process_test_options.sh
+. ./builder/common.sh
+
+os="$1"
+os_codename="$2"
+os_fullname="${os}_${os_codename}"
+
+detect_package_format
+if [ "$run_test" != 1 ]; then
+   builder/test-${package_format}-barebones "${saved_options[@]}"
+   exit $?
+fi
+
+create_core_dumps_dir_writeable_by_container
+if ! builder/test-${package_format}-barebones "${saved_options[@]}" 2>&1 | \
+   tee run_test/"${os_fullname}.log"; then
+   create_gitlab_report "$(tail -1 run_test/${os_fullname}.log)"
+	 write_gitlab_report
+   exit 1
+fi

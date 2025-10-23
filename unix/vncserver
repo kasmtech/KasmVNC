@@ -43,6 +43,7 @@ use DateTime;
 use DateTime::TimeZone;
 
 use KasmVNC::CliOption;
+use KasmVNC::ConfigSetting;
 use KasmVNC::ConfigKey;
 use KasmVNC::PatternValidator;
 use KasmVNC::EnumValidator;
@@ -53,6 +54,8 @@ use KasmVNC::TextOption;
 use KasmVNC::TextUI;
 use KasmVNC::Utils;
 use KasmVNC::Logger;
+
+use KasmVNC::ConfigEnvVars;
 
 use constant {
   NO_ARG_VALUE => 0,
@@ -71,9 +74,18 @@ ParseAndProcessCliOptions();
 
 PrepareLoggingAndXvncKillingFramework();
 CreateUserConfigIfNeeded();
-DefineConfigToCLIConversion();
+
+DefinePossibleConfigSettings();
+
 LoadConfigs();
+OverrideConfigWithConfigEnvVars();
+InterpolateEnvVarsIntoConfigValues();
+ValidateConfigValues();
+CheckForUnsupportedConfigEnvVars();
+CheckForUnsupportedConfigKeys();
+
 ActivateConfigToCLIConversion();
+
 SetAppSettingsFromConfigAndCli();
 DisableLegacyVncAuth();
 AllowXProgramsToConnectToXvnc();
@@ -1178,6 +1190,11 @@ sub DefineFilePathsAndStuff {
   $KasmVNC::Users::vncPasswdBin = $exedir . "kasmvncpasswd";
   $KasmVNC::Users::logger = $logger;
   $KasmVNC::Config::logger = $logger;
+  $KasmVNC::ConfigEnvVars::logger = $logger;
+  $KasmVNC::ConfigEnvVars::SupportedAbsoluteKeys = \&SupportedAbsoluteKeys;
+  $KasmVNC::ConfigEnvVars::ConfigValue = \&ConfigValue;
+  $KasmVNC::ConfigEnvVars::SetConfigValue = \&SetConfigValue;
+  $KasmVNC::ConfigEnvVars::ShouldPrintTopic = \&ShouldPrintTopic;
 
   $vncSystemConfigDir = "/etc/kasmvnc";
   if ($ENV{KASMVNC_DEVELOPMENT}) {
@@ -1227,8 +1244,9 @@ sub limitVncModeOptions {
 }
 
 sub DefineConfigToCLIConversion {
-  $KasmVNC::CliOption::fetchValueSub = \&ConfigValue;
-  $KasmVNC::ConfigKey::fetchValueSub = \&ConfigValue;
+  $KasmVNC::CliOption::ConfigValue = \&ConfigValue;
+  $KasmVNC::ConfigSetting::ConfigValue = \&ConfigValue;
+  $KasmVNC::ConfigKey::ConfigValue = \&ConfigValue;
 
   my $regionValidator = KasmVNC::PatternValidator->new({
     pattern => qr/^(-)?\d+(%)?$/,
@@ -1246,12 +1264,24 @@ sub DefineConfigToCLIConversion {
     pattern => qr/^(never|\d+)$/,
     errorMessage => "must be a number or 'never'"
   });
+  my $percentValidator = KasmVNC::PatternValidator->new({
+    pattern => qr/^(\d+%)$/,
+    errorMessage => "must be a number, followed by %"
+  });
   my $allConfigKeysValidatorSub = sub {
     my @allConfigKeys = map { $_->configKeyNames() } @xvncOptions;
 
     KasmVNC::EnumValidator->new({
       allowedValues => [flatten(@allConfigKeys)]
     })
+  };
+  my $deriveValueStripPercentSub = sub {
+    $self = shift;
+
+    my $value = $self->configValue();
+    $value =~ s/%$//;
+
+    $value;
   };
   KasmVNC::CliOption::beforeIsActive(\&limitVncModeOptions);
   my $ipv4_regexp = '((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}';
@@ -1999,20 +2029,10 @@ sub DefineConfigToCLIConversion {
         configKeys => [
           KasmVNC::ConfigKey->new({
             name => "encoding.video_encoding_mode.enter_video_encoding_mode.area_threshold",
-            validator => KasmVNC::PatternValidator->new({
-              pattern => qr/^(\d+%)$/,
-              errorMessage => "must be a number, followed by %"
-            }),
+            validator => $percentValidator
           })
         ],
-        deriveValueSub => sub {
-          $self = shift;
-
-          my $value = $self->configValue();
-          $value =~ s/%$//;
-
-          $value;
-        }
+        deriveValueSub => $deriveValueStripPercentSub
     }),
     KasmVNC::CliOption->new({
         name => 'VideoOutTime',
@@ -2067,6 +2087,15 @@ sub DefineConfigToCLIConversion {
 
           $value;
         }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'WebpEncodingTime',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.video_encoding_mode.webp_encoding_time",
+            type => KasmVNC::ConfigKey::INT
+          })
+        ]
     }),
     KasmVNC::CliOption->new({
         name => 'CompareFB',
@@ -2453,6 +2482,56 @@ sub DefineConfigToCLIConversion {
           })
         ]
     }),
+    KasmVNC::CliOption->new({
+        name => 'DetectScrolling',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.scrolling.detect_vertical_scrolling",
+            type => KasmVNC::ConfigKey::BOOLEAN
+          })
+        ],
+        isActiveSub => sub {
+          $self = shift;
+
+          my $value = $self->configValue();
+          isPresent($value) && $value eq 'true';
+        }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'DetectHorizontal',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.scrolling.detect_horizontal_scrolling",
+            type => KasmVNC::ConfigKey::BOOLEAN,
+            validator => KasmVNC::CallbackValidator->new({
+              isValidCallback => sub {
+                my $value = shift;
+
+                return 1 if $value eq "false";
+
+                ConfigValue("encoding.scrolling.detect_vertical_scrolling") eq "true";
+              },
+              errorMessage => "Detection of horizontal scrolling requires detection of vertical scrolling enabled"
+            }),
+          })
+        ],
+        isActiveSub => sub {
+          $self = shift;
+
+          my $value = $self->configValue();
+          isPresent($value) && $value eq 'true';
+        }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'ScrollDetectLimit',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "encoding.scrolling.scroll_detect_threshold",
+            validator => $percentValidator
+          })
+        ],
+        deriveValueSub => $deriveValueStripPercentSub
+    }),
   );
 
   %cliArgMap = map { ("-" . $_->{name}) => $_ } @xvncOptions;
@@ -2639,7 +2718,7 @@ sub ShouldPrintTopic {
 
 sub SupportedAbsoluteKeys {
   my @supportedAbsoluteKeys =
-    map { $_->configKeyNames() } @allCliOptions;
+    map { $_->configKeyNames() } (@allCliOptions, @configSettings);
   @supportedAbsoluteKeys = flatten(@supportedAbsoluteKeys);
   my %result = map { $_ => 1 } @supportedAbsoluteKeys;
 
@@ -2663,7 +2742,6 @@ sub SupportedSectionsFromAbsoluteKey {
 
 sub StartXvncOrExit {
   $cmd = ConstructXvncCmd();
-  CheckForUnsupportedConfigKeys();
   CheckSslCertReadable();
   say $cmd if ($debug || IsDryRun()) && ShouldPrintTopic("xvnc-cmd");
 
@@ -2816,6 +2894,13 @@ sub ConfigValue {
   return $configRef->get($absoluteKey);
 }
 
+sub SetConfigValue {
+  my ($absoluteKey, $value, $configRef) = @_;
+  $configRef ||= $mergedConfig;
+
+  $configRef->set($absoluteKey, $value);
+}
+
 sub DerivedValue {
   my $absoluteKey = shift;
 
@@ -2890,7 +2975,6 @@ sub ConstructOptFromConfig{
 }
 
 sub ConfigToCmd {
-  ValidateConfig();
   %optFromConfig = %{ ConstructOptFromConfig() };
 
   my @cmd = map { $cliArgMap{$_}->toString() } (keys %optFromConfig);
@@ -2899,20 +2983,20 @@ sub ConfigToCmd {
   return $cmdStr;
 }
 
-sub ValidateConfig {
-  foreach my $cliOption (@allCliOptions) {
-    ValidateCliOption($cliOption);
+sub ValidateConfigValues {
+  foreach my $setting (@allCliOptions, @configSettings) {
+    ValidateSetting($setting);
   }
 }
 
-sub ValidateCliOption {
-  my $cliOption = $_[0];
+sub ValidateSetting {
+  my $setting = $_[0];
 
-  return if ($cliOption->isValid());
+  return if ($setting->isValid());
 
   if (ShouldPrintTopic("validation")) {
     $logger->warn("config errors:");
-    $logger->warn($cliOption->errorMessages());
+    $logger->warn($setting->errorMessages());
     $logger->warn();
   }
 
@@ -2971,4 +3055,35 @@ sub InitLogger {
 
 sub UseUtfStdio {
   use open qw( :std :encoding(UTF-8) );
+}
+
+sub DefinePossibleConfigSettings {
+  DefineConfigToCLIConversion();
+  DefineConfigSettings();
+}
+
+sub  DefineConfigSettings {
+  @configSettings = (
+    KasmVNC::ConfigSetting->new({
+        configKey => KasmVNC::ConfigKey->new({
+          name => "server.allow_environment_variables_to_override_config_settings",
+          type => KasmVNC::ConfigKey::BOOLEAN
+        })
+    }),
+  );
+}
+
+sub InterpolateEnvVarsIntoConfigValues {
+  my @interpolationDenylist = (
+    "server.allow_environment_variables_to_override_config_settings"
+  );
+  my %supportedAbsoluteKeys = %{ SupportedAbsoluteKeys() };
+
+  delete @supportedAbsoluteKeys{@interpolationDenylist};
+
+  for my $absoluteKey (keys %supportedAbsoluteKeys) {
+    my $value = ConfigValue($absoluteKey);
+    my $interpolatedValue = interpolateEnvVars($value);
+    SetConfigValue($absoluteKey, $interpolatedValue);
+  }
 }

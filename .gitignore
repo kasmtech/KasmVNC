@@ -21,6 +21,9 @@ builder/build/
 builder/www/
 spec/tmp
 
+Benchmark.xml
+SelfBench.xml
+
 # Deb building artefacts
 debian/.debhelper/
 debian/files
@@ -28,6 +31,9 @@ debian/kasmvncserver.substvars
 debian/kasmvncserver/
 .pc
 .vscode/
+
+# --run-test artifacts
+run_test/
 
 alpine/.abuild/kasmvnc_signing_key.rsa
 alpine/.abuild/kasmvnc_signing_key.rsa.pub

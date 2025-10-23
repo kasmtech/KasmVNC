@@ -1,0 +1,24 @@
+ARG BASE_IMAGE
+FROM $BASE_IMAGE
+
+RUN apk add bash
+
+ENV STARTUPDIR=/dockerstartup
+
+COPY ./builder/scripts/ /tmp/scripts/
+COPY alpine/kasmvncserver/APKBUILD /tmp
+
+ARG KASMVNC_PACKAGE_DIR
+COPY $KASMVNC_PACKAGE_DIR/kasmvncserver-*.apk /tmp/
+RUN /tmp/scripts/install_kasmvncserver_package
+
+ARG RUN_TEST
+RUN [ "$RUN_TEST" = 1 ] || apk add xterm
+
+RUN mkdir -p $STARTUPDIR
+COPY builder/startup/vnc_startup_barebones.sh $STARTUPDIR
+
+RUN adduser -D -s/bin/bash foo && addgroup foo kasmvnc-cert
+USER foo
+
+ENTRYPOINT "/$STARTUPDIR/vnc_startup_barebones.sh"

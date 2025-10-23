@@ -8,7 +8,7 @@ use Data::Dumper;
 
 use KasmVNC::Utils;
 
-our $fetchValueSub;
+our $ConfigValue;
 
 use constant {
   INT => 0,
@@ -32,13 +32,6 @@ sub validate {
 
   return if $self->isValueBlank();
 
-  if ($self->{validator}) {
-    $self->resolveValidatorFromFunction() if (ref $self->{validator} eq "CODE");
-
-    $self->{validator}->validate($self);
-    return;
-  }
-
   switch($self->{type}) {
     case INT {
       $self->validateInt();
@@ -46,6 +39,13 @@ sub validate {
     case BOOLEAN {
       $self->validateBoolean();
     }
+  }
+
+  if ($self->{validator}) {
+    $self->resolveValidatorFromFunction() if (ref $self->{validator} eq "CODE");
+
+    $self->{validator}->validate($self);
+    return;
   }
 }
 
@@ -86,18 +86,12 @@ sub isValueBlank {
   !defined($value) || $value eq "";
 }
 
-sub fetchValue {
-  my $self = shift;
-
-  &$fetchValueSub(shift);
-}
-
 sub constructErrorMessage {
   my $self = shift;
   my $staticErrorMessage = shift;
 
   my $name = $self->{name};
-  my $value = join ", ", @{ listify($self->fetchValue($name)) };
+  my $value = join ", ", @{ listify($ConfigValue->($name)) };
 
   "$name '$value': $staticErrorMessage";
 }
@@ -117,7 +111,7 @@ sub isValidBoolean {
 sub value {
   my $self = shift;
 
-  $self->fetchValue($self->{name});
+  $ConfigValue->($self->{name});
 }
 
 our @EXPORT_OK = ('INT', 'STRING', 'BOOLEAN');
