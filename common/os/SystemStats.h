@@ -35,8 +35,8 @@ struct disk_stats_t {
     std::string_view disk_name;
     uint64_t bytes_read;
     uint64_t bytes_written;
-    uint64_t bytes_read_per_sec;
-    uint64_t bytes_written_per_sec;
+    double bytes_read_per_sec;
+    double bytes_written_per_sec;
     uint64_t iowait;
 };
 
