@@ -36,6 +36,7 @@ namespace rfb {
   const int msgTypeSubscribeUnixRelay = 182;
   const int msgTypeUnixRelay = 183;
   const int msgTypeKeepAlive = 184;
+  const int msgTypeServerDisconnect = 185;
 
   const int msgTypeServerFence = 248;
   const int msgTypeUserAddedToSession = 253;
@@ -63,6 +64,7 @@ namespace rfb {
   //const int msgTypeSubscribeUnixRelay = 182;
   //const int msgTypeUnixRelay = 183;
   //const int msgTypeKeepAlive = 184;
+  //const int msgTypeServerDisconnect = 185;
 
   const int msgTypeClientFence = 248;
 

@@ -561,6 +561,13 @@ int VNCSConnectionST::checkIdleTimeout()
     return secsToMillis(idleTimeout);
   }
   if (timeLeft <= 0) {
+    if (cp.supportsDisconnectNotify) {
+      try {
+        writer()->writeDisconnectNotify(true, "Idle timeout");
+      } catch (rdr::Exception& e) {
+        vlog.debug("Failed to send disconnect notice: %s", e.str());
+      }
+    }
     close("Idle timeout");
     return 0;
   }
