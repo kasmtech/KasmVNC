@@ -49,6 +49,10 @@ static LogWriter vlog("VNCSConnST");
 
 static Cursor emptyCursor(0, 0, Point(0, 0), NULL);
 
+namespace {
+const rdr::U32 CLIENT_KEEPALIVE_KEYSYM = 1;
+}
+
 extern rfb::BoolParameter disablebasicauth;
 
 extern "C" char unixrelaynames[MAX_UNIX_RELAYS][MAX_UNIX_RELAY_NAME_LEN];
@@ -860,6 +864,10 @@ public:
 // multiple down events (for autorepeat), but only allow a single up event.
 void VNCSConnectionST::keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down) {
   rdr::U32 lookup;
+
+  if (keycode == 0 && keysym == CLIENT_KEEPALIVE_KEYSYM) {
+    return;
+  }
 
   lastEventTime = time(0);
   server->lastUserInputTime = lastEventTime;
@@ -1697,6 +1705,11 @@ void VNCSConnectionST::handleFrameStats(rdr::U32 all, rdr::U32 render)
   }
 
   frameTracking = false;
+}
+
+void VNCSConnectionST::keepAlive()
+{
+  // Keepalive traffic should not influence idle disconnect timers.
 }
 
 // setCursor() is called whenever the cursor has changed shape or pixel format.

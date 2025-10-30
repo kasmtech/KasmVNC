@@ -35,6 +35,7 @@ namespace rfb {
   const int msgTypeUpgradeToUdp = 181;
   const int msgTypeSubscribeUnixRelay = 182;
   const int msgTypeUnixRelay = 183;
+  const int msgTypeKeepAlive = 184;
 
   const int msgTypeServerFence = 248;
   const int msgTypeUserAddedToSession = 253;
@@ -61,6 +62,7 @@ namespace rfb {
   //const int msgTypeUpgradeToUdp = 181;
   //const int msgTypeSubscribeUnixRelay = 182;
   //const int msgTypeUnixRelay = 183;
+  //const int msgTypeKeepAlive = 184;
 
   const int msgTypeClientFence = 248;
 
