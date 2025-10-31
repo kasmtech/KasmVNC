@@ -1774,7 +1774,13 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
         ret = 1;
     } else entry("/api/system/stats") {
         const char *response = settings.get_system_stats_cb(settings.messager);
-        ws_send(ws_ctx, response, strlen(response));
+        size_t response_len = strlen(response);
+        ws_send(ws_ctx, response, response_len);
+
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, response_len);
+
+        handler_msg("Sent system stats to API caller\n");
+        ret = 1;
     }
 
     #undef entry
