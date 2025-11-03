@@ -59,6 +59,7 @@ namespace rfb {
     void readRequestStats();
     void readFrameStats();
     void readBinaryClipboard();
+    void readKeepAlive();
 
     void readQEMUMessage();
     void readQEMUKeyEvent();

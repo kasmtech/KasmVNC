@@ -791,3 +791,20 @@ void SMsgWriter::writeUserLeftSession(const std::string& username)
   os->writeString(username.c_str());
   endMsg();
 }
+
+void SMsgWriter::writeDisconnectNotify(bool graceful, const char *reason)
+{
+  if (!cp->supportsDisconnectNotify)
+    return;
+
+  const char *msg = reason ? reason : "";
+  size_t len = strlen(msg);
+
+  startMsg(msgTypeServerDisconnect);
+  os->writeU8(graceful ? 1 : 0);
+  os->pad(3);
+  os->writeU32(len);
+  if (len > 0)
+    os->writeBytes(msg, len);
+  endMsg();
+}

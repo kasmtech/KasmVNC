@@ -117,6 +117,7 @@ namespace rfb {
     bool supportsFence;
     bool supportsContinuousUpdates;
     bool supportsExtendedClipboard;
+    bool supportsDisconnectNotify;
 
     bool supportsUdp;
 

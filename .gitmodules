@@ -1,7 +1,7 @@
 [submodule "kasmweb"]
 	path = kasmweb
 	url = https://github.com/kasmtech/noVNC.git
-	branch = master
+	branch = feature/VNC-275_server_idle_timeout
 [submodule "kasmvnc-functional-tests"]
 	path = kasmvnc-functional-tests
 	url = git@gitlab.com:kasm-technologies/internal/kasmvnc-functional-tests.git

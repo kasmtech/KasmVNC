@@ -106,6 +106,9 @@ void SMsgReader::readMsg()
   case msgTypeUnixRelay:
     readUnixRelay();
     break;
+  case msgTypeKeepAlive:
+    readKeepAlive();
+    break;
   default:
     fprintf(stderr, "unknown message type %d\n", msgType);
     throw Exception("unknown message type");
@@ -317,6 +320,11 @@ void SMsgReader::readFrameStats()
   rdr::U32 all = is->readU32();
   rdr::U32 render = is->readU32();
   handler->handleFrameStats(all, render);
+}
+
+void SMsgReader::readKeepAlive()
+{
+  handler->keepAlive();
 }
 
 void SMsgReader::readQEMUMessage()
