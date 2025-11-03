@@ -1,0 +1,14 @@
+[Unit]
+Description=KasmVNC
+After=network.target
+
+[Service]
+Type=forking
+Restart=always
+RestartSec=5
+ExecStartPre=-/usr/bin/vncserver -kill %i
+ExecStart=/usr/bin/vncserver %i
+ExecStop=/usr/bin/vncserver -kill %i
+
+[Install]
+WantedBy=default.target

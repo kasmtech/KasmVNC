@@ -49,6 +49,7 @@ cp $SRC_BIN/vncconfig $DESTDIR/usr/bin;
 cp $SRC_BIN/kasmvncpasswd $DESTDIR/usr/bin;
 cp $SRC_BIN/kasmxproxy $DESTDIR/usr/bin;
 cp -r $SRC/lib/kasmvnc/ $DESTDIR/usr/lib/kasmvncserver
+cp -r $SRC/lib/systemd/ $DESTDIR/usr/lib/
 cd $DESTDIR/usr/bin && ln -s kasmvncpasswd vncpasswd;
 cp -r $SRC/share/doc/kasmvnc*/* $DESTDIR/usr/share/doc/kasmvncserver/
 rsync -r --links --safe-links --exclude '.git*' --exclude po2js --exclude xgettext-html \
@@ -68,12 +69,45 @@ cp $SRC/share/man/man1/vncpasswd.1 $DST_MAN;
 cp $SRC/share/man/man1/kasmxproxy.1 $DST_MAN;
 cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 
+%preun
+stop_vncserver_systemd_services_for_all_logged_in_users() {
+  for session in $(list_user_sessions); do
+    stop_user_services "$session"
+  done
+}
+
+list_user_sessions() {
+  loginctl list-sessions --no-legend | awk '{print $1}'
+}
+
+stop_user_services() {
+  local session="$1"
+
+  for service in $(list_active_services); do
+    systemctl --user --machine=$(systemd_user_from_session "$session") stop "$service" || true
+  done
+}
+
+systemd_user_from_session() {
+  local session="$1"
+
+  echo $(loginctl show-session "$session" -p Name --value)@
+}
+
+list_active_services() {
+  systemctl --user --machine=$(systemd_user_from_session "$session") \
+    list-units --type=service --state=active --plain --no-legend | \
+    awk '{ print $1 }' | grep kasmvncserver
+}
+
+stop_vncserver_systemd_services_for_all_logged_in_users
 
 %files
 %config(noreplace) /etc/kasmvnc
 
 /usr/bin/*
 /usr/lib/kasmvncserver
+/usr/lib/systemd/user/kasmvncserver@.service
 /usr/share/man/man1/*
 /usr/share/perl5/KasmVNC
 /usr/share/kasmvnc
@@ -160,4 +194,11 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
   make_self_signed_certificate
 
 %postun
-  rm -f /etc/pki/tls/private/kasmvnc.pem
+  is_uninstall=0;
+
+  if [ "$1" == 0 ]; then
+    is_uninstall=1;
+  fi
+  if [ "$is_uninstall" = 1 ]; then
+    rm -f /etc/pki/tls/private/kasmvnc.pem
+  fi

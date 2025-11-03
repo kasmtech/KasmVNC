@@ -21,6 +21,7 @@ install: unpack_tarball
 	cp $(SRC_BIN)/kasmvncpasswd $(DESTDIR)/usr/bin/
 	cp $(SRC_BIN)/kasmxproxy $(DESTDIR)/usr/bin/
 	cp -r $(SRC)/lib/kasmvnc/ $(DESTDIR)/usr/lib/kasmvncserver
+	cp -r $(SRC)/lib/systemd/ $(DESTDIR)/usr/lib/
 	cp -r $(SRC)/share/doc/kasmvnc*/* $(DESTDIR)/usr/share/doc/kasmvncserver/
 	rsync -r --links --safe-links --exclude '.git*' --exclude po2js \
 		--exclude xgettext-html --exclude www/utils/ --exclude .eslintrc \

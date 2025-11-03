@@ -53,6 +53,8 @@ if [ $SERVER = 1 ]; then
 	install -m 755 ./xorg.build/lib/dri/swrast_dri.so $OUTDIR/lib/dri/
 	mkdir -p $OUTDIR/lib/kasmvnc
 	install -m 755 $SRCDIR/builder/startup/deb/select-de.sh $OUTDIR/lib/kasmvnc
+	mkdir -p $OUTDIR/lib/systemd/user
+	install -m 644 ./unix/kasmvncserver@.service $OUTDIR/lib/systemd/user
   mkdir -p $OUTDIR/share/kasmvnc
 
   cp -r $SRCDIR/unix/KasmVNC/ $OUTDIR/bin/
