@@ -37,7 +37,7 @@ struct disk_stats_t {
     uint64_t bytes_written;
     double bytes_read_per_sec;
     double bytes_written_per_sec;
-    uint64_t iowait;
+    double iowait;
 };
 
 class SystemStats {
