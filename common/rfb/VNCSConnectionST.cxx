@@ -40,6 +40,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <wordexp.h>
+#include <fmt/format.h>
 
 #include "encoders/EncoderProbe.h"
 #include "kasmpasswd.h"
@@ -1696,6 +1697,15 @@ void VNCSConnectionST::sendStats(const bool toClient) {
   } else if (server->apimessager) {
     server->apimessager->mainUpdateBottleneckStats(peerEndpoint.buf, buf);
   }
+}
+
+void VNCSConnectionST::sendExtendedNetworkStats() {
+    fmt::memory_buffer buf;
+    int jitter{};
+
+    fmt::format_to(std::back_inserter(buf), "[{}, {}, {}]", jitter, congestion.getBandwidth(), congestion.getPingTime());
+    vlog.info("Sending diagnostic network stats:\n%s\n", buf.data());
+    writer()->writeStats(buf.data(), static_cast<int>(buf.size()));
 }
 
 void VNCSConnectionST::handleFrameStats(rdr::U32 all, rdr::U32 render)

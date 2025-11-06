@@ -314,6 +314,7 @@ void SMsgReader::readRequestStats()
 {
   is->skip(3);
   handler->sendStats();
+  handler->sendExtendedNetworkStats();
 }
 
 void SMsgReader::readFrameStats()

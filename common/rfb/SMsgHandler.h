@@ -63,6 +63,7 @@ namespace rfb {
                                     const rdr::U32 len, const rdr::U32 id);
 
     virtual void sendStats(const bool toClient = true) = 0;
+    virtual void sendExtendedNetworkStats() = 0;
     virtual void handleFrameStats(rdr::U32 all, rdr::U32 render) = 0;
     virtual void keepAlive();
 

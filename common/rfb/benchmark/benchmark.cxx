@@ -106,6 +106,9 @@ namespace benchmarking {
 
         void sendStats(const bool toClient) override {}
 
+        void sendExtendedNetworkStats() override {
+        }
+
         [[nodiscard]] bool canChangeKasmSettings() const override {
             return true;
         }
