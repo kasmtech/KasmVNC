@@ -1,0 +1,39 @@
+FROM devuan/devuan:excalibur
+
+ENV KASMVNC_BUILD_OS devuan
+ENV KASMVNC_BUILD_OS_CODENAME excalibur
+ENV XORG_VER 21.1.16
+ENV DEBIAN_FRONTEND noninteractive
+
+# Upstream bug workaround
+# Ref: https://dev1galaxy.org/viewtopic.php?pid=59263
+RUN chmod o-w /usr/sbin
+
+RUN \
+  echo "**** add all sources ****" && \
+  echo "deb http://deb.devuan.org/merged excalibur main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
+  echo "deb-src http://deb.devuan.org/merged excalibur main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+  echo "deb http://deb.devuan.org/merged excalibur-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+  echo "deb-src http://deb.devuan.org/merged excalibur-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+  echo "deb http://deb.devuan.org/merged excalibur-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+  echo "deb-src http://deb.devuan.org/merged excalibur-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list
+
+RUN apt-get update && \
+      apt-get -y install sudo
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
+RUN apt-get update && apt-get -y install ninja-build cmake nasm git libgnutls28-dev vim wget tightvncserver curl
+RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev \
+    libxcursor-dev libavformat-dev libswscale-dev
+
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/build-deps.sh
+
+RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
+
+COPY --chown=docker:docker . /src/
+
+USER docker
+ENTRYPOINT ["/src/builder/build.sh"]
