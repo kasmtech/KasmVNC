@@ -36,15 +36,15 @@ using namespace rfb;
 static LogWriter vlog("SConnection");
 
 // AccessRights values
-const SConnection::AccessRights SConnection::AccessView           = 0x0001;
-const SConnection::AccessRights SConnection::AccessKeyEvents      = 0x0002;
-const SConnection::AccessRights SConnection::AccessPtrEvents      = 0x0004;
-const SConnection::AccessRights SConnection::AccessCutText        = 0x0008;
-const SConnection::AccessRights SConnection::AccessSetDesktopSize = 0x0010;
-const SConnection::AccessRights SConnection::AccessNonShared      = 0x0020;
-const SConnection::AccessRights SConnection::AccessDefault        = 0x03ff;
-const SConnection::AccessRights SConnection::AccessNoQuery        = 0x0400;
-const SConnection::AccessRights SConnection::AccessFull           = 0xffff;
+constexpr SConnection::AccessRights SConnection::AccessView           = 0x0001;
+constexpr SConnection::AccessRights SConnection::AccessKeyEvents      = 0x0002;
+constexpr SConnection::AccessRights SConnection::AccessPtrEvents      = 0x0004;
+constexpr SConnection::AccessRights SConnection::AccessCutText        = 0x0008;
+constexpr SConnection::AccessRights SConnection::AccessSetDesktopSize = 0x0010;
+constexpr SConnection::AccessRights SConnection::AccessNonShared      = 0x0020;
+constexpr SConnection::AccessRights SConnection::AccessDefault        = 0x03ff;
+constexpr SConnection::AccessRights SConnection::AccessNoQuery        = 0x0400;
+constexpr SConnection::AccessRights SConnection::AccessFull           = 0xffff;
 
 
 SConnection::SConnection()

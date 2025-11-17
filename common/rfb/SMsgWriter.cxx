@@ -98,9 +98,9 @@ void SMsgWriter::writeBinaryClipboard(const std::vector<SConnection::binaryClipb
   endMsg();
 }
 
-void SMsgWriter::writeStats(const char* str, int len)
+void SMsgWriter::writeStats(int msg_type, const char* str, int len)
 {
-  startMsg(msgTypeStats);
+  startMsg(msg_type);
   os->pad(3);
   os->writeU32(len);
   os->writeBytes(str, len);

@@ -61,6 +61,9 @@ namespace rfb {
         T &front() { return buffer[head]; }
         const T &front() const { return buffer[head]; }
 
+        T &back() { return buffer[tail - 1]; }
+        const T &back() const { return buffer[tail - 1]; }
+
 
         using iterator = std::array<T, N>::iterator;
         using const_iterator = std::array<T, N>::const_iterator;

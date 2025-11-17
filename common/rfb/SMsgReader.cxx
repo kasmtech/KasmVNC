@@ -78,6 +78,9 @@ void SMsgReader::readMsg()
   case msgTypeFrameStats:
     readFrameStats();
     break;
+  case msgTypeNetworkStats:
+    readNetworkStats();
+    break;
   case msgTypeBinaryClipboard:
     readBinaryClipboard();
     break;
@@ -314,7 +317,6 @@ void SMsgReader::readRequestStats()
 {
   is->skip(3);
   handler->sendStats();
-  handler->sendExtendedNetworkStats();
 }
 
 void SMsgReader::readFrameStats()
@@ -323,6 +325,11 @@ void SMsgReader::readFrameStats()
   rdr::U32 all = is->readU32();
   rdr::U32 render = is->readU32();
   handler->handleFrameStats(all, render);
+}
+
+void SMsgReader::readNetworkStats() {
+  is->skip(3);
+  handler->sendNetworkStats();
 }
 
 void SMsgReader::readKeepAlive()
