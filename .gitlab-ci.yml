@@ -124,6 +124,7 @@ build_amd64:
   parallel:
     matrix:
       - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'debian trixie', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
+    max_in_parallel: 3
 
 build_arm64:
   stage: build
@@ -146,6 +147,7 @@ build_arm64:
   parallel:
     matrix:
       - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'debian trixie', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
+    max_in_parallel: 3
 
 run_test_amd64:
   stage: run_test
@@ -175,6 +177,7 @@ run_test_amd64:
   parallel:
     matrix:
       - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'debian trixie', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
+    max_in_parallel: 3
 
 run_test_arm64:
   stage: run_test
@@ -205,6 +208,7 @@ run_test_arm64:
   parallel:
     matrix:
       - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'debian trixie', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
+    max_in_parallel: 3
 
 spec_test:
   stage: test
