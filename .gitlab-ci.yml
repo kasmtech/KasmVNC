@@ -51,6 +51,41 @@ stages:
 .enable_core_dumps: &enable_core_dumps
   - echo core > /proc/sys/kernel/core_pattern
 
+.parallel_matrix: &parallel_matrix
+  matrix:
+      - DISTRO: 'ubuntu focal'
+        GROUP: 0
+      - DISTRO: 'ubuntu jammy'
+        GROUP: 1
+      - DISTRO: 'ubuntu noble'
+        GROUP: 2
+      - DISTRO: 'debian bullseye'
+        GROUP: 3
+      - DISTRO: 'debian bookworm'
+        GROUP: 0
+      - DISTRO: 'debian trixie'
+        GROUP: 1
+      - DISTRO: 'kali kali-rolling'
+        GROUP: 2
+      - DISTRO: 'oracle 8'
+        GROUP: 3
+      - DISTRO: 'oracle 9'
+        GROUP: 0
+      - DISTRO: 'opensuse 15'
+        GROUP: 1
+      - DISTRO: 'fedora forty'
+        GROUP: 2
+      - DISTRO: 'fedora fortyone'
+        GROUP: 3
+      - DISTRO: 'alpine 318'
+        GROUP: 0
+      - DISTRO: 'alpine 319'
+        GROUP: 1
+      - DISTRO: 'alpine 320'
+        GROUP: 2
+      - DISTRO: 'alpine 321'
+        GROUP: 3
+
 default:
   retry: 2
   tags:
@@ -121,11 +156,10 @@ build_amd64:
   artifacts:
     paths:
       - output/
-  resource_group: limit_concurrent_build
+  resource_group: "concurrent_$GROUP"
   parallel:
-    matrix:
-      - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'debian trixie', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
-    
+    *parallel_matrix
+
 build_arm64:
   stage: build
   allow_failure: true
@@ -144,10 +178,10 @@ build_arm64:
   artifacts:
     paths:
       - output/
-  resource_group: limit_concurrent_build
+  resource_group: "concurrent_$GROUP"
   parallel:
-    matrix:
-      - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'debian trixie', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
+    *parallel_matrix
+
     
 run_test_amd64:
   stage: run_test
@@ -174,10 +208,9 @@ run_test_amd64:
     reports:
       junit:
         - run_test/*.xml
-  resource_group: limit_concurrent_build
+  resource_group: "concurrent_$GROUP"
   parallel:
-    matrix:
-      - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'debian trixie', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
+    *parallel_matrix
 
 run_test_arm64:
   stage: run_test
@@ -205,10 +238,9 @@ run_test_arm64:
     reports:
       junit:
         - run_test/*.xml
-  resource_group: limit_concurrent_build
+  resource_group: "concurrent_$GROUP"
   parallel:
-    matrix:
-      - DISTRO: [ 'ubuntu focal', 'ubuntu jammy', 'ubuntu noble', 'debian bullseye', 'debian bookworm', 'debian trixie', 'kali kali-rolling', 'oracle 8', 'oracle 9', 'opensuse 15', 'fedora forty', 'fedora fortyone', 'alpine 318', 'alpine 319', 'alpine 320', 'alpine 321' ]
+    *parallel_matrix
     
 spec_test:
   stage: test
