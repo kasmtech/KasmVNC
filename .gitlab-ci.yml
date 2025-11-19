@@ -62,13 +62,13 @@ stages:
       - DISTRO: 'debian bullseye'
         GROUP: 3
       - DISTRO: 'debian bookworm'
-        GROUP: 0
+        GROUP: 4
       - DISTRO: 'debian trixie'
-        GROUP: 1
+        GROUP: 5
       - DISTRO: 'kali kali-rolling'
-        GROUP: 2
+        GROUP: 6
       - DISTRO: 'oracle 8'
-        GROUP: 3
+        GROUP: 7
       - DISTRO: 'oracle 9'
         GROUP: 0
       - DISTRO: 'opensuse 15'
@@ -78,13 +78,13 @@ stages:
       - DISTRO: 'fedora fortyone'
         GROUP: 3
       - DISTRO: 'alpine 318'
-        GROUP: 0
+        GROUP: 4
       - DISTRO: 'alpine 319'
-        GROUP: 1
+        GROUP: 5
       - DISTRO: 'alpine 320'
-        GROUP: 2
+        GROUP: 6
       - DISTRO: 'alpine 321'
-        GROUP: 3
+        GROUP: 7
 
 default:
   retry: 2
