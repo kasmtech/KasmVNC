@@ -70,21 +70,21 @@ stages:
       - DISTRO: 'oracle 8'
         GROUP: 7
       - DISTRO: 'oracle 9'
-        GROUP: 0
+        GROUP: 8
       - DISTRO: 'opensuse 15'
-        GROUP: 1
+        GROUP: 9
       - DISTRO: 'fedora forty'
-        GROUP: 2
+        GROUP: 10
       - DISTRO: 'fedora fortyone'
-        GROUP: 3
+        GROUP: 11
       - DISTRO: 'alpine 318'
-        GROUP: 4
+        GROUP: 12
       - DISTRO: 'alpine 319'
-        GROUP: 5
+        GROUP: 13
       - DISTRO: 'alpine 320'
-        GROUP: 6
+        GROUP: 14
       - DISTRO: 'alpine 321'
-        GROUP: 7
+        GROUP: 15
 
 default:
   retry: 2
@@ -208,7 +208,6 @@ run_test_amd64:
     reports:
       junit:
         - run_test/*.xml
-  resource_group: "concurrent_$GROUP"
   parallel:
     *parallel_matrix
 
@@ -238,7 +237,6 @@ run_test_arm64:
     reports:
       junit:
         - run_test/*.xml
-  resource_group: "concurrent_$GROUP"
   parallel:
     *parallel_matrix
     
