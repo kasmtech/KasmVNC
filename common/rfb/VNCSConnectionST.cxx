@@ -1704,7 +1704,7 @@ void VNCSConnectionST::sendNetworkStats() {
     fmt::memory_buffer buf;
     int jitter{};
 
-    fmt::format_to(std::back_inserter(buf), "[{}, {}, {}]", jitter, congestion.getBandwidth(), congestion.getPingTime());
+    fmt::format_to(std::back_inserter(buf), "[{}, {}, {}]", jitter, congestion.getPingTime(), congestion.getBandwidth());
     vlog.info("Sending diagnostic network stats:\n%s\n", buf.data());
     writer()->writeStats(msgTypeNetworkStats, buf.data(), static_cast<int>(buf.size()));
 }
