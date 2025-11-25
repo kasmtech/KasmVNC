@@ -64,6 +64,7 @@ namespace rfb {
 
     virtual void sendStats(const bool toClient = true) = 0;
     virtual void sendNetworkStats() = 0;
+    virtual void sendSystemStats() = 0;
     virtual void handleFrameStats(rdr::U32 all, rdr::U32 render) = 0;
     virtual void keepAlive();
 

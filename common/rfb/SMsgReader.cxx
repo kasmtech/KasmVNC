@@ -81,6 +81,9 @@ void SMsgReader::readMsg()
   case msgTypeNetworkStats:
     readNetworkStats();
     break;
+  case msgTypeSystemStats:
+    readSystemStats();
+    break;
   case msgTypeBinaryClipboard:
     readBinaryClipboard();
     break;
@@ -330,6 +333,11 @@ void SMsgReader::readFrameStats()
 void SMsgReader::readNetworkStats() {
   is->skip(3);
   handler->sendNetworkStats();
+}
+
+void SMsgReader::readSystemStats() {
+  is->skip(3);
+  handler->sendSystemStats();
 }
 
 void SMsgReader::readKeepAlive()

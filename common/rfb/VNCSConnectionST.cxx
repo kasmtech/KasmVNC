@@ -1709,6 +1709,14 @@ void VNCSConnectionST::sendNetworkStats() {
     writer()->writeStats(msgTypeNetworkStats, buf.data(), static_cast<int>(buf.size()));
 }
 
+void VNCSConnectionST::sendSystemStats() {
+    if (server->apimessager) {
+        const auto stats = server->apimessager->netGetSystemStats();
+        vlog.info("Sending system stats");
+        writer()->writeStats(msgTypeSystemStats, stats, strlen(stats));
+    }
+}
+
 void VNCSConnectionST::handleFrameStats(rdr::U32 all, rdr::U32 render)
 {
   if (server->apimessager) {

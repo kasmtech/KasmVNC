@@ -59,6 +59,7 @@ namespace rfb {
     void readRequestStats();
     void readFrameStats();
     void readNetworkStats();
+    void readSystemStats();
     void readBinaryClipboard();
     void readKeepAlive();
 
