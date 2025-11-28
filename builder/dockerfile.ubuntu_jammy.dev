@@ -54,6 +54,7 @@ RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list && \
     libxkbfile-dev \
     x11proto-dev \
     libgbm-dev \
+    libdrm-dev \
     htop \
     libva-dev \
     libdrm-dev \
