@@ -59,7 +59,7 @@ namespace rfb {
 
     void writeBinaryClipboard(const std::vector<SConnection::binaryClipboard_t> &b);
 
-    void writeStats(int msg_type, const char* str, int len);
+    void writeStats(int msg_type, const char* str, size_t len);
 
     void writeRequestFrameStats();
 
