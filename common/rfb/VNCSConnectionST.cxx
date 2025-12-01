@@ -1701,12 +1701,13 @@ void VNCSConnectionST::sendStats(const bool toClient) {
 }
 
 void VNCSConnectionST::sendNetworkStats() {
-    fmt::memory_buffer buf;
-    int jitter{};
+  fmt::memory_buffer buf;
+  int jitter{};
 
-    fmt::format_to(std::back_inserter(buf), "[{}, {}, {}]", jitter, congestion.getPingTime(), congestion.getBandwidth());
-    vlog.info("Sending diagnostic network stats:\n%s\n", buf.data());
-    writer()->writeStats(msgTypeNetworkStats, buf.data(), buf.size());
+  fmt::format_to(std::back_inserter(buf), "[{}, {}, {}]", jitter, congestion.getPingTime(), congestion.getBandwidth());
+  std::string value(buf.data(), buf.size());
+  vlog.info("Sending diagnostic network stats:\n%s\n", value.c_str());
+  writer()->writeStats(msgTypeNetworkStats, value.c_str(), value.size());
 }
 
 void VNCSConnectionST::sendSystemStats() {
