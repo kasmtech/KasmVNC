@@ -254,6 +254,7 @@ namespace rfb {
                                          int x, int y, int w, int h);
     virtual void handleClipboardAnnounce(bool available);
     virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
+    virtual void keepAlive();
     virtual void udpUpgrade(const char *resp);
     virtual void subscribeUnixRelay(const char *name);
     virtual void unixRelay(const char *name, const rdr::U8 *buf, const unsigned len);

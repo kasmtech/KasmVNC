@@ -1,3 +1,11 @@
+kasmvnc (1.4.1-1) unstable; urgency=medium
+
+  * Fixed bug with enforcement of server-side idle-disconnect.
+  * Added support for graceful disconnect, allowing the client to auto-reconnect on a non-graceful disconnect and not when the server gracefully disconnects.
+  * Fixed display manager UI to work on touch screens.
+
+ -- Kasm Technologies LLC <info@kasmweb.com>  Mon, 01 Dec 2025 10:42:46 +0000
+
 kasmvnc (1.4.0-1) unstable; urgency=medium
 
   * Added new API call for retrieving active sessions.

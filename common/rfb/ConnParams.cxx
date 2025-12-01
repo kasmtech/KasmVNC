@@ -59,6 +59,7 @@ ConnParams::ConnParams()
     supportsWEBP(false), supportsQOI(false),
     supportsSetDesktopSize(false), supportsFence(false),
     supportsContinuousUpdates(false), supportsExtendedClipboard(false),
+    supportsDisconnectNotify(false),
     supportsUdp(false),
     compressLevel(2), qualityLevel(-1), fineQualityLevel(-1),
     subsampling(subsampleUndefined), name_(0), cursorPos_(0, 0), verStrPos(0),
@@ -147,6 +148,7 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
   supportsQEMUKeyEvent = false;
   supportsWEBP = false;
   supportsQOI = false;
+  supportsDisconnectNotify = false;
   compressLevel = -1;
   qualityLevel = -1;
   fineQualityLevel = -1;
@@ -214,6 +216,10 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
     case pseudoEncodingQOI:
       supportsQOI = true;
       clientparlog("qoi", true);
+      break;
+    case pseudoEncodingKasmDisconnectNotify:
+      supportsDisconnectNotify = true;
+      clientparlog("disconnectNotify", true);
       break;
     case pseudoEncodingFence:
       supportsFence = true;

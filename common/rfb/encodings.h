@@ -86,6 +86,7 @@ namespace rfb {
   const int pseudoEncodingVideoOutTimeLevel1 = -1986;
   const int pseudoEncodingVideoOutTimeLevel100 = -1887;
   const int pseudoEncodingQOI = -1886;
+  const int pseudoEncodingKasmDisconnectNotify = -1885;
 
   // VMware-specific
   const int pseudoEncodingVMwareCursor = 0x574d5664;

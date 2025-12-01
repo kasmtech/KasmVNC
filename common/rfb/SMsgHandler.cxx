@@ -104,3 +104,7 @@ void SMsgHandler::setDesktopSize(int fb_width, int fb_height,
   cp.height = fb_height;
   cp.screenLayout = layout;
 }
+
+void SMsgHandler::keepAlive()
+{
+}

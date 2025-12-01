@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.4.0
+Version:        1.4.1
 Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
@@ -82,6 +82,10 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Mon Dec 01 2025 KasmTech <info@kasmweb.com> - 1.4.1-1
+- Fixed bug with enforcement of server-side idle-disconnect.
+- Added support for graceful disconnect, allowing the client to auto-reconnect on a non-graceful disconnect and not when the server gracefully disconnects.
+- Fixed display manager UI to work on touch screens.
 * Fri Aug 01 2025 KasmTech <info@kasmweb.com> - 1.4.0-1
 - Added new API call for retrieving active sessions.
 - Added message propagation to clients other users connect or disconnect from the same session.
