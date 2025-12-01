@@ -146,7 +146,7 @@ function upload_to_s3() {
 function prepare_to_run_scripts_and_s3_uploads() {
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
-  apt-get install -y ruby3.1 wget curl file awscli
+  apt-get install -y ruby wget curl file awscli git
 }
 
 detect_release_branch() {
