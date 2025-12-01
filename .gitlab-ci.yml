@@ -21,6 +21,7 @@ variables:
   DEBIAN_STABLE_IMAGE: debian:trixie-slim
   DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
+  DOCKER_AUTH_CONFIG: ${_DOCKER_AUTH_CONFIG}
 
 workflow:
   rules:
