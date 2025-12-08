@@ -1773,6 +1773,14 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
 
         ret = 1;
     } else entry("/api/system/stats") {
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+                "Server: KasmVNC/4.0\r\n"
+                "Connection: close\r\n"
+                "Content-type: text/json\r\n"
+                "%s"
+                "\r\n", extra_headers ? extra_headers : "");
+        ws_send(ws_ctx, buf, strlen(buf));
+
         const char *response = settings.get_system_stats_cb(settings.messager);
         size_t response_len = strlen(response);
         ws_send(ws_ctx, response, response_len);
