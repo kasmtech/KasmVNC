@@ -30,6 +30,7 @@ build_and_install() {
         cp -r include/* /usr/include/
     else
         cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DCMAKE_CXX_FLAGS="-Wno-stringop-overflow" \
             -DTBB_TEST=OFF -DBUILD_SHARED_LIBS=OFF -GNinja .
         ninja -C build install
     fi
