@@ -113,6 +113,14 @@ functional_test:
     reports:
       junit:
         - kasmvnc-functional-tests/report/*.xml
+  rules:
+    # Allow functional tests to fail on feature branches.
+    - if: '$CI_COMMIT_REF_NAME =~ /^feature\//'
+      allow_failure: true
+      when: on_success
+
+    # Fail pipeline on all other branches, if functional tests fail.
+    - when: on_success
 
 build_www:
   stage: www
@@ -183,7 +191,7 @@ build_arm64:
   parallel:
     *parallel_matrix
 
-    
+
 run_test_amd64:
   stage: run_test
   image: $DEBIAN_STABLE_IMAGE
@@ -240,7 +248,7 @@ run_test_arm64:
         - run_test/*.xml
   parallel:
     *parallel_matrix
-    
+
 spec_test:
   stage: test
   image: $DEBIAN_STABLE_IMAGE
