@@ -28,8 +28,8 @@ WARNING: this package requires EPEL.
 %install
 rm -rf $RPM_BUILD_ROOT
 
-TARGET_OS=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-TARGET_OS_CODENAME=$(lsb_release -cs | tr '[:upper:]' '[:lower:]')
+TARGET_OS=$KASMVNC_BUILD_OS
+TARGET_OS_CODENAME=$KASMVNC_BUILD_OS_CODENAME
 TARBALL=$RPM_SOURCE_DIR/kasmvnc.${TARGET_OS}_${TARGET_OS_CODENAME}.tar.gz
 TAR_DATA=$(mktemp -d)
 tar -xzf "$TARBALL" -C "$TAR_DATA"
