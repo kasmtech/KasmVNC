@@ -1,7 +1,7 @@
 FROM fedora:42
 
 ENV KASMVNC_BUILD_OS fedora
-ENV KASMVNC_BUILD_OS_CODENAME fortytwo
+ENV KASMVNC_BUILD_OS_CODENAME 42
 
 RUN dnf install -y fedora-packager fedora-review
 RUN dnf install -y tree vim less
