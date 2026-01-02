@@ -98,6 +98,7 @@ functional_test:
   tags:
     - oci-fixed-amd
   before_script:
+    - *prepare_build
     - . .ci/helpers.sh
   script:
     - prepare_to_run_functional_tests
