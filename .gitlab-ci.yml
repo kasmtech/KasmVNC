@@ -74,9 +74,9 @@ stages:
         GROUP: 8
       - DISTRO: 'opensuse 15'
         GROUP: 9
-      - DISTRO: 'fedora forty'
+      - DISTRO: 'fedora 42'
         GROUP: 10
-      - DISTRO: 'fedora fortyone'
+      - DISTRO: 'fedora 43'
         GROUP: 11
       - DISTRO: 'alpine 318'
         GROUP: 12
