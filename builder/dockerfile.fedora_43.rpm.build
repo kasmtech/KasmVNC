@@ -1,8 +1,10 @@
-FROM fedora:40
+FROM fedora:43
+
+ENV KASMVNC_BUILD_OS fedora
+ENV KASMVNC_BUILD_OS_CODENAME 43
 
 RUN dnf install -y fedora-packager fedora-review
 RUN dnf install -y tree vim less
-RUN dnf install -y redhat-lsb-core
 RUN dnf install -y dnf-plugins-core
 
 COPY fedora/*.spec /tmp

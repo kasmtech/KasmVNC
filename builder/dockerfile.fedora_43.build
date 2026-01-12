@@ -1,8 +1,8 @@
-FROM fedora:41
+FROM fedora:43
 
 ENV KASMVNC_BUILD_OS fedora
-ENV KASMVNC_BUILD_OS_CODENAME fortyone
-ENV XORG_VER 21.1.15
+ENV KASMVNC_BUILD_OS_CODENAME 43
+ENV XORG_VER 21.1.21
 
 RUN \
   echo "**** install build deps ****" && \

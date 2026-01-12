@@ -1,14 +1,15 @@
-FROM fedora:40
+FROM fedora:42
 
 ENV KASMVNC_BUILD_OS fedora
-ENV KASMVNC_BUILD_OS_CODENAME forty
-ENV XORG_VER 1.20.14
+ENV KASMVNC_BUILD_OS_CODENAME 42
+ENV XORG_VER 21.1.21
 
 RUN \
   echo "**** install build deps ****" && \
   dnf group install -y \
-    "C Development Tools and Libraries" \
-    "Development Tools" && \
+    c-development \
+    development-tools \
+    development-libs && \
   dnf install -y \
     autoconf \
     automake \
