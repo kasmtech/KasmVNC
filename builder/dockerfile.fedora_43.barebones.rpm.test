@@ -15,7 +15,6 @@ COPY $KASMVNC_PACKAGE_DIR/kasmvncserver-*.rpm /tmp/
 COPY fedora/kasmvncserver.spec /tmp/
 RUN /tmp/scripts/install_kasmvncserver_package
 
-RUN dnf install -y crypto-policies-scripts
 RUN update-crypto-policies --set FIPS:SHA1
 
 RUN mkdir -p $STARTUPDIR
