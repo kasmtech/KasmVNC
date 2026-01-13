@@ -1,0 +1,4 @@
+[Filters]
+# Locale JSON files are intentionally duplicated per language/region.
+files-duplicate = true
+files-duplicated-waste = true

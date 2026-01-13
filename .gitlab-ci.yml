@@ -74,18 +74,20 @@ stages:
         GROUP: 8
       - DISTRO: 'opensuse 15'
         GROUP: 9
-      - DISTRO: 'fedora 42'
+      - DISTRO: 'opensuse 16'
         GROUP: 10
-      - DISTRO: 'fedora 43'
+      - DISTRO: 'fedora 42'
         GROUP: 11
-      - DISTRO: 'alpine 318'
+      - DISTRO: 'fedora 43'
         GROUP: 12
-      - DISTRO: 'alpine 319'
+      - DISTRO: 'alpine 318'
         GROUP: 13
-      - DISTRO: 'alpine 320'
+      - DISTRO: 'alpine 319'
         GROUP: 14
-      - DISTRO: 'alpine 321'
+      - DISTRO: 'alpine 320'
         GROUP: 15
+      - DISTRO: 'alpine 321'
+        GROUP: 16
 
 default:
   retry: 2

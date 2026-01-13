@@ -2,10 +2,21 @@
 
 set -e
 
-detect_quilt() {
-  if which quilt 1>/dev/null; then
-    QUILT_PRESENT=1
-    export QUILT_PATCHES=debian/patches
+debian_patches_dir="debian/patches"
+
+is_debian_patches_present() {
+  [[ -d "$debian_patches_dir" ]]
+}
+
+is_debian() {
+  [[ -f /usr/bin/dpkg ]]
+}
+
+apply_debian_patches() {
+  if is_debian_patches_present; then
+    export QUILT_PATCHES="$debian_patches_dir"
+    quilt push -a
+    echo 'Patches applied!'
   fi
 }
 
@@ -148,10 +159,8 @@ else
 fi
 cd /src
 
-detect_quilt
-if [ -n "$QUILT_PRESENT" ]; then
-  quilt push -a
-  echo 'Patches applied!'
+if is_debian; then
+  apply_debian_patches
 fi
 
 make servertarball
