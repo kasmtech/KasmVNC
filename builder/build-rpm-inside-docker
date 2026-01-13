@@ -5,6 +5,7 @@ set -e
 prepare_build_env() {
   rpmdev-setuptree
   copy_spec_and_tar_with_binaries
+  copy_rpmlintrc
 }
 
 copy_spec_and_tar_with_binaries() {
@@ -13,9 +14,25 @@ copy_spec_and_tar_with_binaries() {
     ~/rpmbuild/SOURCES/
 }
 
+copy_rpmlintrc() {
+  cp /src/builder/rpmlintrc ~/.rpmlintrc
+}
+
+is_rpmlint_toml_config() {
+  rpmlint --version | grep -qF 2.
+}
+
 copy_rpm_to_build_dir() {
   cd /src/builder && \
     mkdir -p "$os_dir" && cp ~/rpmbuild/RPMS/*/*.rpm ${os_dir}
+}
+
+rpmlint_with_config_loaded() {
+  rpmlint -c ~/.rpmlintrc "$os_dir"/*.rpm
+}
+
+rpmlint_without_config_loaded() {
+  rpmlint "$os_dir"/*.rpm
 }
 
 cd "$(dirname "$0")/.."
@@ -32,4 +49,9 @@ os_dir="build/${os}_${os_codename}"
 prepare_build_env
 rpmbuild -ba ~/rpmbuild/SPECS/*.spec
 copy_rpm_to_build_dir
-rpmlint "$os_dir"/*.rpm || true
+
+if is_rpmlint_toml_config; then
+  rpmlint_with_config_loaded || true
+else
+  rpmlint_without_config_loaded || true
+fi

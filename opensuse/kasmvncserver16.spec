@@ -1,6 +1,6 @@
 Name:           kasmvncserver
 Version:        1.3.4
-Release:        leap15
+Release:        leap16
 Summary:        VNC server accessible from a web browser
 
 License: GPL-2.0-or-later
