@@ -476,7 +476,6 @@ void EncodeManager::doUpdate(bool allowLossy, const Region& changed_,
 
     updateQualities();
 
-    printf("TOTAL FRAME TOOK: %d\n", msSince(&start));
     conn->writer()->writeFramebufferUpdateEnd();
 }
 
