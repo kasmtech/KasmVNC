@@ -120,7 +120,6 @@ FFmpeg::FFmpeg() {
         avcodec_receive_packet_f = D_LOOKUP_SYM(handle, avcodec_receive_packet);
         av_packet_unref_f = D_LOOKUP_SYM(handle, av_packet_unref);
         avcodec_flush_buffers_f = D_LOOKUP_SYM(handle, avcodec_flush_buffers);
-        avcodec_close_f = D_LOOKUP_SYM(handle, avcodec_close);
         av_codec_is_encoder_f = D_LOOKUP_SYM(handle, av_codec_is_encoder);
         av_packet_alloc_f = D_LOOKUP_SYM(handle, av_packet_alloc);
         av_packet_free_f = D_LOOKUP_SYM(handle, av_packet_free);

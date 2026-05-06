@@ -22,9 +22,7 @@
 
 FfmpegFrameFeeder::FfmpegFrameFeeder(FFmpeg *ffmpeg_) : ffmpeg{ffmpeg_} {}
 
-FfmpegFrameFeeder::~FfmpegFrameFeeder() {
-    ffmpeg->avcodec_close(codec_ctx_guard.get());
-}
+FfmpegFrameFeeder::~FfmpegFrameFeeder() = default;
 
 void FfmpegFrameFeeder::open(const std::string_view path) {
     AVFormatContext *format_ctx{};
