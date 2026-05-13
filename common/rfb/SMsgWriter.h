@@ -136,6 +136,7 @@ namespace rfb {
     void writeUserJoinedSession(const std::string& username);
     void writeUserLeftSession(const std::string& username);
     void writeDisconnectNotify(bool graceful, const char *reason);
+    void writeForceGameMode();
 
   protected:
     void startMsg(int type);

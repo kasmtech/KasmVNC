@@ -44,6 +44,11 @@ namespace rfb {
                               int scrollY) { }
     virtual void clientCutText(const char* __unused_attr str,
                                int __unused_attr len) { }
+    virtual void directMouseEvent(int __unused_attr dx,
+                                  int __unused_attr dy,
+                                  int __unused_attr buttonMask,
+                                  int __unused_attr scrollX,
+                                  int __unused_attr scrollY) { }
   };
 
 }

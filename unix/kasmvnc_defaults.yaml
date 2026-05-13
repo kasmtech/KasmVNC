@@ -44,6 +44,9 @@ keyboard:
 # Mouse, trackpad, etc.
 pointer:
   enabled: true
+  # Force all clients into game mode (direct-drive relative mouse) on connect.
+  # Useful for game-focused workspace images where pointer lock is always desired.
+  game_mode: false
 
 runtime_configuration:
   allow_client_to_override_kasm_server_settings: true

@@ -832,3 +832,9 @@ void SMsgWriter::writeDisconnectNotify(bool graceful, const char *reason)
     os->writeBytes(msg, len);
   endMsg();
 }
+
+void SMsgWriter::writeForceGameMode()
+{
+  startMsg(msgTypeForceGameMode);
+  endMsg();
+}

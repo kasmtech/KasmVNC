@@ -68,6 +68,10 @@ void SMsgHandler::handleClipboardAnnounceBinary(const unsigned, const char mimes
 {
 }
 
+void SMsgHandler::directMouseEvent(int, int, int, int, int)
+{
+}
+
 void SMsgHandler::clearBinaryClipboard()
 {
 }

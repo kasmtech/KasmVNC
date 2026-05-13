@@ -54,6 +54,9 @@ namespace rfb {
     virtual void enableContinuousUpdates(bool enable,
                                          int x, int y, int w, int h) = 0;
 
+    virtual void directMouseEvent(int dx, int dy, int buttonMask,
+                                    int scrollX, int scrollY);
+
     virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
     virtual void clearBinaryClipboard();
     virtual void addBinaryClipboard(const char mime[], const rdr::U8 *data,

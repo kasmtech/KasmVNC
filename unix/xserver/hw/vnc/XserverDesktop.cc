@@ -517,6 +517,22 @@ void XserverDesktop::pointerEvent(const Point& pos, const Point& abspos, int but
   }
 }
 
+void XserverDesktop::directMouseEvent(int dx, int dy, int buttonMask,
+                                       int scrollX, int scrollY)
+{
+  // Move the X11 cursor via XTest (relative injection).
+  // buttonMask uses standard VNC convention (bit 0=left, 1=middle, 2=right)
+  // which matches X11 button numbering directly — no remapping needed.
+  if (scrollX == 0 && scrollY == 0) {
+    vncPointerMoveRelative(dx, dy,
+                           0 + vncGetScreenX(screenIndex),
+                           0 + vncGetScreenY(screenIndex));
+    vncPointerButtonAction(buttonMask, false, false);
+  } else {
+    vncScroll(scrollX, scrollY);
+  }
+}
+
 unsigned int XserverDesktop::setScreenLayout(int fb_width, int fb_height,
                                              const rfb::ScreenSet& layout)
 {

@@ -85,6 +85,11 @@ rfb::BoolParameter rfb::Server::acceptPointerEvents
 ("AcceptPointerEvents",
  "Accept pointer press and release events from clients.",
  true);
+rfb::BoolParameter rfb::Server::forceGameMode
+("ForceGameMode",
+ "Send a message to newly connected clients instructing them to enable game mode "
+ "(direct-drive relative mouse). Useful for game-focused workspace images.",
+ false);
 rfb::BoolParameter rfb::Server::acceptCutText
 ("AcceptCutText",
  "Accept clipboard updates from clients.",

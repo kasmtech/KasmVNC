@@ -71,7 +71,8 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s, con
     needsPermCheck(false), pointerEventTime(0),
     clientHasCursor(false),
     accessRights(AccessDefault), startTime(time(nullptr)), frameTracking(false),
-    udpFramesSinceFull(0), complainedAboutNoViewRights(false), clientUsername("username_unavailable")
+    udpFramesSinceFull(0), complainedAboutNoViewRights(false), gameModeNotified(false),
+    clientUsername("username_unavailable")
 {
   setStreams(&sock->inStream(), &sock->outStream());
   peerEndpoint.buf = sock->getPeerEndpoint();
@@ -848,6 +849,21 @@ void VNCSConnectionST::pointerEvent(const Point& pos, const Point& abspos, int b
   }
 }
 
+void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
+                                         int scrollX, int scrollY)
+{
+  pointerEventTime = lastEventTime = time(0);
+  server->lastUserInputTime = lastEventTime;
+  if (!(accessRights & AccessPtrEvents))
+    return;
+  if (!rfb::Server::acceptPointerEvents)
+    return;
+
+  // Route through the desktop interface, which handles both uinput
+  // writes and X11 cursor updates.
+  server->desktop->directMouseEvent(dx, dy, buttonMask, scrollX, scrollY);
+}
+
 
 class VNCSConnectionSTShiftPresser {
 public:
@@ -1016,6 +1032,15 @@ void VNCSConnectionST::framebufferUpdateRequest(const Rect& r,bool incremental)
   Rect safeRect;
 
   if (!(accessRights & AccessView)) return;
+
+  // On the first full update request the client is fully connected and has
+  // sent SetEncodings. If the server is configured to force game mode and the
+  // client supports direct mouse, send the notification exactly once.
+  if (!incremental && !gameModeNotified && rfb::Server::forceGameMode &&
+      cp.supportsDirectMouse) {
+    writer()->writeForceGameMode();
+    gameModeNotified = true;
+  }
 
   SConnection::framebufferUpdateRequest(r, incremental);
 

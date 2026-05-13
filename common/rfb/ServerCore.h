@@ -84,6 +84,7 @@ namespace rfb {
         static BoolParameter disconnectClients;
         static BoolParameter acceptKeyEvents;
         static BoolParameter acceptPointerEvents;
+        static BoolParameter forceGameMode;
         static BoolParameter acceptCutText;
         static BoolParameter sendCutText;
         static BoolParameter acceptSetDesktopSize;

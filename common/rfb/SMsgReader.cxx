@@ -108,6 +108,9 @@ void SMsgReader::readMsg()
   case msgTypeKeepAlive:
     readKeepAlive();
     break;
+  case msgTypeDirectMouseEvent:
+    readDirectMouseEvent();
+    break;
   default:
     fprintf(stderr, "unknown message type %d\n", msgType);
     throw Exception("unknown message type");
@@ -421,4 +424,21 @@ void SMsgReader::readVideoEncodersRequest() const {
         buf[i] = is->readU32();
 
     handler->videoEncodersRequest(buf);
+}
+
+void SMsgReader::readDirectMouseEvent()
+{
+  // Wire format (9 bytes after the type byte):
+  //   byte 0:   button mask (bit 0=left, 1=right, 2=middle, 3=side, 4=extra)
+  //   bytes 1-2: dx (int16 BE)
+  //   bytes 3-4: dy (int16 BE)
+  //   bytes 5-6: scroll dx (int16 BE)
+  //   bytes 7-8: scroll dy (int16 BE)
+  int buttonMask = is->readU8();
+  int dx = is->readS16();
+  int dy = is->readS16();
+  int scrollX = is->readS16();
+  int scrollY = is->readS16();
+
+  handler->directMouseEvent(dx, dy, buttonMask, scrollX, scrollY);
 }
