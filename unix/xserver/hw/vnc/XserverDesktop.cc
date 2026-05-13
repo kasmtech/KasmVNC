@@ -500,17 +500,11 @@ void XserverDesktop::approveConnection(uint32_t opaqueId, bool accept,
 //
 // SDesktop callbacks
 
-void XserverDesktop::pointerEvent(const Point& pos, const Point& abspos, int buttonMask,
+void XserverDesktop::pointerEvent(const Point& pos, int buttonMask,
                                   const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
   if (scrollX == 0 && scrollY == 0) {
-    if (pos.equals(abspos)) {
-      vncPointerMove(pos.x + vncGetScreenX(screenIndex), pos.y + vncGetScreenY(screenIndex));
-    } else {
-      vncPointerMoveRelative(pos.x, pos.y,
-                           abspos.x + vncGetScreenX(screenIndex),
-                           abspos.y + vncGetScreenY(screenIndex));
-    }
+    vncPointerMove(pos.x + vncGetScreenX(screenIndex), pos.y + vncGetScreenY(screenIndex));
     vncPointerButtonAction(buttonMask, skipClick, skipRelease);
   } else {
     vncScroll(scrollX, scrollY);
@@ -525,8 +519,8 @@ void XserverDesktop::directMouseEvent(int dx, int dy, int buttonMask,
   // which matches X11 button numbering directly — no remapping needed.
   if (scrollX == 0 && scrollY == 0) {
     vncPointerMoveRelative(dx, dy,
-                           0 + vncGetScreenX(screenIndex),
-                           0 + vncGetScreenY(screenIndex));
+                           vncGetScreenX(screenIndex),
+                           vncGetScreenY(screenIndex));
     vncPointerButtonAction(buttonMask, false, false);
   } else {
     vncScroll(scrollX, scrollY);
