@@ -429,7 +429,8 @@ void SMsgReader::readVideoEncodersRequest() const {
 void SMsgReader::readDirectMouseEvent()
 {
   // Wire format (9 bytes after the type byte):
-  //   byte 0:   button mask (bit 0=left, 1=right, 2=middle, 3=side, 4=extra)
+  //   byte 0:   VNC button mask. Button N uses bit N-1, so the common buttons
+  //             are bit 0=left, bit 1=middle, bit 2=right.
   //   bytes 1-2: dx (int16 BE)
   //   bytes 3-4: dy (int16 BE)
   //   bytes 5-6: scroll dx (int16 BE)

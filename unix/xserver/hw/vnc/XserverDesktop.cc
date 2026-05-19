@@ -514,17 +514,48 @@ void XserverDesktop::pointerEvent(const Point& pos, int buttonMask,
 void XserverDesktop::directMouseEvent(int dx, int dy, int buttonMask,
                                        int scrollX, int scrollY)
 {
+  directMouseEventWithPosition(dx, dy, buttonMask, scrollX, scrollY);
+}
+
+rfb::Point XserverDesktop::directMouseEventWithPosition(int dx, int dy,
+                                       int buttonMask, int scrollX, int scrollY)
+{
   // Move the X11 cursor via XTest (relative injection).
   // buttonMask uses standard VNC convention (bit 0=left, 1=middle, 2=right)
-  // which matches X11 button numbering directly — no remapping needed.
+  // which matches X11 button numbering directly, so no remapping is needed.
+  int cursorX, cursorY;
+  vncGetPointerPos(&cursorX, &cursorY);
+
   if (scrollX == 0 && scrollY == 0) {
-    vncPointerMoveRelative(dx, dy,
-                           vncGetScreenX(screenIndex),
-                           vncGetScreenY(screenIndex));
+    const int screenX = vncGetScreenX(screenIndex);
+    const int screenY = vncGetScreenY(screenIndex);
+    const int maxX = screenX + width() - 1;
+    const int maxY = screenY + height() - 1;
+
+    cursorX += dx;
+    cursorY += dy;
+
+    if (cursorX < screenX)
+      cursorX = screenX;
+    else if (cursorX > maxX)
+      cursorX = maxX;
+
+    if (cursorY < screenY)
+      cursorY = screenY;
+    else if (cursorY > maxY)
+      cursorY = maxY;
+
+    vncPointerMoveRelative(dx, dy, cursorX, cursorY);
     vncPointerButtonAction(buttonMask, false, false);
   } else {
     vncScroll(scrollX, scrollY);
   }
+
+  rfb::Point cursorPos(cursorX - vncGetScreenX(screenIndex),
+                       cursorY - vncGetScreenY(screenIndex));
+  oldCursorPos = cursorPos;
+  server->setCursorPos(cursorPos, false);
+  return cursorPos;
 }
 
 unsigned int XserverDesktop::setScreenLayout(int fb_width, int fb_height,

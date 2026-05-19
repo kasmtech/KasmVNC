@@ -815,16 +815,23 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool
 void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
                                          int scrollX, int scrollY)
 {
-  pointerEventTime = lastEventTime = time(0);
+  pointerEventTime = lastEventTime = time(nullptr);
   server->lastUserInputTime = lastEventTime;
   if (!(accessRights & AccessPtrEvents))
     return;
   if (!rfb::Server::acceptPointerEvents)
     return;
+  if (server->pointerClient && server->pointerClient != this)
+    return;
 
-  // Route through the desktop interface, which handles both uinput
-  // writes and X11 cursor updates.
-  server->desktop->directMouseEvent(dx, dy, buttonMask, scrollX, scrollY);
+  if (buttonMask)
+    server->pointerClient = this;
+  else
+    server->pointerClient = nullptr;
+
+  pointerEventPos =
+    server->desktop->directMouseEventWithPosition(dx, dy, buttonMask,
+                                                  scrollX, scrollY);
 }
 
 

@@ -98,6 +98,7 @@ public:
   virtual void pointerEvent(const rfb::Point& pos, int buttonMask,
                             const bool skipClick, const bool skipRelease, int scrollX = 0, int scrollY = 0);
   virtual void directMouseEvent(int dx, int dy, int buttonMask, int scrollX, int scrollY);
+  virtual rfb::Point directMouseEventWithPosition(int dx, int dy, int buttonMask, int scrollX, int scrollY);
   virtual void keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down);
   virtual unsigned int setScreenLayout(int fb_width, int fb_height,
                                        const rfb::ScreenSet& layout);

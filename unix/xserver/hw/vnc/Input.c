@@ -28,9 +28,6 @@
 #include "vncExtInit.h"
 #include "RFBGlue.h"
 
-#ifdef __linux__
-#endif
-
 #include "inputstr.h"
 #if XORG >= 110
 #include "inpututils.h"
@@ -766,7 +763,6 @@ static void vncKeysymKeyboardEvent(KeySym keysym, int down)
 	 */
 	mieqProcessInputEvents();
 }
-
 
 #if INPUTTHREAD
 /** This function is called in Xserver/os/inputthread.c when starting
