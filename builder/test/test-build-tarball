@@ -1,0 +1,94 @@
+#!/bin/bash
+
+set -eo pipefail
+
+create_fresh_test_env() {
+  test_env_dir=$(mktemp -d /tmp/kasmvnc-test.XXXXXXX)
+  test_env_dir=$(realpath "$test_env_dir")
+
+  rsync -av --exclude=builder/build --exclude=builder/www "$PWD" "$test_env_dir"
+}
+
+expect_dir_not_to_be_owned_by_root() {
+  local dir="$1"
+  local uid_and_gid_of_dir
+
+  uid_and_gid_of_dir=$(stat -c "%u %g" "$dir")
+  [[ "$uid_and_gid_of_dir" != "0 0" ]] || error "Directory $dir is owned by root"
+}
+
+error() {
+  local message="$1"
+
+  echo >&2 -e "ERROR: $message"
+  exit 1
+}
+
+setup() {
+  project_dir="$PWD"
+  create_fresh_test_env
+  cd "$test_env_dir/"*
+}
+
+cleanup() {
+  cd "$project_dir"
+
+  case "$test_env_dir" in
+    /tmp/*)
+      rm -rf -- "$test_env_dir"
+      ;;
+    *)
+      echo "Refusing to remove unsafe test env dir: $test_env_dir" >&2
+      exit 1
+      ;;
+  esac
+}
+
+expect_build_dirs_not_to_be_owned_by_root() {
+  expect_dir_not_to_be_owned_by_root "$build_dir"
+  expect_dir_not_to_be_owned_by_root "$www_dir"
+  expect_dir_not_to_be_owned_by_root "$sccache_dir"
+}
+
+test_build_dirs_dont_exist() {
+  setup
+
+  [[ ! -d "$build_dir" ]] || error "$build_dir exists in fresh env"
+  [[ ! -d "$www_dir" ]] || error "$www_dir exists in fresh env"
+  [[ ! -d "$sccache_dir" ]] || error "$sccache_dir exists in fresh env"
+
+  cleanup
+}
+
+test_compilation_produces_build_dirs_not_owned_by_root() {
+  setup
+
+  ./builder/build-tarball debian trixie
+
+  expect_build_dirs_not_to_be_owned_by_root
+
+  cleanup
+}
+
+test_sudo_compilation_produces_build_dirs_not_owned_by_root() {
+  setup
+
+  sudo ./builder/build-tarball debian trixie
+
+  expect_build_dirs_not_to_be_owned_by_root
+
+  cleanup
+}
+
+trap cleanup EXIT
+
+build_dir="./builder/build"
+www_dir="./builder/www"
+sccache_dir="./builder/build/.sccache"
+
+test_build_dirs_dont_exist
+test_sudo_compilation_produces_build_dirs_not_owned_by_root
+test_compilation_produces_build_dirs_not_owned_by_root
+
+echo
+echo "All tests green"

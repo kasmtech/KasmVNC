@@ -2,6 +2,11 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -z "$SCRIPTS_DIR" ]; then
+  SCRIPTS_DIR="$SCRIPT_DIR/scripts"
+fi
+
 debian_patches_dir="debian/patches"
 
 is_debian_patches_present() {
@@ -38,6 +43,26 @@ EOF
   fi
 }
 
+enable_sccache_debug_log() {
+  export SCCACHE_LOG="sccache::server=debug,sccache::compiler=trace,sccache::cache=debug"
+  export SCCACHE_ERROR_LOG=/tmp/sccache.log
+}
+
+setup_sccache() {
+  export SCCACHE_CACHE_SIZE=160M
+  export CC="sccache ${CC:-gcc}"
+  export CXX="sccache ${CXX:-g++}"
+}
+
+setup_compilers_to_see_libs_in_dot_local() {
+  export PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig:$HOME/.local/lib64/pkgconfig:$HOME/.local/share/pkgconfig:${PKG_CONFIG_PATH}"
+  export CPATH="$HOME/.local/include${CPATH:+:CPATH}"
+}
+
+ensure_libturbojpeg_links() {
+  export LDFLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64"
+}
+
 # For build-dep to work, the apt sources need to have the source server
 #sudo apt-get build-dep xorg-server
 
@@ -48,6 +73,12 @@ EOF
 
 # Ubuntu applies a million patches, but here we use upstream to simplify matters
 cd /tmp
+
+setup_sccache
+setup_compilers_to_see_libs_in_dot_local
+
+$SCRIPTS_DIR/build-deps.sh
+
 # default to the version of x in Ubuntu 18.04, otherwise caller will need to specify
 XORG_VER=${XORG_VER:-"1.19.6"}
 if [[ "${XORG_VER}" == 21* ]]; then
@@ -67,8 +98,17 @@ fi
 #git checkout dynjpeg
 cd /src
 
+ensure_libturbojpeg_links
+
 cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
-  -DENABLE_GNUTLS:BOOL=OFF
+  -DENABLE_GNUTLS:BOOL=OFF \
+  -DCMAKE_PREFIX_PATH="$HOME/.local" \
+  -DCMAKE_LIBRARY_PATH="$HOME/.local/lib;$HOME/.local/lib64" \
+  -DCMAKE_INCLUDE_PATH="$HOME/.local/include" \
+  -DCMAKE_EXE_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64" \
+  -DCMAKE_SHARED_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64" \
+  -DCMAKE_MODULE_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64"
+
 make -j"$(nproc)"
 
 if [ ! -d unix/xserver/include ]; then
@@ -164,6 +204,8 @@ cd /src
 if is_debian; then
   apply_debian_patches
 fi
+
+sccache --show-stats || true
 
 make servertarball
 

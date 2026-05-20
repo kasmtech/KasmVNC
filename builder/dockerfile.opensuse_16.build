@@ -18,6 +18,7 @@ RUN zypper install -ny \
   gcc15 \
   gcc15-c++ \
   cmake \
+  sccache \
   giflib-devel \
   git \
   gzip \
@@ -51,18 +52,14 @@ RUN zypper install -ny \
   zlib-devel \
   libva-devel
 
-RUN useradd -u 1000 docker && \
-  usermod -a -G docker docker
+RUN ln -s /usr/bin/gcc-15 /usr/local/bin/gcc && ln -s /usr/bin/g++-15 /usr/local/bin/g++
 
 ENV SCRIPTS_DIR=/tmp/scripts
-ENV CC=/usr/bin/gcc-15
-ENV CXX=/usr/bin/g++-15
-ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig
-
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-deps.sh
 
-COPY --chown=docker:docker . /src/
+ARG OUTPUT_OWNER_UID
+RUN $SCRIPTS_DIR/add-docker-user "$OUTPUT_OWNER_UID"
 
-USER docker
+COPY --chown=$OUTPUT_OWNER_UID . /src/
+
 ENTRYPOINT ["bash", "-l", "-c", "/src/builder/build.sh"]

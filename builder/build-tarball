@@ -2,46 +2,46 @@
 
 set -e
 
-build_www_dir() {
-  local webpacked_www=$PWD/builder/www
-  local src_www=kasmweb
-
-  if [ "$src_www" -nt "$webpacked_www" ]; then
-    docker build -t kasmweb/www -f builder/dockerfile.www.build .
-    docker run --rm -v $PWD/builder/www:/build kasmweb/www:latest
-  fi
+build_tarball_builder_image() {
+  builder_image=kasmvncbuilder:$os_codename${build_tag_for_images}
+  docker build -t "$builder_image" \
+    --build-arg OUTPUT_OWNER_UID="$output_owner_uid" \
+    -f builder/dockerfile.${os}_${os_codename}${build_tag}.build .
 }
 
-move_libjpeg_turbo_to_os_specific_dir() {
-  chown $L_UID:$L_GID $shared_with_docker_dir/${os_codename}/*
-  mkdir -p $PWD/builder/build/${os_codename}/
-  mv $shared_with_docker_dir/${os_codename}/libjpeg-turbo*.deb \
-    $PWD/builder/build/${os_codename}/
+create_distro_sccache_dir_under_output_owner() {
+  sccache_dir_for_distro="$PWD/builder/build/.sccache/user_${output_owner_uid}/${os}_${os_codename}${build_tag}"
+  as_output_owner mkdir -p "$sccache_dir_for_distro"
 }
 
-shared_with_docker_dir=${GITLAB_SHARED_DIND_DIR:-/tmp}
+create_build_dir_under_output_owner() {
+  build_dir="$PWD/builder/build"
+  as_output_owner mkdir -p "$build_dir"
+}
 
 cd "$(dirname "$0")/.."
 . builder/os_ver_cli.sh
+. builder/scripts/output_owner.sh
 
-build_www_dir
+select_consistent_output_owner_uid_and_gid
 
-builder_image=kasmvncbuilder:$os_codename${build_tag_for_images}
-docker build -t "$builder_image" \
-  -f builder/dockerfile.${os}_${os_codename}${build_tag}.build .
-mkdir -p builder/build
-docker run -v $shared_with_docker_dir:/build -e BUILD_TAG="$build_tag" \
+builder/build-www
+
+build_tarball_builder_image
+
+create_build_dir_under_output_owner
+create_distro_sccache_dir_under_output_owner
+docker run -v $build_dir:/build \
+  -v "$sccache_dir_for_distro":/sccache \
+  -e BUILD_TAG="$build_tag" \
+  --user "$output_owner_uid":"$output_owner_gid" \
   -e KASMVNC_COMMIT_ID="$KASMVNC_COMMIT_ID" \
+  -e SCCACHE_DIR=/sccache \
   --rm "$builder_image"
 
-L_GID=$(id -g)
-L_UID=$(id -u)
 tarball_name="kasmvnc.${os}_${os_codename}.tar.gz"
 tarball_name_with_build_tag="kasmvnc.${os}_${os_codename}${build_tag}.tar.gz"
-chown $L_UID:$L_GID $shared_with_docker_dir/$tarball_name
-mv $shared_with_docker_dir/$tarball_name \
-  $PWD/builder/build/"$tarball_name_with_build_tag"
-
-if [ "$build_tag" = "+libjpeg-turbo_latest" ]; then
-  move_libjpeg_turbo_to_os_specific_dir
+if [[ "$tarball_name" != "$tarball_name_with_build_tag" ]]; then
+  mv "$build_dir/$tarball_name" \
+    "$build_dir/$tarball_name_with_build_tag"
 fi

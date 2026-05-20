@@ -13,7 +13,5 @@ ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
 RUN $SCRIPTS_DIR/install_alpine_signing_keys
 
-RUN useradd -m docker && echo "docker:docker" | chpasswd
-RUN echo 'docker ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-
-USER docker
+ARG OUTPUT_OWNER_UID
+RUN $SCRIPTS_DIR/add-docker-user "$OUTPUT_OWNER_UID"
