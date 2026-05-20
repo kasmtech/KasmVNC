@@ -1,0 +1,37 @@
+#!/bin/bash
+
+set -eo pipefail
+
+detect_ssccache_arch() {
+  arch="$(arch)"
+
+  case $arch in
+    x86_64)
+      sccache_arch=x86_64
+      ;;
+    aarch64)
+      sccache_arch=aarch64
+      ;;
+    *)
+      echo >&2 "Unknown arch: $arch"
+      return 1
+  esac
+}
+
+fetch_sccache_and_put_into_user_local_bin() {
+  cd /tmp
+
+  detect_ssccache_arch
+  wget "https://github.com/mozilla/sccache/releases/download/${sccache_version}/sccache-${sccache_version}-$sccache_arch-unknown-linux-musl.tar.gz"
+
+  tar -xzf sccache*.tar.gz
+  mv sccache*/sccache /usr/local/bin/sccache
+}
+
+cleanup_download() {
+  rm -r sccache*
+}
+
+sccache_version="v0.14.0"
+fetch_sccache_and_put_into_user_local_bin
+cleanup_download

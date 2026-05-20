@@ -10,6 +10,8 @@ RUN dnf install -y dnf-plugins-core
 COPY fedora/*.spec /tmp
 RUN dnf builddep -y /tmp/*.spec
 
-RUN useradd -m docker && echo "docker:docker" | chpasswd
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
 
-USER docker
+ARG OUTPUT_OWNER_UID
+RUN $SCRIPTS_DIR/add-docker-user "$OUTPUT_OWNER_UID"

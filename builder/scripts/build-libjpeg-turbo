@@ -3,7 +3,9 @@
 set -euo pipefail
 
 build_and_install() {
-  cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_POSITION_INDEPENDENT_CODE=ON -GNinja .
+  cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/.local \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON -GNinja \
+    .
   ninja -C build install
 }
 

@@ -39,11 +39,12 @@ stages:
 .prepare_build: &prepare_build
   - pwd
   - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
-  - apt-get update && apt-get install -y docker.io
+  - apt-get update && apt-get install -y docker.io sudo
   - echo "$DOCKER_HUB_PASSWORD" | docker login --username $DOCKER_HUB_USERNAME --password-stdin
 
 .prepare_www: &prepare_www
   - tar -zxf output/www/kasm_www.tar.gz -C builder/
+  - touch builder/www
 
 .prepare_artfacts: &prepare_artfacts
   - cp -r builder/build/* output/
@@ -55,36 +56,52 @@ stages:
 .parallel_matrix: &parallel_matrix
   matrix:
       - DISTRO: 'ubuntu focal'
+        DISTRO_SLUG: 'ubuntu_focal'
         GROUP: 0
       - DISTRO: 'ubuntu jammy'
+        DISTRO_SLUG: 'ubuntu_jammy'
         GROUP: 1
       - DISTRO: 'ubuntu noble'
+        DISTRO_SLUG: 'ubuntu_noble'
         GROUP: 2
       - DISTRO: 'debian bullseye'
+        DISTRO_SLUG: 'debian_bullseye'
         GROUP: 3
       - DISTRO: 'debian bookworm'
+        DISTRO_SLUG: 'debian_bookworm'
         GROUP: 4
       - DISTRO: 'debian trixie'
+        DISTRO_SLUG: 'debian_trixie'
         GROUP: 5
       - DISTRO: 'kali kali-rolling'
+        DISTRO_SLUG: 'kali_kali-rolling'
         GROUP: 6
       - DISTRO: 'oracle 8'
+        DISTRO_SLUG: 'oracle_8'
         GROUP: 7
       - DISTRO: 'oracle 9'
+        DISTRO_SLUG: 'oracle_9'
         GROUP: 8
       - DISTRO: 'opensuse 15'
+        DISTRO_SLUG: 'opensuse_15'
         GROUP: 9
       - DISTRO: 'opensuse 16'
+        DISTRO_SLUG: 'opensuse_16'
         GROUP: 10
       - DISTRO: 'fedora 42'
+        DISTRO_SLUG: 'fedora_42'
         GROUP: 11
       - DISTRO: 'fedora 43'
+        DISTRO_SLUG: 'fedora_43'
         GROUP: 12
       - DISTRO: 'alpine 321'
+        DISTRO_SLUG: 'alpine_321'
         GROUP: 13
       - DISTRO: 'alpine 322'
+        DISTRO_SLUG: 'alpine_322'
         GROUP: 14
       - DISTRO: 'alpine 323'
+        DISTRO_SLUG: 'alpine_323'
         GROUP: 15
 
 default:
@@ -126,15 +143,13 @@ functional_test:
 build_www:
   stage: www
   allow_failure: false
+  image: $DEBIAN_STABLE_IMAGE
   tags:
     - oci-fixed-amd
   before_script:
     - *prepare_build
   script:
-    - webpacked_www=$PWD/builder/www
-    - src_www=kasmweb
-    - docker build -t kasmweb/www -f builder/dockerfile.www.build .
-    - docker run --rm -v $PWD/builder/www:/build kasmweb/www:latest
+    - builder/build-www
     - mkdir -p output/www
     - cd builder
     - echo $PWD
@@ -161,11 +176,16 @@ build_amd64:
   after_script:
     - *prepare_artfacts
   script:
-    - set -e
     - is_build_this_distro "$DISTRO" && builder/build-package $DISTRO
   artifacts:
     paths:
       - output/
+  cache:
+    key: "sccache-$CI_RUNNER_EXECUTABLE_ARCH-$CI_COMMIT_REF_SLUG-$DISTRO_SLUG"
+    paths:
+      - builder/build/.sccache
+    policy: pull-push
+
   resource_group: "concurrent_$GROUP"
   parallel:
     *parallel_matrix
@@ -188,6 +208,11 @@ build_arm64:
   artifacts:
     paths:
       - output/
+  cache:
+    key: "sccache-$CI_RUNNER_EXECUTABLE_ARCH-$CI_COMMIT_REF_SLUG-$DISTRO_SLUG"
+    paths:
+      - builder/build/.sccache
+    policy: pull-push
   resource_group: "concurrent_$GROUP"
   parallel:
     *parallel_matrix

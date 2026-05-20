@@ -14,6 +14,7 @@ RUN \
     bash \
     ca-certificates \
     nasm \
+    sccache \
     coreutils \
     curl \
     eudev-dev \
@@ -80,11 +81,10 @@ RUN pip install --break-system-packages cmake==3.22.6
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-deps.sh
 
-RUN useradd -m docker && echo "docker:docker" | chpasswd
+ARG OUTPUT_OWNER_UID
+RUN $SCRIPTS_DIR/add-docker-user "$OUTPUT_OWNER_UID"
 
-COPY --chown=docker:docker . /src/
+COPY --chown=$OUTPUT_OWNER_UID . /src/
 
-USER docker
 ENTRYPOINT ["/src/builder/build.sh"]

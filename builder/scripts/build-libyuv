@@ -27,10 +27,10 @@ build_and_install() {
     EXTRA_CXXFLAGS=""
   fi
 
-  cp -r include/ /usr/
+  cp -r include/ "$HOME/.local/"
   make V=1 -f linux.mk CFLAGS="-O2 -fomit-frame-pointer -fPIC" CXXFLAGS="-O2 -fomit-frame-pointer -fPIC $EXTRA_CXXFLAGS"
 
-  install -D -m 0644 libyuv.a /usr/lib/libyuv.a
+  install -D -m 0644 libyuv.a "$HOME/.local/lib/libyuv.a"
 }
 
 prepare_source

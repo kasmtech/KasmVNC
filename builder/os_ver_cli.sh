@@ -12,4 +12,5 @@ if [[ -n "$build_tag" ]]; then
 fi
 os_image="$os:$os_codename"
 
-echo "Building for $os_image"
+echo "Distro image: $os_image"
+echo

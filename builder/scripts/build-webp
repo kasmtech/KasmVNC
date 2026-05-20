@@ -21,7 +21,7 @@ prepare_source() {
 
 build_and_install() {
   export MAKEFLAGS=-j$(nproc)
-  CONFIG_FLAGS=( --enable-static --disable-shared --enable-threading )
+  CONFIG_FLAGS=( --enable-static --disable-shared --enable-threading --prefix="$HOME/.local")
   ARCH=$(arch)
 
   if [ "$ARCH" = "x86_64" ]; then
@@ -38,4 +38,3 @@ build_and_install() {
 
 prepare_source
 build_and_install
-
