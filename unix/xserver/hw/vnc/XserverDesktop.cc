@@ -546,7 +546,23 @@ rfb::Point XserverDesktop::directMouseEventWithPosition(int dx, int dy,
       cursorY = maxY;
 
     vncPointerMoveRelative(dx, dy, cursorX, cursorY);
-    vncPointerButtonAction(buttonMask, false, false);
+
+    bool skipclick = false, skiprelease = false;
+    if (server->DLPRegion.enabled) {
+      rdr::U16 x1, y1, x2, y2;
+      server->translateDLPRegion(x1, y1, x2, y2);
+
+      rfb::Point cursorPos(cursorX - screenX, cursorY - screenY);
+      if (cursorPos.x < x1 || cursorPos.x >= x2 ||
+          cursorPos.y < y1 || cursorPos.y >= y2) {
+        if (!rfb::Server::DLP_RegionAllowClick)
+          skipclick = true;
+        if (!rfb::Server::DLP_RegionAllowRelease)
+          skiprelease = true;
+      }
+    }
+
+    vncPointerButtonAction(buttonMask, skipclick, skiprelease);
   } else {
     vncScroll(scrollX, scrollY);
   }
