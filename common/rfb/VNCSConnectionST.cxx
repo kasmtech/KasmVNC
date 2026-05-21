@@ -817,8 +817,10 @@ void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
 {
   pointerEventTime = lastEventTime = time(nullptr);
   server->lastUserInputTime = lastEventTime;
-  if (!(accessRights & AccessPtrEvents))
+  if (!(accessRights & AccessPtrEvents)) {
+    recheckPerms();
     return;
+  }
   if (!rfb::Server::acceptPointerEvents)
     return;
   if (server->pointerClient && server->pointerClient != this)
