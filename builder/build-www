@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -eo pipefail
+
+build_www_dir() {
+  select_consistent_output_owner_uid_and_gid
+  as_output_owner mkdir -p "$built_www"
+
+  docker build -t kasmweb/www \
+    --build-arg OUTPUT_OWNER_UID="$output_owner_uid" \
+    -f builder/dockerfile.www.build .
+  docker run --rm -v "$built_www:/build" \
+    --user "$output_owner_uid":"$output_owner_gid" \
+    kasmweb/www:latest
+}
+
+www_source_not_changed() {
+  [[ "$src_www" -ot "$built_www" ]]
+}
+
+cd "$(dirname "$0")/.."
+. builder/scripts/output_owner.sh
+
+src_www=kasmweb
+built_www=$PWD/builder/www
+
+if www_source_not_changed; then
+  echo "Source for www (kasmweb) did not change, doing nothing."
+  exit
+fi
+
+echo "Building www..."
+build_www_dir

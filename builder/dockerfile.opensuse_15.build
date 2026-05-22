@@ -18,6 +18,7 @@ RUN zypper install -ny \
   font-util \
   gcc14 \
   gcc14-c++ \
+  sccache \
   giflib-devel \
   git \
   gzip \
@@ -49,9 +50,6 @@ RUN zypper install -ny \
   zlib-devel \
   libva-devel
 
-RUN groupadd -g 1000 docker && \
-  useradd -u 1000 -g docker docker
-
 RUN ARCH=$(arch) && \
   CMAKE_URL="https://cmake.org/files/v3.22/cmake-3.22.0" && \
   if [ "$ARCH" = "x86_64" ]; then \
@@ -65,14 +63,15 @@ RUN ARCH=$(arch) && \
   (echo y; echo n) | bash cmake.sh --prefix=/usr/local --skip-license && \
   rm cmake.sh
 
+RUN ln -s /usr/bin/gcc-14 /usr/local/bin/gcc && ln -s /usr/bin/g++-14 /usr/local/bin/g++
+
 ENV SCRIPTS_DIR=/tmp/scripts
-ENV CC=/usr/bin/gcc-14
-ENV CXX=/usr/bin/g++-14
 
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-deps.sh
 
-COPY --chown=docker:docker . /src/
+ARG OUTPUT_OWNER_UID
+RUN $SCRIPTS_DIR/add-docker-user "$OUTPUT_OWNER_UID"
 
-USER docker
+COPY --chown=$OUTPUT_OWNER_UID . /src/
+
 ENTRYPOINT ["bash", "-l", "-c", "/src/builder/build.sh"]

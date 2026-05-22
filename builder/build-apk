@@ -3,33 +3,33 @@
 set -e
 
 copy_signing_key_to_user_abuild_dir() {
-  docker run --rm -v $PWD/alpine/.abuild:/abuild --user $L_UID:$L_GID \
+  docker run --rm -v $PWD/alpine/.abuild:/abuild \
+    --user "$output_owner_uid:$output_owner_gid" \
     $builder_image \
     cp /etc/apk/keys/kasmvnc_signing_key.rsa.pub \
       /etc/apk/keys/kasmvnc_signing_key.rsa /abuild
 }
 
 . builder/os_ver_cli.sh
+. builder/scripts/output_owner.sh
 
 cd "$(dirname "$0")/.."
 
-L_UID=$(id -u)
-L_GID=$(id -g)
+select_consistent_output_owner_uid_and_gid
+
 ABUILD_GID=300
-if [ "$L_UID" = 0 ]; then
-  L_UID=1000
-  L_GID=1000
-fi
 
 builder_image=kasmvnc_apkbuilder_${os}:${os_codename}
 docker build -t $builder_image \
   --build-arg KASMVNC_ALPINE_PRIVATE_KEY \
   --build-arg KASMVNC_ALPINE_PUBLIC_KEY \
+  --build-arg OUTPUT_OWNER_UID="$output_owner_uid" \
   -f builder/dockerfile.${os}_${os_codename}.apk.build .
 copy_signing_key_to_user_abuild_dir
 
 source_dir=$(echo $PWD)
-docker run --rm -v "$source_dir":/src --user $L_UID:$L_GID \
+docker run --rm -v "$source_dir":/src \
+  --user "$output_owner_uid:$output_owner_gid" \
   --group-add $ABUILD_GID \
   -e CI \
   kasmvnc_apkbuilder_${os}:${os_codename} /bin/bash -c \

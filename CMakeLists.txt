@@ -43,12 +43,6 @@ if(MSVC)
   message(FATAL_ERROR "KasmVNC cannot be built with Visual Studio.  Please use MinGW")
 endif()
 
-if(NOT BUILD_TIMESTAMP)
-  set(BUILD_TIMESTAMP "")
-  execute_process(COMMAND "date" "+%Y-%m-%d %H:%M" OUTPUT_VARIABLE BUILD_TIMESTAMP)
-  string(REGEX REPLACE "\n" "" BUILD_TIMESTAMP ${BUILD_TIMESTAMP})
-endif()
-
 # Default to optimised builds instead of debug ones. Our code has no bugs ;)
 # (CMake makes it fairly easy to toggle this back to Debug if needed)
 if(NOT CMAKE_BUILD_TYPE)
@@ -58,8 +52,6 @@ endif()
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 
 message(STATUS "VERSION = ${VERSION}")
-message(STATUS "BUILD_TIMESTAMP = ${BUILD_TIMESTAMP}")
-add_definitions(-DBUILD_TIMESTAMP="${BUILD_TIMESTAMP}")
 
 message(STATUS "WWWDIR = ${DATA_DIR}/kasmvnc/www")
 add_definitions(-DWWWDIR="${DATA_DIR}/kasmvnc/www")
@@ -155,6 +147,8 @@ find_package(Freetype REQUIRED)
 include_directories(${FREETYPE_INCLUDE_DIRS})
 
 # Staticly link libjpeg-turbo
+# Add library search paths for custom-built libjpeg-turbo in ~/.local
+link_directories("$ENV{HOME}/.local/lib" "$ENV{HOME}/.local/lib64")
 set(JPEG_LIBRARIES "-Wl,-Bstatic -lturbojpeg -Wl,-Bdynamic")
 # Warn if it doesn't seem to be the accelerated libjpeg that's found
 set(CMAKE_REQUIRED_LIBRARIES ${JPEG_LIBRARIES})

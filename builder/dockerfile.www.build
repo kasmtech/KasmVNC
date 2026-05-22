@@ -1,12 +1,21 @@
 FROM alpine
 
 RUN apk add npm nodejs
+RUN apk add bash shadow
 
-COPY kasmweb/ /src/www
-COPY builder/build_www.sh /src/
+ENV SCRIPTS_DIR=/tmp/scripts
+COPY builder/scripts $SCRIPTS_DIR
+
+ARG OUTPUT_OWNER_UID
+RUN $SCRIPTS_DIR/add-docker-user "$OUTPUT_OWNER_UID"
+
+COPY --chown=$OUTPUT_OWNER_UID  kasmweb/ /src/www
+COPY --chown=$OUTPUT_OWNER_UID  builder/build-www-inside-docker /src/
 
 WORKDIR /src/www
 
+USER $OUTPUT_OWNER_UID
+
 RUN npm install
 
-ENTRYPOINT [ "/src/build_www.sh" ]
+ENTRYPOINT [ "/src/build-www-inside-docker" ]

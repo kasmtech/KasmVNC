@@ -27,7 +27,9 @@ RUN if [ "$(arch)" = "x86_64" ]; then \
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
 
-RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
+RUN $SCRIPTS_DIR/install_sccache_from_github
+ARG OUTPUT_OWNER_UID
+RUN $SCRIPTS_DIR/add-docker-user "$OUTPUT_OWNER_UID"
 
 RUN ARCH=$(arch) && \
   CMAKE_URL="https://cmake.org/files/v3.22/cmake-3.22.0" && \
@@ -42,9 +44,6 @@ RUN ARCH=$(arch) && \
   (echo y; echo n) | bash cmake.sh --prefix=/usr/local --skip-license && \
   rm cmake.sh
 
-RUN $SCRIPTS_DIR/build-deps.sh
+COPY --chown=$OUTPUT_OWNER_UID . /src/
 
-COPY --chown=docker:docker . /src/
-
-USER docker
 ENTRYPOINT ["/src/builder/build.sh"]

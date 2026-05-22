@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -eo pipefail
+
+output_owner_is_root() {
+  [ "$output_owner_uid" -eq 0 ]
+}
+
+output_owner_user_exists() {
+  getent passwd "$output_owner_uid" >/dev/null
+}
+
+output_owner_non_root_user_exists() {
+  output_owner_user_exists
+}
+
+add_docker_user_with_homedir_rwx_by_output_owner() {
+  useradd -m docker -u "$output_owner_uid"
+  echo 'docker ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+}
+
+add_docker_user_with_homedir_that_output_owner_can_compile_in() {
+  if output_owner_is_root; then
+    echo >&2 "ERROR: output owner can't be root"
+    exit 1
+  fi
+
+  if output_owner_non_root_user_exists; then
+    return
+  fi
+
+  add_docker_user_with_homedir_rwx_by_output_owner
+}
+
+output_owner_uid="$1"
+if [[ $# -ne 1 ]]; then
+  echo >&2 "Usage: $(basename "$0") <output_owner_uid>"
+  exit 1
+fi
+
+add_docker_user_with_homedir_that_output_owner_can_compile_in

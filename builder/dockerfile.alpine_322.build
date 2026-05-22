@@ -78,11 +78,12 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
-RUN $SCRIPTS_DIR/build-deps.sh
 
-RUN useradd -m docker && echo "docker:docker" | chpasswd
+RUN $SCRIPTS_DIR/install_sccache_from_github
 
-COPY --chown=docker:docker . /src/
+ARG OUTPUT_OWNER_UID
+RUN $SCRIPTS_DIR/add-docker-user "$OUTPUT_OWNER_UID"
 
-USER docker
+COPY --chown=$OUTPUT_OWNER_UID . /src/
+
 ENTRYPOINT ["/src/builder/build.sh"]
