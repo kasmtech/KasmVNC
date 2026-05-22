@@ -997,6 +997,27 @@ void VNCServerST::translateDLPRegion(rdr::U16 &x1, rdr::U16 &y1, rdr::U16 &x2, r
   //slog.info("DLP_Region vals %u,%u %u,%u", x1, y1, x2, y2);
 }
 
+void VNCServerST::getDLPRegionSkipFlags(const Point& pos,
+                                        bool& skipclick, bool& skiprelease) const
+{
+  skipclick = false;
+  skiprelease = false;
+
+  if (!DLPRegion.enabled)
+    return;
+
+  rdr::U16 x1, y1, x2, y2;
+  translateDLPRegion(x1, y1, x2, y2);
+
+  if (pos.x < x1 || pos.x >= x2 ||
+      pos.y < y1 || pos.y >= y2) {
+    if (!Server::DLP_RegionAllowClick)
+      skipclick = true;
+    if (!Server::DLP_RegionAllowRelease)
+      skiprelease = true;
+  }
+}
+
 void VNCServerST::blackOut()
 {
   // Compute the region, since the resolution may have changed
