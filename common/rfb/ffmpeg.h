@@ -137,7 +137,6 @@ class FFmpeg final {
     using avcodec_receive_frame_func = int (*)(AVCodecContext *avctx, AVFrame *frame);
     using av_packet_unref_func = void (*)(AVPacket *pkt);
     using avcodec_flush_buffers_func = void (*)(AVCodecContext *avctx);
-    using avcodec_close_func = int (*)(AVCodecContext *avctx);
     using av_codec_is_encoder_func = int (*)(const AVCodec *codec);
 
     // libavfilter
@@ -201,7 +200,6 @@ class FFmpeg final {
     avcodec_receive_packet_func avcodec_receive_packet_f{};
     av_packet_unref_func av_packet_unref_f{};
     avcodec_flush_buffers_func avcodec_flush_buffers_f{};
-    avcodec_close_func avcodec_close_f{};
     av_codec_is_encoder_func av_codec_is_encoder_f{};
 
     // libavfilter
@@ -384,10 +382,6 @@ public:
 
     void avcodec_flush_buffers(AVCodecContext *avctx) const {
         avcodec_flush_buffers_f(avctx);
-    }
-
-    int avcodec_close(AVCodecContext *avctx) const {
-        return avcodec_close_f(avctx);
     }
 
     int av_codec_is_encoder(const AVCodec *codec) const {

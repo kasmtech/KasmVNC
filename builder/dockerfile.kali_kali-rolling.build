@@ -7,7 +7,10 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV CXXFLAGS="-Wno-stringop-overflow"
 ENV CFLAGS="-Wno-stringop-overflow"
 
-RUN sed -i 's/Types: deb/Types: deb deb-src/' /etc/apt/sources.list.d/kali.sources
+RUN find /etc/apt/sources.list.d/ -name "*.sources" | xargs -r sed -i 's/^Types: deb$/Types: deb deb-src/'; \
+    { [ -f /etc/apt/sources.list ] && grep '^deb ' /etc/apt/sources.list 2>/dev/null; \
+      find /etc/apt/sources.list.d/ -name "*.list" -exec grep -h '^deb ' {} \; 2>/dev/null; } | \
+    sed 's/^deb /deb-src /' >> /etc/apt/sources.list.d/kali-deb-src.list; true
 
 RUN apt-get update && \
       apt-get -y install sudo
