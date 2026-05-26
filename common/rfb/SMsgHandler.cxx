@@ -43,12 +43,13 @@ void SMsgHandler::setPixelFormat(const PixelFormat& pf)
 void SMsgHandler::setEncodings(int nEncodings, const rdr::S32* encodings)
 {
   bool firstFence, firstContinuousUpdates, firstLEDState,
-       firstQEMUKeyEvent;
+       firstQEMUKeyEvent, firstDirectMouse;
 
   firstFence = !cp.supportsFence;
   firstContinuousUpdates = !cp.supportsContinuousUpdates;
   firstLEDState = !cp.supportsLEDState;
   firstQEMUKeyEvent = !cp.supportsQEMUKeyEvent;
+  firstDirectMouse = !cp.supportsDirectMouse;
 
   cp.setEncodings(nEncodings, encodings);
 
@@ -62,6 +63,12 @@ void SMsgHandler::setEncodings(int nEncodings, const rdr::S32* encodings)
     supportsLEDState();
   if (cp.supportsQEMUKeyEvent && firstQEMUKeyEvent)
     supportsQEMUKeyEvent();
+  if (cp.supportsDirectMouse && firstDirectMouse)
+    supportsDirectMouse();
+}
+
+void SMsgHandler::supportsDirectMouse()
+{
 }
 
 void SMsgHandler::handleClipboardAnnounceBinary(const unsigned, const char mimes[][32])

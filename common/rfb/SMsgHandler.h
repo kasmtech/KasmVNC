@@ -99,6 +99,10 @@ namespace rfb {
     // handler will send a pseudo-rect back, signalling server support.
     virtual void supportsQEMUKeyEvent();
 
+    // supportsDirectMouse() is called the first time we detect that the
+    // client supports the direct mouse extension
+    virtual void supportsDirectMouse();
+
     virtual void udpUpgrade(const char *resp) = 0;
     virtual void udpDowngrade(const bool) = 0;
 

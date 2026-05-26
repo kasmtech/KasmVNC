@@ -71,7 +71,7 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s, con
     needsPermCheck(false), pointerEventTime(0),
     clientHasCursor(false),
     accessRights(AccessDefault), startTime(time(nullptr)), frameTracking(false),
-    udpFramesSinceFull(0), complainedAboutNoViewRights(false), gameModeNotified(false),
+    udpFramesSinceFull(0), complainedAboutNoViewRights(false),
     clientUsername("username_unavailable")
 {
   setStreams(&sock->inStream(), &sock->outStream());
@@ -1005,15 +1005,6 @@ void VNCSConnectionST::framebufferUpdateRequest(const Rect& r,bool incremental)
 
   if (!(accessRights & AccessView)) return;
 
-  // On the first full update request the client is fully connected and has
-  // sent SetEncodings. If the server is configured to force game mode and the
-  // client supports direct mouse, send the notification exactly once.
-  if (!incremental && !gameModeNotified && rfb::Server::forceGameMode &&
-      cp.supportsDirectMouse) {
-    writer()->writeForceGameMode();
-    gameModeNotified = true;
-  }
-
   SConnection::framebufferUpdateRequest(r, incremental);
 
   // Check that the client isn't sending crappy requests
@@ -1207,6 +1198,12 @@ void VNCSConnectionST::supportsContinuousUpdates()
 void VNCSConnectionST::supportsLEDState()
 {
   writer()->writeLEDState();
+}
+
+void VNCSConnectionST::supportsDirectMouse()
+{
+  if (rfb::Server::forceGameMode)
+    writer()->writeForceGameMode();
 }
 
 

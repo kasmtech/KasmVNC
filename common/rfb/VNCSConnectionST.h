@@ -265,6 +265,7 @@ namespace rfb {
     virtual void supportsFence();
     virtual void supportsContinuousUpdates();
     virtual void supportsLEDState();
+    void supportsDirectMouse() override;
 
     bool canChangeKasmSettings() const override {
         return (accessRights & (AccessPtrEvents | AccessKeyEvents)) ==
@@ -366,7 +367,6 @@ namespace rfb {
 
     char unixRelaySubscriptions[MAX_UNIX_RELAYS][MAX_UNIX_RELAY_NAME_LEN] = {};
     bool complainedAboutNoViewRights;
-    bool gameModeNotified;
     std::string clientUsername;
     bool pendingClientRefresh{false};
   };
