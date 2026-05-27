@@ -92,6 +92,7 @@ namespace rfb {
         ctx->width = current_params.width;
         ctx->height = current_params.height;
         ctx->delay = 0;
+        ctx->profile = EncoderConfiguration::get_configuration(encoder).profile;
         ctx->flags |= AV_CODEC_FLAG_LOW_DELAY;
 
         DEBUG_LOG(vlog, "Encoder context config: pix_fmt=%d, width=%d, height=%d, coded_width=%d, coded_height=%d, framerate=%d, gop=%d, quality=%d",
@@ -105,6 +106,8 @@ namespace rfb {
                 vlog.info("Cannot set rc to cbr");
             }
 
+            ctx->refs = 0; // num_ref_frames=0 in SPS
+            ctx->delay = 0;
 
             if (ffmpeg.av_opt_set(ctx->priv_data, "preset", "p4", 0) < 0) {
                 vlog.info("Cannot set preset to p1");
@@ -114,23 +117,13 @@ namespace rfb {
                 vlog.info("Cannot set tune to ull (ultra-low-latency)");
             }
 
-            if (ffmpeg.av_opt_set(ctx->priv_data, "zerolatency", "1", 0) < 0) {
+            if (ffmpeg.av_opt_set_int(ctx->priv_data, "zerolatency", 1, 0) < 0) {
                 vlog.info("Cannot set zerolatency");
             }
 
-            if (ffmpeg.av_opt_set(ctx->priv_data, "b_ref_mode", "disabled", 0) < 0) {
+            if (ffmpeg.av_opt_set_int(ctx->priv_data, "b_ref_mode", 0, 0) < 0) {
                 vlog.info("Cannot set b_ref_mode");
             }
-
-            /*
-            if (ffmpeg.av_opt_set(ctx->priv_data, "multipass", "disabled", 0) < 0) {
-                vlog.info("Cannot set multipass");
-            }*/
-
-            /*
-            if (ffmpeg.av_opt_set(ctx->priv_data, "rc-lookahead", "32", 0) < 0) {
-                vlog.info("Cannot set rc-lookahead");
-            }*/
 
             // Set delay to 0
             if (ffmpeg.av_opt_set(ctx->priv_data, "delay", "0", 0) < 0) {
@@ -343,6 +336,7 @@ namespace rfb {
         DEBUG_LOG(vlog, "Frame transfer successful");
 
         hw_frame->pts = frame->pts;
+        hw_frame->pict_type = frame->pict_type;
 
         DEBUG_LOG(vlog, "HW frame before send: format=%d, width=%d, height=%d, linesize[0]=%d, linesize[1]=%d, pts=%ld",
                    hw_frame->format, hw_frame->width, hw_frame->height, hw_frame->linesize[0], hw_frame->linesize[1], hw_frame->pts);
