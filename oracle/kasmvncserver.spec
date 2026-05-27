@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.3.4
+Version:        1.5.0
 Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
@@ -83,6 +83,54 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Mon May 25 2026 KasmTech <info@kasmweb.com> - 1.5.0-1
+- Added video streaming mode with hardware and software accelerated H.264, H.265, and AV1 encoders. Hardware acceleration uses VAAPI (Intel/AMD) and NVENC (NVIDIA).
+- Added support for relative mouse input mode for improved UX and application compatibility (e.g. games and apps that require raw mouse deltas).
+- Added support for overriding configuration settings via environment variables.
+- Optional systemd auto-start integration for deb/rpm packages, with improved upgrade and uninstall handling.
+- Added support for Fedora 42 and 43.
+- Added support for openSUSE 16.
+- Added support for Alpine 3.22 and 3.23.
+- Removed support for distro versions that reached end-of-life (Fedora 40 and 41; Alpine 3.18, 3.19, and 3.20).
+- FFmpeg 8 compatibility (dropped use of removed avcodec_close API).
+- Fixed crash in window manager triggered by null clipboard data during UTF-8 to Latin-1 conversion.
+- Fixed bug where closing a secondary monitor would close the entire client connection.
+- Fixed Kali Linux image build failures.
+- Updated default STUN public IP behavior to avoid undesired external lookups.
+- Improved client-side multi-monitor handling with a dedicated reference to the visible canvas.
+- Bumped rollup to address security vulnerabilities.
+- Updated French translations.
+* Fri Apr 24 2026 KasmTech <info@kasmweb.com> - 1.4.2-1
+- Fixed bug with server-side enforced idle-timeout.
+* Mon Dec 01 2025 KasmTech <info@kasmweb.com> - 1.4.1-1
+- Fixed bug with enforcement of server-side idle-disconnect.
+- Added support for graceful disconnect, allowing the client to auto-reconnect on a non-graceful disconnect and not when the server gracefully disconnects.
+- Fixed display manager UI to work on touch screens.
+* Fri Aug 01 2025 KasmTech <info@kasmweb.com> - 1.4.0-1
+- Added new API call for retrieving active sessions.
+- Added message propagation to clients other users connect or disconnect from the same session.
+- Enhanced detection of physical cores vs virtual cores for better tuning of thread counts on multi-threaded processes.
+- Significant enhancements of multi-threading performance.
+- Upgraded libwebp library to 1.5.0.
+- Updated to C++ 20 standard.
+- Added network.udp.payload_size to kasm yaml configuration.
+- Added build for Debian Trixie.
+- Refactor of code to decrease memory usage on client browsers.
+- Added support for the Keyboard API for Chromium browsers.
+- Added multi-threaded asynchronous decoding of image rects, increasing client side performance.
+- Fixed bug with watermark not getting displayed in certain scenarios.
+- Fixed bug with case sensitivity of HTTP headers
+- Fixed bug with the downloads API not escaping certain characters in returned json.
+- Fixed bug causing a segmentation fault on the get_screenshot API handler in certain conditions.
+- Bug fixes with multi-monitor, adding and removing displays
+- Fix bug with secondary display still showing content after session disconnect in certain scenarios.
+- Fixed bug with Ctrl key not working on foreign language keyboards with Chromium based browsers.
+- Fix bug with secondary display interaction not counting toward interaction with respect to the idle disconnect setting.
+- Fixed memory leak in Firefox.
+- Fixed bug with Firefox displaying scrollbars at odd resolutions.
+- Fixes to Korean translations.
+- Multiple fixes to IME foreign language support.
+- Fixed a race condition causing an error message to be displayed erroneously on the client.
 * Thu Mar 20 2025 KasmTech <info@kasmweb.com> - 1.3.4-1
 - Add configuration key network.udp.payload_size.
 - Remove support for distro versions that reached end-of-life.
