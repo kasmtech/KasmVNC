@@ -108,6 +108,9 @@ void SMsgReader::readMsg()
   case msgTypeKeepAlive:
     readKeepAlive();
     break;
+  case msgTypeDirectMouseEvent:
+    readDirectMouseEvent();
+    break;
   default:
     fprintf(stderr, "unknown message type %d\n", msgType);
     throw Exception("unknown message type");
@@ -242,7 +245,7 @@ void SMsgReader::readPointerEvent()
   int scrollX = is->readS16();
   int scrollY = is->readS16();
   
-  handler->pointerEvent(Point(x, y), Point(0, 0), mask, false, false, scrollX, scrollY);
+  handler->pointerEvent(Point(x, y), mask, false, false, scrollX, scrollY);
 }
 
 
@@ -421,4 +424,22 @@ void SMsgReader::readVideoEncodersRequest() const {
         buf[i] = is->readU32();
 
     handler->videoEncodersRequest(buf);
+}
+
+void SMsgReader::readDirectMouseEvent()
+{
+  // Wire format (9 bytes after the type byte):
+  //   byte 0:   VNC button mask. Button N uses bit N-1, so the common buttons
+  //             are bit 0=left, bit 1=middle, bit 2=right.
+  //   bytes 1-2: dx (int16 BE)
+  //   bytes 3-4: dy (int16 BE)
+  //   bytes 5-6: scroll dx (int16 BE)
+  //   bytes 7-8: scroll dy (int16 BE)
+  int buttonMask = is->readU8();
+  int dx = is->readS16();
+  int dy = is->readS16();
+  int scrollX = is->readS16();
+  int scrollY = is->readS16();
+
+  handler->directMouseEvent(dx, dy, buttonMask, scrollX, scrollY);
 }

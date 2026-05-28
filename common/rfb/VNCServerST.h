@@ -208,6 +208,11 @@ namespace rfb {
     enum UserActionType {Join, Leave};
     void notifyUserAction(const VNCSConnectionST* newConnection, std::string& user_name, const UserActionType action_type);
 
+    // Compute whether a pointer click/release at the given framebuffer
+    // position should be suppressed by the DLP region policy.
+    void getDLPRegionSkipFlags(const Point& pos,
+                               bool& skipclick, bool& skiprelease) const;
+
   protected:
 
     friend class VNCSConnectionST;

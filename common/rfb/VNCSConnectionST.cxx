@@ -71,7 +71,8 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s, con
     needsPermCheck(false), pointerEventTime(0),
     clientHasCursor(false),
     accessRights(AccessDefault), startTime(time(nullptr)), frameTracking(false),
-    udpFramesSinceFull(0), complainedAboutNoViewRights(false), clientUsername("username_unavailable")
+    udpFramesSinceFull(0), complainedAboutNoViewRights(false),
+    clientUsername("username_unavailable")
 {
   setStreams(&sock->inStream(), &sock->outStream());
   peerEndpoint.buf = sock->getPeerEndpoint();
@@ -772,7 +773,7 @@ void VNCSConnectionST::setPixelFormat(const PixelFormat& pf)
   setCursor();
 }
 
-void VNCSConnectionST::pointerEvent(const Point& pos, const Point& abspos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
+void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
   pointerEventTime = lastEventTime = time(nullptr);
   server->lastUserInputTime = lastEventTime;
@@ -785,44 +786,7 @@ void VNCSConnectionST::pointerEvent(const Point& pos, const Point& abspos, int b
   }
   if (!rfb::Server::acceptPointerEvents) return;
   if (!server->pointerClient || server->pointerClient == this) {
-    Point newpos = pos;
-    if (pos.x & 0x4000) {
-      newpos.x &= ~0x4000;
-      newpos.y &= ~0x4000;
-
-      if (newpos.x & 0x8000) {
-        newpos.x &= ~0x8000;
-        newpos.x = -newpos.x;
-      }
-      if (newpos.y & 0x8000) {
-        newpos.y &= ~0x8000;
-        newpos.y = -newpos.y;
-      }
-
-      if (newpos.x < 0) {
-        if (pointerEventPos.x + newpos.x >= 0)
-          pointerEventPos.x += newpos.x;
-        else
-          pointerEventPos.x = 0;
-      } else {
-        pointerEventPos.x += newpos.x;
-        if (pointerEventPos.x >= cp.width)
-          pointerEventPos.x = cp.width;
-      }
-
-      if (newpos.y < 0) {
-        if (pointerEventPos.y + newpos.y >= 0)
-          pointerEventPos.y += newpos.y;
-        else
-          pointerEventPos.y = 0;
-      } else {
-        pointerEventPos.y += newpos.y;
-        if (pointerEventPos.y >= cp.height)
-          pointerEventPos.y = cp.height;
-      }
-    } else {
-      pointerEventPos = pos;
-    }
+    pointerEventPos = pos;
 
     if (buttonMask)
       server->pointerClient = this;
@@ -844,8 +808,32 @@ void VNCSConnectionST::pointerEvent(const Point& pos, const Point& abspos, int b
       }
     }
 
-    server->desktop->pointerEvent(newpos, pointerEventPos, buttonMask, skipclick, skiprelease, scrollX, scrollY);
+    server->desktop->pointerEvent(pos, buttonMask, skipclick, skiprelease, scrollX, scrollY);
   }
+}
+
+void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
+                                         int scrollX, int scrollY)
+{
+  pointerEventTime = lastEventTime = time(nullptr);
+  server->lastUserInputTime = lastEventTime;
+  if (!(accessRights & AccessPtrEvents)) {
+    recheckPerms();
+    return;
+  }
+  if (!rfb::Server::acceptPointerEvents)
+    return;
+  if (server->pointerClient && server->pointerClient != this)
+    return;
+
+  if (buttonMask)
+    server->pointerClient = this;
+  else
+    server->pointerClient = nullptr;
+
+  pointerEventPos =
+    server->desktop->directMouseEventWithPosition(dx, dy, buttonMask,
+                                                  scrollX, scrollY);
 }
 
 
@@ -1210,6 +1198,12 @@ void VNCSConnectionST::supportsContinuousUpdates()
 void VNCSConnectionST::supportsLEDState()
 {
   writer()->writeLEDState();
+}
+
+void VNCSConnectionST::supportsDirectMouse()
+{
+  if (rfb::Server::forceGameMode)
+    writer()->writeForceGameMode();
 }
 
 

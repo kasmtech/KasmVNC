@@ -54,6 +54,9 @@ namespace rfb {
     virtual void enableContinuousUpdates(bool enable,
                                          int x, int y, int w, int h) = 0;
 
+    virtual void directMouseEvent(int dx, int dy, int buttonMask,
+                                    int scrollX, int scrollY);
+
     virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
     virtual void clearBinaryClipboard();
     virtual void addBinaryClipboard(const char mime[], const rdr::U8 *data,
@@ -95,6 +98,10 @@ namespace rfb {
     // client wants the QEMU Extended Key Event extension. The default
     // handler will send a pseudo-rect back, signalling server support.
     virtual void supportsQEMUKeyEvent();
+
+    // supportsDirectMouse() is called the first time we detect that the
+    // client supports the direct mouse extension
+    virtual void supportsDirectMouse();
 
     virtual void udpUpgrade(const char *resp) = 0;
     virtual void udpDowngrade(const bool) = 0;
