@@ -36,6 +36,7 @@ namespace rfb {
         KasmVideoEncoders::Encoder encoder;
         VideoEncoderParams current_params{};
         uint8_t msg_codec_id;
+        uint8_t msg_codec_type_id;
 
         int64_t pts{};
         int bpp{};
