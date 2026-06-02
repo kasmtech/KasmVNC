@@ -12,9 +12,6 @@ RUN find /etc/apt/sources.list.d/ -name "*.sources" | xargs -r sed -i 's/^Types:
       find /etc/apt/sources.list.d/ -name "*.list" -exec grep -h '^deb ' {} \; 2>/dev/null; } | \
     sed 's/^deb /deb-src /' >> /etc/apt/sources.list.d/kali-deb-src.list; true
 
-RUN echo "deb http://ftp.halifax.rwth-aachen.de/kali kali-rolling main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb-src http://ftp.halifax.rwth-aachen.de/kali kali-rolling main contrib non-free" >> /etc/apt/sources.list
-
 RUN apt-get update && \
       apt-get -y install sudo
 
