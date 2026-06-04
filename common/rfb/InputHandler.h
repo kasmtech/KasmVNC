@@ -36,14 +36,18 @@ namespace rfb {
                           rdr::U32 __unused_attr keycode,
                           bool __unused_attr down) { }
     virtual void pointerEvent(const Point& __unused_attr pos,
-		              const Point& __unused_attr abspos,
-		              int __unused_attr buttonMask,
+                              int __unused_attr buttonMask,
                               const bool __unused_attr skipClick,
                               const bool __unused_attr skipRelease,
                               int scrollX,
                               int scrollY) { }
     virtual void clientCutText(const char* __unused_attr str,
                                int __unused_attr len) { }
+    virtual void directMouseEvent(int __unused_attr dx,
+                                  int __unused_attr dy,
+                                  int __unused_attr buttonMask,
+                                  int __unused_attr scrollX,
+                                  int __unused_attr scrollY) { }
   };
 
 }

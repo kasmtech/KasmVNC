@@ -78,6 +78,12 @@ namespace rfb {
     // the relevant RFB protocol messages from clients.
     // See InputHandler for method signatures.
 
+    virtual Point directMouseEventWithPosition(int dx, int dy, int buttonMask,
+                                               int scrollX, int scrollY) {
+      directMouseEvent(dx, dy, buttonMask, scrollX, scrollY);
+      return Point();
+    }
+
     // handleClipboardAnnounce() is called to indicate a change in the
     // clipboard on a client. Call VNCServer::requestClipboard() to
     // access the actual data.

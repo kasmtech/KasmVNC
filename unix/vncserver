@@ -1564,6 +1564,15 @@ sub DefineConfigToCLIConversion {
         ]
     }),
     KasmVNC::CliOption->new({
+        name => 'ForceGameMode',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "pointer.game_mode",
+            type => KasmVNC::ConfigKey::BOOLEAN
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
         name => 'Log',
         configKeys => [
           KasmVNC::ConfigKey->new({

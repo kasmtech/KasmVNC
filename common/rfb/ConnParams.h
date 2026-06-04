@@ -119,6 +119,7 @@ namespace rfb {
     bool supportsContinuousUpdates;
     bool supportsExtendedClipboard;
     bool supportsDisconnectNotify;
+    bool supportsDirectMouse;
 
     bool supportsUdp;
 

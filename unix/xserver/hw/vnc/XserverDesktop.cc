@@ -500,21 +500,68 @@ void XserverDesktop::approveConnection(uint32_t opaqueId, bool accept,
 //
 // SDesktop callbacks
 
-void XserverDesktop::pointerEvent(const Point& pos, const Point& abspos, int buttonMask,
+void XserverDesktop::pointerEvent(const Point& pos, int buttonMask,
                                   const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
   if (scrollX == 0 && scrollY == 0) {
-    if (pos.equals(abspos)) {
-      vncPointerMove(pos.x + vncGetScreenX(screenIndex), pos.y + vncGetScreenY(screenIndex));
-    } else {
-      vncPointerMoveRelative(pos.x, pos.y,
-                           abspos.x + vncGetScreenX(screenIndex),
-                           abspos.y + vncGetScreenY(screenIndex));
-    }
+    vncPointerMove(pos.x + vncGetScreenX(screenIndex), pos.y + vncGetScreenY(screenIndex));
     vncPointerButtonAction(buttonMask, skipClick, skipRelease);
   } else {
     vncScroll(scrollX, scrollY);
   }
+}
+
+void XserverDesktop::directMouseEvent(int dx, int dy, int buttonMask,
+                                       int scrollX, int scrollY)
+{
+  directMouseEventWithPosition(dx, dy, buttonMask, scrollX, scrollY);
+}
+
+rfb::Point XserverDesktop::directMouseEventWithPosition(int dx, int dy,
+                                       int buttonMask, int scrollX, int scrollY)
+{
+  // Move the X11 cursor via XTest (relative injection).
+  // buttonMask uses standard VNC convention (bit 0=left, 1=middle, 2=right)
+  // which matches X11 button numbering directly, so no remapping is needed.
+  int cursorX, cursorY;
+  vncGetPointerPos(&cursorX, &cursorY);
+
+  if (scrollX == 0 && scrollY == 0) {
+    const int screenX = vncGetScreenX(screenIndex);
+    const int screenY = vncGetScreenY(screenIndex);
+    const int maxX = screenX + width() - 1;
+    const int maxY = screenY + height() - 1;
+
+    cursorX += dx;
+    cursorY += dy;
+
+    if (cursorX < screenX)
+      cursorX = screenX;
+    else if (cursorX > maxX)
+      cursorX = maxX;
+
+    if (cursorY < screenY)
+      cursorY = screenY;
+    else if (cursorY > maxY)
+      cursorY = maxY;
+
+    vncPointerMoveRelative(dx, dy, cursorX, cursorY);
+
+    bool skipclick = false, skiprelease = false;
+    server->getDLPRegionSkipFlags(rfb::Point(cursorX - screenX,
+                                             cursorY - screenY),
+                                  skipclick, skiprelease);
+
+    vncPointerButtonAction(buttonMask, skipclick, skiprelease);
+  } else {
+    vncScroll(scrollX, scrollY);
+  }
+
+  rfb::Point cursorPos(cursorX - vncGetScreenX(screenIndex),
+                       cursorY - vncGetScreenY(screenIndex));
+  oldCursorPos = cursorPos;
+  server->setCursorPos(cursorPos, false);
+  return cursorPos;
 }
 
 unsigned int XserverDesktop::setScreenLayout(int fb_width, int fb_height,
