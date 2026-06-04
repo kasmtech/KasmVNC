@@ -90,7 +90,8 @@ fi
 TARBALL="xorg-server-${XORG_VER}.tar.gz"
 
 if [ ! -f "$TARBALL" ]; then
-  wget --no-check-certificate https://www.x.org/archive/individual/xserver/"$TARBALL"
+  wget --no-check-certificate https://www.x.org/archive/individual/xserver/"$TARBALL" || \
+  wget --no-check-certificate http://artfiles.org/x.org/pub/xorg/individual/xserver/"$TARBALL"
 fi
 
 #git clone https://kasmweb@bitbucket.org/kasmtech/kasmvnc.git
