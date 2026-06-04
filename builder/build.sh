@@ -91,6 +91,7 @@ TARBALL="xorg-server-${XORG_VER}.tar.gz"
 
 if [ ! -f "$TARBALL" ]; then
   wget --no-check-certificate https://www.x.org/archive/individual/xserver/"$TARBALL" || \
+  wget --no-check-certificate -O "$TARBALL" "https://gitlab.freedesktop.org/xorg/xserver/-/archive/xorg-server-${XORG_VER}/xserver-xorg-server-${XORG_VER}.tar.gz" || \
   wget --no-check-certificate http://artfiles.org/x.org/pub/xorg/individual/xserver/"$TARBALL"
 fi
 
