@@ -106,11 +106,9 @@ namespace benchmarking {
 
         void sendStats(const bool toClient) override {}
 
-        void sendNetworkStats() override {
-        }
+        void sendNetworkStats() override {}
 
-        void sendSystemStats() override {
-        }
+        void sendSystemStats() override {}
 
         [[nodiscard]] bool canChangeKasmSettings() const override {
             return true;
@@ -129,6 +127,8 @@ namespace benchmarking {
         void handleFrameStats(rdr::U32 all, rdr::U32 render) override {}
 
         void handleLatencyMeasurementRequest(uint32_t measurementId) override {}
+
+        void touchEvent(int x, int y, int type, uint32_t id) override {}
 
         [[nodiscard]] auto getJpegStats() const {
             return manager.jpegstats;
