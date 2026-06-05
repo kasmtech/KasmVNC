@@ -89,6 +89,7 @@ namespace rfb {
   constexpr int pseudoEncodingQOI = -1886;
   constexpr int pseudoEncodingKasmDisconnectNotify = -1885;
   constexpr int pseudoEncodingDirectMouse = -1884;
+  constexpr int pseudoEncodingTouchEvents = -1883;
 
     constexpr int pseudoEncodingHardwareProfile0 = -1170;
     constexpr int pseudoEncodingHardwareProfile4 = -1166;

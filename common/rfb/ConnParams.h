@@ -120,6 +120,7 @@ namespace rfb {
     bool supportsExtendedClipboard;
     bool supportsDisconnectNotify;
     bool supportsDirectMouse;
+    bool supportsTouchEvents{false};
 
     bool supportsUdp;
 

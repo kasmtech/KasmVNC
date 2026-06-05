@@ -153,6 +153,7 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
   supportsQOI = false;
   supportsDisconnectNotify = false;
   supportsDirectMouse = false;
+  supportsTouchEvents = false;
   compressLevel = -1;
   qualityLevel = -1;
   fineQualityLevel = -1;
@@ -229,6 +230,10 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
     case pseudoEncodingDirectMouse:
       supportsDirectMouse = true;
       clientparlog("directMouse", true);
+      break;
+    case pseudoEncodingTouchEvents:
+      supportsTouchEvents = true;
+      clientparlog("touchEvents", true);
       break;
     case pseudoEncodingFence:
       supportsFence = true;
