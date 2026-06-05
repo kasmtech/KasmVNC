@@ -37,7 +37,7 @@ namespace rfb {
         const char *dri_node_, VideoEncoderParams params) :
         VideoEncoder(layout_.id, conn), layout(layout_),
         ffmpeg(ffmpeg_), encoder(encoder_), current_params(params), msg_codec_id(KasmVideoEncoders::to_msg_id(encoder)),
-        dri_node(dri_node_) {
+        msg_codec_type_id(pseudoEncodingStreamingModeJpegWebp - KasmVideoEncoders::to_encoding(encoder)), dri_node(dri_node_) {
         AVBufferRef *hw_device_ctx{};
         int err{};
 
@@ -92,6 +92,7 @@ namespace rfb {
         ctx->width = current_params.width;
         ctx->height = current_params.height;
         ctx->delay = 0;
+        ctx->profile = EncoderConfiguration::get_configuration(encoder).profile;
         ctx->flags |= AV_CODEC_FLAG_LOW_DELAY;
 
         DEBUG_LOG(vlog, "Encoder context config: pix_fmt=%d, width=%d, height=%d, coded_width=%d, coded_height=%d, framerate=%d, gop=%d, quality=%d",
@@ -105,6 +106,8 @@ namespace rfb {
                 vlog.info("Cannot set rc to cbr");
             }
 
+            ctx->refs = 0; // num_ref_frames=0 in SPS
+            ctx->delay = 0;
 
             if (ffmpeg.av_opt_set(ctx->priv_data, "preset", "p4", 0) < 0) {
                 vlog.info("Cannot set preset to p1");
@@ -114,23 +117,13 @@ namespace rfb {
                 vlog.info("Cannot set tune to ull (ultra-low-latency)");
             }
 
-            if (ffmpeg.av_opt_set(ctx->priv_data, "zerolatency", "1", 0) < 0) {
+            if (ffmpeg.av_opt_set_int(ctx->priv_data, "zerolatency", 1, 0) < 0) {
                 vlog.info("Cannot set zerolatency");
             }
 
-            if (ffmpeg.av_opt_set(ctx->priv_data, "b_ref_mode", "disabled", 0) < 0) {
+            if (ffmpeg.av_opt_set_int(ctx->priv_data, "b_ref_mode", 0, 0) < 0) {
                 vlog.info("Cannot set b_ref_mode");
             }
-
-            /*
-            if (ffmpeg.av_opt_set(ctx->priv_data, "multipass", "disabled", 0) < 0) {
-                vlog.info("Cannot set multipass");
-            }*/
-
-            /*
-            if (ffmpeg.av_opt_set(ctx->priv_data, "rc-lookahead", "32", 0) < 0) {
-                vlog.info("Cannot set rc-lookahead");
-            }*/
 
             // Set delay to 0
             if (ffmpeg.av_opt_set(ctx->priv_data, "delay", "0", 0) < 0) {
@@ -343,6 +336,7 @@ namespace rfb {
         DEBUG_LOG(vlog, "Frame transfer successful");
 
         hw_frame->pts = frame->pts;
+        hw_frame->pict_type = frame->pict_type;
 
         DEBUG_LOG(vlog, "HW frame before send: format=%d, width=%d, height=%d, linesize[0]=%d, linesize[1]=%d, pts=%ld",
                    hw_frame->format, hw_frame->width, hw_frame->height, hw_frame->linesize[0], hw_frame->linesize[1], hw_frame->pts);
@@ -362,14 +356,14 @@ namespace rfb {
             err = ffmpeg.avcodec_receive_packet(ctx_guard.get(), pkt);
 
             if (err == AVERROR(EAGAIN)) {
-                DEBUG_LOG(vlog, "Encoder buffering frame (EAGAIN) - waiting for more input");
+                vlog.error("Encoder buffering frame (EAGAIN) - waiting for more input");
 
                 return false;
             }
         }
 
         if (err == AVERROR_EOF) {
-            DEBUG_LOG(vlog, "Encoder EOF reached");
+            vlog.error("Encoder EOF reached");
             return false;
         }
 
@@ -380,61 +374,6 @@ namespace rfb {
 
         if (pkt->flags & AV_PKT_FLAG_KEY) {
             DEBUG_LOG(vlog, "Key frame %ld", frame->pts);
-
-            // Log codec header (extradata - contains SPS/PPS for H.264)
-            if (ctx_guard->extradata && ctx_guard->extradata_size > 0) {
-                vlog.info("=== CODEC HEADER (EXTRADATA) ===");
-                vlog.info("Extradata size: %d bytes", ctx_guard->extradata_size);
-
-                // Print full extradata in hex format
-                char hex_str[256] = {0};
-                int offset = 0;
-                for (int i = 0; i < ctx_guard->extradata_size && i < 64; i++) {
-                    offset += snprintf(hex_str + offset, sizeof(hex_str) - offset, "%02x ", ctx_guard->extradata[i]);
-                }
-                vlog.info("Extradata (first 64 bytes): %s", hex_str);
-
-                // Parse AVCC format (most common for extradata)
-                if (ctx_guard->extradata_size > 7) {
-                    uint8_t* data = ctx_guard->extradata;
-
-                    // AVCC format starts with: [configurationVersion, AVCProfileIndication, profile_compatibility, AVCLevelIndication]
-                    uint8_t config_version = data[0];
-                    uint8_t profile_idc = data[1];
-                    uint8_t profile_compat = data[2];
-                    uint8_t level_idc = data[3];
-                    uint8_t nal_length_size = (data[4] & 0x03) + 1;
-                    uint8_t num_sps = data[5] & 0x1F;
-
-                    const char* profile_name = "Unknown";
-                    if (profile_idc == 66) profile_name = "Baseline";
-                    else if (profile_idc == 77) profile_name = "Main";
-                    else if (profile_idc == 88) profile_name = "Extended";
-                    else if (profile_idc == 100) profile_name = "High";
-                    else if (profile_idc == 110) profile_name = "High 10";
-                    else if (profile_idc == 122) profile_name = "High 4:2:2";
-                    else if (profile_idc == 244) profile_name = "High 4:4:4";
-
-                    vlog.info("AVCC Header Parsed:");
-                    vlog.info("  Configuration Version: %d", config_version);
-                    vlog.info("  Profile: %s (IDC: %d)", profile_name, profile_idc);
-                    vlog.info("  Profile Compatibility: 0x%02x", profile_compat);
-                    vlog.info("  Level: %d.%d (IDC: %d)", level_idc / 10, level_idc % 10, level_idc);
-                    vlog.info("  NAL Length Size: %d bytes", nal_length_size);
-                    vlog.info("  Number of SPS: %d", num_sps);
-
-                    if (num_sps > 0 && ctx_guard->extradata_size > 7) {
-                        uint16_t sps_size = (data[6] << 8) | data[7];
-                        vlog.info("  SPS Size: %d bytes", sps_size);
-                    }
-                }
-
-                vlog.info("================================");
-            }
-
-            // Also log first bytes of the keyframe packet itself
-            DEBUG_LOG(vlog, "Keyframe packet size: %d, first bytes: %02x %02x %02x %02x %02x",
-                pkt->size, pkt->data[0], pkt->data[1], pkt->data[2], pkt->data[3], pkt->data[4]);
         }
 
         return true;
@@ -446,6 +385,7 @@ namespace rfb {
         auto *os = conn->getOutStream(conn->cp.supportsUdp);
         os->writeU8(layout.id);
         os->writeU8(msg_codec_id);
+        os->writeU8(msg_codec_type_id);
         os->writeU8(pkt->flags & AV_PKT_FLAG_KEY);
         encoders::write_compact(os, pkt->size);
         os->writeBytes(&pkt->data[0], pkt->size);

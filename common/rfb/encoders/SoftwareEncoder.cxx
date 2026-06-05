@@ -33,7 +33,8 @@ namespace rfb {
     SoftwareEncoder::SoftwareEncoder(Screen layout_, const FFmpeg &ffmpeg_, SConnection *conn, KasmVideoEncoders::Encoder encoder_,
                                              VideoEncoderParams params) :
         VideoEncoder(layout_.id, conn), layout(layout_),
-        ffmpeg(ffmpeg_), encoder(encoder_), current_params(params), msg_codec_id(KasmVideoEncoders::to_msg_id(encoder)) {
+        ffmpeg(ffmpeg_), encoder(encoder_), current_params(params), msg_codec_id(KasmVideoEncoders::to_msg_id(encoder)),
+        msg_codec_type_id(pseudoEncodingStreamingModeJpegWebp - KasmVideoEncoders::to_encoding(encoder)) {
         const auto *enc_name = KasmVideoEncoders::to_string(encoder);
         codec = ffmpeg.avcodec_find_encoder_by_name(enc_name);
         if (!codec)
@@ -147,6 +148,7 @@ namespace rfb {
         auto *os = conn->getOutStream(conn->cp.supportsUdp);
         os->writeU8(layout.id);
         os->writeU8(msg_codec_id);
+        os->writeU8(msg_codec_type_id);
         os->writeU8(pkt->flags & AV_PKT_FLAG_KEY);
         encoders::write_compact(os, pkt->size);
         os->writeBytes(&pkt->data[0], pkt->size);
