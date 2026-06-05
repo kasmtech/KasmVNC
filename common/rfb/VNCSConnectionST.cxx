@@ -839,6 +839,25 @@ void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
                                                   scrollX, scrollY);
 }
 
+void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t  id ) {
+    pointerEventTime = lastEventTime = time(nullptr);
+    server->lastUserInputTime = lastEventTime;
+    if (!(accessRights & AccessPtrEvents)) {
+        recheckPerms();
+        return;
+    }
+    if (!rfb::Server::acceptPointerEvents)
+        return;
+    if (server->pointerClient && server->pointerClient != this)
+        return;
+
+    if (type != touchEventEnd)
+        server->pointerClient = this;
+    else
+        server->pointerClient = nullptr;
+
+    server->desktop->touchEvent(x, y, type, id);
+}
 
 class VNCSConnectionSTShiftPresser {
 public:
@@ -1209,6 +1228,9 @@ void VNCSConnectionST::supportsDirectMouse()
     writer()->writeForceGameMode();
 }
 
+void VNCSConnectionST::supportsTouchEvents() {
+    writer()->writeTouchEventsSupported();
+}
 
 bool VNCSConnectionST::handleTimeout(Timer* t)
 {

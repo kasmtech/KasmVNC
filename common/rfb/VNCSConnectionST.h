@@ -250,7 +250,8 @@ namespace rfb {
     virtual void clientInit(bool shared);
     virtual void setPixelFormat(const PixelFormat& pf);
     virtual void pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY);
-    virtual void directMouseEvent(int dx, int dy, int buttonMask, int scrollX, int scrollY);
+    void directMouseEvent(int dx, int dy, int buttonMask, int scrollX, int scrollY) override;
+    void touchEvent(int x, int y, int type, uint32_t id) override;
     virtual void keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down);
     virtual void framebufferUpdateRequest(const Rect& r, bool incremental);
     virtual void setDesktopSize(int fb_width, int fb_height,
@@ -269,6 +270,7 @@ namespace rfb {
     virtual void supportsContinuousUpdates();
     virtual void supportsLEDState();
     void supportsDirectMouse() override;
+    void supportsTouchEvents() override;
 
     bool canChangeKasmSettings() const override {
         return (accessRights & (AccessPtrEvents | AccessKeyEvents)) ==

@@ -517,6 +517,10 @@ void XserverDesktop::directMouseEvent(int dx, int dy, int buttonMask,
   directMouseEventWithPosition(dx, dy, buttonMask, scrollX, scrollY);
 }
 
+void XserverDesktop::touchEvent(int x, int y, int type, uint32_t id) {
+    vncTouchEvent(x, y, type, id);
+}
+
 rfb::Point XserverDesktop::directMouseEventWithPosition(int dx, int dy,
                                        int buttonMask, int scrollX, int scrollY)
 {
