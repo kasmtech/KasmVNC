@@ -57,6 +57,8 @@ namespace rfb {
     virtual void directMouseEvent(int dx, int dy, int buttonMask,
                                     int scrollX, int scrollY);
 
+    virtual void touchEvent(int x, int y, int type, uint32_t id) = 0;
+
     virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
     virtual void clearBinaryClipboard();
     virtual void addBinaryClipboard(const char mime[], const rdr::U8 *data,
@@ -105,6 +107,7 @@ namespace rfb {
     // supportsDirectMouse() is called the first time we detect that the
     // client supports the direct mouse extension
     virtual void supportsDirectMouse();
+    virtual void supportsTouchEvents();
 
     virtual void udpUpgrade(const char *resp) = 0;
     virtual void udpDowngrade(const bool) = 0;
