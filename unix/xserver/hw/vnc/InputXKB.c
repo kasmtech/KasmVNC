@@ -661,13 +661,12 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool
 void vncRemoveKeycode(unsigned keycode)
 {
 	DeviceIntPtr master;
-	XkbDescPtr xkb;
 
 	XkbEventCauseRec cause;
 	XkbChangesRec changes;
 
 	master = GetMaster(vncKeyboardDev, KEYBOARD_OR_FLOAT);
-	xkb = master->key->xkbInfo->desc;
+	XkbDescPtr xkb = master->key->xkbInfo->desc;
 
 	memset(&changes, 0, sizeof(changes));
 	memset(&cause, 0, sizeof(cause));
