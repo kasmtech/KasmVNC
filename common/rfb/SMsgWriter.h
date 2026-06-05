@@ -138,6 +138,7 @@ namespace rfb {
     void writeDisconnectNotify(bool graceful, const char *reason);
     void writeForceGameMode();
     void writeLatencyMeasurementResponse(uint32_t measurementId);
+    void writeTouchEventsSupported();
 
   protected:
     void startMsg(int type);

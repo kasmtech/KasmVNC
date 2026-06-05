@@ -845,3 +845,8 @@ void SMsgWriter::writeLatencyMeasurementResponse(uint32_t measurementId) {
     os->writeU32(measurementId);
     endMsg();
 }
+
+void SMsgWriter::writeTouchEventsSupported() {
+    startMsg(msgTypeTouchEventsSupported);
+    endMsg();
+}
