@@ -468,3 +468,11 @@ void SMsgReader::readLatencyMeasurementRequest() const {
     const uint32_t measurementId = is->readU32();
     handler->handleLatencyMeasurementRequest(measurementId);
 }
+
+void SMsgReader::readTouchEvent() {
+    const int type = is->readU8();
+    const uint32_t id = is->readU32();
+    const int x = is->readS16();
+    const int y = is->readS16();
+    handler->touchEvent(x, y, type, id);
+}

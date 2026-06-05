@@ -73,6 +73,7 @@ namespace rfb {
     void readVideoEncodersRequest() const;
     void readDirectMouseEvent();
     void readLatencyMeasurementRequest() const;
+    void readTouchEvent();
 
     SMsgHandler* handler;
     rdr::InStream* is;
