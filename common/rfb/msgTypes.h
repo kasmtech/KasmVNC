@@ -42,6 +42,7 @@ namespace rfb {
   constexpr int msgTypeLatencyMeasurement = 189;
   constexpr int msgTypeNetworkStats = 190;
   constexpr int msgTypeSystemStats = 191;
+  constexpr int msgTypeTouchEventsSupported = 192;
 
   constexpr int msgTypeServerFence = 248;
   constexpr int msgTypeUserAddedToSession = 253;
@@ -72,11 +73,12 @@ namespace rfb {
   //constexpr int msgTypeServerDisconnect = 186;
 
   constexpr int msgTypeDirectMouseEvent = 188;
-  constexpr int msgTypeTouchEvent = 189;
-
   //constexpr int msgTypeNetworkStats = 190;
+  // constexpr int msgTypeSystemStats = 191;
+  // constexpr int msgTypeTouchEventsSupported = 192;
+  constexpr int msgTypeTouchEvent = 193;
 
-  //  constexpr int msgTypeSystemStats = 191;
+
 
   constexpr int msgTypeClientFence = 248;
 
