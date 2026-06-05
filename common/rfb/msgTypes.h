@@ -72,6 +72,7 @@ namespace rfb {
   //constexpr int msgTypeServerDisconnect = 186;
 
   constexpr int msgTypeDirectMouseEvent = 188;
+  constexpr int msgTypeTouchEvent = 189;
 
   //constexpr int msgTypeNetworkStats = 190;
 
