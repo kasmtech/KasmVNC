@@ -35,11 +35,13 @@
 #include "mi.h"
 #include "mipointer.h"
 #include "exevents.h"
+#include "dix.h"
 #include "scrnintstr.h"
 #include "xkbsrv.h"
 #include "xkbstr.h"
 #include "xserver-properties.h"
 #include "stdbool.h"
+#include <X11/extensions/XI2.h>
 extern _X_EXPORT DevPrivateKey CoreDevicePrivateKey;
 #include <X11/keysym.h>
 #include <X11/Xlib.h>
@@ -52,6 +54,20 @@ extern const unsigned int code_map_qnum_to_xorgkbd_len;
 
 #define BUTTONS 10
 
+/*
+ * XInput2 multitouch device. We expose a direct touchscreen whose two
+ * absolute valuator axes report into a fixed logical range; vncTouchEvent()
+ * scales the incoming desktop pixel coordinates into that range using the
+ * current desktop size, so the mapping stays correct across screen resizes.
+ */
+#define VNC_MAX_TOUCHES 16
+#define VNC_TOUCH_AXIS_MAX 0xffff
+
+/* Wire values matching rfb::touchEvent* in common/rfb/touchTypes.h. */
+#define VNC_TOUCH_BEGIN  0
+#define VNC_TOUCH_UPDATE 1
+#define VNC_TOUCH_END    2
+
 /* Event queue is shared between all devices. */
 #if XORG < 111
 static EventList *eventq = NULL;
@@ -59,6 +75,7 @@ static EventList *eventq = NULL;
 
 DeviceIntPtr vncKeyboardDev;
 DeviceIntPtr vncPointerDev;
+DeviceIntPtr vncTouchDev;
 
 static int oldButtonMask;
 static int cursorPosX, cursorPosY;
@@ -71,6 +88,7 @@ static unsigned int needFree[256];
 static bool freeKeys;
 
 static int vncPointerProc(DeviceIntPtr pDevice, int onoff);
+static int vncTouchProc(DeviceIntPtr pDevice, int onoff);
 static void vncKeyboardBell(int percent, DeviceIntPtr device,
                             void * ctrl, int class);
 static int vncKeyboardProc(DeviceIntPtr pDevice, int onoff);
@@ -135,6 +153,25 @@ void vncInitInputDevice(bool freeKeyMappings)
 	if (!EnableDevice(vncPointerDev, TRUE) ||
 	    !EnableDevice(vncKeyboardDev, TRUE))
 		FatalError("Failed to activate KasmVNC devices\n");
+
+	vncTouchDev = AddInputDevice(serverClient, vncTouchProc, TRUE);
+	if (!vncTouchDev)
+		FatalError("Failed to initialize KasmVNC touch device\n");
+
+	vncTouchDev->name = strdup("KasmVNC touch");
+	vncTouchDev->public.processInputProc = ProcessOtherEvent;
+	vncTouchDev->public.realInputProc = ProcessOtherEvent;
+	vncTouchDev->deviceGrab.ActivateGrab = ActivatePointerGrab;
+	vncTouchDev->deviceGrab.DeactivateGrab = DeactivatePointerGrab;
+	vncTouchDev->coreEvents = TRUE;
+	vncTouchDev->spriteInfo->spriteOwner = FALSE;
+	vncTouchDev->type = SLAVE;
+
+	if (ActivateDevice(vncTouchDev, TRUE) != Success)
+		FatalError("Failed to activate KasmVNC touch device\n");
+
+	if (!EnableDevice(vncTouchDev, TRUE))
+		FatalError("Failed to enable KasmVNC touch device\n");
 
 #if XORG < 111
 	/* eventq is never free()-ed because it exists during server life. */
@@ -282,6 +319,50 @@ void vncScroll(int x, int y) {
 	QueuePointerEvents(vncPointerDev, MotionNotify, 0, POINTER_RELATIVE, &mask);
 }
 
+void vncTouchEvent(int x, int y, int type, unsigned int id) {
+    ValuatorMask mask;
+    int xitype;
+
+    if (!vncTouchDev)
+        return;
+
+    switch (type) {
+        case VNC_TOUCH_BEGIN:
+            xitype = XI_TouchBegin;
+            break;
+        case VNC_TOUCH_UPDATE:
+            xitype = XI_TouchUpdate;
+            break;
+        case VNC_TOUCH_END:
+            xitype = XI_TouchEnd;
+            break;
+        default:
+            LOG_ERROR("Ignoring touch event with unknown type %d", type);
+            return;
+    }
+
+    int deskW = screenInfo.width;
+    int deskH = screenInfo.height;
+    if (deskW < 1)
+        deskW = 1;
+    if (deskH < 1)
+        deskH = 1;
+
+    double valX = (double) x * (VNC_TOUCH_AXIS_MAX + 1) / deskW;
+    double valY = (double) y * (VNC_TOUCH_AXIS_MAX + 1) / deskH;
+
+    valuator_mask_zero(&mask);
+
+    if (xitype != XI_TouchEnd) {
+        valuator_mask_set_double(&mask, 0, valX);
+        valuator_mask_set_double(&mask, 1, valY);
+    }
+
+    QueueTouchEvents(vncTouchDev, xitype, id, 0, &mask);
+
+    mieqProcessInputEvents();
+}
+
 void vncGetPointerPos(int *x, int *y)
 {
 	if (vncPointerDev != NULL) {
@@ -362,6 +443,67 @@ static int vncPointerProc(DeviceIntPtr pDevice, int onoff)
 	}
 
 	return Success;
+}
+
+static int vncTouchProc(DeviceIntPtr pDevice, int onoff) {
+    DevicePtr pDev = (DevicePtr) pDevice;
+    BYTE map[2];
+    Atom btn_labels[1];
+    Atom axes_labels[2];
+
+    switch (onoff) {
+        case DEVICE_INIT:
+            map[0] = 0;
+            map[1] = 1;
+            btn_labels[0] = XIGetKnownProperty(BTN_LABEL_PROP_BTN_LEFT);
+
+            axes_labels[0] = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_MT_POSITION_X);
+            axes_labels[1] = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_MT_POSITION_Y);
+
+            if (!InitButtonClassDeviceStruct(pDevice, 1, btn_labels, map))
+                return BadAlloc;
+
+            if (!InitValuatorClassDeviceStruct(pDevice, 2, axes_labels, GetMotionHistorySize(), Absolute))
+                return BadAlloc;
+
+            InitValuatorAxisStruct(pDevice,
+                0,
+                axes_labels[0],
+                0,
+                VNC_TOUCH_AXIS_MAX,
+                VNC_TOUCH_AXIS_MAX + 1,
+                0,
+                VNC_TOUCH_AXIS_MAX + 1,
+                Absolute);
+            InitValuatorAxisStruct(pDevice,
+                1,
+                axes_labels[1],
+                0,
+                VNC_TOUCH_AXIS_MAX,
+                VNC_TOUCH_AXIS_MAX + 1,
+                0,
+                VNC_TOUCH_AXIS_MAX + 1,
+                Absolute);
+
+            if (!InitPtrFeedbackClassDeviceStruct(pDevice, (PtrCtrlProcPtr) NoopDDA))
+                return BadAlloc;
+
+            if (!InitTouchClassDeviceStruct(pDevice, VNC_MAX_TOUCHES, XIDirectTouch, 2))
+                return BadAlloc;
+
+            break;
+        case DEVICE_ON:
+            pDev->on = TRUE;
+            break;
+        case DEVICE_OFF:
+            pDev->on = FALSE;
+            break;
+        case DEVICE_CLOSE:
+            vncTouchDev = NULL;
+            break;
+    }
+
+    return Success;
 }
 
 static void vncKeyboardBell(int percent, DeviceIntPtr device,

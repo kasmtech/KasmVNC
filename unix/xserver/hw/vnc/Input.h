@@ -41,6 +41,8 @@ void vncPointerMoveRelative(int x, int y, int absx, int absy);
 void vncScroll(int x, int y);
 void vncGetPointerPos(int *x, int *y);
 
+void vncTouchEvent(int x, int y, int type, unsigned int id);
+
 void vncKeyboardEvent(KeySym keysym, unsigned xtcode, int down);
 
 /* Backend dependent functions below here */
