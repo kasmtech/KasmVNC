@@ -32,6 +32,7 @@
 #include <rfb/screenTypes.h>
 #include <rfb/fenceTypes.h>
 #include <rfb/ledStates.h>
+#include <rfb/touchTypes.h>
 #define XK_LATIN1
 #define XK_MISCELLANY
 #define XK_XKB_KEYS
