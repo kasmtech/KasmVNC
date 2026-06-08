@@ -7,6 +7,20 @@ if [ -z "$SCRIPTS_DIR" ]; then
   SCRIPTS_DIR="$SCRIPT_DIR/scripts"
 fi
 
+# Optional flags. The default (no args) is unchanged, so pipeline builds — which
+# invoke build.sh with no args — still produce the server tarball and still fail
+# if the web assets (builder/www, from builder/build-www) are missing.
+run_servertarball=1
+for arg in "$@"; do
+  case "$arg" in
+    # Skip the final `make servertarball` packaging step (and the /build copies).
+    # For dev/CI smoke builds that only need the Xvnc binary + libraries and don't
+    # have builder/www. Do NOT pass this in packaging pipelines.
+    --no-servertarball) run_servertarball=0 ;;
+    *) echo "build.sh: ignoring unknown argument: $arg" >&2 ;;
+  esac
+done
+
 debian_patches_dir="debian/patches"
 
 is_debian_patches_present() {
@@ -209,11 +223,15 @@ fi
 
 sccache --show-stats || true
 
-make servertarball
+if [ "$run_servertarball" = "1" ]; then
+	make servertarball
 
-cp kasmvnc*.tar.gz /build/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_CODENAME}.tar.gz
-if [ "$BUILD_TAG" = "+libjpeg-turbo_latest" ]; then
-  distro_build_dir="/build/${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_CODENAME}/"
-	mkdir -p "$distro_build_dir"
-	cp /libjpeg-turbo/libjpeg*.deb "$distro_build_dir"
+	cp kasmvnc*.tar.gz /build/kasmvnc.${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_CODENAME}.tar.gz
+	if [ "$BUILD_TAG" = "+libjpeg-turbo_latest" ]; then
+		distro_build_dir="/build/${KASMVNC_BUILD_OS}_${KASMVNC_BUILD_OS_CODENAME}/"
+		mkdir -p "$distro_build_dir"
+		cp /libjpeg-turbo/libjpeg*.deb "$distro_build_dir"
+	fi
+else
+	echo "Skipping 'make servertarball' (--no-servertarball); Xvnc and libraries are built."
 fi

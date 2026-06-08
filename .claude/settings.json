@@ -56,7 +56,19 @@
       "Bash(docker run*)",
       "Bash(docker exec*)",
       "Bash(docker ps*)",
-      "Bash(docker images*)"
+      "Bash(docker images*)",
+      "Bash(docker image inspect*)",
+      "Bash(docker stop*)",
+      "Bash(docker rm*)",
+      "Bash(docker kill*)",
+
+      "Bash(stat *)",
+      "Bash(ldd *)",
+      "Bash(pwd)",
+      "Bash(env)",
+      "Bash(id*)",
+      "Bash(groups)",
+      "Bash(rm -f *.log)"
     ],
     "deny": []
   }

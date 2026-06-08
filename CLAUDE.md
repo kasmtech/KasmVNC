@@ -81,7 +81,8 @@ cd kasmweb && npm install && npm run build && cd ..
 
 # 2. Server. build.sh downloads/patches the target Xorg source, builds the
 #    common libs + Xvnc, and links it into ./xorg.build/
-builder/build.sh
+#    --no-servertarball skips the final packaging step (see note below).
+builder/build.sh --no-servertarball
 ```
 
 **Automated / non-interactive build** (no TTY — for scripts or agents): drop
@@ -89,10 +90,33 @@ builder/build.sh
 `bash -lc` so the run returns when the build finishes:
 
 ```bash
-docker run --rm -v ./:/src \
+docker run --rm -v ./:/src --entrypoint bash \
   --name kasmvnc_dev kasmvnc:dev \
-  bash -lc 'cd /src/kasmweb && npm install && npm run build && cd /src && builder/build.sh'
+  -lc 'cd /src/kasmweb && npm install && npm run build && cd /src && builder/build.sh --no-servertarball'
 ```
+
+> **If your `kasmvnc:dev` image predates the dev-Dockerfile fixes**, the command
+> above fails in one of several ways (build exits 0 but produces nothing;
+> `CC: sccache gcc` not found; `Permission denied` installing libjpeg to
+> `/usr/local`; `Operation not permitted` on `/tmp/libwebp-*`). Rebuild the image
+> (`docker build -t kasmvnc:dev -f builder/dockerfile.ubuntu_jammy.dev .`), or use
+> this self-contained interim command:
+>
+> ```bash
+> docker run --rm -v ./:/src -e SCRIPTS_DIR=/src/builder/scripts --entrypoint bash \
+>   kasmvnc:dev -lc 'sudo find /tmp -mindepth 1 -maxdepth 1 ! -user kasm-user -exec rm -rf {} + ;
+>     sudo /src/builder/scripts/install_sccache_from_github &&
+>     cd /src/kasmweb && npm install && npm run build &&
+>     cd /src && builder/build.sh --no-servertarball'
+> ```
+
+> **`builder/build.sh` ends with `make servertarball`**, which `cp`s `builder/www`
+> (produced separately by `builder/build-www`). A dev build that only needs the
+> `Xvnc` binary + `kasmweb/dist` should pass **`--no-servertarball`** to skip it
+> (used above). Without the flag and without `builder/www`, the build fails *only
+> at that final packaging step* — the binary and frontend are already complete.
+> Packaging pipelines invoke `build.sh` with no args (tarball **on**, as intended,
+> via `builder/build-www` first); never pass `--no-servertarball` there.
 
 What `builder/build.sh` does, in brief: runs CMake with `BUILD_VIEWER=OFF` and
 `ENABLE_GNUTLS=OFF`, builds the C++ side (C++20, OpenMP), then downloads an Xorg
