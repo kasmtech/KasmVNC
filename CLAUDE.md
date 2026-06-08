@@ -63,15 +63,17 @@ detail is in `BUILDING.md`; the essentials:
 # Prefix with sudo only if your user is NOT in the `docker` group.
 docker build -t kasmvnc:dev -f builder/dockerfile.ubuntu_jammy.dev .
 docker run -it --rm -v ./:/src -p 2222:22 -p 6901:6901 -p 8443:8443 \
-  --device=/dev/dri/card0 --device=/dev/dri/renderD128 \
   --group-add video --group-add render --name kasmvnc_dev kasmvnc:dev
 ```
 
-> **Adjust the `--device` paths to your machine** — they're for runtime hardware
-> H.264 (VAAPI) and the card number varies. Run `ls /dev/dri` and substitute the
-> actual `cardN`/`renderDNNN` (e.g. this VM has `card1`, not `card0`). If the box
-> has no `/dev/dri` GPU, drop both `--device` flags; the build still works and
-> software encoding is used at runtime.
+> **GPU `--device` flags are optional and host-specific — detect, don't assume.**
+> They give the container access to the host GPU for *runtime* hardware H.264
+> (VAAPI); they are **not** needed to build. Before adding them, run `ls /dev/dri`
+> on the host to see what exists. If there are render nodes, append the ones you
+> actually find — `--device=/dev/dri/cardN --device=/dev/dri/renderDNNN` with the
+> real numbers (they vary by machine; do not assume `card0`). **If `/dev/dri` is
+> absent or empty, omit both `--device` flags entirely** — the build still works
+> and the server falls back to software encoding at runtime.
 
 Inside the container:
 
@@ -94,6 +96,30 @@ docker run --rm -v ./:/src --entrypoint bash \
   --name kasmvnc_dev kasmvnc:dev \
   -lc 'cd /src/kasmweb && npm install && npm run build && cd /src && builder/build.sh --no-servertarball'
 ```
+
+> **Keep build/test commands auto-approvable — don't make the user click through
+> needless prompts.** The build/test entry points used in this doc are
+> pre-approved in `.claude/settings.json` (`build.sh`, `build-package`,
+> `build-tarball`/`-deb`/`-rpm`, `test-vncserver`, `docker build`/`run`/`exec`,
+> `npm`, `cmake`, `make`) along with the read-only inspection tools (`grep`,
+> `ls`, `find`, `cat`, `head`, `ldd`, `nm`, `dpkg -c`/`-l`, `dpkg-deb`). A Bash
+> call is auto-approved only when **every** segment of a `;` / `&&` / `||` / `|`
+> chain is covered, so one unlisted piece makes the whole line prompt — even the
+> allowlisted parts next to it. Therefore:
+>
+> - **Issue each build/test/inspection command on its own.** Don't staple a
+>   read-only `grep`/`ls`/`find` (or an allowlisted `dpkg-deb`) onto a command
+>   that writes or substitutes — the whole line prompts.
+> - **Never use `$(…)` command substitution or `VAR=…` shell assignments**
+>   (`tmp=$(mktemp -d)`, `bin=$(find … )`). These *cannot* be allowlisted and
+>   *always* prompt. Use a fixed scratch path instead — e.g. `mkdir -p
+>   /tmp/kasmwork`, then reference `/tmp/kasmwork` directly across separate
+>   commands — rather than capturing output into a variable.
+> - **Let the harness capture build/test output** (and use a background run for
+>   long builds/suites) instead of piping to `tee`/a logfile.
+> - When inspecting a built package, run the steps as plain commands against a
+>   fixed extraction dir (`dpkg-deb -x pkg.deb /tmp/kasmwork`, then `ldd
+>   /tmp/kasmwork/usr/bin/Xkasmvnc`) — no `$(mktemp)`/`rm -rf "$tmp"` scaffolding.
 
 > **If your `kasmvnc:dev` image predates the dev-Dockerfile fixes**, the command
 > above fails in one of several ways (build exits 0 but produces nothing;
@@ -125,25 +151,141 @@ server tarball (`XORG_VER`, default 1.19.6), applies the matching
 disabled, and builds Xvnc. The runnable server ends up at
 `/src/xorg.build/bin/Xvnc`.
 
-**Verify the build** (quick smoke check, inside the container):
+> **`build.sh` builds in-source — clean before a dependency or flag change.** It
+> runs `cmake .` at the repo root and leaves generated state in the tree
+> (`config.h`, `CMakeCache.txt`, scattered `CMakeFiles/`, all git-ignored). CMake
+> **caches** its library/feature detection, so after you change a build
+> dependency (e.g. add/remove a `-dev` package) or a CMake flag, an incremental
+> rebuild will **not** re-detect it — you'll silently keep building against the
+> old config. Before such a build, check for leftover state and force a fresh
+> configure (inside the container, from `/src`):
+>
+> ```bash
+> ls config.h CMakeCache.txt 2>/dev/null   # any output ⇒ a prior in-source build exists
+> rm -f config.h CMakeCache.txt            # force re-detection; keeps the costly xorg.build/
+> ```
+>
+> Then confirm the change took in the regenerated `config.h` — a disabled feature
+> shows `/* #undef HAVE_FOO */`, an enabled one `#define HAVE_FOO`. For a
+> guaranteed-pristine tree use `git clean -xfd`, but note it also wipes
+> `xorg.build/`, the downloaded Xorg tarball, and `kasmweb/node_modules` (full
+> re-download + ~20-min Xorg rebuild), so prefer the targeted `rm` above unless
+> you truly need a from-scratch build.
+>
+> This in-source habit also matters for **packaging**: `builder/dockerfile.*.build`
+> does `COPY . /src`, so a stale `CMakeCache.txt` from a prior dev build would be
+> copied into the packaging image and poison its fresh configure (e.g. a cache
+> that recorded a now-absent dependency). `.dockerignore` excludes these generated
+> CMake artifacts to prevent that — keep it that way, and clean (above) if a
+> package build ever configures against the wrong settings.
+
+**Verify the build** (quick smoke check). Inside an interactive container shell:
 
 ```bash
 /src/xorg.build/bin/Xvnc -version   # prints "Xvnc KasmVNC <commit> - built ..."
 ```
 
+> **Agents driving the build from the host: don't wrap the smoke check in
+> `bash -lc '…'`.** The permission matcher *descends into the `bash -lc` string*
+> and checks each `;`/`&&`/`|` segment, so `docker run … bash -lc
+> '/src/xorg.build/bin/Xvnc -version'` is matched by its inner command — and
+> things like a bare `Xvnc` path, `sleep`, `curl`, `kill`, or a `VAR=…`
+> assignment inside that string each prompt even though `docker run*` is
+> allowlisted. Run the binary **directly as the container entrypoint** instead,
+> so the matcher only sees `docker run*` with no inner command to descend into:
+>
+> ```bash
+> docker run --rm -v ./:/src --entrypoint /src/xorg.build/bin/Xvnc \
+>   kasmvnc:dev -version
+> ```
+
 For an end-to-end smoke test, start a headless session without hardware codecs
-(works even with no GPU) and confirm the web endpoint serves:
+(works even with no GPU) and confirm the web endpoint serves. From the host,
+run the server as a **detached** container (entrypoint = the binary, no
+`bash -lc`), poll the mapped port with a **URL-first** `curl` (the allowlist
+scopes auto-approved `curl` to `http://localhost:…`/`http://127.0.0.1:…`, and
+curl accepts the URL before its flags), then stop it with `docker kill` — every
+command here is already auto-approved:
 
 ```bash
-/src/xorg.build/bin/Xvnc -interface 0.0.0.0 -disableBasicAuth -SecurityTypes None \
-  -httpd /src/kasmweb/dist -websocketPort 6901 -sslOnly 0 -FreeKeyMappings :1 &
-curl -fsS http://localhost:6901/ -o /dev/null && echo "web endpoint OK"
+docker run -d --rm --name kasmvnc_smoke -v ./:/src -p 6901:6901 \
+  --entrypoint /src/xorg.build/bin/Xvnc kasmvnc:dev \
+  -interface 0.0.0.0 -disableBasicAuth -SecurityTypes None \
+  -httpd /src/kasmweb/dist -websocketPort 6901 -sslOnly 0 -FreeKeyMappings :1
+curl http://localhost:6901/ -fsS --retry 10 --retry-connrefused -o /dev/null && echo "web endpoint OK"
+docker kill kasmvnc_smoke
 ```
+
+Inside an interactive container shell you can instead use the simpler
+backgrounded form (`Xvnc … & … curl … ; kill %1`); it's only the host-driven,
+auto-approval path that needs the detached-container shape above.
+
+> **Don't hand-roll `until …; sleep; done` wait loops to poll a background
+> build/test.** They're not auto-approvable (`sleep`, `[`, `if`, `break` aren't
+> allowlisted) *and* they're unnecessary: a `run_in_background` Bash command
+> re-invokes the agent on completion. Start the long step in the background and
+> wait for the completion notification; use `curl --retry` (above) rather than a
+> sleep loop when you genuinely need to wait for a port to come up.
+
+### Default hand-off: build, smoke-test, and leave a running server
+
+**This is the default behavior when a developer asks you to build / rebuild /
+"build and run" (anything that produces a new `Xvnc`).** You are working
+*alongside* a developer who will do the real interactive testing in their
+browser. So unless they tell you otherwise, after a successful build:
+
+1. Run the **build smoke check** above (`Xvnc -version` + the `curl` endpoint
+   check) to confirm the binary is healthy. This is the "quick test" — *not* the
+   heavier `spec`/functional suites, which stay opt-in (run them only when asked
+   or when the change clearly warrants them).
+2. **Leave KasmVNC running** in a detached container so the developer can connect
+   immediately, and
+3. **End your message with the connection details** (URL + credentials) in the
+   block shown below.
+
+Bring it up with the committed entrypoint script
+`builder/dev-run-inside-docker` — it generates a self-signed cert, sets the
+static dev login, starts the **freshly-built** `/src/xorg.build/bin/Xvnc` over
+HTTPS, and launches an xfce4 desktop. Running it as the container *entrypoint*
+keeps the whole launch a single auto-approved `docker run` (no `bash -lc`). On a
+rebuild, kill the previous session first (the `--rm` container is replaced):
+
+```bash
+docker kill kasmvnc_dev          # stop a previous session; harmless if none exists
+docker run -d --rm --name kasmvnc_dev -v ./:/src -p 6901:6901 \
+  --group-add video --group-add render \
+  --entrypoint /src/builder/dev-run-inside-docker kasmvnc:dev
+curl -k https://127.0.0.1:6901/ -sS -u kasm_user:kasmRulez --retry 15 \
+  --retry-connrefused -o /dev/null -w "web endpoint: %{http_code}\n"   # expect 200
+```
+
+Then close your message with exactly this hand-off block (the login is a
+**static dev-only** credential baked into the script; the browser will warn on
+the self-signed cert — that's expected):
+
+```
+KasmVNC compiled and passed basic testing and is currently running for you:
+URL: https://127.0.0.1:6901
+Username: kasm_user
+Password: kasmRulez
+```
+
+> The web login (`kasm_user` / `kasmRulez`, set via `kasmvncpasswd` into
+> `~/.kasmpasswd`) is independent of the container's OS user (`kasm-user`) and of
+> the RFB `SecurityTypes` — BasicAuth is the only gate, so an unauthenticated
+> request returns `401`. To add GPU H.264 at runtime, append the host's real
+> `--device=/dev/dri/...` nodes to the `docker run` (see the GPU note under
+> Building); it still runs without them (software encoding).
 
 ### Packaging
 
 `builder/build-package <os> <os_codename>` builds a distro package via Docker;
 output lands in `builder/build/`. See `builder/README.md`.
+
+> **The packaged server binary is `/usr/bin/Xkasmvnc`, not `Xvnc`.** The dev-tree
+> build links it as `Xvnc` (`/src/xorg.build/bin/Xvnc`), but the installed package
+> ships it as `Xkasmvnc`. When inspecting a built `.deb`/RPM (`dpkg-deb -c`,
+> `ldd`, etc.), look for `Xkasmvnc`.
 
 ## Running locally (inside the dev container)
 
@@ -173,11 +315,19 @@ In production the `vncserver` Perl wrapper starts/manages sessions
 
 ## Testing
 
+> **Run every check inside a container — never on the host.** The build and its
+> smoke check run inside the `kasmvnc:dev` container; each test suite runs inside
+> its **own** dedicated container that provisions that suite's dependencies
+> (`pipenv`, `mamba`, desktop environments, an installed `.deb`, browsers). Do
+> **not** install test deps (`pipenv`/`mamba`/the `Pipfile` packages) on the host
+> or in the `kasmvnc:dev` build container and run `./run-specs` there — that
+> container has none of the runtime prerequisites (no installed `vncserver`, no
+> desktop environments) and the run will hang or fail. Use the entry-point
+> scripts below; they build and drive the correct container for you.
+
 The fastest confirmation that a build is healthy is the **build smoke check**
-above (`Xvnc -version` + the `curl` endpoint check). The suites below are
-heavier, have their own dependencies, and are normally run via their dedicated
-Docker images / CI rather than ad hoc in the dev container — check each one's
-prerequisites before running.
+above (`Xvnc -version` + the `curl` endpoint check), run **inside the dev
+container**. The suites below are heavier and slower.
 
 Three independent layers:
 
@@ -186,13 +336,25 @@ Three independent layers:
    removed `vncviewer/` tree and the dead client/decoder code (see Legacy). Not
    part of the normal workflow.
 2. **`spec/`** — Python behavioral specs (mamba) for the `vncserver` wrapper:
-   YAML→CLI translation, env-var→CLI, validation, `-select-de`, etc.
-   Run with `./run-specs` (uses `pipenv run mamba`; deps in `Pipfile`). Add
-   `-v` for documentation format, `-d` for debug output.
+   YAML→CLI translation, env-var→CLI, validation, `-select-de`, etc. **Run via
+   `builder/test-vncserver`** (the canonical entry point; CI's `spec_test` job
+   uses it). It builds the dedicated
+   `builder/dockerfile.<os>_<codename>.specs.test` image — which installs the
+   built `.deb`, `pipenv`, the desktop environments the `-select-de` specs need,
+   and fonts — then runs `builder/run-specs-inside-docker` (`pipenv install &&
+   ./run-specs`) inside it. **Prerequisite: a built `.deb`** in
+   `builder/build/<codename>/` (local) or `output/<codename>/` (CI); produce one
+   first with `builder/build-package ubuntu jammy`. `./run-specs` and
+   `pipenv run mamba` are the *inner* commands that script runs **inside that
+   container** — do not invoke them on the host. `-v` (documentation format) /
+   `-d` (debug) are `run-specs` flags.
 3. **`kasmvnc-functional-tests/`** — end-to-end Playwright/Selenium tests that
-   run a built `.deb` against a Jammy Workspaces container. Run with
-   `./functional-test` (`--debug` for debug output); report in `report/`.
-   Requires Docker socket access and the private submodule.
+   run a built `.deb` against a Jammy Workspaces container. The runner
+   (`functional-test`) and harness live in the **private** submodule and build
+   their own container; external agents may not have access. Run with
+   `./functional-test` from the submodule (`--debug` for debug output); report in
+   `report/`. Requires Docker socket access, the private submodule, and a built
+   `.deb`.
 
 CI is GitLab (`.gitlab-ci.yml`). `BUILD_DISTROS_REGEX` limits which distros
 build (use `"jammy"` for a fast loop; Jammy is required for the spec and
