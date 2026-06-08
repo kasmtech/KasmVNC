@@ -777,20 +777,28 @@ void VNCSConnectionST::setPixelFormat(const PixelFormat& pf)
   setCursor();
 }
 
+bool VNCSConnectionST::isPointerEventValid() {
+    pointerEventTime = lastEventTime = time(nullptr);
+    server->lastUserInputTime = lastEventTime;
+    if (!(accessRights & AccessPtrEvents)) {
+        // This particular event is lost, but it's a corner case - you removed write access
+        // from yourself, then added it back. The intended use is for multiple clients,
+        // where the leader removes and adds back access for others, not himself.
+        recheckPerms();
+        return false;
+    }
+    if (!Server::acceptPointerEvents)
+        return false;
+    if (server->pointerClient && server->pointerClient != this)
+        return false;
+
+    return true;
+}
+
 void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
-  pointerEventTime = lastEventTime = time(nullptr);
-  server->lastUserInputTime = lastEventTime;
-  if (!(accessRights & AccessPtrEvents)) {
-    // This particular event is lost, but it's a corner case - you removed write access
-    // from yourself, then added it back. The intended use is for multiple clients,
-    // where the leader removes and adds back access for others, not himself.
-    recheckPerms();
-    return;
-  }
-  if (!rfb::Server::acceptPointerEvents) return;
-  if (!server->pointerClient || server->pointerClient == this) {
-    pointerEventPos = pos;
+    if (!isPointerEventValid())
+        return;
 
     if (buttonMask)
       server->pointerClient = this;
@@ -813,22 +821,13 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool
     }
 
     server->desktop->pointerEvent(pos, buttonMask, skipclick, skiprelease, scrollX, scrollY);
-  }
 }
 
 void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
                                          int scrollX, int scrollY)
 {
-  pointerEventTime = lastEventTime = time(nullptr);
-  server->lastUserInputTime = lastEventTime;
-  if (!(accessRights & AccessPtrEvents)) {
-    recheckPerms();
-    return;
-  }
-  if (!rfb::Server::acceptPointerEvents)
-    return;
-  if (server->pointerClient && server->pointerClient != this)
-    return;
+    if (!isPointerEventValid())
+        return;
 
   if (buttonMask)
     server->pointerClient = this;
@@ -840,16 +839,8 @@ void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
                                                   scrollX, scrollY);
 }
 
-void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t  id ) {
-    pointerEventTime = lastEventTime = time(nullptr);
-    server->lastUserInputTime = lastEventTime;
-    if (!(accessRights & AccessPtrEvents)) {
-        recheckPerms();
-        return;
-    }
-    if (!rfb::Server::acceptPointerEvents)
-        return;
-    if (server->pointerClient && server->pointerClient != this)
+void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t id) {
+    if (!isPointerEventValid())
         return;
 
     if (type != touchEventEnd)

@@ -120,6 +120,9 @@ void SMsgReader::readMsg()
   case msgTypeLatencyMeasurement:
     readLatencyMeasurementRequest();
     break;
+  case msgTypeTouchEvent:
+      readTouchEvent();
+      break;
   default:
     fprintf(stderr, "unknown message type %d\n", msgType);
     throw Exception("unknown message type");
@@ -445,7 +448,7 @@ void SMsgReader::readVideoEncodersRequest() const {
     handler->videoEncodersRequest(buf);
 }
 
-void SMsgReader::readDirectMouseEvent()
+void SMsgReader::readDirectMouseEvent() const
 {
   // Wire format (9 bytes after the type byte):
   //   byte 0:   VNC button mask. Button N uses bit N-1, so the common buttons
@@ -469,7 +472,7 @@ void SMsgReader::readLatencyMeasurementRequest() const {
     handler->handleLatencyMeasurementRequest(measurementId);
 }
 
-void SMsgReader::readTouchEvent() {
+void SMsgReader::readTouchEvent() const {
     const int type = is->readU8();
     const uint32_t id = is->readU32();
     const int x = is->readS16();

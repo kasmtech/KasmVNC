@@ -272,6 +272,8 @@ namespace rfb {
     void supportsDirectMouse() override;
     void supportsTouchEvents() override;
 
+    bool isPointerEventValid();
+
     bool canChangeKasmSettings() const override {
         return (accessRights & (AccessPtrEvents | AccessKeyEvents)) ==
                (AccessPtrEvents | AccessKeyEvents);

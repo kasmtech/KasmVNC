@@ -27,10 +27,6 @@ SMsgHandler::SMsgHandler()
   cp.setSHandler(this);
 }
 
-SMsgHandler::~SMsgHandler()
-{
-}
-
 void SMsgHandler::clientInit(bool shared)
 {
 }
