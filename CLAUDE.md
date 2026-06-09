@@ -439,5 +439,3 @@ the browser client (`kasmweb/`) and the Xvnc server path before changing it.
 - `BUILDING.md` — full build, dev-container, CI detail.
 - `DEBUGGING.md` — symbolizing crash backtraces with debug-symbol packages.
 - `builder/README.md` — packaging.
-- `PLAN.md` — open work items for this documentation effort (incl. the deferred
-  RFB-deviations writeup).
