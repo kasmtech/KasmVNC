@@ -204,6 +204,12 @@ encoding:
     logging:
       level: off
     scaling_algorithm: progressive_bilinear
+    webp_encoding_time: 30
+
+  video_streaming_mode:
+    codec: auto
+    quality: 17
+    gop: 24
 
   compare_framebuffer: auto
   zrle_zlib_level: auto
@@ -235,6 +241,7 @@ command_line:
   - Webp image compression for better bandwidth usage
   - Automatic mixing of webp and jpeg based on CPU availability on server
   - Multi-threaded image encoding for smoother frame rate for servers with more cores
+  - WebCodecs video streaming with H.264, H.265, and AV1 support
   - WebRTC UDP Transit
   - Lossless QOI Image format for Local LAN
   - [Full screen video detection](https://github.com/kasmtech/KasmVNC/wiki/Video-Rendering-Options#video-mode), goes into configurable video mode for better full screen videoo playback performance.
@@ -260,10 +267,6 @@ command_line:
   - IME support for languages with extended characters
   - Better mobile support
   - DRI3 GPU acceleration with open source drivers (AMDGPU,Intel,ATI,ARM)
-
-Future Goals:
-
-  - H264 encoding
 
 ### Compiling From Source
 See the [builder/README.md](https://github.com/kasmtech/KasmVNC/blob/master/builder/README.md). We containerize our build systems to ensure highly repeatable builds.
