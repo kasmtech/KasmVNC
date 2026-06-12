@@ -148,6 +148,11 @@ VNCSConnectionST::~VNCSConnectionST()
     server->desktop->keyEvent(keysym, keycode, false);
   }
 
+  for (const uint32_t id: activeTouchIds)
+      server->desktop->touchEvent(pointerEventPos.x, pointerEventPos.y, touchEventEnd, id);
+
+  activeTouchIds.clear();
+
   if (server->pointerClient == this)
     server->pointerClient = nullptr;
 
@@ -843,7 +848,12 @@ void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t id) {
     if (!isPointerEventValid())
         return;
 
-    if (type != touchEventEnd)
+    if (type == touchEventBegin)
+        activeTouchIds.insert(id);
+    else if (type == touchEventEnd)
+        activeTouchIds.erase(id);
+
+    if (!activeTouchIds.empty())
         server->pointerClient = this;
     else
         server->pointerClient = nullptr;

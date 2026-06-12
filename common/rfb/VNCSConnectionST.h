@@ -28,6 +28,7 @@
 #define __RFB_VNCSCONNECTIONST_H__
 
 #include <map>
+#include <set>
 
 #include <rfb/Congestion.h>
 #include <rfb/EncodeManager.h>
@@ -357,6 +358,7 @@ namespace rfb {
     time_t lastEventTime;
     time_t pointerEventTime;
     Point pointerEventPos;
+    std::set<uint32_t> activeTouchIds;
     bool clientHasCursor;
     struct timeval lastRealUpdate;
     struct timeval lastClipboardOp;
