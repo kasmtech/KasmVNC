@@ -805,6 +805,8 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool
     if (!isPointerEventValid())
         return;
 
+    pointerEventPos = pos;
+
     if (buttonMask)
       server->pointerClient = this;
     else
