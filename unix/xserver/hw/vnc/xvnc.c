@@ -1424,6 +1424,8 @@ static Bool vncRandRScreenSetSize(ScreenPtr pScreen,
             ErrorF("Warning: Unable to crop CRTC to new screen dimensions");
     }
 
+    update_desktop_dimensions();
+
     return TRUE;
 }
 
