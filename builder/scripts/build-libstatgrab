@@ -4,7 +4,7 @@ set -euo pipefail
 
 build_and_install() {
     ./autogen.sh
-    CFLAGS="-fPIC" ./configure --disable-shared --enable-static --disable-man
+    CFLAGS="-fPIC" ./configure --prefix="$HOME/.local" --disable-shared --enable-static --disable-man
     make -j$(nproc)
     make install
 }

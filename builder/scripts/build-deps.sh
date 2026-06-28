@@ -25,3 +25,5 @@ echo ">> Building fmt..."
 "${source_dir}"/build-fmt
 echo ">> Building libyuv..."
 "${source_dir}"/build-libyuv
+echo ">> Building libstatgrab..."
+"${source_dir}"/build-libstatgrab
