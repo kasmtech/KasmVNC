@@ -39,8 +39,8 @@ namespace rfb {
   constexpr int msgTypeKeepAlive = 185;
   constexpr int msgTypeServerDisconnect = 186;
   constexpr int msgTypeForceGameMode = 187;
-  constexpr int msgTypeNetworkStats = 188;
-  constexpr int msgTypeSystemStats = 189;
+  constexpr int msgTypeNetworkStats = 190;
+  constexpr int msgTypeSystemStats = 191;
 
   constexpr int msgTypeServerFence = 248;
   constexpr int msgTypeUserAddedToSession = 253;
@@ -72,9 +72,9 @@ namespace rfb {
 
   constexpr int msgTypeDirectMouseEvent = 188;
 
-  //constexpr int msgTypeNetworkStats = 188;
+  //constexpr int msgTypeNetworkStats = 190;
 
-  //  constexpr int msgTypeSystemStats = 189;
+  //  constexpr int msgTypeSystemStats = 191;
 
   constexpr int msgTypeClientFence = 248;
 
