@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include <cstdint>
 #include <fcntl.h>
 #include <unistd.h>
@@ -130,6 +131,8 @@ public:
         std::vector<disk_stats_t> stats;
         stats.reserve(dev_count);
 
+        const double iowait_value = cpu && !std::isnan(cpu->iowait) ? cpu->iowait : 0.0;
+
         for (size_t i = 0; i < dev_count; i++) {
             double read_per_sec = 0.0, write_per_sec = 0.0;
             if (const auto systime = static_cast<double>(diff[i].systime); systime > 0) {
@@ -138,7 +141,7 @@ public:
             }
 
             stats.emplace_back(diff[i].disk_name, curr[i].read_bytes, curr[i].write_bytes, read_per_sec, write_per_sec,
-                               cpu->iowait);
+                               iowait_value);
         }
 
         return stats;
@@ -154,6 +157,9 @@ public:
         //     return 1000 * used / delta;
         //
         // return 0;
+
+        if (!cpu || std::isnan(cpu->idle))
+            return 0.0;
 
         return 100. - cpu->idle;
     }
