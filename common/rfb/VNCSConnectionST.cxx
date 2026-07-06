@@ -850,18 +850,8 @@ void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t id) {
     if (!isPointerEventValid())
         return;
 
-    const size_t touch_count = activeTouchIds.size();
-
     switch (type) {
         case touchEventBegin:
-            if (touch_count == 1) {
-                const Point pointer_pos(x, y);
-                server->desktop->pointerEvent(pointer_pos, 0x4, false, false, 0, 0);
-                server->desktop->pointerEvent(pointer_pos, 0x0, false, false, 0, 0);
-
-                return;
-            }
-
             activeTouchIds.insert(id);
 
             break;
