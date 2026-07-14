@@ -1217,7 +1217,7 @@ sub DefineFilePathsAndStuff {
 logging:
   log_writer_name: all
   log_dest: logfile
-  level: 100
+  level: 30
 TEXT
   %appSettings = ();
   %addedXvncOptions = ();

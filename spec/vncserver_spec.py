@@ -6,7 +6,7 @@ from expects import expect, equal, contain, match
 
 from helper.spec_helper import start_xvnc, kill_xvnc, run_cmd, clean_env, \
     add_kasmvnc_user_docker, clean_kasm_users, start_xvnc_pexpect, \
-    write_config, config_filename
+    write_config, config_filename, pick_cli_option
 
 
 def run_vncserver():
@@ -22,6 +22,17 @@ with description('vncserver') as self:
         clean_env()
     with after.each:
         kill_xvnc()
+
+    with it("generates a user config with the default log level"):
+        completed_process = run_cmd('vncserver -dry-run')
+        generated_config = os.path.join(os.environ['HOME'], '.vnc',
+                                        'kasmvnc.yaml')
+
+        expect(completed_process.returncode).to(equal(0))
+        with open(generated_config) as config:
+            expect(config.read()).to(contain('level: 30'))
+        expect(pick_cli_option('Log', completed_process.stdout)).to(
+            equal("-Log '*:stdout:30'"))
 
     with context("SSL certs"):
         with before.each:
