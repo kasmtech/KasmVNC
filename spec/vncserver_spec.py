@@ -24,9 +24,11 @@ with description('vncserver') as self:
         kill_xvnc()
 
     with it("generates a user config with the default log level"):
-        completed_process = run_cmd('vncserver -dry-run')
         generated_config = os.path.join(os.environ['HOME'], '.vnc',
                                         'kasmvnc.yaml')
+        write_config('')
+        completed_process = run_cmd(
+            f'vncserver -dry-run -config {config_filename},{generated_config}')
 
         expect(completed_process.returncode).to(equal(0))
         with open(generated_config) as config:
