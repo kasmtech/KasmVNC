@@ -82,7 +82,10 @@ RUN if [ "$(arch)" = "x86_64" ]; then \
 
 ENV SCRIPTS_DIR=/tmp/scripts
 COPY builder/scripts $SCRIPTS_DIR
+RUN $SCRIPTS_DIR/install_sccache_from_github
 RUN $SCRIPTS_DIR/build-deps.sh
+
+RUN chown -R 1000:1000 /home/kasm-user/.local
 
 RUN ssh-keygen -A
 RUN echo "kasm-user:password" | chpasswd
