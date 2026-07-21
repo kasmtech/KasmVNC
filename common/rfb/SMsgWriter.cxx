@@ -838,3 +838,10 @@ void SMsgWriter::writeForceGameMode()
   startMsg(msgTypeForceGameMode);
   endMsg();
 }
+
+void SMsgWriter::writeLatencyMeasurementResponse(uint32_t measurementId) {
+    startMsg(msgTypeLatencyMeasurement);
+    os->pad(3);
+    os->writeU32(measurementId);
+    endMsg();
+}

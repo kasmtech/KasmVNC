@@ -1404,6 +1404,11 @@ void VNCSConnectionST::writeFramebufferUpdate()
   // Then real data (if possible)
   writeDataUpdate();
 
+    if (pendingLatencyMeasurementId != 0) {
+        writer()->writeLatencyMeasurementResponse(pendingLatencyMeasurementId);
+        pendingLatencyMeasurementId = 0;
+    }
+
   sock->cork(false);
 
   congestion.updatePosition(sock->outStream().length());
@@ -1732,6 +1737,10 @@ void VNCSConnectionST::handleFrameStats(rdr::U32 all, rdr::U32 render)
   }
 
   frameTracking = false;
+}
+
+void VNCSConnectionST::handleLatencyMeasurementRequest(uint32_t measurementId) {
+    pendingLatencyMeasurementId = measurementId;
 }
 
 void VNCSConnectionST::keepAlive()

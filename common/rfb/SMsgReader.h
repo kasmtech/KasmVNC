@@ -72,6 +72,7 @@ namespace rfb {
     void readUnixRelay();
     void readVideoEncodersRequest() const;
     void readDirectMouseEvent();
+    void readLatencyMeasurementRequest() const;
 
     SMsgHandler* handler;
     rdr::InStream* is;

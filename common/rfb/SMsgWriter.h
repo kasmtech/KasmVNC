@@ -137,6 +137,7 @@ namespace rfb {
     void writeUserLeftSession(const std::string& username);
     void writeDisconnectNotify(bool graceful, const char *reason);
     void writeForceGameMode();
+    void writeLatencyMeasurementResponse(uint32_t measurementId);
 
   protected:
     void startMsg(int type);

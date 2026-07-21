@@ -117,6 +117,9 @@ void SMsgReader::readMsg()
   case msgTypeDirectMouseEvent:
     readDirectMouseEvent();
     break;
+  case msgTypeLatencyMeasurement:
+    readLatencyMeasurementRequest();
+    break;
   default:
     fprintf(stderr, "unknown message type %d\n", msgType);
     throw Exception("unknown message type");
@@ -458,4 +461,10 @@ void SMsgReader::readDirectMouseEvent()
   int scrollY = is->readS16();
 
   handler->directMouseEvent(dx, dy, buttonMask, scrollX, scrollY);
+}
+
+void SMsgReader::readLatencyMeasurementRequest() const {
+    is->skip(3);
+    const uint32_t measurementId = is->readU32();
+    handler->handleLatencyMeasurementRequest(measurementId);
 }

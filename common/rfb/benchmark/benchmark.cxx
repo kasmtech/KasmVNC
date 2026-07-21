@@ -128,6 +128,8 @@ namespace benchmarking {
 
         void handleFrameStats(rdr::U32 all, rdr::U32 render) override {}
 
+        void handleLatencyMeasurementRequest(uint32_t measurementId) override {}
+
         [[nodiscard]] auto getJpegStats() const {
             return manager.jpegstats;
         }
