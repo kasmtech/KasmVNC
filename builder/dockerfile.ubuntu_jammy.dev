@@ -85,7 +85,8 @@ COPY builder/scripts $SCRIPTS_DIR
 RUN $SCRIPTS_DIR/install_sccache_from_github
 RUN $SCRIPTS_DIR/build-deps.sh
 
-RUN chown -R 1000:1000 /home/kasm-user/.local
+RUN chown -R 1000:1000 /home/kasm-user/.local && \
+    rm -rf /tmp/libjpeg-turbo /tmp/libwebp-* /tmp/tbb /tmp/cpuid /tmp/fmt /tmp/libyuv /tmp/libstatgrab /tmp/sccache*
 
 RUN ssh-keygen -A
 RUN echo "kasm-user:password" | chpasswd
