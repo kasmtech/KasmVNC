@@ -40,6 +40,7 @@ namespace rfb {
   constexpr int msgTypeServerDisconnect = 186;
   constexpr int msgTypeForceGameMode = 187;
   constexpr int msgTypeNetworkStats = 190;
+  constexpr int msgTypeLatencyMeasurement = 189;
   constexpr int msgTypeSystemStats = 191;
 
   constexpr int msgTypeServerFence = 248;
