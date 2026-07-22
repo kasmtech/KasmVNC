@@ -1740,6 +1740,9 @@ void VNCSConnectionST::handleFrameStats(rdr::U32 all, rdr::U32 render)
 }
 
 void VNCSConnectionST::handleLatencyMeasurementRequest(uint32_t measurementId) {
+    if (!Server::enableLatencyMeasurement)
+        return;
+
     pendingLatencyMeasurementId = measurementId;
 }
 
