@@ -117,6 +117,8 @@ public:
 
     mem_stats_t get_mem_stats() {
         mem = sg_get_mem_stats(nullptr);
+        if (!mem)
+            return {};
 
         return {
             .total = mem->total, .free = mem->free, .used = mem->cache, .cached = mem->cache

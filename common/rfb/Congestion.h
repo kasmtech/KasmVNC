@@ -24,10 +24,11 @@
 namespace rfb {
     template<typename T, size_t N>
     class CircularBuffer {
-        std::array<T, N> buffer;
+        std::array<T, N> buffer{};
 
         size_t head{};
         size_t tail{};
+        size_t count{};
 
     public:
         CircularBuffer() = default;
@@ -47,14 +48,17 @@ namespace rfb {
 
         void push_back(T value) {
             buffer[tail] = value;
-            ++tail;
-            tail %= N;
+            tail = (tail + 1) % N;
+            if (count == N)
+                head = (head + 1) % N;
+            else
+                ++count;
         }
 
         T pop_front() {
             T value = buffer[head];
-            ++head;
-            head %= N;
+            head = (head + 1) % N;
+            --count;
             return value;
         }
 
@@ -149,6 +153,9 @@ namespace rfb {
         int measurements;
         timeval lastAdjustment{};
         unsigned minRTT, minCongestedRTT;
+
+        unsigned jitter{0};
+        unsigned lastRawRTT{0};
     };
 }
 

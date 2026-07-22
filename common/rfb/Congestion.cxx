@@ -109,6 +109,8 @@ void Congestion::updatePosition(unsigned pos) {
         gettimeofday(&lastAdjustment, nullptr);
         minRTT = minCongestedRTT = -1;
         inSlowStart = true;
+        jitter = 0;
+        lastRawRTT = 0;
     }
 
     // Commonly we will be in a state of overbuffering. We need to
@@ -156,6 +158,13 @@ void Congestion::gotPong() {
     unsigned rtt = msBetween(&rttInfo.tv, &now);
     if (rtt < 1)
         rtt = 1;
+
+    // Update jitter estimate using  rfc 3550 jitter calculation: J = (15·J + |Δrtt|) / 16
+    if (lastRawRTT != 0) {
+        unsigned d = rtt > lastRawRTT ? rtt - lastRawRTT : lastRawRTT - rtt;
+        jitter = (15 * jitter + d) / 16;
+    }
+    lastRawRTT = rtt;
 
     // Try to estimate wire latency by tracking lowest seen latency
     if (rtt < baseRTT)
@@ -273,6 +282,10 @@ size_t Congestion::getBandwidth() const {
 
 unsigned Congestion::getPingTime() const {
     return safeBaseRTT;
+}
+
+unsigned Congestion::getJitter() const {
+    return jitter;
 }
 
 void Congestion::debugTrace(const char *filename, int fd) {
