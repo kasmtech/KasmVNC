@@ -41,9 +41,9 @@ namespace rfb {
 
         CircularBuffer &operator=(const CircularBuffer &&) = delete;
 
-        bool empty() const { return size() == 0; }
+        bool empty() const { return count == 0; }
 
-        size_t size() const { return tail >= head ? tail - head : N + tail - head; }
+        size_t size() const { return count; }
         static size_t capacity() { return N; }
 
         void push_back(T value) {
@@ -113,6 +113,7 @@ namespace rfb {
         size_t getBandwidth() const;
 
         unsigned getPingTime() const;
+        unsigned getJitter() const;
 
         // debugTrace() writes the current congestion window, as well as the
         // congestion window of the underlying TCP layer, to the specified
