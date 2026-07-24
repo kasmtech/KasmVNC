@@ -99,7 +99,7 @@ put_report_into_ci_pipeline() {
 }
 
 prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages() {
-  cp -r ../output/jammy output/
+  cp -r ../output/jammy output/ubuntu_jammy
 }
 
 prepare_to_run_functional_tests() {
