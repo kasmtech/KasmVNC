@@ -34,7 +34,7 @@ stages:
   - functional_test
   - run_test
   - test
-  - upload
+  - upload_build_preview
 
 .prepare_build: &prepare_build
   - pwd
@@ -168,7 +168,6 @@ build_www:
 
 build_amd64:
   stage: build
-  allow_failure: true
   image: $DEBIAN_STABLE_IMAGE
   tags:
     - oci-fixed-amd
@@ -179,7 +178,11 @@ build_amd64:
   after_script:
     - *prepare_artfacts
   script:
-    - is_build_this_distro "$DISTRO" && builder/build-package $DISTRO
+    - if ! is_build_this_distro "$DISTRO"; then
+        exit 1;
+      fi
+    - builder/build-package $DISTRO
+    - upload_packages $DISTRO
   artifacts:
     paths:
       - output/
@@ -192,10 +195,13 @@ build_amd64:
   resource_group: "concurrent_$GROUP"
   parallel:
     *parallel_matrix
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH =~ /^release\//'
+      allow_failure: false
+    - allow_failure: true
 
 build_arm64:
   stage: build
-  allow_failure: true
   image: $DEBIAN_STABLE_IMAGE
   tags:
     - oci-fixed-arm
@@ -207,7 +213,11 @@ build_arm64:
     - *prepare_artfacts
   script:
     - set -e
-    - is_build_this_distro "$DISTRO" && builder/build-package $DISTRO
+    - if ! is_build_this_distro "$DISTRO"; then
+        exit 1;
+      fi
+    - builder/build-package $DISTRO
+    - upload_packages $DISTRO
   artifacts:
     paths:
       - output/
@@ -219,6 +229,10 @@ build_arm64:
   resource_group: "concurrent_$GROUP"
   parallel:
     *parallel_matrix
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH =~ /^release\//'
+      allow_failure: false
+    - allow_failure: true
 
 
 run_test_amd64:
@@ -293,8 +307,8 @@ spec_test:
     - builder/test-vncserver
 
 
-upload:
-  stage: upload
+make_build_preview_html:
+  stage: upload_build_preview
   image: $DEBIAN_STABLE_IMAGE
   tags:
     - oci-fixed-amd
@@ -305,46 +319,24 @@ upload:
     - . .ci/helpers.sh
   script:
     - prepare_to_run_scripts_and_s3_uploads
-    - S3_CRASHPAD_BUILD_DIRECTORY="kasmvnc/crashpad/${CI_COMMIT_SHA}"
-    - for dbgsym_package in `find output/ -type f -name '*dbgsym*deb'`; do
-        deb_package=$(find_deb_package "$dbgsym_package");
-        xvnc_md5sum=$(fetch_xvnc_md5sum "$deb_package");
-        upload_filename="${S3_CRASHPAD_BUILD_DIRECTORY}/${xvnc_md5sum}/kasmvncserver-dbgsym.deb";
-        echo;
-        echo "File to upload $upload_filename";
-        upload_to_s3 "$dbgsym_package" "$upload_filename" "$S3_BUCKET";
-        rm "$dbgsym_package";
-      done
-    - export S3_BUILD_DIRECTORY="kasmvnc/${CI_COMMIT_SHA}"
-    - export RELEASE_VERSION=$(.ci/next_release_version "$CI_COMMIT_REF_NAME")
-    - uploaded_files=()
-    - for package in `find output/ -type f -name '*.deb' -or -name '*.rpm' -or -name '*.apk'`; do
-        prepare_upload_filename "$package";
-        upload_filename="${S3_BUILD_DIRECTORY}/$upload_filename";
-        echo;
-        echo "File to upload $upload_filename";
-        upload_to_s3 "$package" "$upload_filename" "$S3_BUCKET";
-        UPLOAD_NAME=$(basename $upload_filename | sed 's#kasmvncserver_##' | sed -r 's#_([0-9]{1,3}\.){2}[0-9]{1,2}_\S+?([a-f0-9]{6})##' | sed -r 's#\.(deb|rpm|tgz)##');
-        curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=${UPLOAD_NAME}&target_url=${S3_URL}";
-        uploaded_files+=("$upload_filename");
-      done
-    - make_index_html "${uploaded_files[@]}" > output/index.html;
+    - make_package_index_html > output/index.html
+    - upload_package_index_to_build_dir_for_debugging output/index.html
 
-upload_build_preview:
-  stage: upload
-  needs: ["upload"]
-  dependencies: ["upload"]
+upload_build_preview_html:
+  stage: upload_build_preview
+  needs: ["make_build_preview_html"]
+  dependencies: ["make_build_preview_html"]
   image: $DEBIAN_STABLE_IMAGE
   tags:
     - oci-fixed-amd
   before_script:
     - . .ci/helpers.sh
-  resource_group: upload_build_preview
+  resource_group: upload_build_preview_html
   only:
     variables:
-      - $CI_COMMIT_BRANCH == 'master'
+      - $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - prepare_to_run_scripts_and_s3_uploads
     - preview_builds_dir=kasmvnc/preview-builds
     - upload_to_s3 "output/index.html" "$preview_builds_dir/index.html" "$S3_BUCKET"
-    - curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=index.html&target_url=${S3_URL}";
+    - show_file_link_in_ci "index.html" "$UPLOADED_FILE_S3_URL"

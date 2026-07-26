@@ -9,8 +9,7 @@ cd "$(dirname "$0")/.."
 select_consistent_output_owner_uid_and_gid
 
 builder_image=debbuilder_${os}:${os_codename}${build_tag_for_images}
-docker build --build-arg KASMVNC_PACKAGE_DIR="builder/build/${os_codename}" \
-  --build-arg OUTPUT_OWNER_UID="$output_owner_uid" \
+docker build --build-arg OUTPUT_OWNER_UID="$output_owner_uid" \
   -t "$builder_image" -f \
   builder/dockerfile.${os}_${os_codename}${build_tag}.deb.build .
 

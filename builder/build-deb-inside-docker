@@ -18,7 +18,7 @@ prepare_docker_copy_of_debian_dir_and_cd_to_id
 
 os=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
 os_codename=$(lsb_release -cs)
-os_dir="builder/build/${os_codename}"
+os_dir="builder/build/${os}_${os_codename}"
 
 if [ "$BUILD_TAG" = "+libjpeg-turbo_latest" ]; then
    echo 'libjpeg 62 libjpeg-turbo (>= 2.1.1)' > debian/shlibs.local

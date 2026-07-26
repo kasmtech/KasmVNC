@@ -8,9 +8,9 @@ default_os_codename=jammy
 . ./builder/os_ver_cli.sh
 
 if [[ -n "$GITLAB_CI" ]]; then
-  package_dir="output/${os_codename}"
+  package_dir="output/${os}_${os_codename}"
 else
-  package_dir="builder/build/${os_codename}"
+  package_dir="builder/build/${os}_${os_codename}"
 fi
 
 docker build --build-arg KASMVNC_PACKAGE_DIR="$package_dir" \

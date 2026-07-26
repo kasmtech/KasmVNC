@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 . ./builder/common.sh
 
 tester_image="builder/kasmvnctester_${os}:$os_codename${build_tag_for_images}"
-docker build --build-arg KASMVNC_PACKAGE_DIR="builder/build/${os_codename}" \
+docker build --build-arg KASMVNC_PACKAGE_DIR="builder/build/${os}_${os_codename}" \
   --build-arg BUILD_DEBIAN_REVISION="$build_debian_revision" \
   -t "$tester_image" \
   -f "builder/dockerfile.${os}_${os_codename}${build_tag}.deb.test" .
