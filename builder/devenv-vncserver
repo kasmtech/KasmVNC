@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 . ./builder/os_ver_cli.sh
 . ./builder/common.sh
 
-docker build --build-arg KASMVNC_PACKAGE_DIR="builder/build/${os_codename}" \
+docker build --build-arg KASMVNC_PACKAGE_DIR="builder/build/${os}_${os_codename}" \
   -t kasmvncdevenv_${os}:$os_codename \
   -f builder/dockerfile.${os}_${os_codename}.vncserver_devenv.test .
 docker run -it -v $(realpath ${PWD}):/src -p "443:$VNC_PORT" -p "$VNC_PORT:$VNC_PORT" \

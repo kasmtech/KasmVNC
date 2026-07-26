@@ -150,10 +150,13 @@ locally by doing stuff like this:
 
 ```
 bash -c '
+set -e;
 . .ci/helpers.sh;
-prepare_upload_filename "focal/kasmvncserver_0.9.1~beta-1+libjpeg-turbo-latest_amd64.deb";
-echo $upload_filename;'
+upload_packages ubuntu jammy;'
 ```
+
+If ran outside CI, it's in local dev mode. Local dev mode omits calling actual
+upload code (for example, it doesn't call `curl`).
 
 # vncserver development
 
@@ -213,5 +216,5 @@ tar -zxf kasm_www.tar.gz -C KasmVNC/builder/
 cd KasmVNC
 sudo builder/build-package ubuntu focal
 ```
-The resulting deb package can be found under ~/KasmVNC/builder/build/focal
+The resulting deb package can be found under `~/KasmVNC/builder/build/ubuntu_focal`.
 Replace ```focal``` with ```noble``` to build for Ubuntu 24.04LTS.
