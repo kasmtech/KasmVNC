@@ -126,16 +126,22 @@ public:
     }
 
     std::vector<disk_stats_t> get_io_stats() {
-        const auto *diff = sg_get_disk_io_stats_diff(&dev_count);
+        size_t diff_count = 0;
+        const auto *diff = sg_get_disk_io_stats_diff(&diff_count);
         const auto *curr = sg_get_disk_io_stats(&dev_count);
         cpu = sg_get_cpu_percents(nullptr);
 
+        if (!diff || !curr)
+            return {};
+
+        const size_t count = std::min(diff_count, dev_count);
+
         std::vector<disk_stats_t> stats;
-        stats.reserve(dev_count);
+        stats.reserve(count);
 
         const double iowait_value = cpu && !std::isnan(cpu->iowait) ? cpu->iowait : 0.0;
 
-        for (size_t i = 0; i < dev_count; i++) {
+        for (size_t i = 0; i < count; i++) {
             double read_per_sec = 0.0, write_per_sec = 0.0;
             if (const auto systime = static_cast<double>(diff[i].systime); systime > 0) {
                 read_per_sec = static_cast<double>(diff[i].read_bytes) / systime;
