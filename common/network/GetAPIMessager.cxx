@@ -890,9 +890,11 @@ void GetAPIMessager::netUpdateSystemStats() {
 			"\t\t\t\"bytes_read_per_sec\": {},\n"
 			"\t\t\t\"bytes_written\": {},\n"
 			"\t\t\t\"bytes_written_per_sec\": {},\n"
-			"\t\t\t\"iowait\": {} }}{} \n",
-			dev_io_stats.disk_name, dev_io_stats.bytes_read, dev_io_stats.bytes_read_per_sec, dev_io_stats.bytes_written,  dev_io_stats.bytes_written_per_sec, dev_io_stats.iowait, i + 1 < io_stats.size() ? "," : "}}");
+			"\t\t\t\"iowait\": {} }}{}\n",
+			dev_io_stats.disk_name, dev_io_stats.bytes_read, dev_io_stats.bytes_read_per_sec, dev_io_stats.bytes_written,  dev_io_stats.bytes_written_per_sec, dev_io_stats.iowait, i + 1 < io_stats.size() ? "," : "");
 	}
+
+	fmt::format_to(std::back_inserter(buf), "}}}}\n");
 
 	std::lock_guard lock(system_stats_mutex);
 
