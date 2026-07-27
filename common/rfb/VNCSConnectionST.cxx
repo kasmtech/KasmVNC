@@ -1602,12 +1602,12 @@ void VNCSConnectionST::writeDataUpdate()
         bstats[BS_CPU_CLOSE].push_back(lastRealUpdate);
         bstats_total[BS_CPU_CLOSE]++;
     }
+
+    writeRTTPing();
   } else {
     encodeManager.writeLosslessRefresh(req, server->screenLayout, server->getPixelBuffer(),
                                        cursor, maxUpdateSize);
   }
-
- //  writeRTTPing();
 
   // The request might be for just part of the screen, so we cannot
   // just clear the entire update tracker.
