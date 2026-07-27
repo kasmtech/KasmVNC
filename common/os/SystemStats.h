@@ -21,7 +21,7 @@ struct cpu_stats_t {
     }
 
     [[nodiscard]] bool valid() const {
-        return !user && !nice && !system && !idle && !iowait && !irq && !softirq && !steal && !guest;
+        return user || nice || system || idle || iowait || irq || softirq || steal || guest;
     }
 };
 
@@ -33,7 +33,7 @@ struct mem_stats_t {
 };
 
 struct disk_stats_t {
-    std::string_view disk_name;
+    std::string disk_name;
     uint64_t bytes_read;
     uint64_t bytes_written;
     double bytes_read_per_sec;
@@ -121,7 +121,7 @@ public:
             return {};
 
         return {
-            .total = mem->total, .free = mem->free, .used = mem->cache, .cached = mem->cache
+            .total = mem->total, .free = mem->free, .used = mem->used, .cached = mem->cache
         };
     }
 
