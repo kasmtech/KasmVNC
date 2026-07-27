@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.5.0
+Version:        1.5.1
 Release:        leap16
 Summary:        VNC server accessible from a web browser
 
@@ -115,6 +115,10 @@ stop_vncserver_systemd_services_for_all_logged_in_users
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Mon Jul 27 2026 KasmTech <info@kasmweb.com> - 1.5.1-leap16
+- Fixed Kasm Workspaces sessions failing to recover from unexpected connection drops. The web client now reconnects in place with bounded retries while preserving idle-timeout tracking.
+- Fixed excessive server log output in newly generated user configurations by aligning their default log level with KasmVNC defaults.
+- Added build and package support for Ubuntu 26.04 (Resolute Raccoon).
 * Mon May 25 2026 KasmTech <info@kasmweb.com> - 1.5.0-leap16
 - Added video streaming mode with hardware and software accelerated H.264, H.265, and AV1 encoders. Hardware acceleration uses VAAPI (Intel/AMD) and NVENC (NVIDIA).
 - Added support for relative mouse input mode for improved UX and application compatibility (e.g. games and apps that require raw mouse deltas).
