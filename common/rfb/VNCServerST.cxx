@@ -785,7 +785,8 @@ bool VNCServerST::handleTimeout(Timer* t)
     }
 
     if (t == &stats) {
-        apimessager->netUpdateSystemStats();
+        if (apimessager)
+            apimessager->netUpdateSystemStats();
         stats.start(STATS_INTERVAL_MS);
     }
 
