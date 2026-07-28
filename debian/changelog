@@ -4,7 +4,7 @@ kasmvnc (1.5.1-1) unstable; urgency=medium
   * Fixed excessive server log output in newly generated user configurations by aligning their default log level with KasmVNC defaults.
   * Added build and package support for Ubuntu 26.04 (Resolute Raccoon).
 
- -- Kasm Technologies LLC <info@kasmweb.com>  Mon, 27 Jul 2026 14:57:58 +0000
+ -- Kasm Technologies LLC <info@kasm.com>  Mon, 27 Jul 2026 14:57:58 +0000
 
 kasmvnc (1.5.0-1) unstable; urgency=medium
 
