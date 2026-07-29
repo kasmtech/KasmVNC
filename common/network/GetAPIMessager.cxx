@@ -839,31 +839,6 @@ void GetAPIMessager::netClearClipboard() {
 }
 
 void GetAPIMessager::netUpdateSystemStats() {
-/*
-	*
-
-
-	// "}""}"
-
-	// {
-	// 	"cpu": {
-	// 		"usage_percent": 27.3
-	// 	  },
-	// 	  "memory": {
-	// 	  	"total": 16320460,
-	// 		  "used": 8758540,
-	// 		  "available": 7561920,
-	// 		  "used_percent": 53.7
-	// 		},
-	// 		"load_average": {
-	// 			"1min": 0.41,
-	// 			"5min": 0.37,
-	// 			"15min": 0.33
-	// 		  },
-	// 		  "uptime_seconds": 14522.9
-	// 		}
- */
-
 	const auto cpu_usage = SystemStats::get_cpu_usage();
 	const auto mem_stats = system_stats.get_mem_stats();
 	const auto io_stats = system_stats.get_io_stats();
