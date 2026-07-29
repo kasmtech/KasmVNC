@@ -57,7 +57,6 @@ RUN sed -i 's$# deb-src$deb-src$' /etc/apt/sources.list && \
     libdrm-dev \
     htop \
     libva-dev \
-    libdrm-dev \
     libpam0g-dev \
     libbsd-dev \
     openssh-server \
