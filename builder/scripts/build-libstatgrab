@@ -15,10 +15,10 @@ prepare_source() {
     [ -d ./${DIR} ] && rm -rf ./${DIR}
     mkdir ${DIR}
 
-    LIBCPUID_RELEASE=$(curl -sL "https://api.github.com/repos/libstatgrab/libstatgrab/releases/latest" \
+    LIBSTATGRAB_RELEASE=$(curl -sL "https://api.github.com/repos/libstatgrab/libstatgrab/releases/latest" \
         | grep '"tag_name":' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
 
-    curl -Ls "https://github.com/libstatgrab/libstatgrab/archive/${LIBCPUID_RELEASE}.tar.gz" | \
+    curl -Ls "https://github.com/libstatgrab/libstatgrab/archive/${LIBSTATGRAB_RELEASE}.tar.gz" | \
 
     tar xzvf - -C ${DIR}/ --strip-components=1
     cd ${DIR}
