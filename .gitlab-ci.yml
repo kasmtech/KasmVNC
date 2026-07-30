@@ -31,7 +31,7 @@ workflow:
 stages:
   - www
   - build
-#  - functional_test
+  - functional_test
   - run_test
   - test
   - upload_build_preview
