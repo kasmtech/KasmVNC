@@ -37,9 +37,9 @@ namespace rfb {
 
         CircularBuffer &operator=(const CircularBuffer &) = delete;
 
-        CircularBuffer(const CircularBuffer &&) = delete;
+        CircularBuffer(CircularBuffer &&) = delete;
 
-        CircularBuffer &operator=(const CircularBuffer &&) = delete;
+        CircularBuffer &operator=(CircularBuffer &&) = delete;
 
         bool empty() const { return count == 0; }
 
@@ -57,7 +57,8 @@ namespace rfb {
 
         T pop_front() {
             T value = buffer[head];
-            head = (head + 1) % N;
+            ++head;
+            head %= N;
             --count;
             return value;
         }
@@ -65,18 +66,43 @@ namespace rfb {
         T &front() { return buffer[head]; }
         const T &front() const { return buffer[head]; }
 
-        T &back() { return buffer[tail - 1]; }
-        const T &back() const { return buffer[tail - 1]; }
+        T &back() { return buffer[(tail + N - 1) % N]; }
+        const T &back() const { return buffer[(tail + N - 1) % N]; }
 
+        template <typename BufferPtr>
+        class basic_iterator {
+            BufferPtr buf;
+            size_t idx;
+            size_t remaining;
 
-        using iterator = std::array<T, N>::iterator;
-        using const_iterator = std::array<T, N>::const_iterator;
+        public:
+            basic_iterator(std::array<T, N> *_buf, const size_t _idx, const size_t _remaining)
+                : buf(_buf), idx(_idx), remaining(_remaining) {
+            }
 
-        iterator begin() { return buffer.begin() + head; }
-        iterator end() { return buffer.begin() + tail; }
+            decltype(auto) operator*() { return (*buf)[idx]; }
+            T *operator->() { return std::addressof(**this); }
 
-        const_iterator cbegin() const { return buffer.cbegin() + head; }
-        const_iterator cend() const { return buffer.cbegin() + tail; }
+            basic_iterator &operator++() {
+                ++idx;
+                idx %= N;
+                --remaining;
+                return *this;
+            }
+
+            bool operator==(const basic_iterator &o) const {
+                return buf == o.buf && idx == o.idx && remaining == o.remaining;
+            }
+        };
+
+        using iterator = basic_iterator<std::array<T, N> *>;
+        using const_iterator = basic_iterator<const std::array<T, N> *>;
+
+        iterator begin() { return {&buffer, head, count}; }
+        iterator end() { return {&buffer, tail, 0}; }
+
+        const_iterator cbegin() const { return {&buffer, head, count}; }
+        const_iterator cend() const { return {&buffer, tail, 0}; }
     };
 
     class Congestion {
