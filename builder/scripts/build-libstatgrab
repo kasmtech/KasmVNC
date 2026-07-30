@@ -15,7 +15,7 @@ prepare_source() {
     [ -d ./${DIR} ] && rm -rf ./${DIR}
     mkdir ${DIR}
 
-    LIBSTATGRAB_RELEASE="${LIBSTATGRAB_RELEASE:-LIBSTATGRAB-0_92_1}"
+    LIBSTATGRAB_RELEASE="${LIBSTATGRAB_RELEASE:-LIBSTATGRAB_0_92_1}"
 
     curl -Ls "https://github.com/libstatgrab/libstatgrab/archive/${LIBSTATGRAB_RELEASE}.tar.gz" | \
 
