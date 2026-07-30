@@ -139,7 +139,7 @@ namespace rfb {
         size_t getBandwidth() const;
 
         unsigned getPingTime() const;
-        unsigned getJitter() const;
+        double getJitter() const;
 
         // debugTrace() writes the current congestion window, as well as the
         // congestion window of the underlying TCP layer, to the specified
@@ -181,8 +181,8 @@ namespace rfb {
         timeval lastAdjustment{};
         unsigned minRTT, minCongestedRTT;
 
-        unsigned jitter{0};
-        unsigned lastRawRTT{0};
+        double rttvar{0.0};
+        double srtt{0.0};
     };
 }
 

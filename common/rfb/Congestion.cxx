@@ -34,6 +34,7 @@
  */
 
 #include <cassert>
+#include <cmath>
 #include <sys/time.h>
 
 #ifdef __linux__
@@ -109,8 +110,8 @@ void Congestion::updatePosition(unsigned pos) {
         gettimeofday(&lastAdjustment, nullptr);
         minRTT = minCongestedRTT = -1;
         inSlowStart = true;
-        jitter = 0;
-        lastRawRTT = 0;
+        rttvar = 0.0;
+        srtt = 0.0;
     }
 
     // Commonly we will be in a state of overbuffering. We need to
@@ -159,12 +160,16 @@ void Congestion::gotPong() {
     if (rtt < 1)
         rtt = 1;
 
-    // Update jitter estimate using  rfc 3550 jitter calculation: J = (15·J + |Δrtt|) / 16
-    if (lastRawRTT != 0) {
-        unsigned d = rtt > lastRawRTT ? rtt - lastRawRTT : lastRawRTT - rtt;
-        jitter = (15 * jitter + d) / 16;
+    // RFC 6298 smoothed RTT variation (RTTVAR).
+    if (srtt == 0.0) {
+        srtt = rtt;
+        rttvar = rtt / 2.0;
+    } else {
+        const auto latest_rtt = static_cast<double>(rtt);
+        // Update RTTVAR before SRTT so the delta uses the previous SRTT (RFC 6298 #2).
+        rttvar = 0.75 * rttvar + 0.25 * std::abs(srtt - latest_rtt);
+        srtt = 0.875 * srtt + 0.125 * latest_rtt;
     }
-    lastRawRTT = rtt;
 
     // Try to estimate wire latency by tracking lowest seen latency
     if (rtt < baseRTT)
@@ -284,8 +289,8 @@ unsigned Congestion::getPingTime() const {
     return safeBaseRTT;
 }
 
-unsigned Congestion::getJitter() const {
-    return jitter;
+double Congestion::getJitter() const {
+    return rttvar;
 }
 
 void Congestion::debugTrace(const char *filename, int fd) {
