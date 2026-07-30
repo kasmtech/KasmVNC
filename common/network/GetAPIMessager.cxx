@@ -876,8 +876,10 @@ void GetAPIMessager::netUpdateSystemStats() {
 	systems_stats_json = fmt::to_string(buf);
 }
 
-std::string GetAPIMessager::netGetSystemStats() {
+void GetAPIMessager::netGetSystemStats(char *buf, uint32_t buf_len) {
 	std::lock_guard lock(system_stats_mutex);
 
-	return systems_stats_json;
+	const auto len = std::min(systems_stats_json.size(), static_cast<size_t>(buf_len - 1));
+	memcpy(buf, systems_stats_json.c_str(), len);
+	buf[len] = 0;
 }

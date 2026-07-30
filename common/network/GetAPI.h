@@ -71,7 +71,7 @@ namespace network {
     void netUdpUpgrade(void *client, uint32_t ip);
     void netClearClipboard();
     void netUpdateSystemStats();
-    std::string netGetSystemStats();
+    void netGetSystemStats(char *buf, uint32_t len);
 
     enum USER_ACTION {
       NONE,

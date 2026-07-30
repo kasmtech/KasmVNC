@@ -1781,9 +1781,9 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
                 "\r\n", extra_headers ? extra_headers : "");
         ws_send(ws_ctx, buf, strlen(buf));
 
-        const char *response = settings.get_system_stats_cb(settings.messager);
-        size_t response_len = strlen(response);
-        ws_send(ws_ctx, response, response_len);
+        settings.get_system_stats_cb(settings.messager, buf, WS_MAX_BUF_SIZE);
+        const size_t response_len = strlen(buf);
+        ws_send(ws_ctx, buf, response_len);
 
         weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, response_len);
 
