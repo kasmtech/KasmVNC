@@ -15,8 +15,7 @@ prepare_source() {
     [ -d ./${DIR} ] && rm -rf ./${DIR}
     mkdir ${DIR}
 
-    LIBSTATGRAB_RELEASE=$(curl -sL "https://api.github.com/repos/libstatgrab/libstatgrab/releases/latest" \
-        | grep '"tag_name":' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
+    LIBSTATGRAB_RELEASE="${LIBSTATGRAB_RELEASE:-LIBSTATGRAB-0_92_1}"
 
     curl -Ls "https://github.com/libstatgrab/libstatgrab/archive/${LIBSTATGRAB_RELEASE}.tar.gz" | \
 

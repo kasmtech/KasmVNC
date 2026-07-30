@@ -5,6 +5,7 @@ set -euo pipefail
 export JPEG_TURBO_RELEASE="${JPEG_TURBO_RELEASE:-3.2.0}"
 export LIBCPUID_RELEASE="${LIBCPUID_RELEASE:-v0.8.1}"
 export FMT_RELEASE="${FMT_RELEASE:-12.2.0}"
+export LIBSTATGRAB_RELEASE="${LIBSTATGRAB_RELEASE:-LIBSTATGRAB-0_92_1}"
 if grep -q 'Ubuntu 20.04\|Debian GNU/Linux 11' /etc/os-release 2>/dev/null; then
     export TBB_RELEASE="${TBB_RELEASE:-v2020.3.3}"
 else
