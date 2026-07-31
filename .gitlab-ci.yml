@@ -112,6 +112,37 @@ default:
   tags:
     - oci-fixed-amd
 
+functional_test:
+  stage: functional_test
+  image: $DEBIAN_STABLE_IMAGE
+  tags:
+    - oci-fixed-amd
+  before_script:
+    - *prepare_build
+    - . .ci/helpers.sh
+  script:
+    - prepare_to_run_functional_tests
+    - set +e; ./functional-test; exit_code=$?; set -e
+    - upload_report_to_s3
+    - put_report_into_ci_pipeline "$exit_code"
+    - exit "$exit_code"
+  dependencies:
+    - build_amd64
+  artifacts:
+    paths:
+      - kasmvnc-functional-tests/output/
+    reports:
+      junit:
+        - kasmvnc-functional-tests/report/*.xml
+  rules:
+    # Allow functional tests to fail on feature branches.
+    - if: '$CI_COMMIT_REF_NAME =~ /^feature\//'
+      allow_failure: true
+      when: on_success
+
+    # Fail pipeline on all other branches, if functional tests fail.
+    - when: on_success
+
 build_www:
   stage: www
   allow_failure: false
