@@ -42,6 +42,7 @@
 #include <rfb/ServerCore.h>
 
 #include "XserverDesktop.h"
+#include "vncAtSpi.h"
 #include "vncBlockHandler.h"
 #include "vncExtInit.h"
 #include "vncHooks.h"
@@ -324,6 +325,37 @@ void XserverDesktop::handleSocketEvent(int fd, bool read, bool write)
 
         server->refreshClients();
         return;
+      }
+
+      if (fd >= 0 && fd == vncAtSpiGetFd()) {
+          unsigned char buf;
+          while (::read(fd, &buf, 1) > 0);
+
+          VncAtSpiFocusInfo info;
+          while (vncAtSpiGetFocusState(&info)) {
+              vlog.debug("AT-SPI text input focus: %s, caret %d,%d %dx%d, field %d,%d %dx%d",
+                  info.focused ? "gained" : "lost",
+                  info.caretX,
+                  info.caretY,
+                  info.caretW,
+                  info.caretH,
+                  info.fieldX,
+                  info.fieldY,
+                  info.fieldW,
+                  info.fieldH);
+
+              auto clamp16 = [](int v) -> rdr::U16 { return v < 0 ? 0 : (v > 65535 ? 65535 : v); };
+              server->announceTextInputFocus(info.focused != 0,
+                  clamp16(info.caretX),
+                  clamp16(info.caretY),
+                  clamp16(info.caretW),
+                  clamp16(info.caretH),
+                  clamp16(info.fieldX),
+                  clamp16(info.fieldY),
+                  clamp16(info.fieldW),
+                  clamp16(info.fieldH));
+          }
+          return;
       }
 
       unsigned i;

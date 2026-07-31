@@ -32,6 +32,7 @@ from the X Consortium.
 #include <dix-config.h>
 #endif
 
+#include "vncAtSpi.h"
 #include "vncExtInit.h"
 #include "RFBGlue.h"
 #include "XorgGlue.h"
@@ -352,6 +353,8 @@ void ddxGiveUp(enum ExitCode error)
 #endif
 {
     int i;
+
+    vncAtSpiShutdown();
 
     /* clean up the framebuffers */
     for (i = 0; i < vfbNumScreens; i++)

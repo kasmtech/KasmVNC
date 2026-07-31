@@ -469,6 +469,20 @@ void VNCSConnectionST::announceClipboardOrClose(bool available)
   }
 }
 
+void VNCSConnectionST::announceTextInputFocusOrClose(bool focused, rdr::U16 caretX, rdr::U16 caretY, rdr::U16 caretW,
+    rdr::U16 caretH, rdr::U16 fieldX, rdr::U16 fieldY, rdr::U16 fieldW, rdr::U16 fieldH) {
+    try {
+        if (state() != RFBSTATE_NORMAL)
+            return;
+
+        if (!cp.supportsTouchEvents)
+            return;
+        writer()->writeTextInputFocus(focused, caretX, caretY, caretW, caretH, fieldX, fieldY, fieldW, fieldH);
+    } catch (rdr::Exception &e) {
+        close(e.str());
+    }
+}
+
 void VNCSConnectionST::clearBinaryClipboardData()
 {
   clearBinaryClipboard();

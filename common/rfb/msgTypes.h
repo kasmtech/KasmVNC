@@ -43,6 +43,7 @@ namespace rfb {
   constexpr int msgTypeNetworkStats = 190;
   constexpr int msgTypeSystemStats = 191;
   constexpr int msgTypeTouchEventsSupported = 192;
+  constexpr int msgTypeTextInputFocus = 194;
 
   constexpr int msgTypeServerFence = 248;
   constexpr int msgTypeUserAddedToSession = 253;
