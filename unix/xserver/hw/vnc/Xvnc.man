@@ -479,6 +479,15 @@ See the GnuTLS manual for possible values. Default is \fBNORMAL\fP.
 .B \-BlacklistThreshold \fIcount\fP
 The number of unauthenticated connection attempts allowed from any individual
 host before that host is black-listed.  Default is 5. Set to 0 to disable.
+For WebSocket connections, the host address is the first value in the
+\fBX-Forwarded-For\fP header when that value is a valid IP address. If the
+header is absent or its first value is invalid, the TCP peer address is used.
+.
+When KasmVNC is behind a layer 7 firewall or reverse proxy, the first trusted
+proxy must discard any client-supplied \fBX-Forwarded-For\fP value and create
+the header from the client IP address that it observes. KasmVNC must not be
+directly reachable around that trusted proxy. These requirements prevent a
+client from selecting the address used by the blacklist.
 .
 .TP
 .B \-BlacklistTimeout \fIseconds\fP
