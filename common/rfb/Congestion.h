@@ -76,7 +76,7 @@ namespace rfb {
             size_t remaining;
 
         public:
-            basic_iterator(std::array<T, N> *_buf, const size_t _idx, const size_t _remaining)
+            basic_iterator(BufferPtr _buf, const size_t _idx, const size_t _remaining)
                 : buf(_buf), idx(_idx), remaining(_remaining) {
             }
 
