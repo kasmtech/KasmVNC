@@ -41,9 +41,9 @@ namespace rfb {
 
         CircularBuffer &operator=(CircularBuffer &&) = delete;
 
-        bool empty() const { return count == 0; }
+        [[nodiscard]] bool empty() const { return count == 0; }
 
-        size_t size() const { return count; }
+        [[nodiscard]] size_t size() const { return count; }
         static size_t capacity() { return N; }
 
         void push_back(T value) {
@@ -64,10 +64,10 @@ namespace rfb {
         }
 
         T &front() { return buffer[head]; }
-        const T &front() const { return buffer[head]; }
+        [[nodiscard]] const T &front() const { return buffer[head]; }
 
         T &back() { return buffer[(tail + N - 1) % N]; }
-        const T &back() const { return buffer[(tail + N - 1) % N]; }
+        [[nodiscard]] const T &back() const { return buffer[(tail + N - 1) % N]; }
 
         template <typename BufferPtr>
         class basic_iterator {
@@ -101,8 +101,8 @@ namespace rfb {
         iterator begin() { return {&buffer, head, count}; }
         iterator end() { return {&buffer, tail, 0}; }
 
-        const_iterator cbegin() const { return {&buffer, head, count}; }
-        const_iterator cend() const { return {&buffer, tail, 0}; }
+        [[nodiscard]] const_iterator cbegin() const { return {&buffer, head, count}; }
+        [[nodiscard]] const_iterator cend() const { return {&buffer, tail, 0}; }
     };
 
     class Congestion {
