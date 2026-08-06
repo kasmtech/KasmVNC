@@ -131,8 +131,11 @@ void Congestion::updatePosition(unsigned pos) {
     lastUpdate = now;
 }
 
-void Congestion::sentPing() {
+bool Congestion::sentPing() {
     RTTInfo rttInfo{};
+
+    if (!canSendPing())
+        return false;
 
     gettimeofday(&rttInfo.tv, nullptr);
     rttInfo.pos = lastPosition;
@@ -140,6 +143,8 @@ void Congestion::sentPing() {
     rttInfo.congested = isCongested();
 
     pings.push_back(rttInfo);
+
+    return true;
 }
 
 void Congestion::gotPong() {

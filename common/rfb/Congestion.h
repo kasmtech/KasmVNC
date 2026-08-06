@@ -20,8 +20,17 @@
 #define __RFB_CONGESTION_H__
 
 #include <array>
+#include <cassert>
 
 namespace rfb {
+    // A fixed-capacity ring buffer: push_back()/pop_front() reuse the same
+    // N array slots via wrapping indices, giving O(1) operations with no
+    // allocation and no shifting. It is a strict bounded FIFO, not an
+    // overwriting one — callers must not push_back() while full (check
+    // size() < capacity() first); doing so is a caller bug and is only
+    // asserted against, not handled, since a silent overwrite would mean
+    // an unrelated older entry (e.g. one a caller elsewhere still expects
+    // to pop_front()) is gone without anyone being told.
     template<typename T, size_t N>
     class CircularBuffer {
         std::array<T, N> buffer{};
@@ -47,12 +56,10 @@ namespace rfb {
         static size_t capacity() { return N; }
 
         void push_back(T value) {
+            assert(count < N);
             buffer[tail] = value;
             tail = (tail + 1) % N;
-            if (count == N)
-                head = (head + 1) % N;
-            else
-                ++count;
+            ++count;
         }
 
         T pop_front() {
@@ -117,10 +124,15 @@ namespace rfb {
         // and should be called often.
         void updatePosition(unsigned pos);
 
+        [[nodiscard]] bool canSendPing() const { return pings.size() < pings.capacity(); }
+
         // sentPing() must be called when a marker is placed on the
-        // outgoing stream. gotPong() must be called when the response for
-        // such a marker is received.
-        void sentPing();
+        // outgoing stream, and gotPong() when the response for such a
+        // marker is received. sentPing() returns false, without queuing
+        // anything, if canSendPing() would be false; the caller must not
+        // place the marker on the wire in that case, since a marker with
+        // nothing queued to match it against would desync the next pong.
+        bool sentPing();
 
         void gotPong();
 
