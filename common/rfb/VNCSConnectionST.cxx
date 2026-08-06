@@ -1283,14 +1283,15 @@ void VNCSConnectionST::writeRTTPing()
 
   congestion.updatePosition(sock->outStream().length());
 
+    if (!congestion.sentPing())
+        return;
+
   // We need to make sure any old update are already processed by the
   // time we get the response back. This allows us to reliably throttle
   // back on client overload, as well as network overload.
   type = 1;
   writer()->writeFence(fenceFlagRequest | fenceFlagBlockBefore,
                        sizeof(type), &type);
-
-  congestion.sentPing();
 }
 
 bool VNCSConnectionST::isCongested()
