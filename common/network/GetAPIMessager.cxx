@@ -842,6 +842,7 @@ void GetAPIMessager::netUpdateSystemStats() {
 	const auto cpu_usage = SystemStats::get_cpu_usage();
 	const auto mem_stats = system_stats.get_mem_stats();
 	const auto io_stats = system_stats.get_io_stats();
+	const auto cgroup_limits = SystemStats::get_cgroup_limits();
 
 	fmt::memory_buffer buf;
 
@@ -854,8 +855,21 @@ void GetAPIMessager::netUpdateSystemStats() {
 	               "\t\t\"free\": {},\n"
 	               "\t\t\"cached\": {},\n"
 	               "\t\t\"used\": {}}},\n"
+	               "\t\"cgroup\":{{\n"
+	               "\t\t\"has_mem_limit\": {},\n"
+	               "\t\t\"mem_limit\": {},\n"
+	               "\t\t\"has_cpu_limit\": {},\n"
+	               "\t\t\"cpu_limit_cores\": {},\n"
+	               "\t\t\"has_cpu_weight\": {},\n"
+	               "\t\t\"cpu_weight\": {},\n"
+	               "\t\t\"has_cpu_affinity\": {},\n"
+	               "\t\t\"cpu_affinity\": \"{}\"}},\n"
 	               "\t\"io_stats\":{{\n",
-	               cpu_usage, mem_stats.total, mem_stats.free, mem_stats.cached, mem_stats.used);
+	               cpu_usage, mem_stats.total, mem_stats.free, mem_stats.cached, mem_stats.used,
+	               cgroup_limits.has_mem_limit, cgroup_limits.mem_limit,
+	               cgroup_limits.has_cpu_limit, cgroup_limits.cpu_limit_cores,
+	               cgroup_limits.has_cpu_weight, cgroup_limits.cpu_weight,
+	               cgroup_limits.has_cpu_affinity, cgroup_limits.cpu_affinity);
 
 	for (size_t i = 0; i < io_stats.size(); ++i) {
 		const auto& dev_io_stats = io_stats[i];

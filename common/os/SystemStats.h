@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <statgrab.h>
+#include <os/CgroupStats.h>
 
 struct mem_stats_t {
     uint64_t total;
@@ -48,6 +49,9 @@ public:
     }
 
     mem_stats_t get_mem_stats() {
+        if (const auto limits = CgroupStats::get_limits(); limits.has_mem_limit)
+            return CgroupStats::get_mem_stats(limits.mem_limit);
+
         mem = sg_get_mem_stats(nullptr);
         if (!mem)
             return {};
@@ -57,35 +61,7 @@ public:
         };
     }
 
-    std::vector<disk_stats_t> get_io_stats() {
-        size_t diff_count = 0;
-        const auto *diff = sg_get_disk_io_stats_diff(&diff_count);
-        const auto *curr = sg_get_disk_io_stats(&dev_count);
-        cpu = sg_get_cpu_percents(nullptr);
-
-        if (!diff || !curr)
-            return {};
-
-        const size_t count = std::min(diff_count, dev_count);
-
-        std::vector<disk_stats_t> stats;
-        stats.reserve(count);
-
-        const double iowait_value = cpu && !std::isnan(cpu->iowait) ? cpu->iowait : 0.0;
-
-        for (size_t i = 0; i < count; i++) {
-            double read_per_sec = 0.0, write_per_sec = 0.0;
-            if (const auto systime = static_cast<double>(diff[i].systime); systime > 0) {
-                read_per_sec = static_cast<double>(diff[i].read_bytes) / systime;
-                write_per_sec = static_cast<double>(diff[i].write_bytes) / systime;
-            }
-
-            stats.emplace_back(diff[i].disk_name, curr[i].read_bytes, curr[i].write_bytes, read_per_sec, write_per_sec,
-                               iowait_value);
-        }
-
-        return stats;
-    }
+    std::vector<disk_stats_t> get_io_stats();
 
     static double get_cpu_usage() {
         const auto cpu = sg_get_cpu_percents(nullptr);
