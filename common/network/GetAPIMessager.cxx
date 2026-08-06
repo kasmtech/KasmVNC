@@ -885,15 +885,9 @@ void GetAPIMessager::netUpdateSystemStats() {
 
 	fmt::format_to(std::back_inserter(buf), "}}}}\n");
 
-	std::lock_guard lock(system_stats_mutex);
-
-	systems_stats_json = fmt::to_string(buf);
+	systems_stats_json.store(fmt::to_string(buf));
 }
 
-void GetAPIMessager::netGetSystemStats(char *buf, uint32_t buf_len) {
-	std::lock_guard lock(system_stats_mutex);
-
-	const auto len = std::min(systems_stats_json.size(), static_cast<size_t>(buf_len - 1));
-	memcpy(buf, systems_stats_json.c_str(), len);
-	buf[len] = 0;
+GetAPIMessager::StatsSnapshot GetAPIMessager::netGetSystemStats() {
+	return systems_stats_json.load();
 }

@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <os/Snapshot.h>
 #include <os/SystemStats.h>
 
 namespace network {
@@ -71,7 +72,8 @@ namespace network {
     void netUdpUpgrade(void *client, uint32_t ip);
     void netClearClipboard();
     void netUpdateSystemStats();
-    void netGetSystemStats(char *buf, uint32_t len);
+    using StatsSnapshot = std::shared_ptr<const std::string>;
+    StatsSnapshot netGetSystemStats();
 
     enum USER_ACTION {
       NONE,
@@ -152,8 +154,7 @@ namespace network {
     std::string sessionsInfo;
 
     SystemStats system_stats;
-    std::mutex system_stats_mutex;
-    std::string systems_stats_json;
+    Snapshot<std::string> systems_stats_json;
   };
 
 }

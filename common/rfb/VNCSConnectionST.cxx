@@ -1717,11 +1717,9 @@ void VNCSConnectionST::sendNetworkStats() {
 
 void VNCSConnectionST::sendSystemStats() {
     if (server->apimessager) {
-        char buf[4096];
-
-        server->apimessager->netGetSystemStats(buf, 4096);
+        const auto stats = server->apimessager->netGetSystemStats();
         vlog.info("Sending system stats");
-        writer()->writeStats(msgTypeSystemStats, buf, strlen(buf));
+        writer()->writeStats(msgTypeSystemStats, stats->c_str(), stats->size());
     }
 }
 
