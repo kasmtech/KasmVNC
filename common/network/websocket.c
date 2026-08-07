@@ -1781,11 +1781,12 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
                 "\r\n", extra_headers ? extra_headers : "");
         ws_send(ws_ctx, buf, strlen(buf));
 
-        settings.get_system_stats_cb(settings.messager, buf, WS_MAX_BUF_SIZE);
-        const size_t response_len = strlen(buf);
-        ws_send(ws_ctx, buf, response_len);
+        const char *stats_ptr;
+        uint32_t stats_len;
+        settings.get_system_stats_cb(settings.messager, &stats_ptr, &stats_len);
+        ws_send(ws_ctx, stats_ptr, stats_len);
 
-        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, response_len);
+        weblog(200, wsthread_handler_id, 0, origip, ip, user, 1, origpath, stats_len);
 
         handler_msg("Sent system stats to API caller\n");
         ret = 1;

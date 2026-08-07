@@ -563,9 +563,9 @@ static void getSessionsCb(void *messager,  char **ptr)
   *ptr = sessionInfo;
 }
 
-static void get_system_stats_cb(void *messager, char *buf, uint32_t len) {
+static void get_system_stats_cb(void *messager, const char **ptr, uint32_t *len) {
     GetAPIMessager *msgr = (GetAPIMessager *) messager;
-    msgr->netGetSystemStats(buf, len);
+    msgr->netGetSystemStats(ptr, len);
 }
 
 #if OPENSSL_VERSION_NUMBER < 0x1010000f

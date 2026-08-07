@@ -111,7 +111,7 @@ typedef struct {
 
     void (*getSessionsCb)(void *messager, char **buf);
 
-    void (*get_system_stats_cb)(void *messager, char *buf, uint32_t len);
+    void (*get_system_stats_cb)(void *messager, const char **ptr, uint32_t *len);
 } settings_t;
 
 #ifdef __cplusplus
