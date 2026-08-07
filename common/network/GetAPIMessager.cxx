@@ -842,7 +842,7 @@ void GetAPIMessager::netUpdateSystemStats() {
 	const auto cpu_usage = SystemStats::get_cpu_usage();
 	const auto mem_stats = system_stats.get_mem_stats();
 	const auto io_stats = system_stats.get_io_stats();
-	const auto cgroup_limits = SystemStats::get_cgroup_limits();
+	const auto cgroup_limits = CgroupStats::get_limits();
 
 	fmt::memory_buffer buf;
 
