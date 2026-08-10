@@ -14,7 +14,8 @@ noinst_LTLIBRARIES = libvnccommon.la libvncatspi.la
 libvncatspi_la_SOURCES = vncAtSpi.c vncAtSpi.h
 libvncatspi_la_CPPFLAGS = -I$(top_srcdir)/include \
 	$(shell pkg-config --cflags atspi-2 dbus-1)
-libvncatspi_la_LIBADD = $(shell pkg-config --libs atspi-2 dbus-1) -lpthread
+
+ATSPI_LIBS = $(shell pkg-config --libs atspi-2 dbus-1) -lpthread
 
 HDRS = vncExtInit.h vncHooks.h \
 	vncBlockHandler.h vncSelection.h \
@@ -57,7 +58,7 @@ Xvnc_CPPFLAGS = $(XVNC_CPPFLAGS) -DKASMVNC -DNO_MODULE_EXTS \
 	-I$(top_srcdir)/dri3 @LIBDRM_CFLAGS@
 
 Xvnc_LDADD = $(XVNC_LIBS) libvnccommon.la libvncatspi.la $(COMMON_LIBS) \
-	$(XSERVER_LIBS) $(XSERVER_SYS_LIBS) $(XVNC_SYS_LIBS) -lX11 -lwebp -lsharpyuv -lssl -lcrypto -lcrypt \
+	$(XSERVER_LIBS) $(XSERVER_SYS_LIBS) $(XVNC_SYS_LIBS) $(ATSPI_LIBS) -lX11 -lwebp -lsharpyuv -lssl -lcrypto -lcrypt \
 	-lfreetype
 
 Xvnc_LDFLAGS = $(LD_EXPORT_SYMBOLS_FLAG) -fopenmp
@@ -80,6 +81,6 @@ libvnc_la_CPPFLAGS = $(XVNC_CPPFLAGS) -I$(KASMVNC_SRCDIR)/common -UHAVE_CONFIG_H
 
 libvnc_la_LDFLAGS = -module -avoid-version -Wl,-z,now
 
-libvnc_la_LIBADD = libvnccommon.la libvncatspi.la $(COMMON_LIBS)
+libvnc_la_LIBADD = libvnccommon.la libvncatspi.la $(COMMON_LIBS) $(ATSPI_LIBS)
 
 EXTRA_DIST = Xvnc.man
