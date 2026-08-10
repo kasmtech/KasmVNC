@@ -20,7 +20,7 @@ RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
 RUN apt-get update && apt-get -y install gcc g++ curl ca-certificates && update-ca-certificates
 RUN apt-get update && apt-get -y install ninja-build nasm git libgnutls28-dev vim wget tightvncserver
 RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev \
-    libxcursor-dev libavformat-dev libswscale-dev libva-dev libcrypt-dev
+    libxcursor-dev libavformat-dev libswscale-dev libva-dev libatspi2.0-dev libdbus-1-dev libcrypt-dev
 
 RUN ARCH=$(arch) && \
   CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v3.22.0/cmake-3.22.0" && \

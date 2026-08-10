@@ -47,6 +47,8 @@ RUN zypper install -ny \
   xorg-x11-devel \
   xorg-x11-server-sdk \
   xorg-x11-util-devel \
+  at-spi2-core-devel \
+  dbus-1-devel \
   zlib-devel \
   libva-devel
 

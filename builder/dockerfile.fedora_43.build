@@ -75,6 +75,8 @@ RUN \
     xorg-x11-server-devel \
     xorg-x11-xtrans-devel \
     xsltproc \
+    at-spi2-core-devel \
+    dbus-devel \
     libavformat-free-devel \
     libswscale-free-devel \
     libva-devel
