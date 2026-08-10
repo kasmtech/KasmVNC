@@ -6,6 +6,7 @@ add_library(os STATIC
   w32tiger.c
   os.cxx
   CgroupStats.cxx
+  CpuStats.cxx
   SystemStats.cxx)
 
 if(UNIX)

@@ -22,6 +22,7 @@
 #include <network/GetAPI.h>
 #include <network/GetAPIEnums.h>
 #include <network/jsonescape.h>
+#include <os/CpuStats.h>
 #include <rfb/ConnParams.h>
 #include <rfb/EncodeManager.h>
 #include <rfb/LogWriter.h>
@@ -839,17 +840,25 @@ void GetAPIMessager::netClearClipboard() {
 }
 
 void GetAPIMessager::netUpdateSystemStats() {
-	const auto cpu_usage = SystemStats::get_cpu_usage();
+	const auto host_cpu_usage = SystemStats::get_cpu_usage();
 	const auto mem_stats = system_stats.get_mem_stats();
 	const auto io_stats = system_stats.get_io_stats();
 	const auto cgroup_limits = CgroupStats::get_limits();
+	const auto cgroup_cpu_stats = CpuStats::get_cpu_stats(cgroup_limits);
 
 	fmt::memory_buffer buf;
 
 	fmt::format_to(std::back_inserter(buf),
 	               "{{\n"
 	               "\t\"cpu\":{{\n"
-	               "\t\t\"usage_percent\": {}}},\n"
+	               "\t\t\"usage_percent\": {},\n"
+	               "\t\t\"has_cgroup_usage\": {},\n"
+	               "\t\t\"cgroup_usage_percent\": {},\n"
+	               "\t\t\"cgroup_available_percent\": {},\n"
+	               "\t\t\"cgroup_effective_cores\": {},\n"
+	               "\t\t\"cgroup_usage_usec\": {},\n"
+	               "\t\t\"cgroup_user_usec\": {},\n"
+	               "\t\t\"cgroup_system_usec\": {}}},\n"
 	               "\t\"memory\":{{\n"
 	               "\t\t\"total\": {},\n"
 	               "\t\t\"free\": {},\n"
@@ -864,12 +873,26 @@ void GetAPIMessager::netUpdateSystemStats() {
 	               "\t\t\"cpu_weight\": {},\n"
 	               "\t\t\"has_cpu_affinity\": {},\n"
 	               "\t\t\"cpu_affinity\": \"{}\"}},\n"
+	               "\t\"cpu_throttling\":{{\n"
+	               "\t\t\"available\": {},\n"
+	               "\t\t\"has_throttling\": {},\n"
+	               "\t\t\"nr_periods\": {},\n"
+	               "\t\t\"nr_throttled\": {},\n"
+	               "\t\t\"throttled_usec\": {},\n"
+	               "\t\t\"throttled_percent\": {}}},\n"
 	               "\t\"io_stats\":{{\n",
-	               cpu_usage, mem_stats.total, mem_stats.free, mem_stats.cached, mem_stats.used,
+	               host_cpu_usage, cgroup_cpu_stats.available,
+	               cgroup_cpu_stats.usage_percent, cgroup_cpu_stats.availability_percent,
+	               cgroup_cpu_stats.effective_cores, cgroup_cpu_stats.usage_usec,
+	               cgroup_cpu_stats.user_usec, cgroup_cpu_stats.system_usec,
+	               mem_stats.total, mem_stats.free, mem_stats.cached, mem_stats.used,
 	               cgroup_limits.has_mem_limit, cgroup_limits.mem_limit,
 	               cgroup_limits.has_cpu_limit, cgroup_limits.cpu_limit_cores,
 	               cgroup_limits.has_cpu_weight, cgroup_limits.cpu_weight,
-	               cgroup_limits.has_cpu_affinity, cgroup_limits.cpu_affinity);
+	               cgroup_limits.has_cpu_affinity, cgroup_limits.cpu_affinity,
+	               cgroup_cpu_stats.available, cgroup_cpu_stats.has_throttling, cgroup_cpu_stats.nr_periods,
+	               cgroup_cpu_stats.nr_throttled, cgroup_cpu_stats.throttled_usec,
+	               cgroup_cpu_stats.throttled_percent);
 
 	for (size_t i = 0; i < io_stats.size(); ++i) {
 		const auto& dev_io_stats = io_stats[i];

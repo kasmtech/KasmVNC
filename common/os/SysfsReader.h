@@ -46,7 +46,7 @@ public:
     bool valid() const { return fd >= 0; }
 
     T read() const {
-        char buf[256];
+        char buf[4096];
         const ssize_t n = pread(fd, buf, sizeof(buf) - 1, 0);
 
         if constexpr (is_string) {
