@@ -73,7 +73,18 @@ static int is_text_control(AtspiAccessible *acc) {
 
     /* terminals and some password fields do not report EDITABLE */
     AtspiRole role = atspi_accessible_get_role(acc, NULL);
-    return role == ATSPI_ROLE_TERMINAL || role == ATSPI_ROLE_PASSWORD_TEXT || role == ATSPI_ROLE_ENTRY;
+    if (role == ATSPI_ROLE_TERMINAL || role == ATSPI_ROLE_PASSWORD_TEXT ||
+        role == ATSPI_ROLE_ENTRY || role == ATSPI_ROLE_TEXT ||
+        role == ATSPI_ROLE_SPIN_BUTTON)
+        return 1;
+
+    AtspiText *text_iface = atspi_accessible_get_text_iface(acc);
+    if (text_iface) {
+        g_object_unref(text_iface);
+        return 1;
+    }
+
+    return 0;
 }
 
 static void get_rects(AtspiAccessible *acc, VncAtSpiFocusInfo *info) {
