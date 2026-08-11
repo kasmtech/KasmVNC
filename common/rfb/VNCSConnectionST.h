@@ -171,9 +171,12 @@ namespace rfb {
     void setStatus(int status);
     int getStatus();
 
-    virtual void sendStats(const bool toClient = true);
-    virtual void handleFrameStats(rdr::U32 all, rdr::U32 render);
-    virtual void keepAlive();
+    void sendStats(const bool toClient = true) override;
+    void sendNetworkStats() override;
+    void sendSystemStats() override;
+    void handleFrameStats(rdr::U32 all, rdr::U32 render) override;
+    void keepAlive() override;
+    void handleLatencyMeasurementRequest(uint32_t measurementId) override;
 
     bool is_owner() const {
       bool read, write, owner;
@@ -369,6 +372,7 @@ namespace rfb {
     bool complainedAboutNoViewRights;
     std::string clientUsername;
     bool pendingClientRefresh{false};
+    uint32_t pendingLatencyMeasurementId{0};
   };
 }
 #endif

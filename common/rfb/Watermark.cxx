@@ -352,7 +352,11 @@ static bool drawtext(const char fmt[], const int16_t utcOff, const char fontpath
 	time_t now = lastUpdate = time(NULL);
 	now += utcOff * 60;
 
-	struct tm *tm = gmtime(&now);
+	tm *tm = gmtime(&now);
+	const auto fmt_len = strlen(fmt);
+	if (!fmt_len)
+		return false;
+
 	size_t len = strftime(buf, PATH_MAX, fmt, tm);
 	if (!len)
 		return false;

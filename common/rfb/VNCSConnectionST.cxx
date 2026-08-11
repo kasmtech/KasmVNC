@@ -40,9 +40,11 @@
 #include <cstdlib>
 #include <cstdint>
 #include <wordexp.h>
+#include <fmt/format.h>
 
 #include "encoders/EncoderProbe.h"
 #include "kasmpasswd.h"
+#include "msgTypes.h"
 
 using namespace rfb;
 
@@ -1281,14 +1283,15 @@ void VNCSConnectionST::writeRTTPing()
 
   congestion.updatePosition(sock->outStream().length());
 
+    if (!congestion.sentPing())
+        return;
+
   // We need to make sure any old update are already processed by the
   // time we get the response back. This allows us to reliably throttle
   // back on client overload, as well as network overload.
   type = 1;
   writer()->writeFence(fenceFlagRequest | fenceFlagBlockBefore,
                        sizeof(type), &type);
-
-  congestion.sentPing();
 }
 
 bool VNCSConnectionST::isCongested()
@@ -1401,6 +1404,11 @@ void VNCSConnectionST::writeFramebufferUpdate()
 
   // Then real data (if possible)
   writeDataUpdate();
+
+    if (pendingLatencyMeasurementId != 0) {
+        writer()->writeLatencyMeasurementResponse(pendingLatencyMeasurementId);
+        pendingLatencyMeasurementId = 0;
+    }
 
   sock->cork(false);
 
@@ -1595,12 +1603,12 @@ void VNCSConnectionST::writeDataUpdate()
         bstats[BS_CPU_CLOSE].push_back(lastRealUpdate);
         bstats_total[BS_CPU_CLOSE]++;
     }
+
+    writeRTTPing();
   } else {
     encodeManager.writeLosslessRefresh(req, server->screenLayout, server->getPixelBuffer(),
                                        cursor, maxUpdateSize);
   }
-
- //  writeRTTPing();
 
   // The request might be for just part of the screen, so we cannot
   // just clear the entire update tracker.
@@ -1692,10 +1700,29 @@ void VNCSConnectionST::sendStats(const bool toClient) {
 
   if (toClient) {
     vlog.info("Sending client stats:\n%s\n", buf);
-    writer()->writeStats(buf, strlen(buf));
+    writer()->writeStats(msgTypeStats, buf, strlen(buf));
   } else if (server->apimessager) {
     server->apimessager->mainUpdateBottleneckStats(peerEndpoint.buf, buf);
   }
+}
+
+void VNCSConnectionST::sendNetworkStats() {
+  fmt::memory_buffer buf;
+
+  fmt::format_to(std::back_inserter(buf), "[{}, {}, {}]", congestion.getJitter(), congestion.getPingTime(), congestion.getBandwidth());
+  std::string value(buf.data(), buf.size());
+  vlog.info("Sending diagnostic network stats:\n%s\n", value.c_str());
+  writer()->writeStats(msgTypeNetworkStats, value.c_str(), value.size());
+}
+
+void VNCSConnectionST::sendSystemStats() {
+    if (server->apimessager) {
+        const char *ptr;
+        uint32_t len;
+        server->apimessager->netGetSystemStats(&ptr, &len);
+        vlog.info("Sending system stats");
+        writer()->writeStats(msgTypeSystemStats, ptr, len);
+    }
 }
 
 void VNCSConnectionST::handleFrameStats(rdr::U32 all, rdr::U32 render)
@@ -1712,6 +1739,13 @@ void VNCSConnectionST::handleFrameStats(rdr::U32 all, rdr::U32 render)
   }
 
   frameTracking = false;
+}
+
+void VNCSConnectionST::handleLatencyMeasurementRequest(uint32_t measurementId) {
+    if (!Server::enableLatencyMeasurement)
+        return;
+
+    pendingLatencyMeasurementId = measurementId;
 }
 
 void VNCSConnectionST::keepAlive()

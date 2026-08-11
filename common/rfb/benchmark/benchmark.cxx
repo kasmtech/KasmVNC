@@ -106,6 +106,12 @@ namespace benchmarking {
 
         void sendStats(const bool toClient) override {}
 
+        void sendNetworkStats() override {
+        }
+
+        void sendSystemStats() override {
+        }
+
         [[nodiscard]] bool canChangeKasmSettings() const override {
             return true;
         }
@@ -121,6 +127,8 @@ namespace benchmarking {
         void videoEncodersRequest(const std::vector<int32_t> &encoders) override {}
 
         void handleFrameStats(rdr::U32 all, rdr::U32 render) override {}
+
+        void handleLatencyMeasurementRequest(uint32_t measurementId) override {}
 
         [[nodiscard]] auto getJpegStats() const {
             return manager.jpegstats;

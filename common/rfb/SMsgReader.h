@@ -58,6 +58,8 @@ namespace rfb {
     void readExtendedClipboard(rdr::S32 len);
     void readRequestStats();
     void readFrameStats();
+    void readNetworkStats();
+    void readSystemStats();
     void readBinaryClipboard();
     void readKeepAlive();
 
@@ -70,6 +72,7 @@ namespace rfb {
     void readUnixRelay();
     void readVideoEncodersRequest() const;
     void readDirectMouseEvent();
+    void readLatencyMeasurementRequest() const;
 
     SMsgHandler* handler;
     rdr::InStream* is;

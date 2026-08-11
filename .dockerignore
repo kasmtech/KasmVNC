@@ -1,1 +1,3 @@
 builder/build/.sccache
+CMakeCache.txt
+build/

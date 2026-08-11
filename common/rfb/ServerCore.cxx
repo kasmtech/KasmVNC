@@ -118,6 +118,10 @@ rfb::BoolParameter rfb::Server::ignoreClientSettingsKasm
 ("IgnoreClientSettingsKasm",
  "Ignore the additional client settings exposed in Kasm.",
  false);
+rfb::BoolParameter rfb::Server::enableLatencyMeasurement
+("EnableLatencyMeasurement",
+ "Allow clients to measure input-to-photon latency via round-trip measurement messages.",
+ true);
 rfb::BoolParameter rfb::Server::selfBench
 ("SelfBench",
  "Run self-benchmarks and exit.",

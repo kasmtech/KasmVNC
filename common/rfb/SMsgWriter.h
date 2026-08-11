@@ -59,7 +59,7 @@ namespace rfb {
 
     void writeBinaryClipboard(const std::vector<SConnection::binaryClipboard_t> &b);
 
-    void writeStats(const char* str, int len);
+    void writeStats(int msg_type, const char* str, size_t len);
 
     void writeRequestFrameStats();
 
@@ -137,6 +137,7 @@ namespace rfb {
     void writeUserLeftSession(const std::string& username);
     void writeDisconnectNotify(bool graceful, const char *reason);
     void writeForceGameMode();
+    void writeLatencyMeasurementResponse(uint32_t measurementId);
 
   protected:
     void startMsg(int type);

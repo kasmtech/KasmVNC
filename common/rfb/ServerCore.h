@@ -92,6 +92,7 @@ namespace rfb {
         static BoolParameter detectScrolling;
         static BoolParameter detectHorizontal;
         static BoolParameter ignoreClientSettingsKasm;
+        static BoolParameter enableLatencyMeasurement;
         static BoolParameter selfBench;
         static StringParameter benchmark;
         static StringParameter benchmarkResults;

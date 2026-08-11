@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+build_and_install() {
+    ./autogen.sh
+    CFLAGS="-fPIC" ./configure --prefix="$HOME/.local" --disable-shared --enable-static --disable-man
+    make -j$(nproc)
+    make install
+}
+
+prepare_source() {
+    DIR=libstatgrab
+    cd /tmp
+    [ -d ./${DIR} ] && rm -rf ./${DIR}
+    mkdir ${DIR}
+
+    LIBSTATGRAB_RELEASE="${LIBSTATGRAB_RELEASE:-LIBSTATGRAB_0_92_1}"
+
+    curl -Ls "https://github.com/libstatgrab/libstatgrab/archive/${LIBSTATGRAB_RELEASE}.tar.gz" | \
+
+    tar xzvf - -C ${DIR}/ --strip-components=1
+    cd ${DIR}
+}
+
+prepare_source
+build_and_install

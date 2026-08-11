@@ -4,7 +4,10 @@ add_library(os STATIC
   Mutex.cxx
   Thread.cxx
   w32tiger.c
-  os.cxx)
+  os.cxx
+  CgroupStats.cxx
+  CpuStats.cxx
+  SystemStats.cxx)
 
 if(UNIX)
   target_link_libraries(os pthread)

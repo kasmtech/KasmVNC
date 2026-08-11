@@ -78,6 +78,12 @@ void SMsgReader::readMsg()
   case msgTypeFrameStats:
     readFrameStats();
     break;
+  case msgTypeNetworkStats:
+    readNetworkStats();
+    break;
+  case msgTypeSystemStats:
+    readSystemStats();
+    break;
   case msgTypeBinaryClipboard:
     readBinaryClipboard();
     break;
@@ -110,6 +116,9 @@ void SMsgReader::readMsg()
     break;
   case msgTypeDirectMouseEvent:
     readDirectMouseEvent();
+    break;
+  case msgTypeLatencyMeasurement:
+    readLatencyMeasurementRequest();
     break;
   default:
     fprintf(stderr, "unknown message type %d\n", msgType);
@@ -324,6 +333,16 @@ void SMsgReader::readFrameStats()
   handler->handleFrameStats(all, render);
 }
 
+void SMsgReader::readNetworkStats() {
+  is->skip(3);
+  handler->sendNetworkStats();
+}
+
+void SMsgReader::readSystemStats() {
+  is->skip(3);
+  handler->sendSystemStats();
+}
+
 void SMsgReader::readKeepAlive()
 {
   handler->keepAlive();
@@ -442,4 +461,10 @@ void SMsgReader::readDirectMouseEvent()
   int scrollY = is->readS16();
 
   handler->directMouseEvent(dx, dy, buttonMask, scrollX, scrollY);
+}
+
+void SMsgReader::readLatencyMeasurementRequest() const {
+    is->skip(3);
+    const uint32_t measurementId = is->readU32();
+    handler->handleLatencyMeasurementRequest(measurementId);
 }

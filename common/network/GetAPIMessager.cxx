@@ -22,6 +22,7 @@
 #include <network/GetAPI.h>
 #include <network/GetAPIEnums.h>
 #include <network/jsonescape.h>
+#include <os/CpuStats.h>
 #include <rfb/ConnParams.h>
 #include <rfb/EncodeManager.h>
 #include <rfb/LogWriter.h>
@@ -30,6 +31,7 @@
 #include <stdio.h>
 #include <string>
 #include <utility>
+#include <fmt/format.h>
 
 using namespace network;
 using namespace rfb;
@@ -61,10 +63,10 @@ GetAPIMessager::GetAPIMessager(const char *passwdfile_): passwdfile(passwdfile_)
 					sessionsInfo( "{\"users\":[]}"){
 
 	pthread_mutex_init(&screenMutex, nullptr);
-	pthread_mutex_init(&userMutex, NULL);
-	pthread_mutex_init(&statMutex, NULL);
-	pthread_mutex_init(&frameStatMutex, NULL);
-	pthread_mutex_init(&userInfoMutex, NULL);
+	pthread_mutex_init(&userMutex, nullptr);
+	pthread_mutex_init(&statMutex, nullptr);
+	pthread_mutex_init(&frameStatMutex, nullptr);
+	pthread_mutex_init(&userInfoMutex, nullptr);
 
 	serverFrameStats.inprogress = 0;
 }
@@ -553,7 +555,7 @@ void GetAPIMessager::netGetBottleneckStats(char *buf, uint32_t len) {
 }
 */
 	std::map<std::string, std::string>::const_iterator it;
-	const char *prev = NULL;
+    const char *prev = nullptr;
 	FILE *f;
 
 	if (pthread_mutex_lock(&statMutex)) {
@@ -571,7 +573,7 @@ void GetAPIMessager::netGetBottleneckStats(char *buf, uint32_t len) {
 
 	fprintf(f, "{\n");
 
-	for (it = bottleneckStats.begin(); it != bottleneckStats.end(); it++) {
+	for (auto it = bottleneckStats.begin(); it != bottleneckStats.end(); it++) {
 		// user@127.0.0.1_1627311208.791752::websocket
 		const char *id = it->first.c_str();
 		const char *data = it->second.c_str();
@@ -633,8 +635,7 @@ void GetAPIMessager::netGetFrameStats(char *buf, uint32_t len) {
 	}
 }
 */
-	std::map<std::string, clientFrameStats_t>::const_iterator it;
-	unsigned i = 0;
+    unsigned i = 0;
 	FILE *f;
 
 	if (pthread_mutex_lock(&frameStatMutex)) {
@@ -685,7 +686,7 @@ void GetAPIMessager::netGetFrameStats(char *buf, uint32_t len) {
 
 	fprintf(f, "\t\"client_side\" : [\n");
 
-	for (it = clientFrameStats.begin(); it != clientFrameStats.end(); it++, i++) {
+	for (auto it = clientFrameStats.begin(); it != clientFrameStats.end(); it++, i++) {
 		const char *id = it->first.c_str();
 		const clientFrameStats_t &s = it->second;
 
@@ -766,12 +767,10 @@ uint8_t GetAPIMessager::netRequestFrameStats(USER_ACTION what, const char *clien
 }
 
 uint8_t GetAPIMessager::netOwnerConnected() {
-	uint8_t ret;
-
 	if (pthread_mutex_lock(&userInfoMutex))
 		return 0;
 
-	ret = ownerConnected;
+	uint8_t ret = ownerConnected;
 
 	pthread_mutex_unlock(&userInfoMutex);
 
@@ -779,12 +778,10 @@ uint8_t GetAPIMessager::netOwnerConnected() {
 }
 
 uint8_t GetAPIMessager::netNumActiveUsers() {
-	uint8_t ret;
-
 	if (pthread_mutex_lock(&userInfoMutex))
 		return 0;
 
-	ret = activeUsers;
+	uint8_t ret = activeUsers;
 
 	pthread_mutex_unlock(&userInfoMutex);
 
@@ -792,12 +789,10 @@ uint8_t GetAPIMessager::netNumActiveUsers() {
 }
 
 uint8_t GetAPIMessager::netGetClientFrameStatsNum() {
-	uint8_t ret;
-
 	if (pthread_mutex_lock(&frameStatMutex))
 		return 0;
 
-	ret = clientFrameStats.size();
+	uint8_t ret = clientFrameStats.size();
 
 	pthread_mutex_unlock(&frameStatMutex);
 
@@ -805,12 +800,10 @@ uint8_t GetAPIMessager::netGetClientFrameStatsNum() {
 }
 
 uint8_t GetAPIMessager::netServerFrameStatsReady() {
-	uint8_t ret;
-
 	if (pthread_mutex_lock(&frameStatMutex))
 		return 0;
 
-	ret = serverFrameStats.w != 0;
+	uint8_t ret = serverFrameStats.w != 0;
 
 	pthread_mutex_unlock(&frameStatMutex);
 
@@ -846,3 +839,86 @@ void GetAPIMessager::netClearClipboard() {
 	pthread_mutex_unlock(&userMutex);
 }
 
+void GetAPIMessager::netUpdateSystemStats() {
+	const auto host_cpu_usage = SystemStats::get_cpu_usage();
+	const auto mem_stats = system_stats.get_mem_stats();
+	const auto io_stats = system_stats.get_io_stats();
+	const auto cgroup_limits = CgroupStats::get_limits();
+	const auto cgroup_cpu_stats = CpuStats::get_cpu_stats(cgroup_limits);
+
+	fmt::memory_buffer buf;
+
+	fmt::format_to(std::back_inserter(buf),
+	               "{{\n"
+	               "\t\"cpu\":{{\n"
+	               "\t\t\"usage_percent\": {},\n"
+	               "\t\t\"has_cgroup_usage\": {},\n"
+	               "\t\t\"cgroup_usage_percent\": {},\n"
+	               "\t\t\"cgroup_available_percent\": {},\n"
+	               "\t\t\"cgroup_effective_cores\": {},\n"
+	               "\t\t\"cgroup_usage_usec\": {},\n"
+	               "\t\t\"cgroup_user_usec\": {},\n"
+	               "\t\t\"cgroup_system_usec\": {}}},\n"
+	               "\t\"memory\":{{\n"
+	               "\t\t\"total\": {},\n"
+	               "\t\t\"free\": {},\n"
+	               "\t\t\"cached\": {},\n"
+	               "\t\t\"used\": {}}},\n"
+	               "\t\"cgroup\":{{\n"
+	               "\t\t\"has_mem_limit\": {},\n"
+	               "\t\t\"mem_limit\": {},\n"
+	               "\t\t\"has_cpu_limit\": {},\n"
+	               "\t\t\"cpu_limit_cores\": {},\n"
+	               "\t\t\"has_cpu_weight\": {},\n"
+	               "\t\t\"cpu_weight\": {},\n"
+	               "\t\t\"has_cpu_affinity\": {},\n"
+	               "\t\t\"cpu_affinity\": \"{}\"}},\n"
+	               "\t\"cpu_throttling\":{{\n"
+	               "\t\t\"available\": {},\n"
+	               "\t\t\"has_throttling\": {},\n"
+	               "\t\t\"nr_periods\": {},\n"
+	               "\t\t\"nr_throttled\": {},\n"
+	               "\t\t\"throttled_usec\": {},\n"
+	               "\t\t\"throttled_percent\": {}}},\n"
+	               "\t\"io_stats\":{{\n",
+	               host_cpu_usage, cgroup_cpu_stats.available,
+	               cgroup_cpu_stats.usage_percent, cgroup_cpu_stats.availability_percent,
+	               cgroup_cpu_stats.effective_cores, cgroup_cpu_stats.usage_usec,
+	               cgroup_cpu_stats.user_usec, cgroup_cpu_stats.system_usec,
+	               mem_stats.total, mem_stats.free, mem_stats.cached, mem_stats.used,
+	               cgroup_limits.has_mem_limit, cgroup_limits.mem_limit,
+	               cgroup_limits.has_cpu_limit, cgroup_limits.cpu_limit_cores,
+	               cgroup_limits.has_cpu_weight, cgroup_limits.cpu_weight,
+	               cgroup_limits.has_cpu_affinity, cgroup_limits.cpu_affinity,
+	               cgroup_cpu_stats.available, cgroup_cpu_stats.has_throttling, cgroup_cpu_stats.nr_periods,
+	               cgroup_cpu_stats.nr_throttled, cgroup_cpu_stats.throttled_usec,
+	               cgroup_cpu_stats.throttled_percent);
+
+	for (size_t i = 0; i < io_stats.size(); ++i) {
+		const auto& dev_io_stats = io_stats[i];
+		fmt::format_to(std::back_inserter(buf),
+			"\t\t\"{}\": {{\n"
+			"\t\t\t\"bytes_read\": {},\n"
+			"\t\t\t\"bytes_read_per_sec\": {},\n"
+			"\t\t\t\"bytes_written\": {},\n"
+			"\t\t\t\"bytes_written_per_sec\": {},\n"
+			"\t\t\t\"iowait\": {} }}{}\n",
+			dev_io_stats.disk_name, dev_io_stats.bytes_read, dev_io_stats.bytes_read_per_sec, dev_io_stats.bytes_written,  dev_io_stats.bytes_written_per_sec, dev_io_stats.iowait, i + 1 < io_stats.size() ? "," : "");
+	}
+
+	fmt::format_to(std::back_inserter(buf), "}}}}\n");
+
+	std::lock_guard lock(system_stats_mutex);
+
+	systems_stats_json = fmt::to_string(buf);
+}
+
+void GetAPIMessager::netGetSystemStats(const char **ptr, uint32_t *len) {
+	thread_local std::string local_copy;
+
+	std::lock_guard lock(system_stats_mutex);
+	local_copy = systems_stats_json;
+
+	*ptr = local_copy.c_str();
+	*len = local_copy.size();
+}

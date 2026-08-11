@@ -143,7 +143,7 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, const video_enco
     renderedCursorInvalid(false),
     queryConnectionHandler(nullptr), keyRemapper(&KeyRemapper::defInstance),
     lastConnectionTime(0), disableclients(false),
-    frameTimer(this), screenshotTimer(this), apimessager(nullptr), trackingFrameStats(0),
+    frameTimer(this), screenshotTimer(this), statsTimer(this), apimessager(nullptr), trackingFrameStats(0),
     clipboardId(0), sendWatermark(false), encoder_probe(encoder_probe_)
 {
     auto to_string = [](const bool value) {
@@ -263,6 +263,8 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, const video_enco
             throw std::invalid_argument("Benchmarking video file does not exist");
         benchmark(file_name, Server::benchmarkResults.getValueStr());
     }
+
+    statsTimer.start(STATS_INTERVAL_MS);
 
     screenshotTimer.start(FIRST_SCREENSHOT_INTERVAL_MS);
 }
@@ -778,6 +780,13 @@ bool VNCServerST::handleTimeout(Timer* t)
 
             return false;
         }
+
+        return true;
+    }
+
+    if (t == &statsTimer) {
+        if (apimessager)
+            apimessager->netUpdateSystemStats();
 
         return true;
     }

@@ -16,7 +16,7 @@ RUN if [ "$RUN_TEST" != 1 ]; then apt-get update && apt-get -y install xterm lsb
 RUN mkdir -p $STARTUPDIR
 COPY builder/startup/vnc_startup_barebones.sh $STARTUPDIR
 
-RUN useradd -m foo && adduser foo ssl-cert
+RUN useradd -m foo && usermod -aG ssl-cert foo
 USER foo
 
-ENTRYPOINT "/$STARTUPDIR/vnc_startup_barebones.sh"
+ENTRYPOINT ["/dockerstartup/vnc_startup_barebones.sh"]

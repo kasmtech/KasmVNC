@@ -53,6 +53,7 @@ namespace rfb {
   public:
     constexpr static int FIRST_SCREENSHOT_INTERVAL_MS = 5000;
     constexpr static int SCREENSHOT_INTERVAL_MS = 60000;
+    constexpr static int STATS_INTERVAL_MS = 1000;
     // -=- Constructors
 
     //   Create a server exporting the supplied desktop.
@@ -287,6 +288,7 @@ namespace rfb {
 
     Timer frameTimer;
     Timer screenshotTimer;
+    Timer statsTimer;
 
     int inotify_fd{-1};
 

@@ -563,6 +563,11 @@ static void getSessionsCb(void *messager,  char **ptr)
   *ptr = sessionInfo;
 }
 
+static void get_system_stats_cb(void *messager, const char **ptr, uint32_t *len) {
+    GetAPIMessager *msgr = (GetAPIMessager *) messager;
+    msgr->netGetSystemStats(ptr, len);
+}
+
 #if OPENSSL_VERSION_NUMBER < 0x1010000f
 
 static pthread_mutex_t *sslmutex;
@@ -713,6 +718,7 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
 
   settings.clearClipboardCb = clearClipboardCb;
   settings.getSessionsCb = getSessionsCb;
+  settings.get_system_stats_cb = get_system_stats_cb;
 
   openssl_threads();
 

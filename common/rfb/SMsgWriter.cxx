@@ -98,9 +98,9 @@ void SMsgWriter::writeBinaryClipboard(const std::vector<SConnection::binaryClipb
   endMsg();
 }
 
-void SMsgWriter::writeStats(const char* str, int len)
+void SMsgWriter::writeStats(int msg_type, const char* str, size_t len)
 {
-  startMsg(msgTypeStats);
+  startMsg(msg_type);
   os->pad(3);
   os->writeU32(len);
   os->writeBytes(str, len);
@@ -837,4 +837,11 @@ void SMsgWriter::writeForceGameMode()
 {
   startMsg(msgTypeForceGameMode);
   endMsg();
+}
+
+void SMsgWriter::writeLatencyMeasurementResponse(uint32_t measurementId) {
+    startMsg(msgTypeLatencyMeasurement);
+    os->pad(3);
+    os->writeU32(measurementId);
+    endMsg();
 }

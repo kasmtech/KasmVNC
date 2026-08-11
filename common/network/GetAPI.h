@@ -26,12 +26,13 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <os/SystemStats.h>
 
 namespace network {
 
   class GetAPIMessager {
   public:
-    GetAPIMessager(const char *passwdfile_);
+    explicit GetAPIMessager(const char *passwdfile_);
 
     // from main thread
     void mainUpdateScreen(rfb::PixelBuffer *pb);
@@ -69,6 +70,8 @@ namespace network {
     uint8_t netServerFrameStatsReady();
     void netUdpUpgrade(void *client, uint32_t ip);
     void netClearClipboard();
+    void netUpdateSystemStats();
+    void netGetSystemStats(const char **ptr, uint32_t *len);
 
     enum USER_ACTION {
       NONE,
@@ -137,6 +140,7 @@ namespace network {
 
       uint8_t inprogress;
     };
+
     std::map<std::string, clientFrameStats_t> clientFrameStats;
     serverFrameStats_t serverFrameStats;
     pthread_mutex_t frameStatMutex;
@@ -146,6 +150,10 @@ namespace network {
     pthread_mutex_t userInfoMutex;
     std::mutex sessionInfoMutex;
     std::string sessionsInfo;
+
+    SystemStats system_stats;
+    std::mutex system_stats_mutex;
+    std::string systems_stats_json;
   };
 
 }
