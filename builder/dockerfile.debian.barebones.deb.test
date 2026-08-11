@@ -19,4 +19,4 @@ COPY builder/startup/vnc_startup_barebones.sh $STARTUPDIR
 RUN useradd -m foo && usermod -aG ssl-cert foo
 USER foo
 
-ENTRYPOINT ["/$STARTUPDIR/vnc_startup_barebones.sh"]
+ENTRYPOINT ["/bin/sh", "-c", "exec \"$STARTUPDIR\"/vnc_startup_barebones.sh"]
