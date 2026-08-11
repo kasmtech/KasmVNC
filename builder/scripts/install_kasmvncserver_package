@@ -40,6 +40,9 @@ detect_rpm_package_manager() {
 install_package_built_for_current_branch_package_version_deb() {
   remove_tagged_debs_unless_tag_used
 
+  export DEBIAN_FRONTEND=noninteractive
+  export TZ=Etc/UTC
+
   apt-get update
   apt-get install -y dpkg-dev
   package_version=$(dpkg-parsechangelog --show-field Version \
