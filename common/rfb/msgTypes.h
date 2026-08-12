@@ -79,8 +79,6 @@ namespace rfb {
   // constexpr int msgTypeTouchEventsSupported = 192;
   constexpr int msgTypeTouchEvent = 193;
 
-
-
   constexpr int msgTypeClientFence = 248;
 
   constexpr int msgTypeSetDesktopSize = 251;

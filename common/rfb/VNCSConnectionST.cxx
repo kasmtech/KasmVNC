@@ -869,12 +869,15 @@ void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t id) {
             activeTouchIds.insert(id);
 
             break;
+        case touchEventUpdate:
+            break;
         case touchEventEnd:
             activeTouchIds.erase(id);
 
             break;
         default:
             vlog.error("Invalid touch event type %d", type);
+            return;
     }
 
     if (!activeTouchIds.empty())

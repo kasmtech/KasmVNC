@@ -46,6 +46,7 @@ extern _X_EXPORT DevPrivateKey CoreDevicePrivateKey;
 #include <X11/keysym.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <rfb/touchTypes.h>
 
 extern const unsigned short code_map_qnum_to_xorgevdev[];
 extern const unsigned int code_map_qnum_to_xorgevdev_len;
@@ -62,11 +63,6 @@ extern const unsigned int code_map_qnum_to_xorgkbd_len;
  */
 #define VNC_MAX_TOUCHES 16
 #define VNC_TOUCH_AXIS_MAX 0xffff
-
-/* Wire values matching rfb::touchEvent* in common/rfb/touchTypes.h. */
-#define VNC_TOUCH_BEGIN  0
-#define VNC_TOUCH_UPDATE 1
-#define VNC_TOUCH_END    2
 
 /* Event queue is shared between all devices. */
 #if XORG < 111
