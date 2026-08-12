@@ -42,7 +42,9 @@ static VncAtSpiFocusInfo last_reported = {.focused = -1};
 static char display_name[32];
 static pthread_t atspi_tid;
 static int thread_started = 0;
-static volatile int shutdown_requested = 0;
+static int shutdown_requested = 0;
+static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t shutdown_cond = PTHREAD_COND_INITIALIZER;
 
 static void report_state(const VncAtSpiFocusInfo *info) {
     /* toolkits emit both "focus:" and "object:state-changed:focused" for
@@ -232,7 +234,10 @@ static char *a11y_address_from_root_window(void) {
  * bus, so we replicate its discovery by hand and verify the address
  * answers before letting libatspi connect via AT_SPI_BUS_ADDRESS. */
 static char *wait_for_a11y_bus(void) {
+    pthread_mutex_lock(&shutdown_mutex);
     while (!shutdown_requested) {
+        pthread_mutex_unlock(&shutdown_mutex);
+
         char *address = a11y_address_from_session_bus();
         if (!address)
             address = a11y_address_from_root_window();
@@ -243,8 +248,15 @@ static char *wait_for_a11y_bus(void) {
             free(address);
         }
 
-        sleep(2);
+        pthread_mutex_lock(&shutdown_mutex);
+        if (!shutdown_requested) {
+            struct timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            ts.tv_sec += 2;
+            pthread_cond_timedwait(&shutdown_cond, &shutdown_mutex, &ts);
+        }
     }
+    pthread_mutex_unlock(&shutdown_mutex);
     return NULL;
 }
 
@@ -325,10 +337,17 @@ int vncAtSpiInit(const char *displayNum) {
 }
 
 void vncAtSpiShutdown(void) {
-    if (!thread_started || shutdown_requested)
+    if (!thread_started)
         return;
 
+    pthread_mutex_lock(&shutdown_mutex);
+    if (shutdown_requested) {
+        pthread_mutex_unlock(&shutdown_mutex);
+        return;
+    }
     shutdown_requested = 1;
+    pthread_cond_signal(&shutdown_cond);
+    pthread_mutex_unlock(&shutdown_mutex);
 
     /* wakes the (default-context) event loop; if the loop is not
      * running yet, the idle source fires on its first iteration */
@@ -337,7 +356,7 @@ void vncAtSpiShutdown(void) {
     /* bounded join: don't let a stuck a11y bus hang server shutdown */
     struct timespec deadline;
     clock_gettime(CLOCK_REALTIME, &deadline);
-    deadline.tv_sec += 3;
+    deadline.tv_sec += 1;
     if (pthread_timedjoin_np(atspi_tid, NULL, &deadline) != 0) {
         fprintf(stderr, "vncAtSpi: shutdown timed out, abandoning thread\n");
         pthread_detach(atspi_tid);
