@@ -72,10 +72,12 @@ namespace rfb {
   struct SessionInfo {
     std::string userName;
     time_t connectionTime;
-    SessionInfo(const std::string& name, const time_t& time)
+    bool isOwner;
+    SessionInfo(const std::string& name, const time_t& time, const bool ownerFlag = false)
     {
       userName = name;
       connectionTime = time;
+      isOwner = ownerFlag;
     }
 
     };
