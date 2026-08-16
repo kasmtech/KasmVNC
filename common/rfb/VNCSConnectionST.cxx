@@ -98,7 +98,7 @@ VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s, con
     user[offset] = '\0';
   }
 
-  bool read, write, owner;
+  bool read = false, write = false, owner = false;
   if (!getPerms(read, write, owner)) {
     accessRights &= ~(WRITER_PERMS | AccessView);
   }
@@ -1242,9 +1242,12 @@ bool VNCSConnectionST::getPerms(bool &read, bool &write, bool &owner) const
 {
   bool found = false;
   if (disablebasicauth) {
-    // We're running without basicauth
+    // No basicauth: grant full perms; owner is meaningless without an
+    // authenticated owner, so report it false (is_owner()/checkOwnerConn()
+    // would otherwise read it uninitialized).
     read = true;
     write = true;
+    owner = false;
     return true;
   }
   if (user[0]) {
@@ -1869,7 +1872,7 @@ void VNCSConnectionST::udpDowngrade(const bool byServer)
 
 void VNCSConnectionST::subscribeUnixRelay(const char *name)
 {
-  bool read, write, owner;
+  bool read = false, write = false, owner = false;
   if (!getPerms(read, write, owner) || !write) {
     // Need write permissions to subscribe
     writer()->writeSubscribeUnixRelay(false, "No permissions");
