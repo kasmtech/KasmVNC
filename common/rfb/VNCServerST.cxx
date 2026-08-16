@@ -836,10 +836,8 @@ std::vector<SessionInfo> VNCServerST::getSessionUsers() {
 void VNCServerST::updateSessionUsersList()
 {
   auto sessionUsers = getSessionUsers();
-  if (!sessionUsers.empty()) {
-    std::string sessionUsersJson = formatUsersToJson(sessionUsers);
-    apimessager->mainUpdateSessionsInfo(sessionUsersJson);
-  }
+  std::string sessionUsersJson = formatUsersToJson(sessionUsers);
+  apimessager->mainUpdateSessionsInfo(sessionUsersJson);
 }
 
 int VNCServerST::authClientCount() {
