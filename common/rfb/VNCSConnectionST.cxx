@@ -1422,7 +1422,7 @@ void VNCSConnectionST::writeFramebufferUpdate()
 
 void VNCSConnectionST::writeNoDataUpdate()
 {
-  if (!writer()->needNoDataUpdate())
+  if (!writer()->needFakeUpdate())
     return;
 
   writer()->writeNoDataUpdate();
