@@ -333,8 +333,9 @@ void XserverDesktop::handleSocketEvent(int fd, bool read, bool write)
 
           VncAtSpiFocusInfo info;
           while (vncAtSpiGetFocusState(&info)) {
-              vlog.debug("AT-SPI text input focus: %s, caret %d,%d %dx%d, field %d,%d %dx%d",
+              vlog.debug("AT-SPI text input focus: %s%s, caret %d,%d %dx%d, field %d,%d %dx%d",
                   info.focused ? "gained" : "lost",
+                  info.tapped ? " (tapped)" : "",
                   info.caretX,
                   info.caretY,
                   info.caretW,
@@ -346,6 +347,7 @@ void XserverDesktop::handleSocketEvent(int fd, bool read, bool write)
 
               auto clamp16 = [](int v) -> rdr::U16 { return v < 0 ? 0 : (v > 65535 ? 65535 : v); };
               server->announceTextInputFocus(info.focused != 0,
+                  info.tapped != 0,
                   clamp16(info.caretX),
                   clamp16(info.caretY),
                   clamp16(info.caretW),

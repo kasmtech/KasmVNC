@@ -27,6 +27,7 @@
 #include "Input.h"
 #include "vncExtInit.h"
 #include "RFBGlue.h"
+#include "vncAtSpi.h"
 
 #include "inputstr.h"
 #if XORG >= 110
@@ -63,6 +64,74 @@ extern const unsigned int code_map_qnum_to_xorgkbd_len;
  */
 #define VNC_MAX_TOUCHES 16
 #define VNC_TOUCH_AXIS_MAX 0xffff
+
+#define VNC_TAP_SLOP 15
+#define VNC_TAP_MAX_MS 600
+
+static struct {
+	Bool active;
+	Bool cancelled;
+	unsigned int id;
+	int x, y;
+	CARD32 startTime;
+} vncTaps[VNC_MAX_TOUCHES];
+
+static int vncTapSlot(unsigned int id)
+{
+	int i;
+	for (i = 0; i < VNC_MAX_TOUCHES; i++) {
+		if (vncTaps[i].active && vncTaps[i].id == id)
+			return i;
+	}
+	return -1;
+}
+
+static void vncTrackTap(int x, int y, int type, unsigned int id)
+{
+	int i, slot;
+
+	switch (type) {
+	case VNC_TOUCH_BEGIN: {
+		Bool others = FALSE;
+		slot = -1;
+		for (i = 0; i < VNC_MAX_TOUCHES; i++) {
+			if (vncTaps[i].active) {
+				/* multi-touch gesture: no finger is a tap */
+				vncTaps[i].cancelled = TRUE;
+				others = TRUE;
+			} else if (slot == -1) {
+				slot = i;
+			}
+		}
+		if (slot == -1)
+			break;
+		vncTaps[slot].active = TRUE;
+		vncTaps[slot].cancelled = others;
+		vncTaps[slot].id = id;
+		vncTaps[slot].x = x;
+		vncTaps[slot].y = y;
+		vncTaps[slot].startTime = GetTimeInMillis();
+		break;
+	}
+	case VNC_TOUCH_UPDATE:
+		slot = vncTapSlot(id);
+		if (slot == -1)
+			break;
+		if (abs(x - vncTaps[slot].x) > VNC_TAP_SLOP ||
+		    abs(y - vncTaps[slot].y) > VNC_TAP_SLOP)
+			vncTaps[slot].cancelled = TRUE;
+		break;
+	case VNC_TOUCH_END:
+		slot = vncTapSlot(id);
+		if (slot == -1)
+			break;
+		vncTaps[slot].active = FALSE;
+		if (!vncTaps[slot].cancelled &&
+		    GetTimeInMillis() - vncTaps[slot].startTime <= VNC_TAP_MAX_MS)
+			vncAtSpiNotifyTap(vncTaps[slot].x, vncTaps[slot].y);
+		break;
+	}
+}
 
 /* Event queue is shared between all devices. */
 #if XORG < 111
@@ -336,6 +405,22 @@ void vncTouchEvent(int x, int y, int type, unsigned int id) {
             LOG_ERROR("Ignoring touch event with unknown type %d", type);
             return;
     }
+
+    const char* typeStr;
+
+    switch (type) {
+        case VNC_TOUCH_BEGIN:  typeStr = "begin";  break;
+        case VNC_TOUCH_UPDATE: typeStr = "update"; break;
+        case VNC_TOUCH_END:    typeStr = "end";    break;
+        default:
+            LOG_ERROR("Ignoring touch event with unknown type %d", type);
+            return;
+    }
+
+    LOG_DEBUG("vncTouchEvent: type=%s, id=%u, pixel=(%d,%d), screen=(%dx%d)",
+              typeStr, id, x, y, screenInfo.width, screenInfo.height);
+
+    vncTrackTap(x, y, type, id);
 
     int deskW = screenInfo.width;
     int deskH = screenInfo.height;

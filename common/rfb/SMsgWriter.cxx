@@ -851,13 +851,13 @@ void SMsgWriter::writeTouchEventsSupported() {
     endMsg();
 }
 
-void SMsgWriter::writeTextInputFocus(bool focused,
+void SMsgWriter::writeTextInputFocus(bool focused, bool tapped,
                                      rdr::U16 caretX, rdr::U16 caretY,
                                      rdr::U16 caretW, rdr::U16 caretH,
                                      rdr::U16 fieldX, rdr::U16 fieldY,
                                      rdr::U16 fieldW, rdr::U16 fieldH) {
     startMsg(msgTypeTextInputFocus);
-    os->writeU8(focused ? 1 : 0);
+    os->writeU8(focused ? (tapped ? 3 : 1) : 0);
     os->writeU16(caretX);
     os->writeU16(caretY);
     os->writeU16(caretW);

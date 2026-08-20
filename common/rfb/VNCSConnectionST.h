@@ -83,8 +83,8 @@ namespace rfb {
     void setDesktopNameOrClose(const char *name);
     void setLEDStateOrClose(unsigned int state);
     void announceClipboardOrClose(bool available);
-    void announceTextInputFocusOrClose(bool focused, rdr::U16 caretX, rdr::U16 caretY, rdr::U16 caretW, rdr::U16 caretH,
-        rdr::U16 fieldX, rdr::U16 fieldY, rdr::U16 fieldW, rdr::U16 fieldH);
+    void announceTextInputFocusOrClose(bool focused, bool tapped, rdr::U16 caretX, rdr::U16 caretY, rdr::U16 caretW,
+        rdr::U16 caretH, rdr::U16 fieldX, rdr::U16 fieldY, rdr::U16 fieldW, rdr::U16 fieldH);
     void clearBinaryClipboardData();
     void sendBinaryClipboardDataOrClose(const char* mime, const unsigned char *data,
                                         const unsigned len, const unsigned id);

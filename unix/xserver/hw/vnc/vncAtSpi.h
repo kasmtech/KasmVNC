@@ -25,6 +25,9 @@ extern "C" {
 
 typedef struct {
     int focused;                            /* editable text field has focus */
+    int tapped;                             /* state comes from a deliberate tap,
+                                               not a focus change; the client uses
+                                               this to override keyboard dismissal */
     int caretX, caretY, caretW, caretH;     /* caret rect, root coords */
     int fieldX, fieldY, fieldW, fieldH;     /* widget rect, root coords */
 } VncAtSpiFocusInfo;
@@ -34,6 +37,8 @@ typedef struct {
 int vncAtSpiInit(const char *displayNum);
 
 int vncAtSpiGetFd(void);
+
+void vncAtSpiNotifyTap(int x, int y);
 
 /* Stops the AT-SPI thread, deregisters listeners and calls atspi_exit().
  * Blocks up to a few seconds; safe to call if init never ran. */
