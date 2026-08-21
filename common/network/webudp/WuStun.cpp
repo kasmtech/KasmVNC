@@ -4,8 +4,8 @@
 #include "CRC32.h"
 #include "WuCrypto.h"
 
-const int32_t kStunHeaderLength = 20;
-const int32_t kStunAlignment = 4;
+constexpr int32_t kStunHeaderLength = 20;
+constexpr int32_t kStunAlignment = 4;
 
 bool ParseStun(const uint8_t* src, int32_t len, StunPacket* packet) {
   if (len < kStunHeaderLength || src[0] != 0 || src[1] != 1) {
@@ -33,7 +33,7 @@ bool ParseStun(const uint8_t* src, int32_t len, StunPacket* packet) {
 
   src += kStunTransactionIdLength;
 
-  int32_t maxOffset = int32_t(packet->length) - 1;
+  int32_t maxOffset = packet->length - 1;
   int32_t payloadOffset = 0;
   while (payloadOffset < maxOffset) {
     int32_t remain = len - kStunHeaderLength - payloadOffset;
@@ -87,14 +87,14 @@ bool ParseStun(const uint8_t* src, int32_t len, StunPacket* packet) {
   return true;
 }
 
-int32_t SerializeStunPacket(const StunPacket* packet, const uint8_t* password,
+size_t SerializeStunPacket(const StunPacket* packet, const uint8_t* password,
                             int32_t passwordLen, uint8_t* dest, int32_t len) {
   memset(dest, 0, len);
-  int32_t offset = WriteScalar(dest, htons(Stun_SuccessResponse));
+  size_t offset = WriteScalar(dest, htons(Stun_SuccessResponse));
   // X-MAPPED-ADDRESS (ip4) + MESSAGE-INTEGRITY SHA1
   int32_t contentLength = 12 + 24;
   int32_t contentLengthIntegrity = contentLength + 8;
-  const int32_t contentLengthOffset = offset;
+  const size_t contentLengthOffset = offset;
   offset += WriteScalar(dest + offset, htons(contentLength));
   offset += WriteScalar(dest + offset, htonl(kStunCookie));
 
@@ -107,7 +107,7 @@ int32_t SerializeStunPacket(const StunPacket* packet, const uint8_t* password,
   // xor mapped address attribute ipv4
   offset += WriteScalar(dest + offset, htons(StunAttrib_XorMappedAddress));
   offset += WriteScalar(dest + offset, htons(8));
-  offset += WriteScalar(dest + offset, uint8_t(0));  // reserved
+  offset += WriteScalar(dest + offset, 0);  // reserved
   offset += WriteScalar(dest + offset, packet->xorMappedAddress.family);
   offset += WriteScalar(dest + offset, packet->xorMappedAddress.port);
   offset += WriteScalar(dest + offset, packet->xorMappedAddress.address.ipv4);
@@ -124,7 +124,7 @@ int32_t SerializeStunPacket(const StunPacket* packet, const uint8_t* password,
   offset += 20;
 
   WriteScalar(dest + contentLengthOffset, htons(contentLengthIntegrity));
-  uint32_t crc = StunCRC32(dest, offset) ^ 0x5354554e;
+  const uint32_t crc = StunCRC32(dest, offset) ^ 0x5354554e;
 
   offset += WriteScalar(dest + offset, htons(StunAttrib_Fingerprint));
   offset += WriteScalar(dest + offset, htons(4));

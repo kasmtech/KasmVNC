@@ -3,20 +3,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
-template <typename T>
+template<typename T>
 T ByteSwap(T v) {
-  if (sizeof(T) == 1) {
-    return v;
-  } else if (sizeof(T) == 2) {
-    return __builtin_bswap16(uint16_t(v));
-  } else if (sizeof(T) == 4) {
-    return __builtin_bswap32(uint32_t(v));
-  } else if (sizeof(T) == 8) {
-    return __builtin_bswap64(uint64_t(v));
-  } else {
-    assert(0);
-    return 0;
-  }
+    if constexpr (sizeof(T) == 1) {
+        return v;
+    } else if constexpr (sizeof(T) == 2) {
+        return __builtin_bswap16(uint16_t(v));
+    } else if constexpr (sizeof(T) == 4) {
+        return __builtin_bswap32(uint32_t(v));
+    } else if constexpr (sizeof(T) == 8) {
+        return __builtin_bswap64(uint64_t(v));
+    } else {
+        assert(0);
+        return 0;
+    }
 }
 
 template <typename T>

@@ -51,11 +51,8 @@ int32_t ParseSctpPacket(const uint8_t* buf, size_t len, SctpPacket* packet, Sctp
             chunkOffset += ReadScalarSwapped(src + chunkOffset, &p->streamId);
             chunkOffset += ReadScalarSwapped(src + chunkOffset, &p->streamSeq);
             chunkOffset += ReadScalarSwapped(src + chunkOffset, &p->protoId);
-            p->userDataLength = Max(chunk->length - ValidPacketSize, 0);
 
-            if (p->userDataLength > payloadSize - MaxChunkPayload)
-                return 0;
-
+            p->userDataLength = payloadSize - MaxChunkPayload;
             p->userData = src + chunkOffset;
 
             break;
