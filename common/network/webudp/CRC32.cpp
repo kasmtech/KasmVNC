@@ -1,6 +1,6 @@
 #include "CRC32.h"
 
-static const uint32_t crc32Stun[] = {
+static constexpr uint32_t crc32Stun[] = {
     0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
     0xe963a535, 0x9e6495a3, 0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
     0x09b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91, 0x1db71064, 0x6ab020f2,
@@ -45,7 +45,7 @@ static const uint32_t crc32Stun[] = {
     0x54de5729, 0x23d967bf, 0xb3667a2e, 0xc4614ab8, 0x5d681b02, 0x2a6f2b94,
     0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d};
 
-static const unsigned long crc32Sctp[256] = {
+static constexpr unsigned long crc32Sctp[256] = {
     0x00000000, 0xF26B8303, 0xE13B70F7, 0x1350F3F4, 0xC79A971F, 0x35F1141C,
     0x26A1E7E8, 0xD4CA64EB, 0x8AD958CF, 0x78B2DBCC, 0x6BE22838, 0x9989AB3B,
     0x4D43CFD0, 0xBF284CD3, 0xAC78BF27, 0x5E133C24, 0x105EC76F, 0xE235446C,
@@ -105,12 +105,12 @@ uint32_t StunCRC32(const void* data, int32_t len) {
 
 #define CRC32C(c, d) (c = (c >> 8) ^ (crc32Sctp)[(c ^ (d)) & 0xFF])
 
-uint32_t SctpCRC32(const void* data, int32_t len) {
+uint32_t SctpCRC32(const void* data, size_t len) {
   uint32_t crc = 0xFFFFFFFF;
 
   const uint8_t* p = (const uint8_t*)data;
 
-  for (int32_t i = 0; i < len; i++) {
+  for (size_t i = 0; i < len; i++) {
     CRC32C(crc, p[i]);
   }
 
