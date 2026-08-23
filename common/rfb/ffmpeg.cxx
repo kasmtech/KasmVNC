@@ -45,7 +45,8 @@ FFmpeg::FFmpeg() {
                 if (filename == soname || filename.starts_with(soname + ".")) {
                     handle = dlopen(entry.path().c_str(), RTLD_LAZY);
 
-                    break;
+                    if (handle)
+                        break;
                 }
             }
 
