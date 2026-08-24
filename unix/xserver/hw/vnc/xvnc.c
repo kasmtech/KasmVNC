@@ -238,34 +238,28 @@ unsigned extra_headers_len = 0;
 static unsigned
 add_extra_headers(const char * const arg)
 {
-    unsigned i, found = 0;
-    const char *sep;
-    for (i = 0; arg[i]; i++) {
-        if (arg[i] == '=') {
-            found++;
-            sep = &arg[i];
-        }
-    }
-    if (found != 1)
+    const char *sep = strchr(arg, '=');
+    if (!sep)
         return 0;
 
     const unsigned len = strlen(arg);
-    if (len < 3)
+    const unsigned keylen = sep - arg;
+    const unsigned valuelen = len - keylen - 1;
+
+    if (keylen == 0 || valuelen == 0)
         return 0;
 
-    if (arg[0] == '=' || arg[len - 1] == '=')
+    char *new_headers = realloc(extra_headers, extra_headers_len + 4 + len);
+    if (!new_headers)
         return 0;
-
-    extra_headers = realloc(extra_headers, extra_headers_len + 4 + len);
+    extra_headers = new_headers;
     extra_headers[extra_headers_len] = '\0';
 
     char tmp[len + 3];
-    const unsigned firstlen = sep - arg;
-
-    memcpy(tmp, arg, firstlen);
-    tmp[firstlen] = ':';
-    tmp[firstlen + 1] = ' ';
-    memcpy(&tmp[firstlen + 2], sep + 1, len - firstlen - 1);
+    memcpy(tmp, arg, keylen);
+    tmp[keylen] = ':';
+    tmp[keylen + 1] = ' ';
+    memcpy(&tmp[keylen + 2], sep + 1, valuelen);
     tmp[len + 1] = '\r';
     tmp[len + 2] = '\n';
 
