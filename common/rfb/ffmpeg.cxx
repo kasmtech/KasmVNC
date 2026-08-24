@@ -30,8 +30,9 @@ FFmpeg::FFmpeg() {
     namespace fs = std::filesystem;
     using namespace std::string_literals;
 
-    auto load_lib = [](auto *lib) {
+    auto load_lib = [](auto *lib, unsigned major_version) {
         void *handle{};
+        const auto soname = std::string{lib} + "." + std::to_string(major_version);
         for (const auto &dir: paths) {
             if (!fs::exists(dir) || !fs::is_directory(dir))
                 continue;
@@ -41,23 +42,27 @@ FFmpeg::FFmpeg() {
                     continue;
 
                 const std::string filename = entry.path().filename().string();
-                if (filename.find(lib) != std::string::npos) {
-                    handle = dlopen(filename.c_str(), RTLD_LAZY);
+                if (filename == soname || filename.starts_with(soname + ".")) {
+                    handle = dlopen(entry.path().c_str(), RTLD_LAZY);
 
-                    break;
+                    if (handle)
+                        break;
                 }
             }
+
+            if (handle)
+                break;
         }
 
         if (!handle)
-            throw std::runtime_error("Could not open "s + lib);
+            throw std::runtime_error("Could not open "s + soname);
 
         return DlHandlerGuard{handle};
     };
 
     // libavformat
     try {
-        libavformat = load_lib("libavformat.so");
+        libavformat = load_lib("libavformat.so", LIBAVFORMAT_VERSION_MAJOR);
         auto handle = libavformat.get();
 
         avformat_open_input_f = D_LOOKUP_SYM(handle, avformat_open_input);
@@ -71,7 +76,7 @@ FFmpeg::FFmpeg() {
         vlog.debug("libavformat.so loaded");
 
         // libavutil
-        libavutil = load_lib("libavutil.so");
+        libavutil = load_lib("libavutil.so", LIBAVUTIL_VERSION_MAJOR);
         handle = libavutil.get();
 
         av_frame_free_f = D_LOOKUP_SYM(handle, av_frame_free);
@@ -95,7 +100,7 @@ FFmpeg::FFmpeg() {
         vlog.debug("libavutil.so loaded");
 
         // libswscale
-        libswscale = load_lib("libswscale.so");
+        libswscale = load_lib("libswscale.so", LIBSWSCALE_VERSION_MAJOR);
         handle = libswscale.get();
 
         sws_freeContext_f = D_LOOKUP_SYM(handle, sws_freeContext);
@@ -104,7 +109,7 @@ FFmpeg::FFmpeg() {
         vlog.debug("libswscale.so loaded");
 
         // libavcodec
-        libavcodec = load_lib("libavcodec.so");
+        libavcodec = load_lib("libavcodec.so", LIBAVCODEC_VERSION_MAJOR);
         handle = libavcodec.get();
 
         avcodec_version_f = D_LOOKUP_SYM(handle, avcodec_version);
