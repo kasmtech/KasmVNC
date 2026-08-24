@@ -686,7 +686,7 @@ namespace rfb {
   {
     std::string usersList = "[";
     bool firstUser = true;
-    for (const auto&[userName, connectionTime] : users)
+    for (const auto&[userName, connectionTime, isOwner] : users)
     {
       std::string username =userName;
       time_t connTime = connectionTime;
@@ -702,7 +702,9 @@ namespace rfb {
       userEntry.append(username);
       userEntry.append( "\", \"connected_since\":\"");
       userEntry.append(timeStr);
-      userEntry.append("\"}");
+      userEntry.append( "\", \"is_owner\":");
+      userEntry.append( isOwner ? "true" : "false");
+      userEntry.append("}");
 
       usersList.append(userEntry);
     }

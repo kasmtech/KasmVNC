@@ -828,7 +828,7 @@ std::vector<SessionInfo> VNCServerST::getSessionUsers() {
     if (!client->authenticated()) {
       continue;
     }
-    users.push_back(SessionInfo(client->getUsername(),client->getConnectionTime()));
+    users.push_back(SessionInfo(client->getUsername(), client->getConnectionTime(), client->is_owner()));
   }
   return users;
 }
@@ -839,6 +839,11 @@ void VNCServerST::updateSessionUsersList()
   if (!sessionUsers.empty()) {
     std::string sessionUsersJson = formatUsersToJson(sessionUsers);
     apimessager->mainUpdateSessionsInfo(sessionUsersJson);
+  } else {
+    // Last disconnect: reset to the canonical empty shape so
+    // /api/get_sessions signals an empty session (matches the init
+    // literal in GetAPIMessager.cxx).
+    apimessager->mainUpdateSessionsInfo("{\"users\":[]}");
   }
 }
 
