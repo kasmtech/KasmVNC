@@ -170,7 +170,7 @@ static void WuPushEvent(Wu* wu, WuEvent evt) {
 static void WuSendSctpShutdown(Wu* wu, WuClient* client) {
   SctpPacket response;
   response.sourcePort = client->localSctpPort;
-  response.destionationPort = client->remoteSctpPort;
+  response.destinationPort = client->remoteSctpPort;
   response.verificationTag = client->sctpVerificationTag;
 
   SctpChunk rc;
@@ -279,8 +279,8 @@ static void WuHandleSctp(Wu* wu, WuClient* client, const uint8_t* buf,
           client->remoteSctpPort = sctpPacket.sourcePort;
           uint8_t outType = DCMessage_Ack;
           SctpPacket response;
-          response.sourcePort = sctpPacket.destionationPort;
-          response.destionationPort = sctpPacket.sourcePort;
+          response.sourcePort = sctpPacket.destinationPort;
+          response.destinationPort = sctpPacket.sourcePort;
           response.verificationTag = client->sctpVerificationTag;
 
           SctpChunk rc;
@@ -323,8 +323,8 @@ static void WuHandleSctp(Wu* wu, WuClient* client, const uint8_t* buf,
       }
 
       SctpPacket sack;
-      sack.sourcePort = sctpPacket.destionationPort;
-      sack.destionationPort = sctpPacket.sourcePort;
+      sack.sourcePort = sctpPacket.destinationPort;
+      sack.destinationPort = sctpPacket.sourcePort;
       sack.verificationTag = client->sctpVerificationTag;
 
       SctpChunk rc;
@@ -339,8 +339,8 @@ static void WuHandleSctp(Wu* wu, WuClient* client, const uint8_t* buf,
       WuSendSctp(wu, client, &sack, &rc, 1);
     } else if (chunk->type == Sctp_Init) {
       SctpPacket response;
-      response.sourcePort = sctpPacket.destionationPort;
-      response.destionationPort = sctpPacket.sourcePort;
+      response.sourcePort = sctpPacket.destinationPort;
+      response.destinationPort = sctpPacket.sourcePort;
       response.verificationTag = chunk->as.init.initiateTag;
       client->sctpVerificationTag = response.verificationTag;
       client->remoteTsn = chunk->as.init.initialTsn - 1;
@@ -363,8 +363,8 @@ static void WuHandleSctp(Wu* wu, WuClient* client, const uint8_t* buf,
         client->state = WuClient_SCTPEstablished;
       }
       SctpPacket response;
-      response.sourcePort = sctpPacket.destionationPort;
-      response.destionationPort = sctpPacket.sourcePort;
+      response.sourcePort = sctpPacket.destinationPort;
+      response.destinationPort = sctpPacket.sourcePort;
       response.verificationTag = client->sctpVerificationTag;
 
       SctpChunk rc;
@@ -375,8 +375,8 @@ static void WuHandleSctp(Wu* wu, WuClient* client, const uint8_t* buf,
       WuSendSctp(wu, client, &response, &rc, 1);
     } else if (chunk->type == Sctp_Heartbeat) {
       SctpPacket response;
-      response.sourcePort = sctpPacket.destionationPort;
-      response.destionationPort = sctpPacket.sourcePort;
+      response.sourcePort = sctpPacket.destinationPort;
+      response.destinationPort = sctpPacket.sourcePort;
       response.verificationTag = client->sctpVerificationTag;
 
       SctpChunk rc;
@@ -400,8 +400,8 @@ static void WuHandleSctp(Wu* wu, WuClient* client, const uint8_t* buf,
       auto* sack = &chunk->as.sack;
       if (sack->numGapAckBlocks > 0) {
         SctpPacket fwdResponse;
-        fwdResponse.sourcePort = sctpPacket.destionationPort;
-        fwdResponse.destionationPort = sctpPacket.sourcePort;
+        fwdResponse.sourcePort = sctpPacket.destinationPort;
+        fwdResponse.destinationPort = sctpPacket.sourcePort;
         fwdResponse.verificationTag = client->sctpVerificationTag;
 
         SctpChunk fwdTsnChunk;
@@ -594,7 +594,7 @@ int32_t WuCreate(const char* host, uint16_t port, int maxClients, Wu** wu) {
 static void WuSendHeartbeat(Wu* wu, WuClient* client) {
   SctpPacket packet;
   packet.sourcePort = wu->port;
-  packet.destionationPort = client->remoteSctpPort;
+  packet.destinationPort = client->remoteSctpPort;
   packet.verificationTag = client->sctpVerificationTag;
 
   SctpChunk rc;
@@ -647,7 +647,7 @@ static int32_t WuSendData(Wu* wu, WuClient* client, const uint8_t* data,
 
   SctpPacket packet;
   packet.sourcePort = wu->port;
-  packet.destionationPort = client->remoteSctpPort;
+  packet.destinationPort = client->remoteSctpPort;
   packet.verificationTag = client->sctpVerificationTag;
 
   SctpChunk rc;
