@@ -519,37 +519,37 @@ void VNCServerST::updateWatermark() {
 			}
 		}
 	} else {
-		int16_t sx, sy;
+		const int max_x = watermarkInfo.w < rw ? rw - watermarkInfo.w : 0;
+		const int max_y = watermarkInfo.h < rh ? rh - watermarkInfo.h : 0;
+		int draw_x = watermarkInfo.x;
+		int draw_y = watermarkInfo.y;
 
-		if (!watermarkInfo.x)
-			sx = (rw - watermarkInfo.w) / 2;
-		else if (watermarkInfo.x > 0)
-			sx = watermarkInfo.x;
-		else
-			sx = rw - watermarkInfo.w + watermarkInfo.x;
+		if (!draw_x)
+			draw_x = max_x / 2;
+		else if (draw_x < 0)
+			draw_x += rw - watermarkInfo.w;
 
-		if (sx < 0)
-			sx = 0;
+		if (!draw_y)
+			draw_y = max_y / 2;
+		else if (draw_y < 0)
+			draw_y += rh - watermarkInfo.h;
 
-		if (!watermarkInfo.y)
-			sy = (rh - watermarkInfo.h) / 2;
-		else if (watermarkInfo.y > 0)
-			sy = watermarkInfo.y;
-		else
-			sy = rh - watermarkInfo.h + watermarkInfo.y;
+		if (draw_x < 0)
+			draw_x = 0;
+		else if (draw_x > max_x)
+			draw_x = max_x;
 
-		if (sy < 0)
-			sy = 0;
+		if (draw_y < 0)
+			draw_y = 0;
+		else if (draw_y > max_y)
+			draw_y = max_y;
 
-		for (y = 0; y < watermarkInfo.h; y++) {
-			if (sx + watermarkInfo.w < rw)
-				memcpy(&watermarkUnpacked[(sy + y) * rw + sx],
-					&watermarkInfo.src[y * watermarkInfo.w],
-					watermarkInfo.w);
-			else
-				memcpy(&watermarkUnpacked[(sy + y) * rw + sx],
-					&watermarkInfo.src[y * watermarkInfo.w],
-					rw - sx);
+		const uint16_t draw_width = watermarkInfo.w < rw ? watermarkInfo.w : rw;
+		const uint16_t draw_height = watermarkInfo.h < rh ? watermarkInfo.h : rh;
+		for (y = 0; y < draw_height; y++) {
+			memcpy(&watermarkUnpacked[(draw_y + y) * rw + draw_x],
+				&watermarkInfo.src[y * watermarkInfo.w],
+				draw_width);
 		}
 	}
 
