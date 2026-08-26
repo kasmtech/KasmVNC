@@ -1,0 +1,57 @@
+#!/bin/bash
+#
+# dev-run-inside-docker — bring up the freshly-built KasmVNC for hand-off to a
+# developer. Runs as the *entrypoint* of a detached dev container so the whole
+# multi-step launch stays a single `docker run` (auto-approvable, no `bash -lc`).
+#
+# It (1) generates a self-signed cert, (2) sets a static web BasicAuth login
+# (kasm_user / kasmRulez), (3) starts the just-built Xvnc on :1 over HTTPS, and
+# (4) launches an xfce4 desktop into it. The server is reachable from the host
+# at https://127.0.0.1:6901 once the container's 6901 is published.
+#
+# Run it (from the host repo checkout) as:
+#   docker kill kasmvnc_dev 2>/dev/null   # stop a previous session, if any
+#   docker run -d --rm --name kasmvnc_dev -v ./:/src -p 6901:6901 \
+#     --group-add video --group-add render \
+#     --entrypoint /src/builder/dev-run-inside-docker kasmvnc:dev
+#
+set -euo pipefail
+
+XVNC=/src/xorg.build/bin/Xvnc          # the freshly-built binary (NOT /usr/bin/Xvnc)
+HTTPD=/src/kasmweb/dist                # the freshly-built frontend
+DISPLAY_NUM=:1
+PORT=6901
+LOGIN_USER=kasm_user
+LOGIN_PASS=kasmRulez
+CERT="$HOME/.vnc/self.pem"
+
+if [ ! -x "$XVNC" ]; then
+  echo "ERROR: $XVNC not found — run builder/build.sh first." >&2
+  exit 1
+fi
+
+# 1. Self-signed cert for the HTTPS websocket (idempotent).
+mkdir -p "$HOME/.vnc"
+if [ ! -f "$CERT" ]; then
+  openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+    -keyout "$CERT" -out "$CERT" \
+    -subj "/C=US/ST=VA/L=None/O=None/OU=DoFu/CN=kasm/emailAddress=none@none.none"
+fi
+
+# 2. Static web BasicAuth login (written to ~/.kasmpasswd, the KasmPasswordFile default).
+echo -e "${LOGIN_PASS}\n${LOGIN_PASS}\n" | kasmvncpasswd -u "$LOGIN_USER" -w "$HOME/.kasmpasswd"
+
+# 3. Start the just-built server over HTTPS. BasicAuth stays on (no -disableBasicAuth);
+#    SecurityTypes None means the web login is the only gate.
+"$XVNC" -interface 0.0.0.0 -PublicIP 127.0.0.1 \
+  -RectThreads 0 -Log '*:stdout:30' \
+  -httpd "$HTTPD" -sslOnly 1 -SecurityTypes None \
+  -websocketPort "$PORT" -FreeKeyMappings \
+  -cert "$CERT" -key "$CERT" "$DISPLAY_NUM" &
+
+# 4. Launch the desktop into the new display.
+sleep 2
+DISPLAY="$DISPLAY_NUM" dbus-launch xfce4-session &
+
+# Keep the container in the foreground, tied to the server's lifetime.
+wait

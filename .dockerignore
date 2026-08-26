@@ -1,3 +1,20 @@
 builder/build/.sccache
-CMakeCache.txt
 build/
+
+# In-source CMake build artifacts. builder/build.sh configures in-source
+# (`cd /src && cmake .`), so a local dev build leaves these in the working
+# tree. The packaging build (builder/dockerfile.*.build) does `COPY . /src`,
+# which would otherwise drag a stale CMakeCache.txt into the image and poison
+# a fresh configure — e.g. a cache with HAVE_PAM=ON makes CMake compile pam.c
+# in the packaging image, which intentionally has no libpam0g-dev, breaking the
+# build. Excluding them forces a clean configure in every Docker build context.
+# NOTE: do NOT add `*.cmake` here — cmake/*.cmake are tracked source files.
+CMakeCache.txt
+**/CMakeCache.txt
+CMakeFiles/
+**/CMakeFiles/
+cmake_install.cmake
+**/cmake_install.cmake
+CTestTestfile.cmake
+**/CTestTestfile.cmake
+xorg.build/
