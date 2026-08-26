@@ -54,6 +54,7 @@ namespace rfb {
     constexpr static int FIRST_SCREENSHOT_INTERVAL_MS = 5000;
     constexpr static int SCREENSHOT_INTERVAL_MS = 60000;
     constexpr static int STATS_INTERVAL_MS = 1000;
+    constexpr static int RESIZE_SETTLE_INTERVAL_MS = 4000;
     // -=- Constructors
 
     //   Create a server exporting the supplied desktop.
@@ -312,7 +313,6 @@ namespace rfb {
                           rdr::U8 &trackingFrameStats, char trackingClient[]);
 
     bool sendWatermark;
-    bool updateScreenshot{false};
     const video_encoders::EncoderProbe &encoder_probe;
   };
 

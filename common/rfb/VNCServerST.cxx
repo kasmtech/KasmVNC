@@ -523,7 +523,7 @@ void VNCServerST::setPixelBuffer(PixelBuffer* pb_, const ScreenSet& layout)
     // be sent anyway, we don't need to call screenLayoutChange.
   }
 
-  updateScreenshot = true;
+  screenshotTimer.start(RESIZE_SETTLE_INTERVAL_MS);
 }
 
 void VNCServerST::setPixelBuffer(PixelBuffer* pb_)
@@ -1151,10 +1151,6 @@ void VNCServerST::writeUpdate()
 
   DEBUG_STOPWATCH_PRINT_US(slog, perm_check);
   if (apimessager) {
-      if (updateScreenshot) {
-          apimessager->mainUpdateScreen(pb);
-          updateScreenshot = false;
-      }
     trackingFrameStats = 0;
     checkAPIMessages(apimessager, trackingFrameStats, trackingClient);
   }
