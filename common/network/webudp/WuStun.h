@@ -53,5 +53,5 @@ struct StunPacket {
 
 bool ParseStun(const uint8_t* src, int32_t len, StunPacket* packet);
 
-int32_t SerializeStunPacket(const StunPacket* packet, const uint8_t* password,
+size_t SerializeStunPacket(const StunPacket* packet, const uint8_t* password,
                             int32_t passwordLen, uint8_t* dest, int32_t len);
