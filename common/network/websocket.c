@@ -135,31 +135,34 @@ int resolve_host(struct in_addr *sin_addr, const char *hostname)
     return 0;
 }
 
-static const char *parse_get(const char * const in, const char * const opt, unsigned *len) {
-	const char *start = in;
-	const char *end = strchrnul(start, '&');
-	const unsigned optlen = strlen(opt);
-	*len = 0;
+static const char *parse_get(const char *const in, const char *const opt, unsigned *len) {
+    const size_t opt_len = strlen(opt);
+    const size_t request_len = strlen(in);
+    *len = 0;
 
-	while (1) {
-		if (!strncmp(start, opt, optlen)) {
-			const char *arg = strchr(start, '=');
-			if (!arg)
-				return "";
-			arg++;
-			*len = end - arg;
-			return arg;
-		}
+    if (!opt_len || request_len < opt_len)
+        return "";
 
-		if (!*end)
-			break;
+    const char *end = NULL;
+    const char *start = in;
 
-		end++;
-		start = end;
-		end = strchrnul(start, '&');
-	}
+    for (start = in; start < in + request_len; start = ++end) {
+        end = strchrnul(start, '&');
 
-	return "";
+        const size_t param_len = end - start;
+        const char *param = start + opt_len;
+
+        if (param_len < opt_len || *param != '=')
+            continue;
+
+        if (!strncmp(start, opt, opt_len)) {
+            *len = end - ++param;
+
+            return param;
+        }
+    }
+
+    return "";
 }
 
 static void percent_decode(const char *src, char *dst, const uint8_t filter) {
