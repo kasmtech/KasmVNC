@@ -51,9 +51,7 @@ namespace network {
     void mainUpdateSessionsInfo(std::string newSessionsInfo);
 
     // from network threads
-    uint8_t *netGetScreenshot(uint16_t w, uint16_t h,
-                              const uint8_t q, const bool dedup,
-                              uint32_t &len, uint8_t *staging);
+    uint8_t *netGetScreenshot(uint16_t w, uint16_t h, const uint8_t q, const bool dedup, uint32_t &len);
     uint8_t netAddUser(const char name[], const char pw[],
                        const bool read, const bool write, const bool owner);
     uint8_t netRemoveUser(const char name[]);

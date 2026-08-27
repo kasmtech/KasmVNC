@@ -197,12 +197,21 @@ void GetAPIMessager::mainUpdateSessionsInfo(std::string newSessionsInfo)
 
 // from network threads
 uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
-	const uint8_t q, const bool dedup,
-	uint32_t &len, uint8_t *staging) {
+	const uint8_t q, const bool dedup, uint32_t &len) {
+#define MALLOC(BUF, SIZE)											\
+	BUF = static_cast<uint8_t *>(malloc(SIZE));						\
+	if (!BUF) {														\
+		vlog.error("Failed to allocate screenshot staging buffer");	\
+		pthread_mutex_unlock(&screenMutex);							\
+																	\
+		return nullptr;												\
+	}
+
+	static constexpr size_t MAX_BUFFER_SIZE = 1024 * 1024 * 8;
 	uint8_t *ret = nullptr;
 	len = 0;
 
-	if (q > 9 || !staging)
+	if (q > 9)
 		return nullptr;
 
 	if (pthread_mutex_lock(&screenMutex))
@@ -222,14 +231,14 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 
     if (w == cachedW && h == cachedH && q == cachedQ) {
 		if (dedup) {
+		    MALLOC(ret, 16 + 1);
 			// Return the hash of the unchanged image
-			sprintf((char *) staging, "%" PRIx64, screenHash);
-			ret = staging;
+			sprintf((char *) ret, "%" PRIx64, screenHash);
 			len = 16;
 		} else {
 			// Return the cached image
 			len = cachedJpeg.size();
-			ret = staging;
+		    MALLOC(ret, len);
 			memcpy(ret, &cachedJpeg[0], len);
 
 			vlog.info("Returning cached screenshot");
@@ -281,13 +290,25 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 		cachedH = h;
 
 		len = cachedJpeg.size();
-		ret = staging;
+		if (len > MAX_BUFFER_SIZE) {
+			vlog.error("Encoded screenshot (%zu bytes) exceeds the %zu byte staging buffer, refusing to send",
+			           cachedJpeg.size(), MAX_BUFFER_SIZE);
+
+			cachedJpeg.clear();
+			cachedQ = cachedW = cachedH = 0;
+
+			pthread_mutex_unlock(&screenMutex);
+			return nullptr;
+		}
+
+		MALLOC(ret, len);
 		memcpy(ret, &cachedJpeg[0], len);
 	}
 
 	pthread_mutex_unlock(&screenMutex);
 
 	return ret;
+#undef MALLOC
 }
 
 uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[],
