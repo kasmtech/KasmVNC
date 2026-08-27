@@ -36,6 +36,7 @@ void JSON_escape(const char *in, char *out) {
 			case '\f':
 				*out++ = '\\';
 				*out++ = 'f';
+				break;
 			case '\n':
 				*out++ = '\\';
 				*out++ = 'n';
@@ -114,14 +115,13 @@ struct kasmpasswd_t *parseJsonUsers(const char *data) {
 		if (!(cur->type & cJSON_Object))
 			goto fail;
 
-		cJSON *e;
 		struct kasmpasswd_entry_t * const entry = &set->entries[s];
 
 		entry->user[0] = '\0';
 		entry->password[0] = '\0';
 		entry->write = entry->owner = 0;
 
-		for (e = cur->child; e; e = e->next) {
+		for (const cJSON *e = cur->child; e; e = e->next) {
 			#define field(x) if (!strcmp(x, e->string))
 
 			field("user") {
