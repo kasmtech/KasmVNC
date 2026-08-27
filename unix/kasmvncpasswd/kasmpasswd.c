@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <openssl/rand.h>
 #include <crypt.h>
+#include <fcntl.h>
 
 #include "kasmpasswd.h"
 
@@ -140,8 +141,7 @@ void writekasmpasswd(const char path[], const struct kasmpasswd_t *set) {
 		return;
 	}
 
-	unsigned i;
-	for (i = 0; i < set->num; i++) {
+	for (unsigned i = 0; i < set->num; i++) {
 		if (!set->entries[i].user[0])
 			continue;
 
