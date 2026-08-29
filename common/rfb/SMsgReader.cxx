@@ -276,7 +276,7 @@ void SMsgReader::readClientCutText()
   vlog.error("Client sent old cuttext msg, ignoring");
 }
 
-void SMsgReader::readBinaryClipboard()
+void SMsgReader::readBinaryClipboard() const
 {
   const rdr::U8 num = is->readU8();
   rdr::U8 i, valid = 0;
@@ -297,14 +297,13 @@ void SMsgReader::readBinaryClipboard()
     tmpmimes[valid][31] = '\0';
 
     const rdr::U32 len = is->readU32();
-    CharArray ca(len);
-    is->readBytes(ca.buf, len);
-
-    if (rfb::Server::DLP_ClipAcceptMax && len > (unsigned) rfb::Server::DLP_ClipAcceptMax) {
+    if ((Server::DLP_ClipAcceptMax && len > static_cast<unsigned>(Server::DLP_ClipAcceptMax)) || len > INT_MAX) {
       vlog.info("DLP: refused to receive binary clipboard, too large");
       continue;
     }
 
+    const CharArray ca(len);
+    is->readBytes(ca.buf, len);
     vlog.debug("Received binary clipboard, type %s, %u bytes", mime, len);
 
     handler->addBinaryClipboard(mime, (rdr::U8 *) ca.buf, len, 0);

@@ -60,7 +60,7 @@ namespace rfb {
     void readFrameStats();
     void readNetworkStats();
     void readSystemStats();
-    void readBinaryClipboard();
+    void readBinaryClipboard() const;
     void readKeepAlive();
 
     void readQEMUMessage();
