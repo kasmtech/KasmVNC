@@ -477,5 +477,6 @@ void SMsgReader::readTouchEvent() const {
     const uint32_t id = is->readU32();
     const int x = is->readS16();
     const int y = is->readS16();
+    vlog.debug("readTouchEvent: type=%d id=%u x=%d y=%d", type, id, x, y);
     handler->touchEvent(x, y, type, id);
 }
