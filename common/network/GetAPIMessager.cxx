@@ -207,6 +207,7 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 		return nullptr;												\
 	}
 
+	static constexpr size_t MAX_LEN = 16;
 	static constexpr size_t MAX_BUFFER_SIZE = 1024 * 1024 * 8;
 	uint8_t *ret = nullptr;
 	len = 0;
@@ -231,10 +232,10 @@ uint8_t *GetAPIMessager::netGetScreenshot(uint16_t w, uint16_t h,
 
     if (w == cachedW && h == cachedH && q == cachedQ) {
 		if (dedup) {
-		    MALLOC(ret, 16 + 1);
+		    MALLOC(ret, MAX_LEN + 1);
 			// Return the hash of the unchanged image
-			sprintf((char *) ret, "%" PRIx64, screenHash);
-			len = 16;
+			snprintf((char *) ret, MAX_LEN + 1, "%016" PRIx64, screenHash);
+			len = MAX_LEN;
 		} else {
 			// Return the cached image
 			len = cachedJpeg.size();
