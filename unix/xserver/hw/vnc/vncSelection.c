@@ -211,19 +211,24 @@ void vncHandleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]
     if (rc != Success)
       LOG_ERROR("Could not set CLIPBOARD selection");
 
-    unsigned i, valid = 0;
-    for (i = 0; i < num; i++) {
-      unsigned j;
-      for (j = 0; j < dlp_num_mimetypes(); j++) {
-        if (!strcmp(dlp_get_mimetype(j), mimes[i])) {
-          mimeIndexesFromClient[valid] = j;
-          valid++;
-          break;
-        }
-      }
+    unsigned valid = 0;
 
-      if (!strcmp(mimes[i], "text/plain"))
-        textFromClient = TRUE;
+    for (unsigned i = 0; i < num; ++i) {
+        for (unsigned j = 0; j < dlp_num_mimetypes(); ++j) {
+            if (!strcmp(dlp_get_mimetype(j), mimes[i])) {
+                unsigned k;
+                for (k = 0; k < valid; ++k) {
+                    if (mimeIndexesFromClient[k] == j)
+                        break;
+                }
+
+                if (k == valid)
+                    mimeIndexesFromClient[valid++] = j;
+            }
+        }
+
+        if (!strcmp(mimes[i], "text/plain"))
+            textFromClient = TRUE;
     }
     numMimesFromClient = valid;
     LOG_DEBUG("Client sent %u mimes, %u were valid", num, valid);
