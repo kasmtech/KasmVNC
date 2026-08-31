@@ -297,7 +297,7 @@ void SMsgReader::readBinaryClipboard() const
     tmpmimes[valid][31] = '\0';
 
     const rdr::U32 len = is->readU32();
-    if ((Server::DLP_ClipAcceptMax && len > static_cast<unsigned>(Server::DLP_ClipAcceptMax)) || len > INT_MAX) {
+    if ((Server::DLP_ClipAcceptMax && len > static_cast<unsigned>(Server::DLP_ClipAcceptMax)) || len > MAX_BINARY_CLIPBOARD_SIZE) {
       vlog.info("DLP: refused to receive binary clipboard, too large");
       continue;
     }

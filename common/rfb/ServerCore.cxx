@@ -173,11 +173,11 @@ rfb::IntParameter rfb::Server::webpVideoQuality
 rfb::IntParameter rfb::Server::DLP_ClipSendMax
 ("DLP_ClipSendMax",
  "Limit clipboard bytes to send to clients in one transaction",
- 0, 0, INT_MAX);
+ 0, 0, MAX_BINARY_CLIPBOARD_SIZE);
 rfb::IntParameter rfb::Server::DLP_ClipAcceptMax
 ("DLP_ClipAcceptMax",
  "Limit clipboard bytes to receive from clients in one transaction",
- 0, 0, INT_MAX);
+ 0, 0, MAX_BINARY_CLIPBOARD_SIZE);
 rfb::IntParameter rfb::Server::DLP_ClipDelay
 ("DLP_ClipDelay",
  "This many milliseconds must pass between clipboard actions",
