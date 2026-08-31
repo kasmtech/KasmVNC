@@ -435,13 +435,13 @@ static int vncConvertSelection(ClientPtr client, Atom selection,
 
     if ((target == xaSTRING) || (target == xaTEXT)) {
       char* latin1;
-      latin1 = vncUTF8ToLatin1(data, (size_t)-1);
+      latin1 = vncUTF8ToLatin1(data, len);
       if (latin1 == NULL)
         return BadAlloc;
 
       rc = dixChangeWindowProperty(serverClient, pWin, realProperty,
                                    XA_STRING, 8, PropModeReplace,
-                                   len, latin1, TRUE);
+                                   strlen(latin1), latin1, TRUE);
 
       vncStrFree(latin1);
 
