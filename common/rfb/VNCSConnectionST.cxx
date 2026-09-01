@@ -362,12 +362,13 @@ char *percentEncode(const char *str, const unsigned len) {
   unsigned i;
 
   for (i = 0; i < len; i++) {
-    if (isalnum(str[i]) || str[i] == ' ' || str[i] == '.' || str[i] == ',' ||
-        str[i] == '?' || str[i] == '!' || str[i] == '"' || str[i] == '\'') {
+    unsigned char ch = str[i];
+    if (isalnum(ch) || ch == ' ' || ch == '.' || ch == ',' ||
+        ch == '?' || ch == '!' || ch == '"' || ch == '\'') {
       *out++ = str[i];
     } else {
       *out++ = '%';
-      sprintf(out, "%02X", str[i]);
+      sprintf(out, "%02X", ch);
       out += 2;
     }
   }
@@ -387,7 +388,7 @@ char *percentEncode4(const uint16_t *str, const unsigned len) {
       *out++ = str[i];
     } else {
       *out++ = '%';
-      sprintf(out, "%04hX", str[i]);
+      snprintf(out, 5, "%04hX", str[i]);
       out += 4;
     }
   }
