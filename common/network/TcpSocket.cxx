@@ -439,11 +439,10 @@ int TcpListener::getMyPort() {
 extern settings_t settings;
 
 static uint8_t *screenshotCb(void *messager, uint16_t w, uint16_t h, const uint8_t q,
-                             const uint8_t dedup,
-                             uint32_t *len, uint8_t *staging)
+                             const uint8_t dedup, uint32_t *len)
 {
   GetAPIMessager *msgr = (GetAPIMessager *) messager;
-  return msgr->netGetScreenshot(w, h, q, dedup, *len, staging);
+  return msgr->netGetScreenshot(w, h, q, dedup, *len);
 }
 
 static uint8_t adduserCb(void *messager, const char name[], const char pw[],

@@ -1376,9 +1376,11 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
                 dedup = 1;
         }
 
-        uint8_t *staging = malloc(1024 * 1024 * 8);
-
-        settings.screenshotCb(settings.messager, w, h, q, dedup, &len, staging);
+        uint8_t *staging = settings.screenshotCb(settings.messager, w, h, q, dedup, &len);
+        if (!staging) {
+            handler_emsg("Screenshot request failed (w=%u h=%u q=%u)\n", w, h, q)
+            goto nope;
+        }
 
         if (len == 16) {
             sprintf(buf, "HTTP/1.1 200 OK\r\n"
