@@ -135,7 +135,7 @@ extern __thread unsigned wsthread_handler_id;
     if (settings.verbose) { \
         char logbuf[2][1024]; \
         wslog(logbuf[0], wsthread_handler_id, 1); \
-        sprintf(logbuf[1], __VA_ARGS__); \
+        snprintf(logbuf[1], sizeof(logbuf[1]), __VA_ARGS__); \
         fprintf(stream, "%s%s", logbuf[0], logbuf[1]); \
     }
 
@@ -143,7 +143,7 @@ extern __thread unsigned wsthread_handler_id;
     { \
         char logbuf[2][1024]; \
         wslog(logbuf[0], wsthread_handler_id, 0); \
-        sprintf(logbuf[1], __VA_ARGS__); \
+        snprintf(logbuf[1], sizeof(logbuf[1]), __VA_ARGS__); \
         fprintf(stderr, "%s%s", logbuf[0], logbuf[1]); \
     }
 
