@@ -284,8 +284,6 @@ bool SMsgWriter::needNoDataUpdate()
     return true;
   if (needExtendedDesktopSize || !extendedDesktopSizeMsgs.empty())
     return true;
-  if (needSetCursor || needSetXCursor || needSetCursorWithAlpha || needSetVMWareCursor)
-      return true;
 
   return false;
 }
