@@ -352,11 +352,6 @@ static gboolean process_tap(gpointer data) {
 }
 
 static void on_focus_event(AtspiEvent *event, void *data) {
-    if (!event->detail1) {
-        g_boxed_free(ATSPI_TYPE_EVENT, event);
-        return;
-    }
-
     AtspiAccessible *obj = event->source;
     if (!obj) {
         g_boxed_free(ATSPI_TYPE_EVENT, event);
