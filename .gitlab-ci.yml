@@ -67,42 +67,39 @@ stages:
       - DISTRO: 'ubuntu resolute'
         DISTRO_SLUG: 'ubuntu_resolute'
         GROUP: 3
-      - DISTRO: 'debian bullseye'
-        DISTRO_SLUG: 'debian_bullseye'
-        GROUP: 4
       - DISTRO: 'debian bookworm'
         DISTRO_SLUG: 'debian_bookworm'
-        GROUP: 5
+        GROUP: 4
       - DISTRO: 'debian trixie'
         DISTRO_SLUG: 'debian_trixie'
-        GROUP: 6
+        GROUP: 5
       - DISTRO: 'kali kali-rolling'
         DISTRO_SLUG: 'kali_kali-rolling'
-        GROUP: 7
+        GROUP: 6
       - DISTRO: 'oracle 8'
         DISTRO_SLUG: 'oracle_8'
-        GROUP: 8
+        GROUP: 7
       - DISTRO: 'oracle 9'
         DISTRO_SLUG: 'oracle_9'
-        GROUP: 9
+        GROUP: 8
       - DISTRO: 'opensuse 15'
         DISTRO_SLUG: 'opensuse_15'
-        GROUP: 10
+        GROUP: 9
       - DISTRO: 'opensuse 16'
         DISTRO_SLUG: 'opensuse_16'
-        GROUP: 11
+        GROUP: 10
       - DISTRO: 'fedora 42'
         DISTRO_SLUG: 'fedora_42'
-        GROUP: 12
+        GROUP: 11
       - DISTRO: 'fedora 43'
         DISTRO_SLUG: 'fedora_43'
-        GROUP: 13
+        GROUP: 12
       - DISTRO: 'alpine 321'
         DISTRO_SLUG: 'alpine_321'
-        GROUP: 14
+        GROUP: 13
       - DISTRO: 'alpine 322'
         DISTRO_SLUG: 'alpine_322'
-        GROUP: 15
+        GROUP: 14
       - DISTRO: 'alpine 323'
         DISTRO_SLUG: 'alpine_323'
         GROUP: 16
