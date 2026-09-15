@@ -365,9 +365,8 @@ void VNCSConnectionST::bellOrClose()
 char *percentEncode(const char *str, const unsigned len) {
   char *enc = (char *) calloc(len * 3 + 1, 1);
   char *out = enc;
-  unsigned i;
 
-  for (i = 0; i < len; i++) {
+  for (unsigned i = 0; i < len; i++) {
     unsigned char ch = str[i];
     if (isalnum(ch) || ch == ' ' || ch == '.' || ch == ',' ||
         ch == '?' || ch == '!' || ch == '"' || ch == '\'') {
@@ -861,22 +860,38 @@ void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
 }
 
 void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t id) {
+    if (!Server::allowTouchSupport)
+        return;
+
     if (!isPointerEventValid())
         return;
 
     switch (type) {
         case touchEventBegin:
-            activeTouchIds.insert(id);
+            if (activeTouchIds.size() >= maxTouches) {
+                vlog.debug("Rejecting touch begin id %u: %zu contacts already active", id, activeTouchIds.size());
+                return;
+            }
 
+            if (!activeTouchIds.insert(id).second) {
+                vlog.debug("Rejecting duplicate touch begin id %u", id);
+                return;
+            }
             break;
         case touchEventUpdate:
+            if (!activeTouchIds.contains(id)) {
+                vlog.debug("Rejecting touch update for unknown id %u", id);
+                return;
+            }
             break;
         case touchEventEnd:
-            activeTouchIds.erase(id);
-
+            if (activeTouchIds.erase(id) == 0) {
+                vlog.debug("Rejecting touch end for unknown id %u", id);
+                return;
+            }
             break;
         default:
-            vlog.error("Invalid touch event type %d", type);
+            vlog.debug("Invalid touch event type %d", type);
             return;
     }
 

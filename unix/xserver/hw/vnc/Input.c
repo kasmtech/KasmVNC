@@ -62,7 +62,6 @@ extern const unsigned int code_map_qnum_to_xorgkbd_len;
  * scales the incoming desktop pixel coordinates into that range using the
  * current desktop size, so the mapping stays correct across screen resizes.
  */
-#define VNC_MAX_TOUCHES 16
 #define VNC_TOUCH_AXIS_MAX 0xffff
 
 #define VNC_TAP_SLOP 15
