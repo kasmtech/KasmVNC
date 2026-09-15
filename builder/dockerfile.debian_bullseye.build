@@ -5,15 +5,18 @@ ENV KASMVNC_BUILD_OS_CODENAME bullseye
 ENV XORG_VER 1.20.10
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN grep '^deb'  /etc/apt/sources.list | sed 's#^deb#deb-src#' >> /etc/apt/sources.list
+RUN echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260825T000000Z/ bullseye main" > /etc/apt/sources.list && \
+    echo "deb-src [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260825T000000Z/ bullseye main" >> /etc/apt/sources.list && \
+    echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260825T000000Z/ bullseye-security main" >> /etc/apt/sources.list && \
+    echo "deb-src [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260825T000000Z/ bullseye-security main" >> /etc/apt/sources.list
 
 RUN apt-get update && \
       apt-get -y install sudo
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
-RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
-RUN apt-get update && apt-get -y install ninja-build nasm git libgnutls28-dev vim wget tightvncserver curl
-RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev \
+RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get -y build-dep xorg-server libxfont-dev
+RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get -y install ninja-build nasm git libgnutls28-dev vim wget tightvncserver curl
+RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev \
     libxcursor-dev libavformat-dev libswscale-dev libva-dev libatspi2.0-dev libdbus-1-dev
 
 RUN CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v3.22.0/cmake-3.22.0" && \
