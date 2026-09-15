@@ -94,7 +94,7 @@ rfb::BoolParameter rfb::Server::allowTouchSupport
 ("AllowTouchSupport",
  "Enable touch event support for clients. When enabled, clients can send touch events "
  "for multi-touch gestures and interactions.",
- false);
+ true);
 rfb::BoolParameter rfb::Server::acceptCutText
 ("AcceptCutText",
  "Accept clipboard updates from clients.",
