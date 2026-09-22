@@ -12,7 +12,6 @@
 #include <ctype.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <crypt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -1168,11 +1167,8 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in, const char * cons
                 goto nope;
             }
 
-            struct crypt_data cdata;
-            cdata.initialized = 0;
-
-            const char *encrypted = crypt_r(set->entries[s].password, "$5$kasm$", &cdata);
-            strcpy(set->entries[s].password, encrypted);
+            const char *hash = kasmpasswd_hash(set->entries[s].password);
+            strcpy(set->entries[s].password, hash);
 
             if (!settings.addOrUpdateUserCb(settings.messager, &set->entries[s])) {
                 wserr("Couldn't add or update user\n");
@@ -1256,11 +1252,8 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in, const char * cons
                             USER_UPDATE_OWNER_MASK;
 
             if (set->entries[s].password[0]) {
-                struct crypt_data cdata;
-                cdata.initialized = 0;
-
-                const char *encrypted = crypt_r(set->entries[s].password, "$5$kasm$", &cdata);
-                strcpy(set->entries[s].password, encrypted);
+                const char *hash = kasmpasswd_hash(set->entries[s].password);
+                strcpy(set->entries[s].password, hash);
 
                 mask |= USER_UPDATE_PASSWORD_MASK;
             }
@@ -1435,11 +1428,8 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
             buf[len] = '\0';
             percent_decode(buf, decpw, 0);
 
-            struct crypt_data cdata;
-            cdata.initialized = 0;
-
-            const char *encrypted = crypt_r(decpw, "$5$kasm$", &cdata);
-            strcpy(decpw, encrypted);
+            const char *hash = kasmpasswd_hash(decpw);
+            strcpy(decpw, hash);
         }
 
         param = parse_get(args, "read", &len);
@@ -2037,7 +2027,7 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
         tmp[len] = '\0';
         len = ws_b64_pton(tmp, response, 256);
 
-        char authbuf[4096] = "";
+        unsigned char auth_ok = 0;
 
         // Do we need to read it from the file?
         char *resppw = strchr(response, ':');
@@ -2045,55 +2035,36 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
             resppw++;
         if (settings.passwdfile) {
             if (resppw && *resppw && resppw - response < USERNAME_LEN + 1) {
-                char pwbuf[4096];
                 struct kasmpasswd_t *set = readkasmpasswd(settings.passwdfile);
                 if (!set->num) {
                     wserr("Error: BasicAuth configured to read password from file %s, but the file doesn't exist or has no valid users\n",
                             settings.passwdfile);
                 } else {
                     unsigned i;
-                    unsigned char found = 0;
                     memcpy(inuser, response, resppw - response - 1);
                     inuser[resppw - response - 1] = '\0';
 
                     for (i = 0; i < set->num; i++) {
                         if (!strcmp(set->entries[i].user, inuser)) {
-                            found = 1;
-                            strcpy(ws_ctx->user, inuser);
-                            snprintf(authbuf, 4096, "%s:%s", set->entries[i].user,
-                                     set->entries[i].password);
-                            authbuf[4095] = '\0';
-
-                            if (set->entries[i].owner)
-                                owner = 1;
+                            if (kasmpasswd_verify(resppw, set->entries[i].password)) {
+                                auth_ok = 1;
+                                strcpy(ws_ctx->user, inuser);
+                                if (set->entries[i].owner)
+                                    owner = 1;
+                            }
                             break;
                         }
                     }
 
-                    if (!found)
-                        wserr("Authentication attempt failed, user %s does not exist\n", inuser);
+                    if (!auth_ok)
+                        wserr("Authentication attempt failed, user %s does not exist or wrong password\n", inuser);
                 }
                 free(set->entries);
                 free(set);
-
-                struct crypt_data cdata;
-                cdata.initialized = 0;
-
-                const char *encrypted = crypt_r(resppw, "$5$kasm$", &cdata);
-                *resppw = '\0';
-
-                snprintf(pwbuf, 4096, "%s%s", response, encrypted);
-                pwbuf[4095] = '\0';
-                strcpy(response, pwbuf);
-            } else {
-                // Client tried an empty password, just fail them
-                response[0] = '\0';
-                authbuf[0] = 'a';
-                authbuf[1] = '\0';
             }
         }
 
-        if (len <= 0 || strcmp(authbuf, response)) {
+        if (len <= 0 || !auth_ok) {
             wserr("Authentication attempt failed, wrong password for user %s\n", inuser);
             bl_addFailure(ip);
             sprintf(response, "HTTP/1.1 401 Forbidden\r\n"

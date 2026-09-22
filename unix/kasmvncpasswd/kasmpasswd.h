@@ -21,6 +21,9 @@ struct kasmpasswd_t {
 	unsigned num;
 };
 
+char *kasmpasswd_hash(const char *pass);
+int kasmpasswd_verify(const char *pass, const char *hash);
+
 struct kasmpasswd_t *readkasmpasswd(const char path[]);
 void writekasmpasswd(const char path[], const struct kasmpasswd_t *set);
 

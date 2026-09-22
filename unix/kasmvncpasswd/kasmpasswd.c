@@ -4,8 +4,49 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <openssl/rand.h>
+#include <crypt.h>
 
 #include "kasmpasswd.h"
+
+#define SALT_LEN 21
+
+char *kasmpasswd_hash(const char *pass) {
+	static const char valid[] = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+	unsigned char raw[SALT_LEN - 5];
+	char salt[SALT_LEN];
+
+	if (!RAND_bytes(raw, sizeof(raw))) {
+		fprintf(stderr, "Error: OpenSSL failed to generate a secure random salt.\n");
+		exit(1);
+	}
+
+	salt[0] = '$';
+	salt[1] = '5';
+	salt[2] = '$';
+
+	for (size_t i = 0; i < sizeof(raw); i++)
+		salt[i + 3] = valid[raw[i] & 0x3f];
+
+	salt[SALT_LEN - 2] = '$';
+	salt[SALT_LEN - 1] = '\0';
+
+	struct crypt_data cdata;
+	cdata.initialized = 0;
+
+	return crypt_r(pass, salt, &cdata);
+}
+
+int kasmpasswd_verify(const char *pass, const char *hash) {
+	if (!pass || !hash)
+		return 0;
+
+	struct crypt_data cdata;
+	cdata.initialized = 0;
+
+	const char *result = crypt_r(pass, hash, &cdata);
+	return result && !strcmp(result, hash);
+}
 
 struct kasmpasswd_t *readkasmpasswd(const char path[]) {
 
