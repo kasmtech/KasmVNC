@@ -1167,7 +1167,8 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in, const char * cons
                 goto nope;
             }
 
-            const char *hash = kasmpasswd_hash(set->entries[s].password);
+            char hash[PASSWORD_LEN];
+            kasmpasswd_hash(set->entries[s].password, hash);
             strcpy(set->entries[s].password, hash);
 
             if (!settings.addOrUpdateUserCb(settings.messager, &set->entries[s])) {
@@ -1252,7 +1253,8 @@ static uint8_t ownerapi_post(ws_ctx_t *ws_ctx, const char *in, const char * cons
                             USER_UPDATE_OWNER_MASK;
 
             if (set->entries[s].password[0]) {
-                const char *hash = kasmpasswd_hash(set->entries[s].password);
+                char hash[PASSWORD_LEN];
+                kasmpasswd_hash(set->entries[s].password, hash);
                 strcpy(set->entries[s].password, hash);
 
                 mask |= USER_UPDATE_PASSWORD_MASK;
@@ -1428,7 +1430,8 @@ static uint8_t ownerapi(ws_ctx_t *ws_ctx, const char *in, const char * const use
             buf[len] = '\0';
             percent_decode(buf, decpw, 0);
 
-            const char *hash = kasmpasswd_hash(decpw);
+            char hash[PASSWORD_LEN];
+            kasmpasswd_hash(decpw, hash);
             strcpy(decpw, hash);
         }
 

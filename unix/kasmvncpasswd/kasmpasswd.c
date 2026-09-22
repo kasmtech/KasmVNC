@@ -11,10 +11,12 @@
 
 #define SALT_LEN 21
 
-char *kasmpasswd_hash(const char *pass) {
+void kasmpasswd_hash(const char *pass, char *hash) {
 	static const char valid[] = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 	unsigned char raw[SALT_LEN - 5];
 	char salt[SALT_LEN];
+
+	hash[0] = '\0';
 
 	if (!RAND_bytes(raw, sizeof(raw))) {
 		fprintf(stderr, "Error: OpenSSL failed to generate a secure random salt.\n");
@@ -34,7 +36,12 @@ char *kasmpasswd_hash(const char *pass) {
 	struct crypt_data cdata;
 	cdata.initialized = 0;
 
-	return crypt_r(pass, salt, &cdata);
+	const char *encrypted = crypt_r(pass, salt, &cdata);
+	if (!encrypted)
+		return;
+
+	strncpy(hash, encrypted, PASSWORD_LEN - 1);
+	hash[PASSWORD_LEN - 1] = '\0';
 }
 
 int kasmpasswd_verify(const char *pass, const char *hash) {

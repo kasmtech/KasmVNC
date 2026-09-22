@@ -79,6 +79,7 @@ static char* getpassword(const char* prompt, char *buf) {
 
 static char pw1[4096];
 static char pw2[4096];
+static char hash[PASSWORD_LEN];
 
 static const char *readpassword() {
   while (1) {
@@ -108,7 +109,9 @@ static const char *readpassword() {
       continue;
     }
 
-    return kasmpasswd_hash(pw1);
+    kasmpasswd_hash(pw1, hash);
+
+    return hash;
   }
 }
 
