@@ -77,15 +77,18 @@ static struct {
 
 static int vncTapSlot(unsigned int id)
 {
-	int i;
-	for (i = 0; i < VNC_MAX_TOUCHES; i++) {
+	for (int i = 0; i < VNC_MAX_TOUCHES; i++) {
 		if (vncTaps[i].active && vncTaps[i].id == id)
 			return i;
 	}
 	return -1;
 }
 
-static void vncTrackTap(int x, int y, int type, unsigned int id)
+#define VNC_TAP_NONE  0
+#define VNC_TAP_PROBE 1
+#define VNC_TAP_END   2
+
+static int vncTrackTap(int x, int y, int type, unsigned int id, int *tapX, int *tapY)
 {
 	int i, slot;
 
@@ -103,33 +106,41 @@ static void vncTrackTap(int x, int y, int type, unsigned int id)
 			}
 		}
 		if (slot == -1)
-			break;
+			return VNC_TAP_NONE;
 		vncTaps[slot].active = TRUE;
 		vncTaps[slot].cancelled = others;
 		vncTaps[slot].id = id;
 		vncTaps[slot].x = x;
 		vncTaps[slot].y = y;
 		vncTaps[slot].startTime = GetTimeInMillis();
-		break;
+		if (others)
+			return VNC_TAP_NONE;
+		*tapX = x;
+		*tapY = y;
+		return VNC_TAP_PROBE;
 	}
 	case VNC_TOUCH_UPDATE:
 		slot = vncTapSlot(id);
 		if (slot == -1)
-			break;
+			return VNC_TAP_NONE;
 		if (abs(x - vncTaps[slot].x) > VNC_TAP_SLOP ||
 		    abs(y - vncTaps[slot].y) > VNC_TAP_SLOP)
 			vncTaps[slot].cancelled = TRUE;
-		break;
+		return VNC_TAP_NONE;
 	case VNC_TOUCH_END:
 		slot = vncTapSlot(id);
 		if (slot == -1)
-			break;
+			return VNC_TAP_NONE;
 		vncTaps[slot].active = FALSE;
 		if (!vncTaps[slot].cancelled &&
-		    GetTimeInMillis() - vncTaps[slot].startTime <= VNC_TAP_MAX_MS)
-			vncAtSpiNotifyTap(vncTaps[slot].x, vncTaps[slot].y);
-		break;
+		    GetTimeInMillis() - vncTaps[slot].startTime <= VNC_TAP_MAX_MS) {
+			*tapX = vncTaps[slot].x;
+			*tapY = vncTaps[slot].y;
+			return VNC_TAP_END;
+		}
+		return VNC_TAP_NONE;
 	}
+	return VNC_TAP_NONE;
 }
 
 /* Event queue is shared between all devices. */
@@ -419,7 +430,8 @@ void vncTouchEvent(int x, int y, int type, unsigned int id) {
     LOG_DEBUG("vncTouchEvent: type=%s, id=%u, pixel=(%d,%d), screen=(%dx%d)",
               typeStr, id, x, y, screenInfo.width, screenInfo.height);
 
-    vncTrackTap(x, y, type, id);
+    int tapX = 0, tapY = 0;
+    int tap = vncTrackTap(x, y, type, id, &tapX, &tapY);
 
     int deskW = screenInfo.width;
     int deskH = screenInfo.height;
@@ -441,6 +453,9 @@ void vncTouchEvent(int x, int y, int type, unsigned int id) {
     QueueTouchEvents(vncTouchDev, xitype, id, 0, &mask);
 
     mieqProcessInputEvents();
+
+    if (tap != VNC_TAP_NONE)
+        vncAtSpiRequestHitTest(tapX, tapY, tap == VNC_TAP_PROBE, id);
 }
 
 void vncGetPointerPos(int *x, int *y)

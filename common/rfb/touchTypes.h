@@ -6,6 +6,15 @@
 #define VNC_TOUCH_END 2
 #define VNC_MAX_TOUCHES 16
 
+typedef struct {
+    int focused;
+    int tapped;
+    int probe;
+    unsigned int touchId;
+    int caretX, caretY, caretW, caretH;
+    int fieldX, fieldY, fieldW, fieldH;
+} TapFocusInfo;
+
 #ifdef __cplusplus
 #include <cstddef>
 

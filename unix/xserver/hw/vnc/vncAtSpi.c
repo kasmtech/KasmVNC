@@ -36,9 +36,12 @@
 
 static int notifypipe[2] = {-1, -1};
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
-static VncAtSpiFocusInfo pending_state;
-static int pending = 0;
-static VncAtSpiFocusInfo last_reported = {.focused = -1};
+
+#define PENDING_MAX 8
+static TapFocusInfo pending_states[PENDING_MAX];
+static int pending_head = 0;
+static int pending_count = 0;
+static TapFocusInfo last_reported = {.focused = -1};
 static char display_name[32];
 static pthread_t atspi_tid;
 static int thread_started = 0;
@@ -46,34 +49,68 @@ static int shutdown_requested = 0;
 static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t shutdown_cond = PTHREAD_COND_INITIALIZER;
 
-static pthread_mutex_t tap_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int tap_x, tap_y;
-static int tap_queued = 0;      /* a GLib source is already scheduled */
 static volatile int atspi_ready = 0;
 
-static void report_state_full(const VncAtSpiFocusInfo *info, int force) {
+static Display *hit_dpy = NULL;
+
+typedef struct {
+    int x, y, w, h;
+} HitRect;
+
+typedef struct {
+    int x, y;
+    int probe;
+    unsigned int touchId;
+    double queued_ms;
+} TapRequest;
+
+static double now_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double) ts.tv_sec * 1000.0 + (double) ts.tv_nsec / 1e6;
+}
+
+static void report_state_full(const TapFocusInfo *info, int force) {
     if (!force && memcmp(info, &last_reported, sizeof(*info)) == 0)
         return;
+    double t0 = now_ms();
     last_reported = *info;
 
     pthread_mutex_lock(&state_mutex);
-    pending_state = *info;
-    pending = 1;
+    if (pending_count == PENDING_MAX) {
+        pending_head = (pending_head + 1) % PENDING_MAX;
+        pending_count--;
+    }
+    pending_states[(pending_head + pending_count) % PENDING_MAX] = *info;
+    pending_count++;
     pthread_mutex_unlock(&state_mutex);
 
     if (write(notifypipe[1], "", 1) < 0) {
         /* pipe full or closed; the server thread will still pick the
          * state up on the next wakeup */
     }
+
+    fprintf(stderr, "vncAtSpi: report_state_full took %.3f ms\n", now_ms() - t0);
 }
 
-static void report_state(const VncAtSpiFocusInfo *info) {
+static void report_state(const TapFocusInfo *info) {
     report_state_full(info, 0);
 }
 
-/* Decides whether the tapped/focused widget is a text input. On return
- * *reason names the check that decided it, for the debug trace. */
-static int is_text_control(AtspiAccessible *acc, const char **reason) {
+enum TextControlType
+{
+    TEXT_CONTROL_TYPE_NONE,
+    TEXT_CONTROL_TYPE_EDITABLE,
+    TEXT_CONTROL_TYPE_FOCUSABLE,
+};
+
+static const char *TextControl[] = {
+    "no editable state, non-text role",
+    "EDITABLE state",
+    "TEXT_CONTROL_FOCUSABLE",
+};
+
+static enum TextControlType is_text_control(AtspiAccessible *acc) {
     gboolean editable = FALSE;
     gboolean focusable = FALSE;
     gboolean has_states = FALSE;
@@ -89,8 +126,9 @@ static int is_text_control(AtspiAccessible *acc, const char **reason) {
     AtspiRole role = atspi_accessible_get_role(acc, NULL);
     gchar *role_name = atspi_accessible_get_role_name(acc, NULL);
 
+#ifdef _DEBUG
     AtspiText *text_iface = atspi_accessible_get_text_iface(acc);
-    gboolean has_text = (text_iface != NULL);
+    gboolean has_text = text_iface != NULL;
     if (text_iface)
         g_object_unref(text_iface);
 
@@ -102,26 +140,23 @@ static int is_text_control(AtspiAccessible *acc, const char **reason) {
         role,
         role_name ? role_name : "?",
         has_text);
+#endif
+
     g_free(role_name);
 
-    if (editable) {
-        *reason = "EDITABLE state";
-        return 1;
-    }
+    if (editable)
+        return TEXT_CONTROL_TYPE_EDITABLE;
 
     /* terminals and some password fields do not report EDITABLE */
-    if (role == ATSPI_ROLE_TERMINAL || role == ATSPI_ROLE_PASSWORD_TEXT ||
-        role == ATSPI_ROLE_ENTRY || role == ATSPI_ROLE_TEXT ||
-        role == ATSPI_ROLE_SPIN_BUTTON || role == ATSPI_ROLE_DOCUMENT_TEXT) {
-        *reason = "role whitelist";
-        return 1;
+    if (role == ATSPI_ROLE_TERMINAL || role == ATSPI_ROLE_PASSWORD_TEXT || role == ATSPI_ROLE_ENTRY ||
+        role == ATSPI_ROLE_TEXT || role == ATSPI_ROLE_SPIN_BUTTON || role == ATSPI_ROLE_DOCUMENT_TEXT) {
+        return TEXT_CONTROL_TYPE_EDITABLE;
     }
 
-    *reason = "no editable state, non-text role";
-    return 0;
+    return TEXT_CONTROL_TYPE_NONE;
 }
 
-static void get_rects(AtspiAccessible *acc, VncAtSpiFocusInfo *info) {
+static void get_rects(AtspiAccessible *acc, TapFocusInfo *info) {
     AtspiText *text = atspi_accessible_get_text_iface(acc);
     if (text) {
         gint offset = atspi_text_get_caret_offset(text, NULL);
@@ -150,8 +185,7 @@ static void get_rects(AtspiAccessible *acc, VncAtSpiFocusInfo *info) {
     }
 }
 
-static AtspiAccessible *deep_search_at_point(AtspiAccessible *acc, int x, int y,
-                                             int depth, int *budget) {
+static AtspiAccessible *deep_search_at_point(AtspiAccessible *acc, int x, int y, int depth, int *budget) {
     if (depth <= 0 || *budget <= 0)
         return NULL;
 
@@ -169,11 +203,8 @@ static AtspiAccessible *deep_search_at_point(AtspiAccessible *acc, int x, int y,
         if (comp) {
             AtspiRect *r = atspi_component_get_extents(comp, ATSPI_COORD_TYPE_SCREEN, NULL);
             if (r) {
-                usable = r->width > 1 && r->height > 1 &&
-                         r->x > -100000 && r->y > -100000;
-                contains = usable &&
-                           x >= r->x && x < r->x + r->width &&
-                           y >= r->y && y < r->y + r->height;
+                usable = r->width > 1 && r->height > 1 && r->x > -100000 && r->y > -100000;
+                contains = usable && x >= r->x && x < r->x + r->width && y >= r->y && y < r->y + r->height;
                 g_free(r);
             }
             g_object_unref(comp);
@@ -199,10 +230,6 @@ static AtspiAccessible *deep_search_at_point(AtspiAccessible *acc, int x, int y,
     return NULL;
 }
 
-/* Deepest accessible under (x, y), starting from root.
- * get_accessible_at_point only descends one level per call, so loop;
- * the depth cap guards against cyclic or misbehaving trees. Returns a
- * new reference. */
 static AtspiAccessible *descend_at_point(AtspiAccessible *root, int x, int y) {
     AtspiAccessible *cur = g_object_ref(root);
     int budget = 200;
@@ -211,8 +238,7 @@ static AtspiAccessible *descend_at_point(AtspiAccessible *root, int x, int y) {
         AtspiAccessible *child = NULL;
         AtspiComponent *comp = atspi_accessible_get_component_iface(cur);
         if (comp) {
-            child = atspi_component_get_accessible_at_point(
-                comp, x, y, ATSPI_COORD_TYPE_SCREEN, NULL);
+            child = atspi_component_get_accessible_at_point(comp, x, y, ATSPI_COORD_TYPE_SCREEN, NULL);
             g_object_unref(comp);
         }
         if (child == cur) {
@@ -229,69 +255,249 @@ static AtspiAccessible *descend_at_point(AtspiAccessible *root, int x, int y) {
     return cur;
 }
 
-static int window_contains_point(AtspiAccessible *win, int x, int y) {
+static int hit_x_error(Display *dpy, XErrorEvent *e) {
+    (void) dpy;
+    fprintf(stderr, "vncAtSpi: ignoring X error %d (request %d) during hit test\n", e->error_code, e->request_code);
+    return 0;
+}
+
+static int window_has_wm_state(Display *dpy, Window w) {
+    static Atom wm_state = None;
+    if (wm_state == None)
+        wm_state = XInternAtom(dpy, "WM_STATE", False);
+
+    Atom type = None;
+    int format = 0;
+    unsigned long nitems = 0, after = 0;
+    unsigned char *data = NULL;
+
+    if (XGetWindowProperty(dpy, w, wm_state, 0, 0, False, AnyPropertyType, &type, &format, &nitems, &after, &data) !=
+        Success)
+        return 0;
+    if (data)
+        XFree(data);
+    return type != None;
+}
+
+/* The toplevel X window on top at (x, y), honouring stacking.
+ *
+ * XTranslateCoordinates hands back the child of the target that contains
+ * the point, and it respects stacking order, so looping lands on whatever
+ * is visually on top. Unlike the window manager's client list this also
+ * sees override-redirect windows, which is what makes a tap on an open
+ * menu resolve to the menu rather than to the window behind it.
+ *
+ * The first descendant carrying WM_STATE is the managed client window,
+ * which is what the toolkit exposes over AT-SPI. Override-redirect popups
+ * have no WM_STATE, so fall back to the outermost window under the root. */
+static Window x_toplevel_at_point(Display *dpy, int x, int y) {
+    Window root = DefaultRootWindow(dpy);
+    Window cur = root, outermost = None;
+
+    for (int depth = 0; depth < 32; depth++) {
+        Window child = None;
+        int wx = 0, wy = 0;
+
+        if (!XTranslateCoordinates(dpy, root, cur, x, y, &wx, &wy, &child) || child == None)
+            break;
+
+        if (outermost == None)
+            outermost = child;
+        if (window_has_wm_state(dpy, child))
+            return child;
+        cur = child;
+    }
+    return outermost;
+}
+
+static pid_t x_window_pid(Display *dpy, Window w) {
+    static Atom pid_atom = None;
+    if (pid_atom == None)
+        pid_atom = XInternAtom(dpy, "_NET_WM_PID", False);
+
+    Atom type = None;
+    int format = 0;
+    unsigned long nitems = 0, after = 0;
+    unsigned char *data = NULL;
+    pid_t pid = 0;
+
+    if (XGetWindowProperty(dpy, w, pid_atom, 0, 1, False, XA_CARDINAL, &type, &format, &nitems, &after, &data) ==
+        Success) {
+        if (data && type == XA_CARDINAL && format == 32 && nitems >= 1)
+            pid = (pid_t) * (unsigned long *) data;
+        if (data)
+            XFree(data);
+    }
+    return pid;
+}
+
+static int x_window_rect(Display *dpy, Window w, HitRect *out) {
+    Window root_ret = None, child = None;
+    int wx = 0, wy = 0, rx = 0, ry = 0;
+    unsigned int width = 0, height = 0, border = 0, depth = 0;
+
+    if (!XGetGeometry(dpy, w, &root_ret, &wx, &wy, &width, &height, &border, &depth))
+        return 0;
+    if (width < 1 || height < 1)
+        return 0;
+    if (!XTranslateCoordinates(dpy, w, root_ret, 0, 0, &rx, &ry, &child))
+        return 0;
+
+    out->x = rx;
+    out->y = ry;
+    out->w = (int) width;
+    out->h = (int) height;
+    return 1;
+}
+
+static long rect_area(const HitRect *r) {
+    return (long) r->w * (long) r->h;
+}
+
+/* Intersection over union, 0.0 when the rects miss each other. */
+static double rect_iou(const HitRect *a, const HitRect *b) {
+    int x0 = a->x > b->x ? a->x : b->x;
+    int y0 = a->y > b->y ? a->y : b->y;
+    int x1 = (a->x + a->w) < (b->x + b->w) ? (a->x + a->w) : (b->x + b->w);
+    int y1 = (a->y + a->h) < (b->y + b->h) ? (a->y + a->h) : (b->y + b->h);
+
+    if (x1 <= x0 || y1 <= y0)
+        return 0.0;
+
+    double inter = (double) (x1 - x0) * (double) (y1 - y0);
+    double uni = (double) rect_area(a) + (double) rect_area(b) - inter;
+    return uni > 0.0 ? inter / uni : 0.0;
+}
+
+/* TRUE when the window's extents contain (x, y); *out gets the rect.
+ * Degenerate rects are skipped - xfwm4 always exposes a 5x5 decoy window
+ * parked at (-1000,-1000) that even carries the ACTIVE state. */
+static int window_rect_at_point(AtspiAccessible *win, int x, int y, HitRect *out) {
     AtspiComponent *comp = atspi_accessible_get_component_iface(win);
     if (!comp)
         return 0;
+
     int inside = 0;
     AtspiRect *r = atspi_component_get_extents(comp, ATSPI_COORD_TYPE_SCREEN, NULL);
     if (r) {
-        inside = x >= r->x && x < r->x + r->width &&
-                 y >= r->y && y < r->y + r->height;
+        if (r->width > 1 && r->height > 1 && x >= r->x && x < r->x + r->width && y >= r->y && y < r->y + r->height) {
+            inside = 1;
+            out->x = r->x;
+            out->y = r->y;
+            out->w = r->width;
+            out->h = r->height;
+        }
         g_free(r);
     }
     g_object_unref(comp);
     return inside;
 }
 
-/* The active (focused) toplevel window containing (x, y), or NULL.
- * Taps that change the active window are already covered by focus
- * events, so the hit-test only needs to see inside the window that
- * stays active. Containment matters: several clients can claim ACTIVE
- * at once - xfwm4 for one always exposes a 5x5 decoy window at
- * (-1000,-1000) with the ACTIVE state set. */
-static AtspiAccessible *find_active_window(int x, int y) {
+static AtspiAccessible *find_window_at_point(int x, int y) {
     AtspiAccessible *desktop = atspi_get_desktop(0);
     if (!desktop)
         return NULL;
 
-    AtspiAccessible *found = NULL;
+    HitRect xrect = {0, 0, 0, 0};
+    int have_xrect = 0;
+    pid_t xpid = 0;
+
+    if (hit_dpy) {
+        Window w = x_toplevel_at_point(hit_dpy, x, y);
+        if (w != None) {
+            have_xrect = x_window_rect(hit_dpy, w, &xrect);
+            xpid = x_window_pid(hit_dpy, w);
+            fprintf(stderr,
+                "vncAtSpi: X topmost at (%d,%d): win=0x%lx rect=%dx%d+%d+%d pid=%ld\n",
+                x,
+                y,
+                (unsigned long) w,
+                xrect.w,
+                xrect.h,
+                xrect.x,
+                xrect.y,
+                (long) xpid);
+        }
+    }
+
+    AtspiAccessible *best = NULL;
+    double best_score = -1.0;
+    long best_area = 0;
+    int best_active = 0;
+
     gint napps = atspi_accessible_get_child_count(desktop, NULL);
-    for (gint i = 0; i < napps && !found; i++) {
+    for (gint i = 0; i < napps; i++) {
         AtspiAccessible *app = atspi_accessible_get_child_at_index(desktop, i, NULL);
         if (!app)
             continue;
+
+        int pid_match = 0;
+        if (xpid != 0) {
+            guint apppid = atspi_accessible_get_process_id(app, NULL);
+            pid_match = (apppid != 0 && (pid_t) apppid == xpid);
+        }
+
         gint nwins = atspi_accessible_get_child_count(app, NULL);
-        for (gint j = 0; j < nwins && !found; j++) {
+        for (gint j = 0; j < nwins; j++) {
             AtspiAccessible *win = atspi_accessible_get_child_at_index(app, j, NULL);
             if (!win)
                 continue;
-            AtspiStateSet *states = atspi_accessible_get_state_set(win);
-            if (states) {
-                if (atspi_state_set_contains(states, ATSPI_STATE_ACTIVE) &&
-                    window_contains_point(win, x, y))
-                    found = g_object_ref(win);
-                g_object_unref(states);
+
+            HitRect wrect;
+            if (window_rect_at_point(win, x, y, &wrect)) {
+                int active = 0;
+                AtspiStateSet *states = atspi_accessible_get_state_set(win);
+                if (states) {
+                    active = atspi_state_set_contains(states, ATSPI_STATE_ACTIVE);
+                    g_object_unref(states);
+                }
+
+                double score = have_xrect ? rect_iou(&xrect, &wrect) : 0.0;
+                if (pid_match)
+                    score += 1.0;
+
+                long area = rect_area(&wrect);
+                int better = 0;
+                if (best == NULL) {
+                    better = 1;
+                } else if (score > best_score + 1e-9) {
+                    better = 1;
+                } else if (score > best_score - 1e-9) {
+                    if (area < best_area)
+                        better = 1;
+                    else if (area == best_area && active && !best_active)
+                        better = 1;
+                }
+
+                if (better) {
+                    if (best)
+                        g_object_unref(best);
+                    best = g_object_ref(win);
+                    best_score = score;
+                    best_area = area;
+                    best_active = active;
+                }
             }
             g_object_unref(win);
         }
         g_object_unref(app);
     }
     g_object_unref(desktop);
-    return found;
+    return best;
 }
 
-static void hit_test_tap(int x, int y) {
-    VncAtSpiFocusInfo info = {0};
+static void hit_test_tap_impl(int x, int y, int probe, unsigned int touchId) {
+    TapFocusInfo info = {0};
     info.tapped = 1;
+    info.probe = probe;
+    info.touchId = touchId;
 
-    AtspiAccessible *win = find_active_window(x, y);
+    AtspiAccessible *win = find_window_at_point(x, y);
     if (!win) {
-        /* tap on the desktop or into a window that is only now being
-         * activated; the resulting focus change (if any) arrives as a
-         * regular focus event */
-        fprintf(stderr, "vncAtSpi: tap (%d,%d): no active window at that point\n", x, y);
-        report_state_full(&info, 1);
+        fprintf(
+            stderr, "vncAtSpi: tap (%d,%d): no window at that point%s\n", x, y, probe ? " (probe: no verdict)" : "");
+        if (!probe)
+            report_state_full(&info, 1);
         return;
     }
 
@@ -302,7 +508,8 @@ static void hit_test_tap(int x, int y) {
     gchar *role = atspi_accessible_get_role_name(target, NULL);
     fprintf(stderr,
         "vncAtSpi: tap (%d,%d) in window \"%s\" hit widget \"%s\" role=%s\n",
-        x, y,
+        x,
+        y,
         win_name && win_name[0] ? win_name : "?",
         name && name[0] ? name : "?",
         role ? role : "?");
@@ -311,7 +518,7 @@ static void hit_test_tap(int x, int y) {
     g_free(win_name);
 
     const char *reason = "?";
-    if (target != win && is_text_control(target, &reason)) {
+    if (target != win && is_text_control(target) != TEXT_CONTROL_TYPE_NONE) {
         info.focused = 1;
         get_rects(target, &info);
     } else if (target == win) {
@@ -325,8 +532,14 @@ static void hit_test_tap(int x, int y) {
     if (info.focused)
         fprintf(stderr,
             " caret=%dx%d+%d+%d field=%dx%d+%d+%d",
-            info.caretW, info.caretH, info.caretX, info.caretY,
-            info.fieldW, info.fieldH, info.fieldX, info.fieldY);
+            info.caretW,
+            info.caretH,
+            info.caretX,
+            info.caretY,
+            info.fieldW,
+            info.fieldH,
+            info.fieldX,
+            info.fieldY);
     fprintf(stderr, "\n");
 
     g_object_unref(target);
@@ -335,19 +548,26 @@ static void hit_test_tap(int x, int y) {
     report_state_full(&info, 1);
 }
 
-/* Runs on the AT-SPI thread's main loop, ~100ms after the tap so the
- * application has processed the click and settled focus and caret. */
-static gboolean process_tap(gpointer data) {
-    (void) data;
+static void hit_test_tap(int x, int y, int probe, unsigned int touchId) {
+    double t0 = now_ms();
+    hit_test_tap_impl(x, y, probe, touchId);
+    fprintf(stderr, "vncAtSpi: hit_test_tap (%d,%d%s) took %.1f ms\n", x, y, probe ? ", probe" : "", now_ms() - t0);
+}
 
-    pthread_mutex_lock(&tap_mutex);
-    int x = tap_x;
-    int y = tap_y;
-    tap_queued = 0;
-    pthread_mutex_unlock(&tap_mutex);
+static gboolean process_tap(gpointer data) {
+    TapRequest *req = data;
+
+    fprintf(stderr,
+        "vncAtSpi: tap request (%d,%d%s) waited %.1f ms in queue\n",
+        req->x,
+        req->y,
+        req->probe ? ", probe" : "",
+        now_ms() - req->queued_ms);
 
     if (atspi_ready)
-        hit_test_tap(x, y);
+        hit_test_tap(req->x, req->y, req->probe, req->touchId);
+
+    free(req);
     return G_SOURCE_REMOVE;
 }
 
@@ -358,7 +578,7 @@ static void on_focus_event(AtspiEvent *event, void *data) {
         return;
     }
 
-    VncAtSpiFocusInfo info = {0};
+    TapFocusInfo info = {0};
 
     /* identify the tapped widget up front so every decision below can
      * be correlated with it in the trace */
@@ -384,11 +604,12 @@ static void on_focus_event(AtspiEvent *event, void *data) {
     int gained = strncmp(event->type, "focus", 5) == 0 || event->detail1;
 
     const char *reason = "focus lost, not classified";
-    if (gained && is_text_control(obj, &reason)) {
+    if (gained && is_text_control(obj) != TEXT_CONTROL_TYPE_NONE) {
         info.focused = 1;
         get_rects(obj, &info);
     }
 
+#ifdef _DEBUG
     fprintf(stderr,
         "vncAtSpi:   verdict: %s (%s)",
         info.focused ? "TEXT INPUT -> show keyboard" : "not a text input",
@@ -396,9 +617,16 @@ static void on_focus_event(AtspiEvent *event, void *data) {
     if (info.focused)
         fprintf(stderr,
             " caret=%dx%d+%d+%d field=%dx%d+%d+%d",
-            info.caretW, info.caretH, info.caretX, info.caretY,
-            info.fieldW, info.fieldH, info.fieldX, info.fieldY);
+            info.caretW,
+            info.caretH,
+            info.caretX,
+            info.caretY,
+            info.fieldW,
+            info.fieldH,
+            info.fieldX,
+            info.fieldY);
     fprintf(stderr, "\n");
+#endif
 
     g_free(app_name);
     g_free(role);
@@ -467,8 +695,8 @@ static void enable_a11y_status_flags(void) {
 
     static const char *props[] = {"IsEnabled", "ScreenReaderEnabled"};
     for (size_t i = 0; i < sizeof(props) / sizeof(props[0]); i++) {
-        DBusMessage *msg = dbus_message_new_method_call(
-            "org.a11y.Bus", "/org/a11y/bus", "org.freedesktop.DBus.Properties", "Set");
+        DBusMessage *msg =
+            dbus_message_new_method_call("org.a11y.Bus", "/org/a11y/bus", "org.freedesktop.DBus.Properties", "Set");
         if (!msg)
             continue;
 
@@ -478,14 +706,12 @@ static void enable_a11y_status_flags(void) {
         dbus_message_iter_init_append(msg, &iter);
         dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &status_iface);
         dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &props[i]);
-        dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
-            DBUS_TYPE_BOOLEAN_AS_STRING, &variant);
+        dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT, DBUS_TYPE_BOOLEAN_AS_STRING, &variant);
         dbus_message_iter_append_basic(&variant, DBUS_TYPE_BOOLEAN, &enabled);
         dbus_message_iter_close_container(&iter, &variant);
 
         DBusMessage *reply = dbus_connection_send_with_reply_and_block(conn, msg, 2000, NULL);
-        fprintf(stderr, "vncAtSpi: set org.a11y.Status.%s=true %s\n",
-            props[i], reply ? "ok" : "FAILED");
+        fprintf(stderr, "vncAtSpi: set org.a11y.Status.%s=true %s\n", props[i], reply ? "ok" : "FAILED");
         if (reply)
             dbus_message_unref(reply);
         dbus_message_unref(msg);
@@ -602,6 +828,13 @@ static void *atspi_thread(void *arg) {
         g_clear_error(&err);
     }
 
+    XSetErrorHandler(hit_x_error);
+    hit_dpy = XOpenDisplay(display_name);
+    if (!hit_dpy)
+        fprintf(stderr,
+            "vncAtSpi: no X connection for stacking queries, "
+            "falling back to geometry only\n");
+
     fprintf(stderr, "vncAtSpi: focus tracking active\n");
     atspi_ready = 1;
     /* a shutdown requested between init and here still quits: the idle
@@ -609,6 +842,10 @@ static void *atspi_thread(void *arg) {
     atspi_event_main();
 
     atspi_ready = 0;
+    if (hit_dpy) {
+        XCloseDisplay(hit_dpy);
+        hit_dpy = NULL;
+    }
     atspi_event_listener_deregister(listener, "object:state-changed:focused", NULL);
     atspi_event_listener_deregister(listener, "focus:", NULL);
     g_object_unref(listener);
@@ -677,27 +914,34 @@ int vncAtSpiGetFd(void) {
     return notifypipe[0];
 }
 
-void vncAtSpiNotifyTap(int x, int y) {
-    if (!thread_started)
+void vncAtSpiRequestHitTest(int x, int y, int probe, unsigned int touchId) {
+    if (!thread_started || !atspi_ready)
         return;
 
-    pthread_mutex_lock(&tap_mutex);
-    tap_x = x;
-    tap_y = y;
-    int need_source = !tap_queued;
-    tap_queued = 1;
-    pthread_mutex_unlock(&tap_mutex);
+    TapRequest *req = malloc(sizeof(*req));
+    if (!req)
+        return;
 
-    if (need_source)
-        g_timeout_add(100, process_tap, NULL);
+    req->x = x;
+    req->y = y;
+    req->probe = probe;
+    req->touchId = touchId;
+    req->queued_ms = now_ms();
+
+    // process_tap(req);
+    /* g_idle_add is thread-safe; it wakes the AT-SPI thread's loop.
+     * Every request gets its own source so a begin probe and the
+     * following end verdict are both delivered. */
+    g_idle_add(process_tap, req);
 }
 
-int vncAtSpiGetFocusState(VncAtSpiFocusInfo *out) {
+int vncAtSpiGetFocusState(TapFocusInfo *out) {
     pthread_mutex_lock(&state_mutex);
-    int had = pending;
-    if (pending) {
-        *out = pending_state;
-        pending = 0;
+    int had = pending_count > 0;
+    if (had) {
+        *out = pending_states[pending_head];
+        pending_head = (pending_head + 1) % PENDING_MAX;
+        pending_count--;
     }
     pthread_mutex_unlock(&state_mutex);
     return had;

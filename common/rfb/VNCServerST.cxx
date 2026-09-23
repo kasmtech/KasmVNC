@@ -584,11 +584,12 @@ void VNCServerST::announceClipboard(bool available)
   }
 }
 
-void VNCServerST::announceTextInputFocus(bool focused, bool tapped, rdr::U16 caretX, rdr::U16 caretY, rdr::U16 caretW,
-    rdr::U16 caretH, rdr::U16 fieldX, rdr::U16 fieldY, rdr::U16 fieldW, rdr::U16 fieldH) {
+void VNCServerST::announceTextInputFocus(bool focused, bool tapped, bool probe, rdr::U32 touchId, rdr::U16 caretX,
+    rdr::U16 caretY, rdr::U16 caretW, rdr::U16 caretH, rdr::U16 fieldX, rdr::U16 fieldY, rdr::U16 fieldW,
+    rdr::U16 fieldH) {
     for (auto *client: clients)
         client->announceTextInputFocusOrClose(
-            focused, tapped, caretX, caretY, caretW, caretH, fieldX, fieldY, fieldW, fieldH);
+            focused, tapped, probe, touchId, caretX, caretY, caretW, caretH, fieldX, fieldY, fieldW, fieldH);
 }
 
 void VNCServerST::sendBinaryClipboardData(const char* mime, const unsigned char *data,

@@ -275,9 +275,8 @@ int main(int argc, char **argv) {
 				}
 
 				if (oldmode < 0xffff) {
-					Status s;
 					// nvidia needs this weird dance
-					s = XRRSetCrtcConfig(appdisp, res, res->crtcs[tgt],
+					Status s = XRRSetCrtcConfig(appdisp, res, res->crtcs[tgt],
 							CurrentTime,
 							0, 0,
 							None, RR_Rotate_0,

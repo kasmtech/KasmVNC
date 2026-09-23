@@ -468,15 +468,16 @@ void VNCSConnectionST::announceClipboardOrClose(bool available)
   }
 }
 
-void VNCSConnectionST::announceTextInputFocusOrClose(bool focused, bool tapped, rdr::U16 caretX, rdr::U16 caretY,
-    rdr::U16 caretW, rdr::U16 caretH, rdr::U16 fieldX, rdr::U16 fieldY, rdr::U16 fieldW, rdr::U16 fieldH) {
+void VNCSConnectionST::announceTextInputFocusOrClose(bool focused, bool tapped, bool probe, rdr::U32 touchId,
+    rdr::U16 caretX, rdr::U16 caretY, rdr::U16 caretW, rdr::U16 caretH, rdr::U16 fieldX, rdr::U16 fieldY,
+    rdr::U16 fieldW, rdr::U16 fieldH) {
     try {
         if (state() != RFBSTATE_NORMAL)
             return;
 
         if (!cp.supportsTouchEvents)
             return;
-        writer()->writeTextInputFocus(focused, tapped, caretX, caretY, caretW, caretH, fieldX, fieldY, fieldW, fieldH);
+        writer()->writeTextInputFocus(focused, tapped, probe, touchId, caretX, caretY, caretW, caretH, fieldX, fieldY, fieldW, fieldH);
     } catch (rdr::Exception &e) {
         close(e.str());
     }
