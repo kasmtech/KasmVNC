@@ -126,19 +126,22 @@ struct kasmpasswd_t *readkasmpasswd(const char path[]) {
 	return set;
 }
 
-void writekasmpasswd(const char path[], const struct kasmpasswd_t *set) {
-	char tmpname[PATH_MAX];
-
+int write_kasm_passwd(const char path[], const struct kasmpasswd_t *set) {
 	if (!set || !set->entries || !set->num)
-		return;
+		return -1;
 
-	snprintf(tmpname, PATH_MAX, "%s.tmp", path);
-	tmpname[PATH_MAX - 1] = '\0';
+	char tmp_name[] = "/tmp/kasmvnc_secret_XXXXXX";
+	const int fd = mkstemp(tmp_name);
+	if (fd == -1) {
+		perror("mkstemp");
+		return -1;
+	}
 
-	FILE *f = fopen(tmpname, "w");
+	FILE *f = fdopen(fd, "w");
 	if (!f) {
-		fprintf(stderr, "Failed to open temp file %s\n", tmpname);
-		return;
+		perror("fdopen");
+
+		goto cleanup;
 	}
 
 	for (unsigned i = 0; i < set->num; i++) {
@@ -156,7 +159,17 @@ void writekasmpasswd(const char path[], const struct kasmpasswd_t *set) {
 	fsync(fileno(f));
 	fclose(f);
 
-	if (rename(tmpname, path))
+	if (rename(tmp_name, path)) {
 		fprintf(stderr, "Failed writing the password file %s\n", path);
+
+		goto cleanup;
+	}
+
 	chmod(path, S_IRUSR|S_IWUSR);
+	return 0;
+
+cleanup:
+	close(fd);
+	unlink(tmp_name);
+	return -1;
 }

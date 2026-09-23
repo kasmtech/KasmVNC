@@ -183,7 +183,7 @@ int main(int argc, char** argv)
         set->entries[i].write = writer;
         set->entries[i].owner = owner;
 
-        writekasmpasswd(fname, set);
+        write_kasm_passwd(fname, set);
         return 0;
       }
     }
@@ -195,7 +195,7 @@ int main(int argc, char** argv)
       if (!strcmp(set->entries[i].user, user)) {
         set->entries[i].user[0] = '\0';
 
-        writekasmpasswd(fname, set);
+        write_kasm_passwd(fname, set);
         return 0;
       }
     }
@@ -220,7 +220,7 @@ int main(int argc, char** argv)
     set->entries[i].write = writer;
     set->entries[i].owner = owner;
 
-    writekasmpasswd(fname, set);
+    write_kasm_passwd(fname, set);
   }
 
   return 0;

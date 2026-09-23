@@ -362,7 +362,11 @@ uint8_t GetAPIMessager::netAddUser(const char name[], const char pw[],
                                                                  set->num * sizeof(struct kasmpasswd_entry_t));
         set->entries[s] = act.data;
 
-        writekasmpasswd(passwdfile, set);
+        if (write_kasm_passwd(passwdfile, set)) {
+            vlog.error("Failed to write password file while creating user %s", name);
+            ret = 0;
+            goto out;
+        }
         vlog.info("User %s created", name);
 out:
 	pthread_mutex_unlock(&userMutex);
@@ -393,17 +397,14 @@ uint8_t GetAPIMessager::netRemoveUser(const char name[]) {
 	}
 
 	if (found) {
-		writekasmpasswd(passwdfile, set);
-		vlog.info("User %s removed", name);
+		if (write_kasm_passwd(passwdfile, set)) {
+			vlog.error("Failed to write password file while removing user %s", name);
+			found = false;
+		} else {
+			vlog.info("User %s removed", name);
+		}
 	} else {
 		vlog.error("Tried to remove nonexistent user %s", name);
-
-		pthread_mutex_unlock(&userMutex);
-
-		free(set->entries);
-		free(set);
-
-		return 0;
 	}
 
 	pthread_mutex_unlock(&userMutex);
@@ -411,7 +412,7 @@ uint8_t GetAPIMessager::netRemoveUser(const char name[]) {
 	free(set->entries);
 	free(set);
 
-	return 1;
+	return found ? 1 : 0;
 }
 
 uint8_t GetAPIMessager::netUpdateUser(const char name[], const uint64_t mask,
@@ -454,17 +455,14 @@ uint8_t GetAPIMessager::netUpdateUser(const char name[], const uint64_t mask,
 	}
 
 	if (found) {
-		writekasmpasswd(passwdfile, set);
-		vlog.info("User %s permissions updated", name);
+		if (write_kasm_passwd(passwdfile, set)) {
+			vlog.error("Failed to write password file while updating user %s", name);
+			found = false;
+		} else {
+			vlog.info("User %s permissions updated", name);
+		}
 	} else {
 		vlog.error("Tried to update nonexistent user %s", name);
-
-		pthread_mutex_unlock(&userMutex);
-
-		free(set->entries);
-		free(set);
-
-		return 0;
 	}
 
 	pthread_mutex_unlock(&userMutex);
@@ -472,7 +470,7 @@ uint8_t GetAPIMessager::netUpdateUser(const char name[], const uint64_t mask,
 	free(set->entries);
 	free(set);
 
-	return 1;
+	return found ? 1 : 0;
 }
 
 uint8_t GetAPIMessager::netAddOrUpdateUser(const struct kasmpasswd_entry_t *entry) {
@@ -500,14 +498,18 @@ uint8_t GetAPIMessager::netAddOrUpdateUser(const struct kasmpasswd_entry_t *entr
 	        vlog.info("User %s created", entry->user);
         }
 
-	writekasmpasswd(passwdfile, set);
+	uint8_t res = 1;
+	if (write_kasm_passwd(passwdfile, set)) {
+		vlog.error("Failed to write password file for user %s", entry->user);
+		res = 0;
+	}
 
 	pthread_mutex_unlock(&userMutex);
 
 	free(set->entries);
 	free(set);
 
-	return 1;
+	return res;
 
 }
 
