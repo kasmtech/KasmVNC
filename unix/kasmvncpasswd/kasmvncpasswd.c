@@ -64,10 +64,6 @@ static void enableEcho(unsigned char enable) {
   tcsetattr(fileno(stdin), TCSAFLUSH, &attrs);
 }
 
-static const char *encryptpw(const char *in) {
-  return crypt(in, "$5$kasm$");
-}
-
 static char* getpassword(const char* prompt, char *buf) {
   if (prompt && isatty(fileno(stdin))) fputs(prompt, stdout);
   enableEcho(0);
@@ -83,6 +79,7 @@ static char* getpassword(const char* prompt, char *buf) {
 
 static char pw1[4096];
 static char pw2[4096];
+static char hash[PASSWORD_LEN];
 
 static const char *readpassword() {
   while (1) {
@@ -112,7 +109,9 @@ static const char *readpassword() {
       continue;
     }
 
-    return encryptpw(pw1);
+    kasmpasswd_hash(pw1, hash);
+
+    return hash;
   }
 }
 
