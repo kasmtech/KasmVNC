@@ -128,6 +128,8 @@ namespace benchmarking {
 
         void handleLatencyMeasurementRequest(uint32_t measurementId) override {}
 
+        void directMouseEvent(int dx, int dy, int buttonMask, int scrollX, int scrollY) override {}
+
         void touchEvent(int x, int y, int type, uint32_t id) override {}
 
         [[nodiscard]] auto getJpegStats() const {
