@@ -54,8 +54,7 @@ namespace rfb {
     virtual void enableContinuousUpdates(bool enable,
                                          int x, int y, int w, int h) = 0;
 
-    void directMouseEvent(int dx, int dy, int buttonMask,
-                                    int scrollX, int scrollY) override;
+    void directMouseEvent(int dx, int dy, int buttonMask, int scrollX, int scrollY) override = 0;
 
     void touchEvent(int x, int y, int type, uint32_t id) override = 0;
 

@@ -76,12 +76,6 @@ void SMsgHandler::handleClipboardAnnounceBinary(const unsigned, const char mimes
 {
 }
 
-void SMsgHandler::directMouseEvent(int, int, int, int, int)
-{
-}
-
-void SMsgHandler::touchEvent(int x, int y, int type, uint32_t id) {}
-
 void SMsgHandler::clearBinaryClipboard()
 {
 }
