@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <X11/X.h>
 #include "stdbool.h"
+#include <rfb/touchTypes.h>
 
 #ifdef __cplusplus
 extern "C" {
