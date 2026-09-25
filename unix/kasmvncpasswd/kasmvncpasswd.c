@@ -183,7 +183,9 @@ int main(int argc, char** argv)
         set->entries[i].write = writer;
         set->entries[i].owner = owner;
 
-        write_kasm_passwd(fname, set);
+        if (write_kasm_passwd(fname, set) == -1)
+            goto fail;
+
         return 0;
       }
     }
@@ -195,7 +197,9 @@ int main(int argc, char** argv)
       if (!strcmp(set->entries[i].user, user)) {
         set->entries[i].user[0] = '\0';
 
-        write_kasm_passwd(fname, set);
+        if (write_kasm_passwd(fname, set) == -1)
+            goto fail;
+
         return 0;
       }
     }
@@ -220,8 +224,14 @@ int main(int argc, char** argv)
     set->entries[i].write = writer;
     set->entries[i].owner = owner;
 
-    write_kasm_passwd(fname, set);
+    if (write_kasm_passwd(fname, set) == -1)
+        goto fail;
   }
 
   return 0;
+
+fail:
+    fprintf(stderr, "Failed to write passwd file\n");
+
+    return 1;
 }
