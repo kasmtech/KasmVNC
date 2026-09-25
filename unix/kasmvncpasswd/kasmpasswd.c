@@ -7,6 +7,7 @@
 #include <openssl/rand.h>
 #include <crypt.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include "kasmpasswd.h"
 
@@ -130,8 +131,15 @@ int write_kasm_passwd(const char path[], const struct kasmpasswd_t *set) {
 	if (!set || !set->entries || !set->num)
 		return -1;
 
-	char tmp_name[] = "/tmp/kasmvnc_secret_XXXXXX";
-	const int fd = mkstemp(tmp_name);
+    char tmp_name[PATH_MAX];
+    snprintf(tmp_name, PATH_MAX, "%s", path);
+    const char *dir_name = dirname(tmp_name);
+
+    char dest[PATH_MAX];
+    snprintf(dest, PATH_MAX, "%s/kasmvnc_secret_XXXXXX", dir_name);
+    tmp_name[PATH_MAX - 1] = '\0';
+
+	const int fd = mkstemp(dest);
 	if (fd == -1) {
 		perror("mkstemp");
 		return -1;
@@ -156,10 +164,10 @@ int write_kasm_passwd(const char path[], const struct kasmpasswd_t *set) {
 			set->entries[i].owner ? "o" : "");
 	}
 
-	fsync(fileno(f));
-	fclose(f);
+    fflush(f);
+    fsync(fd);
 
-	if (rename(tmp_name, path)) {
+	if (rename(dest, path)) {
 		fprintf(stderr, "Failed writing the password file %s\n", path);
 
 		goto cleanup;
@@ -170,6 +178,6 @@ int write_kasm_passwd(const char path[], const struct kasmpasswd_t *set) {
 
 cleanup:
 	close(fd);
-	unlink(tmp_name);
+	unlink(dest);
 	return -1;
 }
