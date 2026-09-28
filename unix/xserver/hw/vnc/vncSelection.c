@@ -212,6 +212,7 @@ void vncHandleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]
       LOG_ERROR("Could not set CLIPBOARD selection");
 
     unsigned valid = 0;
+    textFromClient = FALSE;
 
     for (unsigned i = 0; i < num; ++i) {
         for (unsigned j = 0; j < dlp_num_mimetypes(); ++j) {
