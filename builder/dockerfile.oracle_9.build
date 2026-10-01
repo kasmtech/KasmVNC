@@ -37,7 +37,7 @@ RUN \
     zlib-devel
 
 # Enable additional repos (epel, powertools, and fusion)
-RUN dnf install -y oracle-epel-release-el9
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 RUN dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm
 
 # Install from new repos
