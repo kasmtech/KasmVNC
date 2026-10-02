@@ -22,6 +22,8 @@
 #define __RFB_ENCCACHE_H__
 
 #include <map>
+#include <tuple>
+#include <utility>
 
 #include <rdr/types.h>
 
@@ -33,14 +35,10 @@ namespace rfb {
   struct EncId {
     uint8_t type;
     uint16_t x, y, w, h;
-    uint32_t len;
 
     bool operator <(const EncId &other) const {
-      return type < other.type ||
-             x < other.x ||
-             y < other.y ||
-             w < other.w ||
-             h < other.h;
+      return std::tie(type, x, y, w, h) <
+             std::tie(other.type, other.x, other.y, other.w, other.h);
     }
   };
 
@@ -49,7 +47,11 @@ namespace rfb {
     EncCache();
     ~EncCache();
 
+    EncCache(const EncCache&) = delete;
+    EncCache& operator=(const EncCache&) = delete;
+
     void clear();
+    // Takes ownership of malloc-allocated data, including on insertion failure.
     void add(uint8_t type, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
              uint32_t len, const void *data);
     const void *get(uint8_t type, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
@@ -58,7 +60,8 @@ namespace rfb {
     bool enabled;
 
   protected:
-    std::map<EncId, const void *> cache;
+    typedef std::pair<const void *, uint32_t> Entry;
+    std::map<EncId, Entry> cache;
   };
 }
 
