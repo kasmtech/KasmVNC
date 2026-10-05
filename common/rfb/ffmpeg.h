@@ -20,7 +20,6 @@
 
 #include <dlfcn.h>
 #include <memory>
-#include <mutex>
 #include <string>
 
 extern "C" {
@@ -213,7 +212,6 @@ class FFmpeg final {
     DlHandlerGuard libavfilter{};
 
     static DlHandlerGuard loadLibrary(const char *lib, unsigned major_version);
-    std::once_flag formatOnce;
     void ensureFormat();
 
     FFmpeg();

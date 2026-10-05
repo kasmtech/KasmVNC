@@ -144,7 +144,9 @@ FFmpeg::FFmpeg() {
 // File-backed benchmarks need demuxing, but normal sessions do not. Defer
 // libavformat and its dependencies until a caller actually uses that API.
 void FFmpeg::ensureFormat() {
-    std::call_once(formatOnce, [this] {
+    // FFmpeg is a singleton; local-static initialization is thread-safe and
+    // retries on the next call if loading throws.
+    [[maybe_unused]] static const bool initialized = [this] {
         auto library = loadLibrary("libavformat.so", LIBAVFORMAT_VERSION_MAJOR);
         auto handle = library.get();
         avformat_open_input_f = D_LOOKUP_SYM(handle, avformat_open_input);
@@ -154,7 +156,8 @@ void FFmpeg::ensureFormat() {
         avformat_close_input_f = D_LOOKUP_SYM(handle, avformat_close_input);
         libavformat = std::move(library);
         vlog.debug("libavformat.so loaded on demand");
-    });
+        return true;
+    }();
 }
 
 void FFmpeg::av_log_callback(void *ptr, int level, const char *fmt, va_list vl) {
