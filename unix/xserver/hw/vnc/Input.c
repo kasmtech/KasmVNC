@@ -113,11 +113,7 @@ static int vncTrackTap(int x, int y, int type, unsigned int id, int *tapX, int *
 		vncTaps[slot].x = x;
 		vncTaps[slot].y = y;
 		vncTaps[slot].startTime = GetTimeInMillis();
-		if (others)
-			return VNC_TAP_NONE;
-		*tapX = x;
-		*tapY = y;
-		return VNC_TAP_PROBE;
+		return VNC_TAP_NONE;
 	}
 	case VNC_TOUCH_UPDATE:
 		slot = vncTapSlot(id);
