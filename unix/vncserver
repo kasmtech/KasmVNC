@@ -39,8 +39,6 @@ use List::Util qw(first);
 use List::MoreUtils qw(any uniq);
 use Data::Dumper;
 use Try::Tiny;
-use DateTime;
-use DateTime::TimeZone;
 
 use KasmVNC::CliOption;
 use KasmVNC::ConfigSetting;
@@ -1886,6 +1884,7 @@ sub DefineConfigToCLIConversion {
               isValidCallback => sub {
                 my $timezone_name = shift;
 
+                require DateTime::TimeZone;
                 DateTime::TimeZone->is_valid_name($timezone_name);
               },
               errorMessage => "must be a valid timezone name like Australia/Adelaide"
@@ -1895,6 +1894,7 @@ sub DefineConfigToCLIConversion {
         deriveValueSub => sub {
           my $self = shift;
           my $timezone_name = $self->configValue();
+          require DateTime;
           my $dt = DateTime->now(time_zone => $timezone_name);
           my $offset_in_seconds = $dt->offset();
 

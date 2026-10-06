@@ -211,6 +211,9 @@ class FFmpeg final {
     DlHandlerGuard libavcodec{};
     DlHandlerGuard libavfilter{};
 
+    static DlHandlerGuard loadLibrary(const char *lib, unsigned major_version);
+    void ensureFormat();
+
     FFmpeg();
     ~FFmpeg() = default;
 
@@ -229,23 +232,28 @@ public:
     }
 
     static void avformat_close_input(AVFormatContext **s) {
+        get().ensureFormat();
         avformat_close_input_f(s);
     }
 
     [[nodiscard]] int avformat_open_input(AVFormatContext **ps, const char *url, const AVInputFormat *fmt,
                                           AVDictionary **options) const {
+        get().ensureFormat();
         return avformat_open_input_f(ps, url, fmt, options);
     }
 
     [[nodiscard]] int avformat_find_stream_info(AVFormatContext *ic, AVDictionary **options) const {
+        get().ensureFormat();
         return avformat_find_stream_info_f(ic, options);
     }
 
     [[nodiscard]] int av_read_frame(AVFormatContext *s, AVPacket *pkt) const {
+        get().ensureFormat();
         return av_read_frame_f(s, pkt);
     }
 
     [[nodiscard]] int av_seek_frame(AVFormatContext *s, int stream_index, int64_t timestamp, int flags) const {
+        get().ensureFormat();
         return av_seek_frame_f(s, stream_index, timestamp, flags);
     }
 
