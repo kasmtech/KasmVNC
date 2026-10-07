@@ -85,7 +85,6 @@ static int vncTapSlot(unsigned int id)
 }
 
 #define VNC_TAP_NONE  0
-#define VNC_TAP_PROBE 1
 #define VNC_TAP_END   2
 
 static int vncTrackTap(int x, int y, int type, unsigned int id, int *tapX, int *tapY)
@@ -451,7 +450,7 @@ void vncTouchEvent(int x, int y, int type, unsigned int id) {
     mieqProcessInputEvents();
 
     if (tap != VNC_TAP_NONE)
-        vncAtSpiRequestHitTest(tapX, tapY, tap == VNC_TAP_PROBE, id);
+        vncAtSpiRequestHitTest(tapX, tapY, id);
 }
 
 void vncGetPointerPos(int *x, int *y)

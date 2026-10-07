@@ -140,7 +140,7 @@ namespace rfb {
     void writeLatencyMeasurementResponse(uint32_t measurementId);
     void writeTouchEventsSupported();
 
-    void writeTextInputFocus(bool focused, bool tapped, bool probe,
+    void writeTextInputFocus(bool focused, bool tapped,
                              rdr::U32 touchId,
                              rdr::U16 caretX, rdr::U16 caretY,
                              rdr::U16 caretW, rdr::U16 caretH,

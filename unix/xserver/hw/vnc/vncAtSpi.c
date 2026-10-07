@@ -77,7 +77,6 @@ typedef struct {
 
 typedef struct {
     int x, y;
-    int probe;
     unsigned int touchId;
     double queued_ms;
 } TapRequest;
@@ -503,10 +502,11 @@ static AtspiAccessible *find_window_at_point(int x, int y) {
     return best;
 }
 
-static void hit_test_tap_impl(int x, int y, int probe, unsigned int touchId) {
+static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
+    ATSPI_TRACE("vncAtSpi: hit test (tap) at (%d,%d)\n", x, y);
+
     TapFocusInfo info = {0};
     info.tapped = 1;
-    info.probe = probe;
     info.touchId = touchId;
 
     AtspiAccessible *win = find_window_at_point(x, y);
@@ -562,10 +562,10 @@ static void hit_test_tap_impl(int x, int y, int probe, unsigned int touchId) {
     report_state_full(&info, 1);
 }
 
-static void hit_test_tap(int x, int y, int probe, unsigned int touchId) {
-    double t0 = now_ms();
-    hit_test_tap_impl(x, y, probe, touchId);
-    fprintf(stderr, "vncAtSpi: hit_test_tap (%d,%d%s) took %.1f ms\n", x, y, probe ? ", probe" : "", now_ms() - t0);
+static void hit_test_tap(int x, int y, unsigned int touchId) {
+    const double t0 = now_ms();
+    hit_test_tap_impl(x, y, touchId);
+    ATSPI_TRACE("vncAtSpi: hit_test_tap (%d,%d) took %.1f ms\n", x, y, now_ms() - t0);
 }
 
 static gboolean process_tap(gpointer data) {
@@ -574,7 +574,7 @@ static gboolean process_tap(gpointer data) {
     ATSPI_TRACE("vncAtSpi: tap request (%d,%d) waited %.1f ms in queue\n", req->x, req->y, now_ms() - req->queued_ms);
 
     if (atspi_ready)
-        hit_test_tap(req->x, req->y, req->probe, req->touchId);
+        hit_test_tap(req->x, req->y, req->touchId);
 
     free(req);
     return G_SOURCE_REMOVE;
@@ -937,7 +937,6 @@ void vncAtSpiRequestHitTest(int x, int y, int probe, unsigned int touchId) {
 
     req->x = x;
     req->y = y;
-    req->probe = probe;
     req->touchId = touchId;
     req->queued_ms = now_ms();
 

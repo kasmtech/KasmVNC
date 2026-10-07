@@ -9,7 +9,6 @@
 typedef struct {
     int focused;
     int tapped;
-    int probe;
     unsigned int touchId;
     int caretX, caretY, caretW, caretH;
     int fieldX, fieldY, fieldW, fieldH;

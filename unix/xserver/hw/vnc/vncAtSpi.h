@@ -24,7 +24,7 @@ int vncAtSpiInit(const char *displayNum);
 
 int vncAtSpiGetFd(void);
 
-void vncAtSpiRequestHitTest(int x, int y, int probe, unsigned int touchId);
+void vncAtSpiRequestHitTest(int x, int y, unsigned int touchId);
 
 void vncAtSpiShutdown(void);
 

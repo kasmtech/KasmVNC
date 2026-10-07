@@ -533,10 +533,9 @@ void XserverDesktop::touchEvent(int x, int y, int type, uint32_t id) {
 }
 
 void XserverDesktop::announceTextInputFocus(const TapFocusInfo &info) {
-    vlog.debug("AT-SPI text input focus: %s%s%s, caret %d,%d %dx%d, field %d,%d %dx%d",
+    vlog.debug("AT-SPI text input focus: %s%s, caret %d,%d %dx%d, field %d,%d %dx%d",
         info.focused ? "gained" : "lost",
         info.tapped ? " (tapped)" : "",
-        info.probe ? " (probe)" : "",
         info.caretX,
         info.caretY,
         info.caretW,
@@ -549,7 +548,6 @@ void XserverDesktop::announceTextInputFocus(const TapFocusInfo &info) {
     auto clamp16 = [](int v) -> rdr::U16 { return v < 0 ? 0 : v > 65535 ? 65535 : v; };
     server->announceTextInputFocus(info.focused != 0,
         info.tapped != 0,
-        info.probe != 0,
         info.touchId,
         clamp16(info.caretX),
         clamp16(info.caretY),

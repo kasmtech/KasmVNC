@@ -104,7 +104,7 @@ namespace rfb {
     virtual PixelBuffer* getPixelBuffer() const { if (DLPRegion.enabled && blackedpb) return blackedpb; else return pb; }
     virtual void announceClipboard(bool available);
 
-    void announceTextInputFocus(bool focused, bool tapped, bool probe, rdr::U32 touchId, rdr::U16 caretX,
+    void announceTextInputFocus(bool focused, bool tapped, rdr::U32 touchId, rdr::U16 caretX,
         rdr::U16 caretY, rdr::U16 caretW, rdr::U16 caretH, rdr::U16 fieldX, rdr::U16 fieldY, rdr::U16 fieldW,
         rdr::U16 fieldH);
     virtual void clearBinaryClipboardData();
