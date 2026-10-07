@@ -24,6 +24,7 @@ libvnccommon_la_SOURCES = $(HDRS) \
 
 libvnccommon_la_CPPFLAGS = -std=c++20 -DVENDOR_RELEASE="$(VENDOR_RELEASE)" -I$(KASMVNC_SRCDIR)/unix/common \
 	-DVENDOR_STRING="\"$(VENDOR_STRING)\"" -I$(KASMVNC_SRCDIR)/common -UHAVE_CONFIG_H \
+	$(if $(ATSPI_DEBUG),-DATSPI_DEBUG=$(ATSPI_DEBUG)) \
 	-I$(KASMVNC_SRCDIR)/unix/vncconfig $(XVNC_CPPFLAGS) ${XSERVERLIBS_CFLAGS} $(shell pkg-config --cflags libavcodec libavformat libavutil libswscale 2>/dev/null || echo "") -I$(includedir) \
 	-I$(top_srcdir)/include \
 	$(shell pkg-config --cflags atspi-2 dbus-1 2>/dev/null || echo "")
