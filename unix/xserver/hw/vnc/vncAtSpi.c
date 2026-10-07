@@ -69,6 +69,14 @@ static pthread_cond_t shutdown_cond = PTHREAD_COND_INITIALIZER;
 
 static volatile int atspi_ready = 0;
 
+static const AtspiRole INPUT_ROLES[] = {ATSPI_ROLE_ENTRY,
+    ATSPI_ROLE_PASSWORD_TEXT,
+    ATSPI_ROLE_TEXT,
+    ATSPI_ROLE_SPIN_BUTTON,
+    ATSPI_ROLE_TERMINAL,
+    ATSPI_ROLE_DOCUMENT_TEXT,
+    ATSPI_ROLE_LIST_BOX};
+
 static Display *hit_dpy = NULL;
 
 typedef struct {
@@ -90,7 +98,7 @@ static double now_ms(void) {
 static void report_state_full(const TapFocusInfo *info, int force) {
     if (!force && memcmp(info, &last_reported, sizeof(*info)) == 0)
         return;
-    double t0 = now_ms();
+    const double t0 = now_ms();
     last_reported = *info;
 
     pthread_mutex_lock(&state_mutex);
@@ -164,10 +172,9 @@ static enum TextControlType is_text_control(AtspiAccessible *acc) {
     if (editable)
         return TEXT_CONTROL_TYPE_EDITABLE;
 
-    /* terminals and some password fields do not report EDITABLE */
-    if (role == ATSPI_ROLE_TERMINAL || role == ATSPI_ROLE_PASSWORD_TEXT || role == ATSPI_ROLE_ENTRY ||
-        role == ATSPI_ROLE_TEXT || role == ATSPI_ROLE_SPIN_BUTTON || role == ATSPI_ROLE_DOCUMENT_TEXT) {
-        return TEXT_CONTROL_TYPE_EDITABLE;
+    for (size_t i = 0; i < sizeof(INPUT_ROLES) / sizeof(INPUT_ROLES[0]); i++) {
+        if (role == INPUT_ROLES[i])
+            return TEXT_CONTROL_TYPE_EDITABLE;
     }
 
     return TEXT_CONTROL_TYPE_NONE;
