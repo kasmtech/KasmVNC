@@ -85,7 +85,7 @@ static int vncTapSlot(unsigned int id)
 }
 
 #define VNC_TAP_NONE  0
-#define VNC_TAP_END   2
+#define VNC_TAP_END   1
 
 static int vncTrackTap(int x, int y, int type, unsigned int id, int *tapX, int *tapY)
 {
