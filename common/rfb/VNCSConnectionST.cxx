@@ -814,6 +814,15 @@ bool VNCSConnectionST::isPointerEventValid() {
     return true;
 }
 
+void VNCSConnectionST::updatePointerClient(int button_mask) {
+    pointerButtonMask = button_mask;
+
+    if (button_mask || !activeTouchIds.empty())
+        server->pointerClient = this;
+    else if (server->pointerClient == this)
+        server->pointerClient = nullptr;
+}
+
 void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
     if (!isPointerEventValid())
@@ -821,10 +830,7 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool
 
     pointerEventPos = pos;
 
-    if (buttonMask)
-      server->pointerClient = this;
-    else
-      server->pointerClient = nullptr;
+    updatePointerClient(buttonMask);
 
     bool skip_click, skip_release;
     server->getDLPRegionSkipFlags(pos, skip_click, skip_release);
@@ -838,10 +844,7 @@ void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
     if (!isPointerEventValid())
         return;
 
-  if (buttonMask)
-    server->pointerClient = this;
-  else
-    server->pointerClient = nullptr;
+  updatePointerClient(buttonMask);
 
   pointerEventPos =
     server->desktop->directMouseEventWithPosition(dx, dy, buttonMask,
@@ -902,10 +905,7 @@ void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t id) {
             return;
     }
 
-    if (!activeTouchIds.empty())
-        server->pointerClient = this;
-    else
-        server->pointerClient = nullptr;
+    updatePointerClient(pointerButtonMask);
 
     server->desktop->touchEvent(x, y, type, id);
 }

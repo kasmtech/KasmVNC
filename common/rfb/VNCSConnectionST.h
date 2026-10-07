@@ -255,6 +255,7 @@ namespace rfb {
     virtual void pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY);
     void directMouseEvent(int dx, int dy, int buttonMask, int scrollX, int scrollY) override;
     void touchEvent(int x, int y, int type, uint32_t id) override;
+    void updatePointerClient(int button_mask);
     virtual void keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down);
     virtual void framebufferUpdateRequest(const Rect& r, bool incremental);
     virtual void setDesktopSize(int fb_width, int fb_height,
@@ -360,6 +361,7 @@ namespace rfb {
     time_t lastEventTime;
     time_t pointerEventTime;
     Point pointerEventPos;
+    int pointerButtonMask = 0;
     std::set<uint32_t> activeTouchIds;
     bool clientHasCursor;
     struct timeval lastRealUpdate;
