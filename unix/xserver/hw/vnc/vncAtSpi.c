@@ -34,6 +34,24 @@
 
 #include "os.h"
 
+#ifndef ATSPI_DEBUG
+#define ATSPI_DEBUG 0
+#endif
+
+#define ATSPI_TRACE(...)                                                                                               \
+    do {                                                                                                               \
+        if (ATSPI_DEBUG)                                                                                               \
+            fprintf(stderr, __VA_ARGS__);                                                                              \
+    } while (0)
+
+/* Wrap a whole multi-statement debug-only block (fetch -> format -> free). */
+#define ATSPI_DEBUG_BLOCK(...)                                                                                         \
+    do {                                                                                                               \
+        if (ATSPI_DEBUG) {                                                                                             \
+            __VA_ARGS__                                                                                                \
+        }                                                                                                              \
+    } while (0)
+
 static int notifypipe[2] = {-1, -1};
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -90,7 +108,7 @@ static void report_state_full(const TapFocusInfo *info, int force) {
          * state up on the next wakeup */
     }
 
-    fprintf(stderr, "vncAtSpi: report_state_full took %.3f ms\n", now_ms() - t0);
+    ATSPI_TRACE("vncAtSpi: report_state_full took %.3f ms\n", now_ms() - t0);
 }
 
 static void report_state(const TapFocusInfo *info) {
@@ -257,7 +275,7 @@ static AtspiAccessible *descend_at_point(AtspiAccessible *root, int x, int y) {
 
 static int hit_x_error(Display *dpy, XErrorEvent *e) {
     (void) dpy;
-    fprintf(stderr, "vncAtSpi: ignoring X error %d (request %d) during hit test\n", e->error_code, e->request_code);
+    ATSPI_TRACE("vncAtSpi: ignoring X error %d (request %d) during hit test\n", e->error_code, e->request_code);
     return 0;
 }
 
@@ -407,8 +425,7 @@ static AtspiAccessible *find_window_at_point(int x, int y) {
         if (w != None) {
             have_xrect = x_window_rect(hit_dpy, w, &xrect);
             xpid = x_window_pid(hit_dpy, w);
-            fprintf(stderr,
-                "vncAtSpi: X topmost at (%d,%d): win=0x%lx rect=%dx%d+%d+%d pid=%ld\n",
+            ATSPI_TRACE("vncAtSpi: X topmost at (%d,%d): win=0x%lx rect=%dx%d+%d+%d pid=%ld\n",
                 x,
                 y,
                 (unsigned long) w,
@@ -494,10 +511,7 @@ static void hit_test_tap_impl(int x, int y, int probe, unsigned int touchId) {
 
     AtspiAccessible *win = find_window_at_point(x, y);
     if (!win) {
-        fprintf(
-            stderr, "vncAtSpi: tap (%d,%d): no window at that point%s\n", x, y, probe ? " (probe: no verdict)" : "");
-        if (!probe)
-            report_state_full(&info, 1);
+        ATSPI_TRACE("vncAtSpi: tap (%d,%d): no window at that point\n", x, y);
         return;
     }
 
@@ -557,12 +571,7 @@ static void hit_test_tap(int x, int y, int probe, unsigned int touchId) {
 static gboolean process_tap(gpointer data) {
     TapRequest *req = data;
 
-    fprintf(stderr,
-        "vncAtSpi: tap request (%d,%d%s) waited %.1f ms in queue\n",
-        req->x,
-        req->y,
-        req->probe ? ", probe" : "",
-        now_ms() - req->queued_ms);
+    ATSPI_TRACE("vncAtSpi: tap request (%d,%d) waited %.1f ms in queue\n", req->x, req->y, now_ms() - req->queued_ms);
 
     if (atspi_ready)
         hit_test_tap(req->x, req->y, req->probe, req->touchId);
@@ -689,7 +698,7 @@ static char *a11y_address_from_session_bus(void) {
 static void enable_a11y_status_flags(void) {
     DBusConnection *conn = open_session_bus();
     if (!conn) {
-        fprintf(stderr, "vncAtSpi: cannot reach session bus to enable a11y status flags\n");
+        LogMessage(X_WARNING, "[atspi] cannot reach session bus to enable a11y status flags\n");
         return;
     }
 
@@ -711,7 +720,7 @@ static void enable_a11y_status_flags(void) {
         dbus_message_iter_close_container(&iter, &variant);
 
         DBusMessage *reply = dbus_connection_send_with_reply_and_block(conn, msg, 2000, NULL);
-        fprintf(stderr, "vncAtSpi: set org.a11y.Status.%s=true %s\n", props[i], reply ? "ok" : "FAILED");
+        ATSPI_TRACE("vncAtSpi: set org.a11y.Status.%s=true %s\n", props[i], reply ? "ok" : "FAILED");
         if (reply)
             dbus_message_unref(reply);
         dbus_message_unref(msg);
@@ -768,9 +777,13 @@ static char *wait_for_a11y_bus(void) {
             address = a11y_address_from_root_window();
 
         if (address) {
-            if (a11y_address_alive(address))
+            int alive = a11y_address_alive(address);
+            ATSPI_TRACE("vncAtSpi: a11y bus via %s: %s (alive=%d)\n", src, address, alive);
+            if (alive)
                 return address;
             free(address);
+        } else {
+            ATSPI_TRACE("vncAtSpi: a11y bus address not found yet (no session bus, no root-window AT_SPI_BUS)\n");
         }
 
         pthread_mutex_lock(&shutdown_mutex);
@@ -798,7 +811,7 @@ static void *atspi_thread(void *arg) {
     if (!address) /* shutdown requested before the bus appeared */
         return NULL;
     setenv("AT_SPI_BUS_ADDRESS", address, 1);
-    fprintf(stderr, "vncAtSpi: connecting to a11y bus at %s\n", address);
+    LogMessage(X_INFO, "[atspi] connecting to a11y bus at %s\n", address);
     free(address);
 
     enable_a11y_status_flags();
@@ -831,11 +844,11 @@ static void *atspi_thread(void *arg) {
     XSetErrorHandler(hit_x_error);
     hit_dpy = XOpenDisplay(display_name);
     if (!hit_dpy)
-        fprintf(stderr,
-            "vncAtSpi: no X connection for stacking queries, "
+        LogMessage(X_WARNING,
+            "[atspi] no X connection for stacking queries, "
             "falling back to geometry only\n");
 
-    fprintf(stderr, "vncAtSpi: focus tracking active\n");
+    LogMessage(X_INFO, "[atspi] focus tracking active\n");
     atspi_ready = 1;
     /* a shutdown requested between init and here still quits: the idle
      * source added by vncAtSpiShutdown fires on the first iteration */
@@ -850,7 +863,7 @@ static void *atspi_thread(void *arg) {
     atspi_event_listener_deregister(listener, "focus:", NULL);
     g_object_unref(listener);
     atspi_exit();
-    fprintf(stderr, "vncAtSpi: shut down\n");
+    LogMessage(X_INFO, "[atspi] focus tracking shut down\n");
     return NULL;
 }
 
@@ -898,7 +911,7 @@ void vncAtSpiShutdown(void) {
     clock_gettime(CLOCK_REALTIME, &deadline);
     deadline.tv_sec += 1;
     if (pthread_timedjoin_np(atspi_tid, NULL, &deadline) != 0) {
-        fprintf(stderr, "vncAtSpi: shutdown timed out, abandoning thread\n");
+        LogMessage(X_WARNING, "[atspi] shutdown timed out, abandoning thread\n");
         pthread_detach(atspi_tid);
     }
     thread_started = 0;
