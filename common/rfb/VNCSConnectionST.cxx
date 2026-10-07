@@ -826,22 +826,10 @@ void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool
     else
       server->pointerClient = nullptr;
 
-    bool skipclick = false, skiprelease = false;
-    if (server->DLPRegion.enabled) {
-      rdr::U16 x1, y1, x2, y2;
-      server->translateDLPRegion(x1, y1, x2, y2);
+    bool skip_click, skip_release;
+    server->getDLPRegionSkipFlags(pos, skip_click, skip_release);
 
-      if (pos.x < x1 || pos.x >= x2 ||
-          pos.y < y1 || pos.y >= y2) {
-
-          if (!Server::DLP_RegionAllowClick)
-            skipclick = true;
-          if (!Server::DLP_RegionAllowRelease)
-            skiprelease = true;
-      }
-    }
-
-    server->desktop->pointerEvent(pos, buttonMask, skipclick, skiprelease, scrollX, scrollY);
+    server->desktop->pointerEvent(pos, buttonMask, skip_click, skip_release, scrollX, scrollY);
 }
 
 void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
@@ -861,11 +849,16 @@ void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
 }
 
 void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t id) {
+    vlog.debug("touchEvent from client: type=%d id=%u at (%d,%d)", type, id, x, y);
+
     if (!Server::allowTouchSupport)
         return;
 
     if (!isPointerEventValid())
         return;
+
+    bool skip_click, skip_release;
+    server->getDLPRegionSkipFlags(Point(x, y), skip_click, skip_release);
 
     switch (type) {
         case touchEventBegin:
@@ -874,22 +867,35 @@ void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t id) {
                 return;
             }
 
+            if (skip_click) {
+                vlog.debug("Rejecting touch begin at (%d,%d) due to DLP", x, y);
+                return;
+            }
+
             if (!activeTouchIds.insert(id).second) {
                 vlog.debug("Rejecting duplicate touch begin id %u", id);
                 return;
             }
+
             break;
         case touchEventUpdate:
             if (!activeTouchIds.contains(id)) {
                 vlog.debug("Rejecting touch update for unknown id %u", id);
                 return;
             }
+
+            if (skip_release) {
+                vlog.debug("Rejecting touch update for id %u due to DLP", id);
+                return;
+            }
+
             break;
         case touchEventEnd:
             if (activeTouchIds.erase(id) == 0) {
                 vlog.debug("Rejecting touch end for unknown id %u", id);
                 return;
             }
+
             break;
         default:
             vlog.debug("Invalid touch event type %d", type);
@@ -1274,6 +1280,8 @@ void VNCSConnectionST::supportsDirectMouse()
 }
 
 void VNCSConnectionST::supportsTouchEvents() {
+    vlog.debug("client advertised touch support; AllowTouchSupport=%d", static_cast<int>(Server::allowTouchSupport));
+
     if (Server::allowTouchSupport)
         writer()->writeTouchEventsSupported();
 }
