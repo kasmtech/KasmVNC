@@ -100,6 +100,7 @@ public:
   void directMouseEvent(int dx, int dy, int buttonMask, int scrollX, int scrollY) override;
   void touchEvent(int x, int y, int type, uint32_t id) override;
   void announceTextInputFocus(const TapFocusInfo& info);
+  void announceTextInputFields(const TextInputFields &fields);
   virtual rfb::Point directMouseEventWithPosition(int dx, int dy, int buttonMask, int scrollX, int scrollY);
   virtual void keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down);
   virtual unsigned int setScreenLayout(int fb_width, int fb_height,

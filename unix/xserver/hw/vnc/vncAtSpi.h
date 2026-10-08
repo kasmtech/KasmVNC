@@ -30,6 +30,8 @@ void vncAtSpiShutdown(void);
 
 int vncAtSpiGetFocusState(TapFocusInfo *out);
 
+int vncAtSpiGetTextInputFields(TextInputFields *out);
+
 #ifdef __cplusplus
 }
 #endif

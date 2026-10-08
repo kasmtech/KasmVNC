@@ -468,16 +468,33 @@ void VNCSConnectionST::announceClipboardOrClose(bool available)
   }
 }
 
-void VNCSConnectionST::announceTextInputFocusOrClose(bool focused, bool tapped, rdr::U32 touchId,
-    rdr::U16 caretX, rdr::U16 caretY, rdr::U16 caretW, rdr::U16 caretH, rdr::U16 fieldX, rdr::U16 fieldY,
-    rdr::U16 fieldW, rdr::U16 fieldH) {
+void VNCSConnectionST::announceTextInputFocusOrClose(bool focused, bool tapped, uint32_t touchId, const Rect &caret, const Rect &field) {
+    if (state() != RFBSTATE_NORMAL)
+        return;
+
+    vlog.debug("announce text-input focus: state=%d supportsTouch=%d focused=%d",
+        static_cast<int>(state()),
+        static_cast<int>(cp.supportsTouchEvents),
+        static_cast<int>(focused));
+
+    if (!cp.supportsTouchEvents)
+        return;
+
+    try {
+        writer()->writeTextInputFocus(focused, tapped, touchId, caret, field);
+    } catch (rdr::Exception &e) {
+        close(e.str());
+    }
+}
+
+void VNCSConnectionST::announceTextInputFieldsOrClose(const std::vector<rfb::Rect>& fields) {
     try {
         if (state() != RFBSTATE_NORMAL)
             return;
 
         if (!cp.supportsTouchEvents)
             return;
-        writer()->writeTextInputFocus(focused, tapped, probe, touchId, caretX, caretY, caretW, caretH, fieldX, fieldY, fieldW, fieldH);
+        writer()->writeTextInputFields(fields);
     } catch (rdr::Exception &e) {
         close(e.str());
     }

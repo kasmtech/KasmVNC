@@ -60,6 +60,11 @@ static TapFocusInfo pending_states[PENDING_MAX];
 static int pending_head = 0;
 static int pending_count = 0;
 static TapFocusInfo last_reported = {.focused = -1};
+
+#define FIELDS_PENDING_MAX 4
+static TextInputFields pending_fields[FIELDS_PENDING_MAX];
+static int fields_head = 0;
+static int fields_count = 0;
 static char display_name[32];
 static pthread_t atspi_tid;
 static int thread_started = 0;
@@ -68,6 +73,15 @@ static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t shutdown_cond = PTHREAD_COND_INITIALIZER;
 
 static volatile int atspi_ready = 0;
+
+static unsigned int g_tap_touch_id = 0;
+static double g_tap_touch_ms = 0.0;
+static int g_tap_touch_pending = 0;
+static int g_tap_touch_x = 0, g_tap_touch_y = 0; /* screen px, for spatial correlation */
+
+static TextFieldRect g_focused_rect = {0};
+static unsigned int g_focused_pid = 0;
+static int g_focused_valid = 0;
 
 static const AtspiRole INPUT_ROLES[] = {ATSPI_ROLE_ENTRY,
     ATSPI_ROLE_PASSWORD_TEXT,
@@ -120,6 +134,23 @@ static void report_state_full(const TapFocusInfo *info, int force) {
 
 static void report_state(const TapFocusInfo *info) {
     report_state_full(info, 0);
+}
+
+static void report_fields(const TextInputFields *fields) {
+    pthread_mutex_lock(&state_mutex);
+    if (fields_count == FIELDS_PENDING_MAX) {
+        ++fields_head;
+        fields_head %= FIELDS_PENDING_MAX;
+        fields_count--;
+    }
+    pending_fields[(fields_head + fields_count) % FIELDS_PENDING_MAX] = *fields;
+    ++fields_count;
+    pthread_mutex_unlock(&state_mutex);
+
+    if (write(notifypipe[1], "", 1) < 0) {
+        /* pipe full or closed; the server thread picks the list up on the
+         * next wakeup */
+    }
 }
 
 enum TextControlType
@@ -183,10 +214,10 @@ static void get_rects(AtspiAccessible *acc, TapFocusInfo *info) {
         gint offset = atspi_text_get_caret_offset(text, NULL);
         AtspiRect *r = atspi_text_get_character_extents(text, offset, ATSPI_COORD_TYPE_SCREEN, NULL);
         if (r) {
-            info->caretX = r->x;
-            info->caretY = r->y;
-            info->caretW = r->width;
-            info->caretH = r->height;
+            info->caret.x = r->x;
+            info->caret.y = r->y;
+            info->caret.w = r->width;
+            info->caret.h = r->height;
             g_free(r);
         }
         g_object_unref(text);
@@ -196,14 +227,90 @@ static void get_rects(AtspiAccessible *acc, TapFocusInfo *info) {
     if (comp) {
         AtspiRect *r = atspi_component_get_extents(comp, ATSPI_COORD_TYPE_SCREEN, NULL);
         if (r) {
-            info->fieldX = r->x;
-            info->fieldY = r->y;
-            info->fieldW = r->width;
-            info->fieldH = r->height;
+            info->field.x = r->x;
+            info->field.y = r->y;
+            info->field.w = r->width;
+            info->field.h = r->height;
             g_free(r);
         }
         g_object_unref(comp);
     }
+}
+
+static void collect_text_fields(AtspiAccessible *node, TextInputFields *out, int depth, int *budget) {
+    if (!node || depth <= 0 || *budget <= 0 || out->count >= VNC_MAX_TEXT_FIELDS)
+        return;
+
+    gint n = atspi_accessible_get_child_count(node, NULL);
+    if (n > 128)
+        n = 128;
+
+    for (gint i = 0; i < n && *budget > 0 && out->count < VNC_MAX_TEXT_FIELDS; i++) {
+        (*budget)--;
+        AtspiAccessible *child = atspi_accessible_get_child_at_index(node, i, NULL);
+        if (!child)
+            continue;
+
+        if (is_text_control(child) != TEXT_CONTROL_TYPE_NONE) {
+            AtspiComponent *comp = atspi_accessible_get_component_iface(child);
+            if (comp) {
+                AtspiRect *r = atspi_component_get_extents(comp, ATSPI_COORD_TYPE_SCREEN, NULL);
+                if (r) {
+                    /* skip degenerate / off-screen decoys (see window_rect_at_point) */
+                    if (r->width > 1 && r->height > 1 && r->x > -100000 && r->y > -100000) {
+                        TextFieldRect *slot = &out->rects[out->count++];
+                        slot->x = r->x;
+                        slot->y = r->y;
+                        slot->w = r->width;
+                        slot->h = r->height;
+                    }
+                    g_free(r);
+                }
+                g_object_unref(comp);
+            }
+        }
+
+        collect_text_fields(child, out, depth - 1, budget);
+        g_object_unref(child);
+    }
+}
+
+static void scan_window_text_fields(AtspiAccessible *win) {
+    if (!win)
+        return;
+
+    TextInputFields fields = {0};
+    int budget = 4000;
+    collect_text_fields(win, &fields, 24, &budget);
+
+    ATSPI_TRACE("vncAtSpi: window scan found %d text field(s)\n", fields.count);
+    report_fields(&fields);
+}
+
+/* Walk up from a node to its top-level window (the child of the application)
+ * and scan that for text fields. This is the reliable way to locate the window
+ * the user is in - a tap's point-based window lookup misresolves to the
+ * full-screen desktop frame for some toolkits (e.g. Chromium). */
+static void scan_containing_window(AtspiAccessible *node) {
+    if (!node)
+        return;
+
+    AtspiAccessible *win = g_object_ref(node);
+    for (int i = 0; i < 64; i++) {
+        AtspiAccessible *parent = atspi_accessible_get_parent(win, NULL);
+        if (!parent)
+            break;
+        AtspiRole prole = atspi_accessible_get_role(parent, NULL);
+        if (prole == ATSPI_ROLE_APPLICATION || prole == ATSPI_ROLE_DESKTOP_FRAME) {
+            g_object_unref(parent); /* win is the top-level window */
+            break;
+        }
+        g_object_unref(win);
+        win = parent;
+    }
+
+    scan_window_text_fields(win);
+    g_object_unref(win);
 }
 
 static AtspiAccessible *deep_search_at_point(AtspiAccessible *acc, int x, int y, int depth, int *budget) {
@@ -312,7 +419,7 @@ static int window_has_wm_state(Display *dpy, Window w) {
  * which is what the toolkit exposes over AT-SPI. Override-redirect popups
  * have no WM_STATE, so fall back to the outermost window under the root. */
 static Window x_toplevel_at_point(Display *dpy, int x, int y) {
-    Window root = DefaultRootWindow(dpy);
+    const Window root = DefaultRootWindow(dpy);
     Window cur = root, outermost = None;
 
     for (int depth = 0; depth < 32; depth++) {
@@ -506,6 +613,13 @@ static AtspiAccessible *find_window_at_point(int x, int y) {
     return best;
 }
 
+static int google_editor_window(AtspiAccessible *win) {
+    gchar *name = atspi_accessible_get_name(win, NULL);
+    int match = name && (strstr(name, "Google Docs") || strstr(name, "Google Sheets") || strstr(name, "Google Slides"));
+    g_free(name);
+    return match;
+}
+
 static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
     ATSPI_TRACE("vncAtSpi: hit test (tap) at (%d,%d)\n", x, y);
 
@@ -545,6 +659,18 @@ static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
     if (target != win && is_text_control(target) != TEXT_CONTROL_TYPE_NONE) {
         info.focused = 1;
         get_rects(target, &info);
+    } else if (g_focused_valid && atspi_accessible_get_process_id(win, NULL) == g_focused_pid &&
+               x >= g_focused_rect.x && x < g_focused_rect.x + g_focused_rect.w && y >= g_focused_rect.y &&
+               y < g_focused_rect.y + g_focused_rect.h) {
+        info.focused = 1;
+        info.field = g_focused_rect;
+        ATSPI_TRACE("vncAtSpi: tap fell back to focused-field rect\n");
+    } else if (target && google_editor_window(win) &&
+               (atspi_accessible_get_role(target, NULL) == ATSPI_ROLE_CANVAS ||
+                   atspi_accessible_get_role(target, NULL) == ATSPI_ROLE_SECTION)) {
+        info.focused = 1;
+        get_rects(target, &info);
+        ATSPI_TRACE("vncAtSpi: Google editor canvas/section - forcing text input\n");
     }
 
     ATSPI_DEBUG_BLOCK(const char *reason = info.focused    ? "text control"
@@ -556,14 +682,14 @@ static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
             reason);
         if (info.focused) fprintf(stderr,
             " caret=%dx%d+%d+%d field=%dx%d+%d+%d",
-            info.caretW,
-            info.caretH,
-            info.caretX,
-            info.caretY,
-            info.fieldW,
-            info.fieldH,
-            info.fieldX,
-            info.fieldY);
+            info.caret.w,
+            info.caret.h,
+            info.caret.x,
+            info.caret.y,
+            info.field.w,
+            info.field.h,
+            info.field.x,
+            info.field.y);
         fprintf(stderr, "\n"););
 
     g_object_unref(target);
@@ -626,8 +752,27 @@ static void on_focus_event(AtspiEvent *event, void *data) {
     int gained = strncmp(event->type, "focus", 5) == 0 || event->detail1;
 
     if (gained && is_text_control(obj) != TEXT_CONTROL_TYPE_NONE) {
-        info.focused = 1;
         get_rects(obj, &info);
+        g_focused_rect = info.field;
+        g_focused_pid = atspi_accessible_get_process_id(obj, NULL);
+        g_focused_valid = (info.field.w > 0 && info.field.h > 0);
+
+        int tap_fresh = g_tap_touch_pending && (now_ms() - g_tap_touch_ms) < 1500.0;
+        int tap_inside = tap_fresh && g_tap_touch_x >= info.field.x && g_tap_touch_x < info.field.x + info.field.w &&
+                         g_tap_touch_y >= info.field.y && g_tap_touch_y < info.field.y + info.field.h;
+
+        if (!tap_inside) {
+            ATSPI_TRACE("vncAtSpi: focus gain not from a tap inside the field (fresh=%d) - ignoring\n", tap_fresh);
+            g_boxed_free(ATSPI_TYPE_EVENT, event);
+            return;
+        }
+
+        info.focused = 1;
+        scan_containing_window(obj);
+
+        info.tapped = 1;
+        info.touchId = g_tap_touch_id;
+        g_tap_touch_pending = 0;
     }
 
     ATSPI_TRACE("vncAtSpi: focus event type=%s gained=%d is_text_input=%d\n", event->type, gained, info.focused);
@@ -640,17 +785,22 @@ static void on_focus_event(AtspiEvent *event, void *data) {
         if (info.focused)
             fprintf(stderr,
             " caret=%dx%d+%d+%d field=%dx%d+%d+%d",
-            info.caretW,
-            info.caretH,
-            info.caretX,
-            info.caretY,
-            info.fieldW,
-            info.fieldH,
-            info.fieldX,
-            info.fieldY);
+            info.caret.w,
+            info.caret.h,
+            info.caret.x,
+            info.caret.y,
+            info.field.w,
+            info.field.h,
+            info.field.x,
+            info.field.y);
         fprintf(stderr, "\n"););
 
-    report_state(&info);
+    if (info.focused || !gained)
+        report_state(&info);
+
+    if (!gained)
+        g_focused_valid = 0;
+
     g_boxed_free(ATSPI_TYPE_EVENT, event);
 }
 
@@ -782,11 +932,14 @@ static char *wait_for_a11y_bus(void) {
         pthread_mutex_unlock(&shutdown_mutex);
 
         char *address = a11y_address_from_session_bus();
-        if (!address)
+        const char *src = "session bus";
+        if (!address) {
             address = a11y_address_from_root_window();
+            src = "root window";
+        }
 
         if (address) {
-            int alive = a11y_address_alive(address);
+            const int alive = a11y_address_alive(address);
             ATSPI_TRACE("vncAtSpi: a11y bus via %s: %s (alive=%d)\n", src, address, alive);
             if (alive)
                 return address;
@@ -949,10 +1102,14 @@ void vncAtSpiRequestHitTest(int x, int y, unsigned int touchId) {
     req->touchId = touchId;
     req->queued_ms = now_ms();
 
-    // process_tap(req);
-    /* g_idle_add is thread-safe; it wakes the AT-SPI thread's loop.
-     * Every request gets its own source so a begin probe and the
-     * following end verdict are both delivered. */
+    g_tap_touch_id = touchId;
+    g_tap_touch_ms = req->queued_ms;
+    g_tap_touch_x = x;
+    g_tap_touch_y = y;
+    g_tap_touch_pending = 1;
+
+    /* g_idle_add is thread-safe; it wakes the AT-SPI thread's loop and
+     * hands off the tap so the hit test runs on that thread. */
     g_idle_add(process_tap, req);
 }
 
@@ -965,5 +1122,20 @@ int vncAtSpiGetFocusState(TapFocusInfo *out) {
         pending_count--;
     }
     pthread_mutex_unlock(&state_mutex);
+    return had;
+}
+
+int vncAtSpiGetTextInputFields(TextInputFields *out) {
+    pthread_mutex_lock(&state_mutex);
+
+    int had = fields_count > 0;
+    if (had) {
+        *out = pending_fields[fields_head];
+        fields_head = (fields_head + 1) % FIELDS_PENDING_MAX;
+        fields_count--;
+    }
+
+    pthread_mutex_unlock(&state_mutex);
+
     return had;
 }

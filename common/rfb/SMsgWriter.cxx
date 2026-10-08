@@ -28,6 +28,7 @@
 #include <rfb/fenceTypes.h>
 #include <rfb/ledStates.h>
 #include <rfb/msgTypes.h>
+#include <rfb/touchTypes.h>
 
 using namespace rfb;
 
@@ -851,22 +852,32 @@ void SMsgWriter::writeTouchEventsSupported() {
     endMsg();
 }
 
-void SMsgWriter::writeTextInputFocus(bool focused, bool tapped,
-                                     rdr::U32 touchId,
-                                     rdr::U16 caretX, rdr::U16 caretY,
-                                     rdr::U16 caretW, rdr::U16 caretH,
-                                     rdr::U16 fieldX, rdr::U16 fieldY,
-                                     rdr::U16 fieldW, rdr::U16 fieldH) {
+void SMsgWriter::writeTextInputFocus(bool focused, bool tapped, uint32_t touchId, const Rect &caret, const Rect &field) {
     startMsg(msgTypeTextInputFocus);
     os->writeU8((focused ? 1 : 0) | (tapped ? 2 : 0));
     os->writeU32(touchId);
-    os->writeU16(caretX);
-    os->writeU16(caretY);
-    os->writeU16(caretW);
-    os->writeU16(caretH);
-    os->writeU16(fieldX);
-    os->writeU16(fieldY);
-    os->writeU16(fieldW);
-    os->writeU16(fieldH);
+    os->writeU16(caret.tl.x);
+    os->writeU16(caret.tl.y);
+    os->writeU16(caret.width());
+    os->writeU16(caret.height());
+    os->writeU16(field.tl.x);
+    os->writeU16(field.tl.y);
+    os->writeU16(field.width());
+    os->writeU16(field.height());
+    endMsg();
+}
+
+void SMsgWriter::writeTextInputFields(const std::vector<Rect> &fields) {
+    const size_t size = fields.size() > maxTextFields ? maxTextFields : fields.size();
+
+    startMsg(msgTypeTextInputFields);
+    os->writeU16(size);
+    for (size_t i = 0; i < size; i++) {
+        const Rect &r = fields[i];
+        os->writeU16(r.tl.x);
+        os->writeU16(r.tl.y);
+        os->writeU16(r.width());
+        os->writeU16(r.height());
+    }
     endMsg();
 }
