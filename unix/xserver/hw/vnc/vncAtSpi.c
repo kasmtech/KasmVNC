@@ -186,7 +186,7 @@ static enum TextControlType is_text_control(AtspiAccessible *acc) {
         gboolean has_text = text_iface != NULL;
         if (text_iface) g_object_unref(text_iface);
 
-        fprintf(stderr,
+        ATSPI_TRACE(
             "vncAtSpi:   checks: states=%s editable=%d focusable=%d role=%d(%s) text_iface=%d\n",
             has_states ? "yes" : "unavailable",
             editable,
@@ -636,7 +636,7 @@ static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
     ATSPI_DEBUG_BLOCK(gchar *wn = atspi_accessible_get_name(win, NULL);
         gchar *wr = atspi_accessible_get_role_name(win, NULL);
         guint wpid = atspi_accessible_get_process_id(win, NULL);
-        fprintf(stderr, "vncAtSpi: tap window=\"%s\" role=%s pid=%u\n", wn && wn[0] ? wn : "?", wr ? wr : "?", wpid);
+        ATSPI_TRACE("vncAtSpi: tap window=\"%s\" role=%s pid=%u\n", wn && wn[0] ? wn : "?", wr ? wr : "?", wpid);
         g_free(wn);
         g_free(wr););
 
@@ -645,7 +645,7 @@ static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
     ATSPI_DEBUG_BLOCK(gchar *win_name = atspi_accessible_get_name(win, NULL);
         gchar *name = atspi_accessible_get_name(target, NULL);
         gchar *role = atspi_accessible_get_role_name(target, NULL);
-        fprintf(stderr,
+        ATSPI_TRACE(
             "vncAtSpi: tap (%d,%d) in window \"%s\" hit widget \"%s\" role=%s\n",
             x,
             y,
@@ -676,11 +676,11 @@ static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
     ATSPI_DEBUG_BLOCK(const char *reason = info.focused    ? "text control"
                                            : target == win ? "tap did not hit a child widget"
                                                            : "not a text control";
-        fprintf(stderr,
+        ATSPI_TRACE(
             "vncAtSpi:   tap verdict: %s (%s)",
             info.focused ? "TEXT INPUT -> show keyboard" : "not a text input",
             reason);
-        if (info.focused) fprintf(stderr,
+        if (info.focused) ATSPI_TRACE(
             " caret=%dx%d+%d+%d field=%dx%d+%d+%d",
             info.caret.w,
             info.caret.h,
@@ -690,7 +690,7 @@ static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
             info.field.h,
             info.field.x,
             info.field.y);
-        fprintf(stderr, "\n"););
+        ATSPI_TRACE("\n"););
 
     g_object_unref(target);
     g_object_unref(win);
@@ -735,7 +735,7 @@ static void on_focus_event(AtspiEvent *event, void *data) {
             g_object_unref(app);
         }
 
-        fprintf(stderr,
+        ATSPI_TRACE(
             "vncAtSpi: event=%s detail1=%d app=\"%s\" widget=\"%s\" role=%s\n",
             event->type,
             event->detail1,
@@ -778,12 +778,12 @@ static void on_focus_event(AtspiEvent *event, void *data) {
     ATSPI_TRACE("vncAtSpi: focus event type=%s gained=%d is_text_input=%d\n", event->type, gained, info.focused);
 
     ATSPI_DEBUG_BLOCK(const char *reason = info.focused ? "text control" : "focus lost or not a text control";
-        fprintf(stderr,
+        ATSPI_TRACE(
             "vncAtSpi:   verdict: %s (%s)",
             info.focused ? "TEXT INPUT -> show keyboard" : "not a text input",
             reason);
         if (info.focused)
-            fprintf(stderr,
+            ATSPI_TRACE(
             " caret=%dx%d+%d+%d field=%dx%d+%d+%d",
             info.caret.w,
             info.caret.h,
@@ -793,7 +793,7 @@ static void on_focus_event(AtspiEvent *event, void *data) {
             info.field.h,
             info.field.x,
             info.field.y);
-        fprintf(stderr, "\n"););
+        ATSPI_TRACE("\n"););
 
     if (info.focused || !gained)
         report_state(&info);
