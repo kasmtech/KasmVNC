@@ -887,7 +887,7 @@ void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t id) {
                 return;
             }
 
-            if (skip_click) {
+            if (skip_click || skip_release) {
                 vlog.debug("Rejecting touch begin at (%d,%d) due to DLP", x, y);
                 return;
             }
