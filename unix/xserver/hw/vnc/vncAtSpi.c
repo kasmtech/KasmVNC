@@ -692,8 +692,7 @@ static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
     g_object_unref(target);
     g_object_unref(win);
 
-    if (info.focused)
-        report_state_full(&info, 1);
+    report_state_full(&info, 1);
 }
 
 static void hit_test_tap(int x, int y, unsigned int touchId) {
