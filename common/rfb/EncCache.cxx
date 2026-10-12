@@ -20,6 +20,8 @@
  */
 #include <rfb/EncCache.h>
 
+#include <memory>
+
 using namespace rfb;
 
 EncCache::EncCache() {
@@ -27,12 +29,13 @@ EncCache::EncCache() {
 }
 
 EncCache::~EncCache() {
+  clear();
 }
 
 void EncCache::clear() {
-  std::map<EncId, const void *>::iterator it;
+  std::map<EncId, Entry>::iterator it;
   for (it = cache.begin(); it != cache.end(); it++)
-    free((void *) it->second);
+    free((void *) it->second.first);
 
   cache.clear();
 }
@@ -47,9 +50,18 @@ void EncCache::add(uint8_t type, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
   id.y = y;
   id.w = w;
   id.h = h;
-  id.len = len;
 
-  cache[id] = data;
+  auto it = cache.find(id);
+  if (it != cache.end()) {
+    if (it->second.first != data)
+      free(const_cast<void *>(it->second.first));
+    it->second = Entry(data, len);
+  } else {
+    // Retain ownership if allocating the map node throws.
+    std::unique_ptr<void, decltype(&free)> owned(const_cast<void *>(data), &free);
+    cache.emplace(id, Entry(data, len));
+    owned.release();
+  }
 }
 
 const void *EncCache::get(uint8_t type, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
@@ -63,10 +75,10 @@ const void *EncCache::get(uint8_t type, uint16_t x, uint16_t y, uint16_t w, uint
   id.w = w;
   id.h = h;
 
-  std::map<EncId, const void *>::const_iterator it = cache.find(id);
+  std::map<EncId, Entry>::const_iterator it = cache.find(id);
   if (it == cache.end())
     return NULL;
 
-  len = it->first.len;
-  return it->second;
+  len = it->second.second;
+  return it->second.first;
 }
