@@ -28,6 +28,7 @@
 #define __RFB_VNCSCONNECTIONST_H__
 
 #include <map>
+#include <set>
 
 #include <rfb/Congestion.h>
 #include <rfb/EncodeManager.h>
@@ -82,6 +83,8 @@ namespace rfb {
     void setDesktopNameOrClose(const char *name);
     void setLEDStateOrClose(unsigned int state);
     void announceClipboardOrClose(bool available);
+    void announceTextInputFocusOrClose(bool focused, bool tapped, uint32_t touchId, const Rect &caret, const Rect &field);
+    void announceTextInputFieldsOrClose(const std::vector<Rect> &fields);
     void clearBinaryClipboardData();
     void sendBinaryClipboardDataOrClose(const char* mime, const unsigned char *data,
                                         const unsigned len, const unsigned id);
@@ -250,7 +253,9 @@ namespace rfb {
     virtual void clientInit(bool shared);
     virtual void setPixelFormat(const PixelFormat& pf);
     virtual void pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY);
-    virtual void directMouseEvent(int dx, int dy, int buttonMask, int scrollX, int scrollY);
+    void directMouseEvent(int dx, int dy, int buttonMask, int scrollX, int scrollY) override;
+    void touchEvent(int x, int y, int type, uint32_t id) override;
+    void updatePointerClient(int button_mask);
     virtual void keyEvent(rdr::U32 keysym, rdr::U32 keycode, bool down);
     virtual void framebufferUpdateRequest(const Rect& r, bool incremental);
     virtual void setDesktopSize(int fb_width, int fb_height,
@@ -269,6 +274,9 @@ namespace rfb {
     virtual void supportsContinuousUpdates();
     virtual void supportsLEDState();
     void supportsDirectMouse() override;
+    void supportsTouchEvents() override;
+
+    bool isPointerEventValid();
 
     bool canChangeKasmSettings() const override {
         return (accessRights & (AccessPtrEvents | AccessKeyEvents)) ==
@@ -353,6 +361,8 @@ namespace rfb {
     time_t lastEventTime;
     time_t pointerEventTime;
     Point pointerEventPos;
+    int pointerButtonMask = 0;
+    std::set<uint32_t> activeTouchIds;
     bool clientHasCursor;
     struct timeval lastRealUpdate;
     struct timeval lastClipboardOp;

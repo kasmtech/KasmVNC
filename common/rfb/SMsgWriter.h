@@ -138,6 +138,11 @@ namespace rfb {
     void writeDisconnectNotify(bool graceful, const char *reason);
     void writeForceGameMode();
     void writeLatencyMeasurementResponse(uint32_t measurementId);
+    void writeTouchEventsSupported();
+
+    void writeTextInputFocus(bool focused, bool tapped, uint32_t touchId, const Rect &caret, const Rect &field);
+
+    void writeTextInputFields(const std::vector<Rect> &fields);
 
   protected:
     void startMsg(int type);

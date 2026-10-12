@@ -10,6 +10,7 @@ url="https://github.com/kasmtech/KasmVNC"
 arch="x86_64 aarch64"
 license="GPL-2.0-or-later"
 depends="
+        at-spi2-core
         bash
         libgomp
         libjpeg-turbo

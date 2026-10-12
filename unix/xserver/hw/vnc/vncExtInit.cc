@@ -45,6 +45,7 @@
 #include "RandrGlue.h"
 #include "XorgGlue.h"
 #include "XserverDesktop.h"
+#include "vncAtSpi.h"
 #include "vncBlockHandler.h"
 #include "vncExtInit.h"
 #include "vncHooks.h"
@@ -240,6 +241,12 @@ void vncExtensionInit(void)
       const int flags = fcntl(wakeuppipe[0], F_GETFL, 0);
       fcntl(wakeuppipe[0], F_SETFL, flags | O_NONBLOCK);
       vncSetNotifyFd(wakeuppipe[0], 0, true, false);
+
+      const int atspifd = vncAtSpiInit(vncGetDisplay());
+      if (atspifd >= 0)
+          vncSetNotifyFd(atspifd, 0, true, false);
+      else
+          vlog.error("Failed to start AT-SPI focus tracking");
 
       unsigned i;
       for (i = 0; i < MAX_UNIX_RELAYS; i++) {

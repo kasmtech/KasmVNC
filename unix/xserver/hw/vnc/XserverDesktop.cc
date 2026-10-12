@@ -42,6 +42,7 @@
 #include <rfb/ServerCore.h>
 
 #include "XserverDesktop.h"
+#include "vncAtSpi.h"
 #include "vncBlockHandler.h"
 #include "vncExtInit.h"
 #include "vncHooks.h"
@@ -326,6 +327,21 @@ void XserverDesktop::handleSocketEvent(int fd, bool read, bool write)
         return;
       }
 
+      if (fd >= 0 && fd == vncAtSpiGetFd()) {
+          unsigned char buf;
+          while (::read(fd, &buf, 1) > 0);
+
+          TapFocusInfo info;
+          while (vncAtSpiGetFocusState(&info))
+              announceTextInputFocus(info);
+
+          TextInputFields fields;
+          while (vncAtSpiGetTextInputFields(&fields))
+              announceTextInputFields(fields);
+
+          return;
+      }
+
       unsigned i;
       for (i = 0; i < MAX_UNIX_RELAYS; i++) {
         if (unixrelays[i] == -1)
@@ -515,6 +531,45 @@ void XserverDesktop::directMouseEvent(int dx, int dy, int buttonMask,
                                        int scrollX, int scrollY)
 {
   directMouseEventWithPosition(dx, dy, buttonMask, scrollX, scrollY);
+}
+
+void XserverDesktop::touchEvent(int x, int y, int type, uint32_t id) {
+    vncTouchEvent(x, y, type, id);
+}
+
+static u_int16_t clampU16(int v) {
+    return v < 0 ? 0 : v > 65535 ? 65535 : v;
+}
+
+void XserverDesktop::announceTextInputFocus(const TapFocusInfo &info) {
+    vlog.debug("AT-SPI text input focus: %s%s, caret %d,%d %dx%d, field %d,%d %dx%d",
+        info.focused ? "gained" : "lost",
+        info.tapped ? " (tapped)" : "",
+        info.caret.x,
+        info.caret.y,
+        info.caret.w,
+        info.caret.h,
+        info.field.x,
+        info.field.y,
+        info.field.w,
+        info.field.h);
+
+    rfb::Rect caret{clampU16(info.caret.x), clampU16(info.caret.y), clampU16(info.caret.x + info.caret.w), clampU16(info.caret.y + info.caret.h)};
+    rfb::Rect field{clampU16(info.field.x), clampU16(info.field.y), clampU16(info.field.x + info.field.w), clampU16(info.field.y + info.field.h)};
+
+    server->announceTextInputFocus(info.focused != 0, info.tapped != 0, info.touchId, caret, field);
+}
+
+void XserverDesktop::announceTextInputFields(const TextInputFields &fields) {
+    std::vector<rfb::Rect> rects;
+    rects.reserve(fields.count);
+    for (int i = 0; i < fields.count; i++) {
+        const TextFieldRect &r = fields.rects[i];
+        rects.emplace_back(clampU16(r.x), clampU16(r.y), clampU16(r.x + r.w), clampU16(r.y + r.h));
+    }
+
+    vlog.debug("AT-SPI text input fields: %d field(s)", static_cast<int>(rects.size()));
+    server->announceTextInputFields(rects);
 }
 
 rfb::Point XserverDesktop::directMouseEventWithPosition(int dx, int dy,

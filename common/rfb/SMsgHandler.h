@@ -36,7 +36,7 @@ namespace rfb {
   class SMsgHandler : public InputHandler {
   public:
     SMsgHandler();
-    virtual ~SMsgHandler();
+    ~SMsgHandler() override = default;
 
     // The following methods are called as corresponding messages are read.  A
     // derived class should override these methods as desired.  Note that for
@@ -54,8 +54,9 @@ namespace rfb {
     virtual void enableContinuousUpdates(bool enable,
                                          int x, int y, int w, int h) = 0;
 
-    virtual void directMouseEvent(int dx, int dy, int buttonMask,
-                                    int scrollX, int scrollY);
+    void directMouseEvent(int dx, int dy, int buttonMask, int scrollX, int scrollY) override = 0;
+
+    void touchEvent(int x, int y, int type, uint32_t id) override = 0;
 
     virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
     virtual void clearBinaryClipboard();
@@ -105,6 +106,7 @@ namespace rfb {
     // supportsDirectMouse() is called the first time we detect that the
     // client supports the direct mouse extension
     virtual void supportsDirectMouse();
+    virtual void supportsTouchEvents();
 
     virtual void udpUpgrade(const char *resp) = 0;
     virtual void udpDowngrade(const bool) = 0;

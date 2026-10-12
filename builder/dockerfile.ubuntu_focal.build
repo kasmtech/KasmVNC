@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends tzdata
 RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
 RUN apt-get update && apt-get -y install ninja-build nasm git vim wget curl
 RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev \
-    libxcursor-dev libavformat-dev libswscale-dev libva-dev gcc-10 g++-10
+    libxcursor-dev libavformat-dev libswscale-dev libva-dev libatspi2.0-dev libdbus-1-dev gcc-10 g++-10
 RUN sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 \
     --slave /usr/bin/g++ g++ /usr/bin/g++-10 \
     --slave /usr/bin/gcov gcov /usr/bin/gcov-10

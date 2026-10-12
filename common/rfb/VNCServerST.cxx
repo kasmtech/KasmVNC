@@ -319,7 +319,7 @@ void VNCServerST::addSocket(network::Socket* sock, bool outgoing)
     lastConnectionTime = time(0);
   }
 
-  VNCSConnectionST* client = new VNCSConnectionST(this, sock, encoder_probe, outgoing);
+  VNCSConnectionST *client = new VNCSConnectionST(this, sock, encoder_probe, outgoing);
   client->init();
 
   if (watermarkData)
@@ -582,6 +582,16 @@ void VNCServerST::announceClipboard(bool available)
     ci_next = ci; ci_next++;
     (*ci)->announceClipboard(available);
   }
+}
+
+void VNCServerST::announceTextInputFocus(bool focused, bool tapped, uint32_t touchId, const Rect &caret, const Rect &field) {
+    for (auto *client: clients)
+        client->announceTextInputFocusOrClose(focused, tapped, touchId, caret, field);
+}
+
+void VNCServerST::announceTextInputFields(const std::vector<Rect> &fields) {
+    for (auto *client: clients)
+        client->announceTextInputFieldsOrClose(fields);
 }
 
 void VNCServerST::sendBinaryClipboardData(const char* mime, const unsigned char *data,

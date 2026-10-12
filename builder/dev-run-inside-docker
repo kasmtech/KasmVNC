@@ -41,13 +41,60 @@ fi
 # 2. Static web BasicAuth login (written to ~/.kasmpasswd, the KasmPasswordFile default).
 echo -e "${LOGIN_PASS}\n${LOGIN_PASS}\n" | kasmvncpasswd -u "$LOGIN_USER" -w "$HOME/.kasmpasswd"
 
+# 3a. Export the accessibility (AT-SPI) stack session-wide, BEFORE the desktop
+#     starts, so every app launched in the session (Thunderbird and other
+#     Mozilla/GTK/Qt apps) exposes its fields to vncAtSpi.c without per-launcher
+#     patching. Chrome additionally needs the --force-renderer-accessibility flag
+#     from its /usr/bin/chrome wrapper patch below (env alone isn't enough there).
+export GNOME_ACCESSIBILITY=1
+export GTK_MODULES=gail:atk-bridge
+export QT_ACCESSIBILITY=1
+export QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1
+
 # 3. Start the just-built server over HTTPS. BasicAuth stays on (no -disableBasicAuth);
 #    SecurityTypes None means the web login is the only gate.
 "$XVNC" -interface 0.0.0.0 -PublicIP 127.0.0.1 \
-  -RectThreads 0 -Log '*:stdout:30' \
+  -RectThreads 0 -Log '*:stdout:30,VNCSConnST:stdout:100' \
+  -videoCodec h264 \
+#  -DLP_Region 0%,0%,0%,10% -DLP_RegionAllowClick 1 -DLP_RegionAllowRelease 0 \
   -httpd "$HTTPD" -sslOnly 1 -SecurityTypes None \
   -websocketPort "$PORT" -FreeKeyMappings \
   -cert "$CERT" -key "$CERT" "$DISPLAY_NUM" &
+
+# 3b. Convenience alias: `chrome` launches Google Chrome with the accessibility
+#     (AT-SPI) stack enabled, so KasmVNC's text-field detection (vncAtSpi.c) can
+#     see its inputs. Chrome exposes nothing over AT-SPI without these.
+if ! grep -q 'alias chrome=' "$HOME/.bashrc" 2>/dev/null; then
+  cat >> "$HOME/.bashrc" <<'EOF'
+
+# KasmVNC dev: run Chrome with AT-SPI accessibility enabled for text-field detection.
+alias chrome='GTK_MODULES=gail:atk-bridge QT_ACCESSIBILITY=1 QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 SAL_ACCESSIBILITY_ENABLED=1 GNOME_ACCESSIBILITY=1 google-chrome --force-renderer-accessibility --no-sandbox --disable-dev-shm-usage'
+EOF
+fi
+
+# 3c. Patch Chrome's .desktop launchers so the menu/panel icons also start with
+#     accessibility enabled (the `chrome` alias only covers terminal launches).
+#     Handle the `-stable` binary name first so the plain match can't glue the
+#     flags onto it; anchoring on ^Exec= keeps this idempotent.
+A11Y_ENV='env GTK_MODULES=gail:atk-bridge QT_ACCESSIBILITY=1 QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1 SAL_ACCESSIBILITY_ENABLED=1 GNOME_ACCESSIBILITY=1'
+A11Y_FLAGS='--force-renderer-accessibility --no-sandbox --disable-dev-shm-usage'
+for desktop in /usr/share/applications/google-chrome.desktop /usr/share/applications/com.google.Chrome.desktop; do
+  [ -f "$desktop" ] || continue
+  sudo sed -i \
+    -e "s#^Exec=/usr/bin/google-chrome-stable#Exec=${A11Y_ENV} /usr/bin/google-chrome-stable ${A11Y_FLAGS}#" \
+    -e "s#^Exec=/usr/bin/google-chrome#Exec=${A11Y_ENV} /usr/bin/google-chrome ${A11Y_FLAGS}#" \
+    "$desktop"
+done
+
+# 3d. Patch the Kasm Chrome wrapper (/usr/bin/chrome) - the canonical launcher
+#     the taskbar/default-app uses. It otherwise starts Chrome with no a11y env
+#     or flags, so AT-SPI sees nothing and URL-bar taps never work. Idempotent:
+#     the matched substring no longer exists after the first rewrite.
+if [ -f /usr/bin/chrome ]; then
+  sudo sed -i \
+    "s#/opt/google/chrome/google-chrome --password-store=basic#${A11Y_ENV} /opt/google/chrome/google-chrome --force-renderer-accessibility --disable-dev-shm-usage --password-store=basic#g" \
+    /usr/bin/chrome
+fi
 
 # 4. Launch the desktop into the new display.
 sleep 2

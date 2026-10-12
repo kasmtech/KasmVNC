@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <X11/X.h>
 #include "stdbool.h"
+#include <rfb/touchTypes.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,6 +41,8 @@ void vncPointerMoveRelative(int x, int y, int absx, int absy);
 
 void vncScroll(int x, int y);
 void vncGetPointerPos(int *x, int *y);
+
+void vncTouchEvent(int x, int y, int type, unsigned int id);
 
 void vncKeyboardEvent(KeySym keysym, unsigned xtcode, int down);
 

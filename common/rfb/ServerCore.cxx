@@ -90,6 +90,11 @@ rfb::BoolParameter rfb::Server::forceGameMode
  "Send a message to newly connected clients instructing them to enable game mode "
  "(direct-drive relative mouse). Useful for game-focused workspace images.",
  false);
+rfb::BoolParameter rfb::Server::allowTouchSupport
+("AllowTouchSupport",
+ "Enable touch event support for clients. When enabled, clients can send touch events "
+ "for multi-touch gestures and interactions.",
+ true);
 rfb::BoolParameter rfb::Server::acceptCutText
 ("AcceptCutText",
  "Accept clipboard updates from clients.",

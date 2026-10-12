@@ -53,6 +53,8 @@ RUN dnf install -y \
   libXtst-devel \
   libXcursor-devel \
   libSM-devel \
+  at-spi2-core-devel \
+  dbus-devel \
   libva-devel
 
 

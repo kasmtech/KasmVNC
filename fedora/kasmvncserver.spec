@@ -7,7 +7,7 @@ License: GPLv2+
 URL: https://github.com/kasmtech/KasmVNC
 
 BuildRequires: rsync
-Requires: xorg-x11-xauth, xkeyboard-config, xkbcomp, openssl, perl, perl-Switch, perl-YAML-Tiny, perl-Hash-Merge-Simple, perl-Scalar-List-Utils, perl-List-MoreUtils, perl-Try-Tiny, perl-DateTime-TimeZone, mesa-libgbm, libxshmfence, hostname, crypto-policies-scripts
+Requires: xorg-x11-xauth, xkeyboard-config, xkbcomp, openssl, perl, perl-Switch, perl-YAML-Tiny, perl-Hash-Merge-Simple, perl-Scalar-List-Utils, perl-List-MoreUtils, perl-Try-Tiny, perl-DateTime-TimeZone, mesa-libgbm, libxshmfence, hostname, crypto-policies-scripts, at-spi2-core
 Conflicts: tigervnc-server, tigervnc-server-minimal
 
 %description

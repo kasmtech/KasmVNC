@@ -32,6 +32,7 @@
 #include <rfb/screenTypes.h>
 #include <rfb/fenceTypes.h>
 #include <rfb/ledStates.h>
+#include <rfb/touchTypes.h>
 #define XK_LATIN1
 #define XK_MISCELLANY
 #define XK_XKB_KEYS
@@ -146,6 +147,11 @@ VNCSConnectionST::~VNCSConnectionST()
                keysym, keycode);
     server->desktop->keyEvent(keysym, keycode, false);
   }
+
+  for (const uint32_t id: activeTouchIds)
+      server->desktop->touchEvent(pointerEventPos.x, pointerEventPos.y, touchEventEnd, id);
+
+  activeTouchIds.clear();
 
   if (server->pointerClient == this)
     server->pointerClient = nullptr;
@@ -359,9 +365,8 @@ void VNCSConnectionST::bellOrClose()
 char *percentEncode(const char *str, const unsigned len) {
   char *enc = (char *) calloc(len * 3 + 1, 1);
   char *out = enc;
-  unsigned i;
 
-  for (i = 0; i < len; i++) {
+  for (unsigned i = 0; i < len; i++) {
     unsigned char ch = str[i];
     if (isalnum(ch) || ch == ' ' || ch == '.' || ch == ',' ||
         ch == '?' || ch == '!' || ch == '"' || ch == '\'') {
@@ -461,6 +466,38 @@ void VNCSConnectionST::announceClipboardOrClose(bool available)
   } catch(rdr::Exception& e) {
     close(e.str());
   }
+}
+
+void VNCSConnectionST::announceTextInputFocusOrClose(bool focused, bool tapped, uint32_t touchId, const Rect &caret, const Rect &field) {
+    if (state() != RFBSTATE_NORMAL)
+        return;
+
+    vlog.debug("announce text-input focus: state=%d supportsTouch=%d focused=%d",
+        static_cast<int>(state()),
+        static_cast<int>(cp.supportsTouchEvents),
+        static_cast<int>(focused));
+
+    if (!cp.supportsTouchEvents)
+        return;
+
+    try {
+        writer()->writeTextInputFocus(focused, tapped, touchId, caret, field);
+    } catch (rdr::Exception &e) {
+        close(e.str());
+    }
+}
+
+void VNCSConnectionST::announceTextInputFieldsOrClose(const std::vector<rfb::Rect>& fields) {
+    try {
+        if (state() != RFBSTATE_NORMAL)
+            return;
+
+        if (!cp.supportsTouchEvents)
+            return;
+        writer()->writeTextInputFields(fields);
+    } catch (rdr::Exception &e) {
+        close(e.str());
+    }
 }
 
 void VNCSConnectionST::clearBinaryClipboardData()
@@ -776,69 +813,119 @@ void VNCSConnectionST::setPixelFormat(const PixelFormat& pf)
   setCursor();
 }
 
+bool VNCSConnectionST::isPointerEventValid() {
+    pointerEventTime = lastEventTime = time(nullptr);
+    server->lastUserInputTime = lastEventTime;
+    if (!(accessRights & AccessPtrEvents)) {
+        // This particular event is lost, but it's a corner case - you removed write access
+        // from yourself, then added it back. The intended use is for multiple clients,
+        // where the leader removes and adds back access for others, not himself.
+        recheckPerms();
+        return false;
+    }
+    if (!Server::acceptPointerEvents)
+        return false;
+    if (server->pointerClient && server->pointerClient != this)
+        return false;
+
+    return true;
+}
+
+void VNCSConnectionST::updatePointerClient(int button_mask) {
+    pointerButtonMask = button_mask;
+
+    if (button_mask || !activeTouchIds.empty())
+        server->pointerClient = this;
+    else if (server->pointerClient == this)
+        server->pointerClient = nullptr;
+}
+
 void VNCSConnectionST::pointerEvent(const Point& pos, int buttonMask, const bool skipClick, const bool skipRelease, int scrollX, int scrollY)
 {
-  pointerEventTime = lastEventTime = time(nullptr);
-  server->lastUserInputTime = lastEventTime;
-  if (!(accessRights & AccessPtrEvents)) {
-    // This particular event is lost, but it's a corner case - you removed write access
-    // from yourself, then added it back. The intended use is for multiple clients,
-    // where the leader removes and adds back access for others, not himself.
-    recheckPerms();
-    return;
-  }
-  if (!rfb::Server::acceptPointerEvents) return;
-  if (!server->pointerClient || server->pointerClient == this) {
+    if (!isPointerEventValid())
+        return;
+
     pointerEventPos = pos;
 
-    if (buttonMask)
-      server->pointerClient = this;
-    else
-      server->pointerClient = nullptr;
+    updatePointerClient(buttonMask);
 
-    bool skipclick = false, skiprelease = false;
-    if (server->DLPRegion.enabled) {
-      rdr::U16 x1, y1, x2, y2;
-      server->translateDLPRegion(x1, y1, x2, y2);
+    bool skip_click, skip_release;
+    server->getDLPRegionSkipFlags(pos, skip_click, skip_release);
 
-      if (pos.x < x1 || pos.x >= x2 ||
-          pos.y < y1 || pos.y >= y2) {
-
-          if (!Server::DLP_RegionAllowClick)
-            skipclick = true;
-          if (!Server::DLP_RegionAllowRelease)
-            skiprelease = true;
-      }
-    }
-
-    server->desktop->pointerEvent(pos, buttonMask, skipclick, skiprelease, scrollX, scrollY);
-  }
+    server->desktop->pointerEvent(pos, buttonMask, skip_click, skip_release, scrollX, scrollY);
 }
 
 void VNCSConnectionST::directMouseEvent(int dx, int dy, int buttonMask,
                                          int scrollX, int scrollY)
 {
-  pointerEventTime = lastEventTime = time(nullptr);
-  server->lastUserInputTime = lastEventTime;
-  if (!(accessRights & AccessPtrEvents)) {
-    recheckPerms();
-    return;
-  }
-  if (!rfb::Server::acceptPointerEvents)
-    return;
-  if (server->pointerClient && server->pointerClient != this)
-    return;
+    if (!isPointerEventValid())
+        return;
 
-  if (buttonMask)
-    server->pointerClient = this;
-  else
-    server->pointerClient = nullptr;
+  updatePointerClient(buttonMask);
 
   pointerEventPos =
     server->desktop->directMouseEventWithPosition(dx, dy, buttonMask,
                                                   scrollX, scrollY);
 }
 
+void VNCSConnectionST::touchEvent(int x, int y, int type, uint32_t id) {
+    vlog.debug("touchEvent from client: type=%d id=%u at (%d,%d)", type, id, x, y);
+
+    if (!Server::allowTouchSupport)
+        return;
+
+    if (!isPointerEventValid())
+        return;
+
+    bool skip_click, skip_release;
+    server->getDLPRegionSkipFlags(Point(x, y), skip_click, skip_release);
+
+    switch (type) {
+        case touchEventBegin:
+            if (activeTouchIds.size() >= maxTouches) {
+                vlog.debug("Rejecting touch begin id %u: %zu contacts already active", id, activeTouchIds.size());
+                return;
+            }
+
+            if (skip_click || skip_release) {
+                vlog.debug("Rejecting touch begin at (%d,%d) due to DLP", x, y);
+                return;
+            }
+
+            if (!activeTouchIds.insert(id).second) {
+                vlog.debug("Rejecting duplicate touch begin id %u", id);
+                return;
+            }
+
+            break;
+        case touchEventUpdate:
+            if (!activeTouchIds.contains(id)) {
+                vlog.debug("Rejecting touch update for unknown id %u", id);
+                return;
+            }
+
+            if (skip_release) {
+                vlog.debug("Rejecting touch update for id %u due to DLP", id);
+                return;
+            }
+
+            break;
+        case touchEventEnd:
+            if (activeTouchIds.erase(id) == 0) {
+                vlog.debug("Rejecting touch end for unknown id %u", id);
+                return;
+            }
+
+            break;
+        default:
+            vlog.debug("Invalid touch event type %d", type);
+            return;
+    }
+
+    updatePointerClient(pointerButtonMask);
+
+    server->desktop->touchEvent(x, y, type, id);
+}
 
 class VNCSConnectionSTShiftPresser {
 public:
@@ -1209,6 +1296,12 @@ void VNCSConnectionST::supportsDirectMouse()
     writer()->writeForceGameMode();
 }
 
+void VNCSConnectionST::supportsTouchEvents() {
+    vlog.debug("client advertised touch support; AllowTouchSupport=%d", static_cast<int>(Server::allowTouchSupport));
+
+    if (Server::allowTouchSupport)
+        writer()->writeTouchEventsSupported();
+}
 
 bool VNCSConnectionST::handleTimeout(Timer* t)
 {

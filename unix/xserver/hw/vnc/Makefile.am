@@ -14,17 +14,20 @@ noinst_LTLIBRARIES = libvnccommon.la
 HDRS = vncExtInit.h vncHooks.h \
 	vncBlockHandler.h vncSelection.h \
 	XorgGlue.h XserverDesktop.h xorg-version.h \
-	Input.h RFBGlue.h
+	Input.h RFBGlue.h vncAtSpi.h
 
 libvnccommon_la_SOURCES = $(HDRS) \
 	vncExt.c vncExtInit.cc vncHooks.c vncSelection.c \
 	vncBlockHandler.c XorgGlue.c RandrGlue.c RFBGlue.cc XserverDesktop.cc \
-	Input.c InputXKB.c qnum_to_xorgevdev.c qnum_to_xorgkbd.c
+	Input.c InputXKB.c qnum_to_xorgevdev.c qnum_to_xorgkbd.c \
+	vncAtSpi.c
 
 libvnccommon_la_CPPFLAGS = -std=c++20 -DVENDOR_RELEASE="$(VENDOR_RELEASE)" -I$(KASMVNC_SRCDIR)/unix/common \
 	-DVENDOR_STRING="\"$(VENDOR_STRING)\"" -I$(KASMVNC_SRCDIR)/common -UHAVE_CONFIG_H \
+	$(if $(ATSPI_DEBUG),-DATSPI_DEBUG=$(ATSPI_DEBUG)) \
 	-I$(KASMVNC_SRCDIR)/unix/vncconfig $(XVNC_CPPFLAGS) ${XSERVERLIBS_CFLAGS} $(shell pkg-config --cflags libavcodec libavformat libavutil libswscale 2>/dev/null || echo "") -I$(includedir) \
-	-I$(top_srcdir)/include
+	-I$(top_srcdir)/include \
+	$(shell pkg-config --cflags atspi-2 dbus-1 2>/dev/null || echo "")
 
 bin_PROGRAMS = Xvnc
 
@@ -53,7 +56,7 @@ Xvnc_CPPFLAGS = $(XVNC_CPPFLAGS) -DKASMVNC -DNO_MODULE_EXTS \
 
 Xvnc_LDADD = $(XVNC_LIBS) libvnccommon.la $(COMMON_LIBS) \
 	$(XSERVER_LIBS) $(XSERVER_SYS_LIBS) $(XVNC_SYS_LIBS) -lX11 -lwebp -lsharpyuv -lssl -lcrypto -lcrypt \
-	-lfreetype
+	-lfreetype -latspi -ldbus-1 -lgobject-2.0 -lglib-2.0 -lpthread
 
 Xvnc_LDFLAGS = $(LD_EXPORT_SYMBOLS_FLAG) -fopenmp
 
@@ -75,6 +78,6 @@ libvnc_la_CPPFLAGS = $(XVNC_CPPFLAGS) -I$(KASMVNC_SRCDIR)/common -UHAVE_CONFIG_H
 
 libvnc_la_LDFLAGS = -module -avoid-version -Wl,-z,now
 
-libvnc_la_LIBADD = libvnccommon.la $(COMMON_LIBS)
+libvnc_la_LIBADD = libvnccommon.la $(COMMON_LIBS) -latspi -ldbus-1 -lgobject-2.0 -lglib-2.0 -lpthread
 
 EXTRA_DIST = Xvnc.man

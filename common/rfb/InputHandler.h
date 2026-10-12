@@ -48,6 +48,7 @@ namespace rfb {
                                   int __unused_attr buttonMask,
                                   int __unused_attr scrollX,
                                   int __unused_attr scrollY) { }
+    virtual void touchEvent(int __unused_attr x, int __unused_attr y, int __unused_attr type, uint32_t __unused_attr id) = 0;
   };
 
 }

@@ -1571,6 +1571,15 @@ sub DefineConfigToCLIConversion {
         ]
     }),
     KasmVNC::CliOption->new({
+        name => 'AllowTouchSupport',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "pointer.touch_support",
+            type => KasmVNC::ConfigKey::BOOLEAN
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
         name => 'Log',
         configKeys => [
           KasmVNC::ConfigKey->new({

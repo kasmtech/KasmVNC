@@ -35,7 +35,6 @@
 #include <rfb/ScreenSet.h>
 #include <rfb/Timer.h>
 #include <rfb/VNCServer.h>
-#include <rfb/encoders/KasmVideoConstants.h>
 #include <rfb/encoders/EncoderProbe.h>
 #include <string>
 
@@ -103,6 +102,9 @@ namespace rfb {
     virtual void setScreenLayout(const ScreenSet& layout);
     virtual PixelBuffer* getPixelBuffer() const { if (DLPRegion.enabled && blackedpb) return blackedpb; else return pb; }
     virtual void announceClipboard(bool available);
+
+    void announceTextInputFocus(bool focused, bool tapped, uint32_t touchId, const Rect &caret, const Rect &field);
+    void announceTextInputFields(const std::vector<Rect> &fields);
     virtual void clearBinaryClipboardData();
     virtual void sendBinaryClipboardData(const char* mime, const unsigned char *data,
                                          const unsigned len);

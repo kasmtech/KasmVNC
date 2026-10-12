@@ -69,6 +69,8 @@ RUN \
     xorg-server-common \
     xorg-server-dev \
     xtrans \
+    at-spi2-core-dev \
+    dbus-dev \
     ffmpeg-dev \
     libva-dev
 

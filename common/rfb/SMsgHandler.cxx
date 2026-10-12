@@ -27,10 +27,6 @@ SMsgHandler::SMsgHandler()
   cp.setSHandler(this);
 }
 
-SMsgHandler::~SMsgHandler()
-{
-}
-
 void SMsgHandler::clientInit(bool shared)
 {
 }
@@ -50,6 +46,7 @@ void SMsgHandler::setEncodings(int nEncodings, const rdr::S32* encodings)
   firstLEDState = !cp.supportsLEDState;
   firstQEMUKeyEvent = !cp.supportsQEMUKeyEvent;
   firstDirectMouse = !cp.supportsDirectMouse;
+  const bool firstTouchEvents = !cp.supportsTouchEvents;
 
   cp.setEncodings(nEncodings, encodings);
 
@@ -65,17 +62,17 @@ void SMsgHandler::setEncodings(int nEncodings, const rdr::S32* encodings)
     supportsQEMUKeyEvent();
   if (cp.supportsDirectMouse && firstDirectMouse)
     supportsDirectMouse();
+  if (cp.supportsTouchEvents && firstTouchEvents)
+      supportsTouchEvents();
 }
 
 void SMsgHandler::supportsDirectMouse()
 {
 }
 
-void SMsgHandler::handleClipboardAnnounceBinary(const unsigned, const char mimes[][32])
-{
-}
+void SMsgHandler::supportsTouchEvents() {}
 
-void SMsgHandler::directMouseEvent(int, int, int, int, int)
+void SMsgHandler::handleClipboardAnnounceBinary(const unsigned, const char mimes[][32])
 {
 }
 

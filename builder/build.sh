@@ -127,6 +127,12 @@ cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
 
 make -j"$(nproc)"
 
+if [ -z "${ATSPI_DEBUG:-}" ] && [ -f CMakeCache.txt ]; then
+  case "$(sed -n 's/^ATSPI_DEBUG:BOOL=//p' CMakeCache.txt)" in
+    ON|on|1|TRUE|true|YES|yes) export ATSPI_DEBUG=1 ;;
+  esac
+fi
+
 if [ ! -d unix/xserver/include ]; then
   tar -C unix/xserver -xf /tmp/"$TARBALL" --strip-components=1
 

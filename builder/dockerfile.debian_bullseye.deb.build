@@ -2,6 +2,11 @@ FROM debian:bullseye
 
 ENV DEBIAN_FRONTEND noninteractive
 
+RUN echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260825T000000Z/ bullseye main" > /etc/apt/sources.list && \
+    echo "deb-src [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260825T000000Z/ bullseye main" >> /etc/apt/sources.list && \
+    echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260825T000000Z/ bullseye-security main" >> /etc/apt/sources.list && \
+    echo "deb-src [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260825T000000Z/ bullseye-security main" >> /etc/apt/sources.list
+
 RUN apt-get update && \
       apt-get -y install vim build-essential devscripts equivs
 
