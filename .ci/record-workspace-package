@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Only mark a Noble package usable after its producer has completed successfully.
+set -euo pipefail
+[[ "$DISTRO_SLUG" == ubuntu_noble ]] || exit 0
+shopt -s nullglob
+packages=(builder/build/ubuntu_noble/kasmvncserver_*.deb)
+[[ ${#packages[@]} == 1 ]] || { echo 'Expected exactly one Noble KasmVNC package' >&2; exit 1; }
+printf '%s\n' "$CI_PIPELINE_ID" "$CI_COMMIT_SHA" "$CI_JOB_ID" \
+  "$(dpkg-deb -f "${packages[0]}" Architecture)" \
+  "$(sha256sum "${packages[0]}" | cut -d ' ' -f 1)" \
+  > builder/build/ubuntu_noble/workspace-package.txt
