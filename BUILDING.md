@@ -531,7 +531,9 @@ A build also publishes a reproducible tag ending in
 `${CI_COMMIT_REF_SLUG}-${CI_PIPELINE_ID}-${CI_JOB_ID}_amd64` (or `_arm64`). Use
 that reference or the reported digest when sharing a particular build.
 `workspace-image-report/image.json` records the image, digest, package hash,
-package producer job, architecture, and all three source commits. The report
+package producer job, architecture, and all three source commits. Registry
+digests are recorded after publishing; `--no-push` reports instead identify the
+local image ID and explicitly state that nothing was published. The report
 and startup log are retained for 30 days. Branch aliases are serialized per
 architecture; an older pipeline cannot replace a newer pipeline's alias.
 Sanitized branch-name collisions are rejected rather than overwriting another
@@ -539,7 +541,11 @@ branch's image. Use distinct branch slugs if GitLab's normalization/truncation
 would produce identical names.
 
 Both image repositories must allow KasmVNC's `CI_JOB_TOKEN` to read their Git
-repositories, and the user starting the job must have access. The job uses the
+repositories, and the user starting the job must have access. Before fetching
+either source, the helper checks effective read access to both repositories
+with the job token and reports actionable allowlist/user-access diagnostics.
+This tests the permissions actually available to the job without requiring
+administrative access to inspect allowlist settings. The job uses the
 KasmVNC project's built-in registry credentials for publishing. A tester's
 Kasm Workspaces deployment needs its own registry credentials (for example, a
 GitLab deploy token with `read_registry`) and an agent matching the image's
@@ -579,6 +585,8 @@ the package producer's `workspace-package.txt` and matching CI pipeline/commit
 identity, plus `CI_JOB_ID`, `CI_COMMIT_REF_NAME`, and `CI_COMMIT_REF_SLUG`.
 Run it inside a container with the Docker CLI/buildx, Python 3, Git, dpkg tools,
 and access to a native Docker daemon. `--no-push` performs both builds and the
-smoke checks without registry writes. The shared Docker daemon's images remain
+smoke checks without registry writes. These checks also verify the configured
+Workspaces entrypoint, executable scripts, and unchanged script contents
+relative to the freshly built core image. The shared Docker daemon's images remain
 available for inspection. Full interactive Workspaces testing is a separate
 validation step after publishing.

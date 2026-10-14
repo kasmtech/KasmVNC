@@ -359,7 +359,9 @@ upload_build_preview_html:
       - api_failure
   resource_group: "workspace-$CI_COMMIT_REF_SLUG-$WORKSPACE_ARCH"
   before_script:
+    # Trixie splits the CLI from docker.io; no daemon is needed in the job container.
     - apt-get update && apt-get install -y --no-install-recommends docker-cli docker-buildx git python3 ca-certificates
+    - docker --version && docker buildx version
     - echo "$DOCKER_HUB_PASSWORD" | docker login --username "$DOCKER_HUB_USERNAME" --password-stdin
   script:
     - python3 .ci/build-workspace-image.py --arch "$WORKSPACE_ARCH"

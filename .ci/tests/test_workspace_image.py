@@ -87,6 +87,32 @@ class PackageTests(unittest.TestCase):
             image.prepare_core(self.root, next(self.root.glob('*.deb')))
 
 
+class PreflightTests(unittest.TestCase):
+    def test_access_failure_has_remediation(self):
+        with patch.dict(os.environ, {'CI_JOB_TOKEN': 'test-token'}), \
+                patch.object(image, 'repository_git', side_effect=subprocess.CalledProcessError(128, 'git')):
+            with self.assertRaisesRegex(ValueError, 'allowlist.*user starting'):
+                image.preflight_access('workspaces-images', 'develop')
+
+    def test_missing_job_token_fails_before_git(self):
+        with patch.dict(os.environ, {}, clear=True), patch.object(image, 'repository_git') as git:
+            with self.assertRaisesRegex(ValueError, 'CI_JOB_TOKEN is required'):
+                image.preflight_access('workspaces-images', 'develop')
+            git.assert_not_called()
+
+    def test_replaced_entrypoint_rejected(self):
+        with patch.object(image, 'run', return_value='["/bin/sh"]'):
+            with self.assertRaisesRegex(ValueError, 'Unexpected Workspaces entrypoint'):
+                image.verify_entrypoint('desktop', 'core')
+
+    def test_modified_entrypoint_contents_rejected(self):
+        expected = __import__('json').dumps(['/dockerstartup/kasm_default_profile.sh',
+                    '/dockerstartup/vnc_startup.sh', '/dockerstartup/kasm_startup.sh'])
+        with patch.object(image, 'run', side_effect=[expected, expected, None, 'original', 'changed']):
+            with self.assertRaisesRegex(ValueError, 'changed the core'):
+                image.verify_entrypoint('desktop', 'core')
+
+
 class PublishingTests(unittest.TestCase):
     def check_alias(self, previous, current, expected_pushes):
         labels = {'com.kasm.workspace.branch': 'feature/a', 'com.kasm.workspace.pipeline': current}

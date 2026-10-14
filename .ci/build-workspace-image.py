@@ -47,6 +47,27 @@ def select_package(directory, arch, pipeline, commit):
     return package, checksum, provenance[2]
 
 
+def repository_git(*args):
+    helper = '!f() { printf "username=gitlab-ci-token\\npassword=%s\\n" "$CI_JOB_TOKEN"; }; f'
+    return run('git', '-c', 'credential.helper=', '-c', f'credential.helper={helper}',
+               *args, env=dict(os.environ, GIT_TERMINAL_PROMPT='0'),
+               capture=True, stderr=subprocess.PIPE)
+
+
+def preflight_access(project, ref):
+    print(f'Checking CI job-token read access to {project} (requested ref: {ref})', flush=True)
+    if not os.environ.get('CI_JOB_TOKEN'):
+        raise ValueError('CI_JOB_TOKEN is required to read the image repositories')
+    try:
+        repository_git('ls-remote',
+                       f'https://gitlab.com/kasm-technologies/internal/{project}.git', 'HEAD')
+    except subprocess.CalledProcessError:
+        raise ValueError(f'Cannot read {project}. Verify its CI job-token allowlist includes '
+                         'KasmVNC and that the user starting this job can read the repository. '
+                         'Also check GitLab connectivity and retry transient failures.') from None
+    print(f'Read access confirmed: {project}', flush=True)
+
+
 def export_source(project, ref, target, source=None):
     # Export tracked files only: Git credentials and .git never enter build contexts.
     with tempfile.TemporaryDirectory(prefix='workspace-source-') as tmp:
@@ -54,10 +75,11 @@ def export_source(project, ref, target, source=None):
         if not source:
             run('git', 'init', '-q', repo)
             url = f"https://gitlab.com/kasm-technologies/internal/{project}.git"
-            helper = '!f() { printf "username=gitlab-ci-token\\npassword=%s\\n" "$CI_JOB_TOKEN"; }; f'
-            run('git', '-C', repo, '-c', 'credential.helper=', '-c',
-                f'credential.helper={helper}', 'fetch', '--depth=1', url, ref,
-                env=dict(os.environ, GIT_TERMINAL_PROMPT='0'))
+            try:
+                repository_git('-C', repo, 'fetch', '--depth=1', url, ref)
+            except subprocess.CalledProcessError:
+                raise ValueError(f'Cannot fetch {project} ref {ref!r}; verify the ref exists, '
+                                 'job-token access remains allowed, and GitLab is reachable.') from None
             revision = 'FETCH_HEAD'
         else:
             revision = 'HEAD'
@@ -84,7 +106,29 @@ def prepare_core(core, package):
         raise ValueError('Core Dockerfile KasmVNC installation interface changed')
 
 
-def smoke_test(image, package, work):
+def verify_entrypoint(image, core_image):
+    expected = ['/dockerstartup/kasm_default_profile.sh', '/dockerstartup/vnc_startup.sh',
+                '/dockerstartup/kasm_startup.sh']
+    for candidate in (core_image, image):
+        actual = json.loads(run('docker', 'image', 'inspect', '-f',
+                                '{{json .Config.Entrypoint}}', candidate, capture=True))
+        if actual != expected:
+            raise ValueError(f'Unexpected Workspaces entrypoint in {candidate}: {actual!r}')
+    # The third argv element is an optional custom-startup hook, absent in Noble Desktop.
+    scripts = expected[:2]
+    run('docker', 'run', '--rm', '--entrypoint', '/bin/sh', image, '-ec',
+        'for entry in "$@"; do test -f "$entry" && test -x "$entry" || exit 1; done',
+        '--', *scripts)
+    original = run('docker', 'run', '--rm', '--entrypoint', 'sha256sum',
+                   core_image, *scripts, capture=True)
+    installed = run('docker', 'run', '--rm', '--entrypoint', 'sha256sum',
+                    image, *scripts, capture=True)
+    if installed != original:
+        raise ValueError('Desktop image changed the core Workspaces entrypoint scripts')
+
+
+def smoke_test(image, package, work, core_image):
+    verify_entrypoint(image, core_image)
     extracted = work / 'package'
     run('dpkg-deb', '-x', package, extracted)
     expected = hashlib.sha256((extracted / 'usr/bin/Xkasmvnc').read_bytes()).hexdigest()
@@ -165,6 +209,11 @@ def main():
     image = f'{registry_image}/ubuntu-noble-desktop:{slug}-{pipeline}-{job}_{arch}'
     alias = f'{registry_image}/ubuntu-noble-desktop:{slug}_{arch}'
     core_image = f'kasmweb/core-ubuntu-noble:kasmvnc-{pipeline}-{job}_{arch}'
+    for project, ref, source in (
+            ('workspaces-core-images', os.environ.get('WORKSPACE_CORE_REF', 'develop'), args.core_source),
+            ('workspaces-images', os.environ.get('WORKSPACE_DESKTOP_REF', 'develop'), args.desktop_source)):
+        if source is None:
+            preflight_access(project, ref)
     with tempfile.TemporaryDirectory(prefix='workspace-build-') as tmp:
         work = Path(tmp)
         core, desktop = work / 'core', work / 'desktop'
@@ -192,18 +241,25 @@ def main():
         run('docker', 'build', '--pull=false', '--platform', f'linux/{arch}', '-t', image,
             '--build-arg', 'BASE_IMAGE=core-ubuntu-noble', '--build-arg', f'BASE_TAG={core_image.split(":")[-1]}',
             *label_args, '-f', desktop / 'dockerfile-kasm-ubuntu-noble-desktop', desktop, env=docker_env)
-        smoke_test(image, package, work)
+        smoke_test(image, package, work, core_image)
+        report['local_image_id'] = run('docker', 'image', 'inspect', '-f', '{{.Id}}', image, capture=True)
+        report['published'] = not args.no_push
         if not args.no_push:
             report['branch_tag_updated'], report['digests'] = publish(image, alias, labels)
         report['smoke_test'] = 'passed'
         (report_dir / 'image.json').write_text(json.dumps(report, indent=2) + '\n')
         print(json.dumps(report, indent=2))
-        (report_dir / 'README.txt').write_text(
-            f'Image: {image}\nBranch alias: {alias}\nArchitecture: {arch}\n'
-            'See image.json for the immutable digest and source/package provenance.\n'
+        instructions = (
+            'See image.json for the registry digest and source/package provenance.\n'
             'Configure a Kasm Workspaces image with this reference and a GitLab deploy token\n'
             'with read_registry permission. Do not use the expiring CI job token for pulls.\n'
-            'Select an agent matching the image architecture, then launch a fresh session.\n')
+            'Select an agent matching the image architecture, then launch a fresh session.\n'
+            if report['published'] else
+            'Not published. image.json contains a local image ID, not a registry digest.\n'
+            'The image is available only in the local Docker daemon used for validation.\n')
+        (report_dir / 'README.txt').write_text(
+            f'Image: {image}\nBranch alias: {alias}\nArchitecture: {arch}\n' + instructions)
+
 
 
 if __name__ == '__main__':
