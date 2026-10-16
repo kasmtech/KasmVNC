@@ -348,7 +348,7 @@ function upload_to_s3() {
   aws s3 cp "$file_to_upload" \
     "s3://${s3_bucket}/${s3_url_for_file}" \
     --metadata-directive REPLACE \
-    --content-type "$(file --mime-type -b \"$file_to_upload\")"
+    --content-type "$(file --mime-type -b -- "$file_to_upload")"
   export UPLOADED_FILE_S3_URL="https://${s3_bucket}.s3.amazonaws.com/${s3_url_for_file}";
 };
 
