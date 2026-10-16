@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd /src
+: "${KASMVNC_NIX_VERSION:?version required}"
+: "${KASMVNC_COMMIT_ID:?revision required}"
+: "${KASMVNC_NIX_BASENAME:?artifact basename required}"
+nix-build nix --cores "${NIX_BUILD_CORES:-4}" --max-jobs 2 \
+  --argstr version "$KASMVNC_NIX_VERSION" --argstr revision "$KASMVNC_COMMIT_ID" \
+  -o /tmp/kasmvnc-result
+archive_tools=$(nix-build nix/archive-tools.nix --no-out-link)
+export PATH="$archive_tools/bin:$PATH"
+package=$(readlink -f /tmp/kasmvnc-result)
+mkdir -p /artifacts
+nix-store -qR "$package" | sort > /tmp/closure-paths
+# Complete runtime closure, usable without installing Nix in a core image.
+# The absolute store prefix is part of the ELF ABI and must not be relocated.
+mapfile -t closure < /tmp/closure-paths
+nix-store --export "${closure[@]}" | xz -T2 -1 > "/artifacts/${KASMVNC_NIX_BASENAME}.nar.xz"
+sed 's,^/,,' /tmp/closure-paths > /tmp/archive-paths
+tar -C / --numeric-owner --owner=0 --group=0 -I 'xz -T2 -1' -cf "/artifacts/${KASMVNC_NIX_BASENAME}.tar.xz" -T /tmp/archive-paths
+printf '%s\n' "$package" > "/artifacts/${KASMVNC_NIX_BASENAME}.store-path"
+nix-store -qR "$package" > "/artifacts/${KASMVNC_NIX_BASENAME}.closure"
+cp nix/nixpkgs.json "/artifacts/${KASMVNC_NIX_BASENAME}.nixpkgs.json"
+cd /artifacts
+sha256sum "${KASMVNC_NIX_BASENAME}".{tar.xz,nar.xz,store-path,closure,nixpkgs.json} > "${KASMVNC_NIX_BASENAME}.sha256"

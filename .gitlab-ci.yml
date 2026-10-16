@@ -15,6 +15,7 @@ variables:
   # Make sure you quote any whitespace characters you use.
   # E.g. BUILD_DISTROS_REGEX: "jammy|\ focal".
   BUILD_DISTROS_REGEX: all
+  BUILD_NIX: "true"
   # To debug upload stage, you can limit BUILD_DISTROS_REGEX to jammy and allow
   # run_test distros to fail, by setting ALLOW_RUN_TESTS_TO_FAIL to true.
   ALLOW_RUN_TESTS_TO_FAIL: false
@@ -412,3 +413,62 @@ build_workspace_noble_arm64:
             DISTRO_SLUG: 'ubuntu_noble'
             GROUP: 2
       artifacts: true
+# Nix uses the same source revision and www artifact as DEB/RPM/APK builds.
+.build_nix:
+  stage: build
+  image: $DEBIAN_STABLE_IMAGE
+  dependencies: [build_www]
+  before_script:
+    - *prepare_build
+    - apt-get install -y git
+    - *prepare_www
+    - . .ci/helpers.sh
+  script:
+    - builder/build-nix
+    - upload_nix_packages
+    - mkdir -p output
+    - cp -r builder/build/nix_* output/
+  artifacts:
+    paths: [output/]
+  rules:
+    - if: '$BUILD_NIX == "false" || $BUILD_DISTROS_REGEX == "none"'
+      when: never
+    - when: on_success
+
+build_nix_amd64:
+  extends: .build_nix
+  tags: [oci-fixed-amd]
+
+build_nix_arm64:
+  extends: .build_nix
+  tags: [oci-fixed-arm]
+
+.test_nix:
+  variables:
+    NIX_TEST_DOCKER_HOST: docker
+    NIX_TEST_BIND_IP: "0.0.0.0"
+  stage: run_test
+  image: $DEBIAN_STABLE_IMAGE
+  before_script:
+    - *prepare_build
+    - apt-get install -y xz-utils curl
+  script:
+    - builder/test-nix-smoke "output/nix_${NIX_SYSTEM}"
+  rules:
+    - if: '$BUILD_NIX == "false" || $BUILD_DISTROS_REGEX == "none"'
+      when: never
+    - when: on_success
+
+test_nix_amd64:
+  extends: .test_nix
+  tags: [oci-fixed-amd]
+  dependencies: [build_nix_amd64]
+  variables:
+    NIX_SYSTEM: x86_64-linux
+
+test_nix_arm64:
+  extends: .test_nix
+  tags: [oci-fixed-arm]
+  dependencies: [build_nix_arm64]
+  variables:
+    NIX_SYSTEM: aarch64-linux

@@ -1,0 +1,90 @@
+[
+  {
+    "name": "kasmos-kasmos",
+    "image": "debian:bookworm-slim"
+  },
+  {
+    "name": "ubuntu-jammy",
+    "image": "ubuntu:22.04"
+  },
+  {
+    "name": "ubuntu-noble",
+    "image": "ubuntu:24.04"
+  },
+  {
+    "name": "ubuntu-resolute",
+    "image": "ubuntu:26.04"
+  },
+  {
+    "name": "debian-bookworm",
+    "image": "debian:bookworm-slim"
+  },
+  {
+    "name": "debian-trixie",
+    "image": "debian:trixie-slim"
+  },
+  {
+    "name": "kali-rolling",
+    "image": "kalilinux/kali-rolling:latest"
+  },
+  {
+    "name": "oracle-8",
+    "image": "oraclelinux:8"
+  },
+  {
+    "name": "oracle-9",
+    "image": "oraclelinux:9"
+  },
+  {
+    "name": "rhel-9",
+    "image": "registry.access.redhat.com/ubi9/ubi"
+  },
+  {
+    "name": "rockylinux-8",
+    "image": "rockylinux:8"
+  },
+  {
+    "name": "rockylinux-9",
+    "image": "rockylinux:9"
+  },
+  {
+    "name": "almalinux-8",
+    "image": "almalinux:8"
+  },
+  {
+    "name": "almalinux-9",
+    "image": "almalinux:9"
+  },
+  {
+    "name": "opensuse-16",
+    "image": "opensuse/leap:16.0"
+  },
+  {
+    "name": "fedora-42",
+    "image": "fedora:42"
+  },
+  {
+    "name": "fedora-43",
+    "image": "fedora:43"
+  },
+  {
+    "name": "parrotos-7",
+    "image": "parrotsec/core:7.1"
+  },
+  {
+    "name": "alpine-321",
+    "image": "alpine:3.21"
+  },
+  {
+    "name": "alpine-322",
+    "image": "alpine:3.22"
+  },
+  {
+    "name": "alpine-323",
+    "image": "alpine:3.23"
+  },
+  {
+    "name": "cuda-jammy",
+    "image": "nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04"
+  }
+]
