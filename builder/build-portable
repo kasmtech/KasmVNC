@@ -49,13 +49,7 @@ run_logged() {
   printf '\nPortable build phase: %s\n' "$phase" | tee -a "$log"
   # Retain every byte while keeping the GitLab trace below its output cap.
   # Emit one bounded progress line per minute while compilation produces output.
-  "$@" 2>&1 | tee -a "$log" | awk '
-    BEGIN { last = systime() }
-    systime() - last >= 60 {
-      print "Portable build progress: " substr($0, 1, 180)
-      fflush()
-      last = systime()
-    }'
+  "$@" 2>&1 | tee -a "$log" | python3 -u builder/portable/progress.py
 }
 run_logged 'create native builder image' docker build -f builder/dockerfile.el9.static -t "$image" .
 run_logged 'create packaging image' docker build -f builder/portable/Dockerfile --build-arg BUILDER_IMAGE="$image" -t "${image}-package" .

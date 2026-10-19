@@ -486,7 +486,7 @@ test_nix_arm64:
   allow_failure: false
   before_script:
     - *prepare_build
-    - apt-get install -y git
+    - apt-get install -y git python3
     - *prepare_www
     - . .ci/helpers.sh
   script:
