@@ -25,7 +25,7 @@ void kasmpasswd_hash(const char *pass, char *hash);
 int kasmpasswd_verify(const char *pass, const char *hash);
 
 struct kasmpasswd_t *readkasmpasswd(const char path[]);
-void writekasmpasswd(const char path[], const struct kasmpasswd_t *set);
+int write_kasm_passwd(const char path[], const struct kasmpasswd_t *set);
 
 #ifdef __cplusplus
 } // extern C

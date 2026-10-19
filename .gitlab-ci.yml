@@ -102,7 +102,7 @@ stages:
         GROUP: 14
       - DISTRO: 'alpine 323'
         DISTRO_SLUG: 'alpine_323'
-        GROUP: 16
+        GROUP: 15
 
 default:
   retry: 2

@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <openssl/rand.h>
 #include <crypt.h>
+#include <fcntl.h>
+#include <libgen.h>
 
 #include "kasmpasswd.h"
 
@@ -125,23 +127,36 @@ struct kasmpasswd_t *readkasmpasswd(const char path[]) {
 	return set;
 }
 
-void writekasmpasswd(const char path[], const struct kasmpasswd_t *set) {
-	char tmpname[PATH_MAX];
+int write_kasm_passwd(const char path[], const struct kasmpasswd_t *set) {
+    int result = -1;
 
 	if (!set || !set->entries || !set->num)
-		return;
+		return result;
 
-	snprintf(tmpname, PATH_MAX, "%s.tmp", path);
-	tmpname[PATH_MAX - 1] = '\0';
+    char tmp_name[PATH_MAX];
+    snprintf(tmp_name, PATH_MAX, "%s", path);
+    const char *dir_name = dirname(tmp_name);
 
-	FILE *f = fopen(tmpname, "w");
-	if (!f) {
-		fprintf(stderr, "Failed to open temp file %s\n", tmpname);
-		return;
+    char dest[PATH_MAX];
+    snprintf(dest, PATH_MAX, "%s/kasmvnc_secret_XXXXXX", dir_name);
+    tmp_name[PATH_MAX - 1] = '\0';
+
+	const int fd = mkstemp(dest);
+	if (fd == -1) {
+		perror("mkstemp");
+		return result;
 	}
 
-	unsigned i;
-	for (i = 0; i < set->num; i++) {
+	FILE *f = fdopen(fd, "w");
+	if (!f) {
+		perror("fdopen");
+	    close(fd);
+	    unlink(dest);
+
+	    return result;
+	}
+
+	for (unsigned i = 0; i < set->num; i++) {
 		if (!set->entries[i].user[0])
 			continue;
 
@@ -153,10 +168,21 @@ void writekasmpasswd(const char path[], const struct kasmpasswd_t *set) {
 			set->entries[i].owner ? "o" : "");
 	}
 
-	fsync(fileno(f));
-	fclose(f);
+    fflush(f);
+    fsync(fd);
 
-	if (rename(tmpname, path))
+	if (rename(dest, path)) {
 		fprintf(stderr, "Failed writing the password file %s\n", path);
+	    unlink(dest);
+
+		goto cleanup;
+	}
+
 	chmod(path, S_IRUSR|S_IWUSR);
+	result = 0;
+
+cleanup:
+    fclose(f);
+
+	return result;
 }
