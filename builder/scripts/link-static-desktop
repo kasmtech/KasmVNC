@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""Resolve Xvnc's expanded libtool link to static archives, except libc/GPU ABI.
+
+This is a build-time compiler wrapper, not a runtime dependency. Unknown shared
+libraries fail closed rather than quietly weakening the opt-in static profile.
+"""
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import subprocess
+import sys
+
+
+def main():
+    split = sys.argv.index('--')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--prefix', required=True)
+    parser.add_argument('--runtime-prefix', default='')
+    parser.add_argument('--source-root', required=True)
+    options = parser.parse_args(sys.argv[1:split])
+    command = sys.argv[split + 1:]
+    # Preserve compiler launchers such as "sccache g++".
+    count = 1
+    if Path(command[0]).name in ('sccache', 'ccache', 'distcc'):
+        count = 2
+    compiler, arguments = command[:count], command[count:]
+    env = os.environ.copy()
+    prefixes = [p for p in (env.get('KASMVNC_GCC_RUNTIME_PREFIX', ''),
+                            options.runtime_prefix, options.prefix) if p]
+    pcdirs = [str(Path(p) / d) for p in prefixes
+              for d in ('lib/pkgconfig', 'lib64/pkgconfig', 'share/pkgconfig')]
+    env['PKG_CONFIG_PATH'] = ':'.join(pcdirs + [env.get('PKG_CONFIG_PATH', '')])
+    modules = ['atspi-2', 'dbus-1', 'x11', 'xfont2', 'freetype2',
+               'pixman-1', 'libunwind', 'libva-drm', 'libdrm',
+               'xshmfence', 'libsystemd', 'sm', 'ice', 'xrandr', 'xrender', 'xcursor']
+    closure = shlex.split(subprocess.check_output(
+        ['pkg-config', '--static', '--libs'] + modules, env=env, text=True))
+    # libsystemd's distro .pc omits this private archive dependency.
+    closure += ['-lcrypt', '-lgomp', '-lcap']
+    directories = [str(Path(p) / d) for p in prefixes for d in ('lib', 'lib64')]
+    for seq in (arguments, closure):
+        for i, arg in enumerate(seq):
+            if arg == '-L' and i + 1 < len(seq):
+                directories.append(seq[i + 1])
+            elif arg.startswith('-L'):
+                directories.append(arg[2:])
+    # pkg-config's libdir also covers modules whose -L is filtered as standard.
+    for module in modules:
+        directory = subprocess.check_output(
+            ['pkg-config', '--variable=libdir', module], env=env, text=True).strip()
+        if directory:
+            directories.append(directory)
+    directories += ['/usr/local/lib', '/usr/lib', '/usr/lib64', '/lib']
+    directories = list(dict.fromkeys(directories))
+    allowed = {'c', 'm', 'mvec', 'dl', 'pthread', 'rt', 'resolv', 'util', 'anl',
+               'GL', 'gbm'}
+    archives, shared = set(), set()
+    source = Path(options.source_root).resolve()
+    output = arguments[arguments.index('-o') + 1] if '-o' in arguments else 'a.out'
+    private_archives = {}
+
+    def private_x11(path):
+        original = str(path)
+        if original not in private_archives:
+            # Xorg namespaces its XKB geometry API as SrvXkb*, except this
+            # one function. Keep both implementations and their references
+            # separate; never suppress duplicate-symbol diagnostics globally.
+            target = Path(output + '.static-archives') / 'libX11.a'
+            target.parent.mkdir(parents=True, exist_ok=True)
+            subprocess.check_call([os.environ.get('OBJCOPY', 'objcopy'),
+                '--redefine-sym',
+                'XkbFreeGeomOverlayKeys=kasm_x11_XkbFreeGeomOverlayKeys',
+                original, str(target)])
+            private_archives[original] = str(target.resolve())
+        return private_archives[original]
+
+    def archive(name):
+        for directory in directories:
+            candidate = Path(directory) / ('lib' + name + '.a')
+            if candidate.is_file():
+                return str(candidate.resolve())
+        candidate = subprocess.check_output(
+            compiler + ['-print-file-name=lib' + name + '.a'], text=True).strip()
+        if Path(candidate).is_file():
+            return str(Path(candidate).resolve())
+        raise RuntimeError('Missing static archive for ' + name)
+
+    def resolve(arg):
+        name = None
+        if arg.startswith('-l:'):
+            match = re.fullmatch(r'lib(.+)\.so(?:\.[0-9.]+)?', arg[3:])
+            if match:
+                name = match.group(1)
+            else:
+                raise RuntimeError('Unsupported exact-name linker input: ' + arg)
+        elif arg.startswith('-l'):
+            name = arg[2:]
+        elif '/' in arg:
+            match = re.fullmatch(r'lib(.+)\.so(?:\.[0-9.]+)?', Path(arg).name)
+            if match:
+                name = match.group(1)
+        if name:
+            if name in allowed:
+                shared.add(name)
+                return arg
+            arg = archive('gcc_eh' if name == 'gcc_s' else name)
+        if not arg.startswith('-') and arg.endswith('.a'):
+            path = Path(arg).resolve()
+            if not path.is_file():
+                raise RuntimeError('Missing archive: ' + str(path))
+            # Preserve Xorg/KasmVNC exports while hiding third-party archives.
+            if source not in path.parents:
+                archives.add(str(path))
+                if path.name == 'libX11.a':
+                    arg = private_x11(path)
+        return arg
+
+    linked = [resolve(arg) for arg in arguments + closure]
+    # GCC adds libgomp for -fopenmp; explicit archive resolves its references,
+    # and --as-needed prevents a redundant DT_NEEDED on the implicit DSO.
+    flags = ['-pie', '-static-libgcc', '-static-libstdc++', '-Wl,--as-needed']
+    if env.get('KASMVNC_GCC_RUNTIME_PREFIX'):
+        gccdir = str(Path(env['KASMVNC_GCC_RUNTIME_PREFIX']) / 'lib')
+        for name in ('libgcc.a', 'libgcc_eh.a'):
+            if not (Path(gccdir) / name).is_file():
+                raise RuntimeError('Missing private compiler runtime: ' + name)
+            archives.add(str((Path(gccdir) / name).resolve()))
+        flags.insert(0, '-L' + gccdir)
+    if archives:
+        flags.append('-Wl,--exclude-libs,' + ':'.join(sorted(
+            {Path(p).name for p in archives} | {'libstdc++.a', 'libgcc.a', 'libgcc_eh.a'})))
+    final = compiler + flags + ['-Wl,--start-group'] + linked + ['-Wl,--end-group']
+    Path(output + '.static-link.json').write_text(json.dumps({
+        'archives': sorted(archives), 'allowed_shared': sorted(shared),
+        'private_archive_copies': private_archives,
+        'symbol_renames': {'XkbFreeGeomOverlayKeys': 'kasm_x11_XkbFreeGeomOverlayKeys'}
+            if private_archives else {},
+        'command': final}, indent=2) + '\n')
+    return subprocess.call(final, env=env)
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (RuntimeError, subprocess.CalledProcessError) as error:
+        sys.exit('static desktop link: ' + str(error))

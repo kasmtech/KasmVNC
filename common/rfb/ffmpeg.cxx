@@ -16,7 +16,13 @@
  * USA.
  */
 
+#include "config.h"
 #include "ffmpeg.h"
+
+#ifdef KASMVNC_STATIC_FFMPEG
+#undef D_LOOKUP_SYM
+#define D_LOOKUP_SYM(handle, name) (&::name)
+#endif
 #include <array>
 #include <filesystem>
 #include "LogWriter.h"
@@ -24,6 +30,7 @@
 static rfb::LogWriter vlog("ffmpeg");
 using namespace std::string_literals;
 
+#ifndef KASMVNC_STATIC_FFMPEG
 FFmpeg::DlHandlerGuard FFmpeg::loadLibrary(const char *lib, unsigned major_version) {
 
     static constexpr std::array<std::string_view, 2> paths = {"/usr/lib/", "/usr/lib64"};
@@ -64,12 +71,16 @@ FFmpeg::DlHandlerGuard FFmpeg::loadLibrary(const char *lib, unsigned major_versi
     return DlHandlerGuard{handle};
 }
 
+#endif
+
 FFmpeg::FFmpeg() {
     try {
+#ifndef KASMVNC_STATIC_FFMPEG
         void *handle{};
         // libavutil
         libavutil = loadLibrary("libavutil.so", LIBAVUTIL_VERSION_MAJOR);
         handle = libavutil.get();
+#endif
 
         av_frame_free_f = D_LOOKUP_SYM(handle, av_frame_free);
         av_frame_alloc_f = D_LOOKUP_SYM(handle, av_frame_alloc);
@@ -89,20 +100,24 @@ FFmpeg::FFmpeg() {
         av_log_set_level_f = D_LOOKUP_SYM(handle, av_log_set_level);
         av_log_set_callback_f = D_LOOKUP_SYM(handle, av_log_set_callback);
 
-        vlog.debug("libavutil.so loaded");
+        vlog.debug("libavutil API initialized");
 
         // libswscale
+#ifndef KASMVNC_STATIC_FFMPEG
         libswscale = loadLibrary("libswscale.so", LIBSWSCALE_VERSION_MAJOR);
         handle = libswscale.get();
+#endif
 
         sws_freeContext_f = D_LOOKUP_SYM(handle, sws_freeContext);
         sws_getContext_f = D_LOOKUP_SYM(handle, sws_getContext);
         sws_scale_f = D_LOOKUP_SYM(handle, sws_scale);
-        vlog.debug("libswscale.so loaded");
+        vlog.debug("libswscale API initialized");
 
         // libavcodec
+#ifndef KASMVNC_STATIC_FFMPEG
         libavcodec = loadLibrary("libavcodec.so", LIBAVCODEC_VERSION_MAJOR);
         handle = libavcodec.get();
+#endif
 
         avcodec_find_decoder_f = D_LOOKUP_SYM(handle, avcodec_find_decoder);
         avcodec_parameters_to_context_f = D_LOOKUP_SYM(handle, avcodec_parameters_to_context);
@@ -122,7 +137,7 @@ FFmpeg::FFmpeg() {
         av_codec_is_encoder_f = D_LOOKUP_SYM(handle, av_codec_is_encoder);
         av_packet_alloc_f = D_LOOKUP_SYM(handle, av_packet_alloc);
         av_packet_free_f = D_LOOKUP_SYM(handle, av_packet_free);
-        vlog.debug("libavcodec.so loaded");
+        vlog.debug("libavcodec API initialized");
 
         av_log_set_level_f(AV_LOG_VERBOSE); // control what is emitted
         av_log_set_callback_f(av_log_callback);
@@ -133,6 +148,9 @@ FFmpeg::FFmpeg() {
         const auto *config = avcodec_configuration_f();
         vlog.debug("libavcodec configuration: %s", config);
 
+#ifdef KASMVNC_STATIC_FFMPEG
+        vlog.info("FFmpeg: static linkage");
+#endif
         available = true;
     } catch (std::exception &e) {
         vlog.error("%s", e.what());
@@ -147,15 +165,21 @@ void FFmpeg::ensureFormat() {
     // FFmpeg is a singleton; local-static initialization is thread-safe and
     // retries on the next call if loading throws.
     [[maybe_unused]] static const bool initialized = [this] {
+#ifndef KASMVNC_STATIC_FFMPEG
         auto library = loadLibrary("libavformat.so", LIBAVFORMAT_VERSION_MAJOR);
         auto handle = library.get();
+#endif
         avformat_open_input_f = D_LOOKUP_SYM(handle, avformat_open_input);
         avformat_find_stream_info_f = D_LOOKUP_SYM(handle, avformat_find_stream_info);
         av_read_frame_f = D_LOOKUP_SYM(handle, av_read_frame);
         av_seek_frame_f = D_LOOKUP_SYM(handle, av_seek_frame);
         avformat_close_input_f = D_LOOKUP_SYM(handle, avformat_close_input);
+#ifndef KASMVNC_STATIC_FFMPEG
         libavformat = std::move(library);
         vlog.debug("libavformat.so loaded on demand");
+#else
+        vlog.debug("Statically linked libavformat initialized on demand");
+#endif
         return true;
     }();
 }

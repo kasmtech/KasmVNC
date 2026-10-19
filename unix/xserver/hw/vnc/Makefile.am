@@ -1,6 +1,11 @@
 KASMVNC_SRCDIR=${top_srcdir}/../..
 KASMVNC_BUILDDIR=${KASMVNC_SRCDIR}
 
+KASMVNC_TLS_LIBS = -lssl -lcrypto
+KASMVNC_WEBP_LIBS = -lwebp -lsharpyuv
+-include $(KASMVNC_BUILDDIR)/kasmvnc-static-runtime.mk
+-include $(KASMVNC_BUILDDIR)/kasmvnc-static-desktop.mk
+
 RFB_LIB=$(KASMVNC_BUILDDIR)/common/rfb/librfb.la
 RDR_LIB=$(KASMVNC_BUILDDIR)/common/rdr/librdr.la
 OS_LIB=$(KASMVNC_BUILDDIR)/common/os/libos.la
@@ -22,7 +27,7 @@ libvnccommon_la_SOURCES = $(HDRS) \
 	Input.c InputXKB.c qnum_to_xorgevdev.c qnum_to_xorgkbd.c \
 	vncAtSpi.c
 
-libvnccommon_la_CPPFLAGS = -std=c++20 -DVENDOR_RELEASE="$(VENDOR_RELEASE)" -I$(KASMVNC_SRCDIR)/unix/common \
+libvnccommon_la_CPPFLAGS = $(KASMVNC_RUNTIME_CPPFLAGS) -std=c++20 -DVENDOR_RELEASE="$(VENDOR_RELEASE)" -I$(KASMVNC_SRCDIR)/unix/common \
 	-DVENDOR_STRING="\"$(VENDOR_STRING)\"" -I$(KASMVNC_SRCDIR)/common -UHAVE_CONFIG_H \
 	$(if $(ATSPI_DEBUG),-DATSPI_DEBUG=$(ATSPI_DEBUG)) \
 	-I$(KASMVNC_SRCDIR)/unix/vncconfig $(XVNC_CPPFLAGS) ${XSERVERLIBS_CFLAGS} $(shell pkg-config --cflags libavcodec libavformat libavutil libswscale 2>/dev/null || echo "") -I$(includedir) \
@@ -55,10 +60,10 @@ Xvnc_CPPFLAGS = $(XVNC_CPPFLAGS) -DKASMVNC -DNO_MODULE_EXTS \
 	-I$(top_srcdir)/dri3 @LIBDRM_CFLAGS@
 
 Xvnc_LDADD = $(XVNC_LIBS) libvnccommon.la $(COMMON_LIBS) \
-	$(XSERVER_LIBS) $(XSERVER_SYS_LIBS) $(XVNC_SYS_LIBS) -lX11 -lwebp -lsharpyuv -lssl -lcrypto -lcrypt \
+	$(XSERVER_LIBS) $(XSERVER_SYS_LIBS) $(XVNC_SYS_LIBS) -lX11 $(KASMVNC_WEBP_LIBS) $(KASMVNC_TLS_LIBS) -lcrypt \
 	-lfreetype -latspi -ldbus-1 -lgobject-2.0 -lglib-2.0 -lpthread
 
-Xvnc_LDFLAGS = $(LD_EXPORT_SYMBOLS_FLAG) -fopenmp
+Xvnc_LDFLAGS = $(LD_EXPORT_SYMBOLS_FLAG) -fopenmp $(KASMVNC_RUNTIME_LDFLAGS)
 
 libvnc_la_LTLIBRARIES = libvnc.la
 libvnc_ladir = $(moduledir)/extensions
@@ -76,7 +81,7 @@ libvnc_la_CPPFLAGS = $(XVNC_CPPFLAGS) -I$(KASMVNC_SRCDIR)/common -UHAVE_CONFIG_H
 	-I$(top_srcdir)/include \
 	${XSERVERLIBS_CFLAGS} -I$(includedir)
 
-libvnc_la_LDFLAGS = -module -avoid-version -Wl,-z,now
+libvnc_la_LDFLAGS = -module -avoid-version -Wl,-z,now $(KASMVNC_RUNTIME_LDFLAGS)
 
 libvnc_la_LIBADD = libvnccommon.la $(COMMON_LIBS) -latspi -ldbus-1 -lgobject-2.0 -lglib-2.0 -lpthread
 

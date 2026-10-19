@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Opt-in experimental application-static build; normal distro builds are unchanged.
+set -euo pipefail
+export KASMVNC_STATIC_FFMPEG=ON
+export KASMVNC_CODEC_PREFIX=${KASMVNC_CODEC_PREFIX:-/opt/kasm-codecs}
+export KASMVNC_STATIC_RUNTIME_PREFIX=${KASMVNC_STATIC_RUNTIME_PREFIX:-/opt/kasm-runtime}
+/src/builder/scripts/build-static-runtime
+if [[ -n ${KASMVNC_STATIC_DESKTOP_PREFIX:-} ]]; then
+    /src/builder/scripts/build-static-desktop
+    export PKG_CONFIG_PATH="$KASMVNC_STATIC_DESKTOP_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+fi
+export PKG_CONFIG_PATH="$KASMVNC_STATIC_RUNTIME_PREFIX/lib/pkgconfig:$KASMVNC_CODEC_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+/src/builder/scripts/build-static-ffmpeg
+export CPATH="$KASMVNC_STATIC_RUNTIME_PREFIX/include:$KASMVNC_CODEC_PREFIX/include${CPATH:+:$CPATH}"
+exec /src/builder/build.sh "$@"

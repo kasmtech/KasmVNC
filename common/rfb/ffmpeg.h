@@ -24,6 +24,8 @@
 
 extern "C" {
 #include <libavcodec/avcodec.h>
+#include <libavutil/opt.h>
+#include <libavutil/hwcontext.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
 }
@@ -120,7 +122,7 @@ class FFmpeg final {
                                    int srcSliceH, uint8_t *const dst[], const int dstStride[]);
 
     // libavcodec
-    using avcodec_version_func = const unsigned (*) ();
+    using avcodec_version_func = unsigned (*) ();
     using avcodec_configuration_func = const char *(*) ();
     using avcodec_free_context_func = void (*)(AVCodecContext **);
     using av_packet_free_func = void (*)(AVPacket **);

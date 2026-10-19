@@ -13,3 +13,5 @@ target_link_libraries(vncconfig tx rfb network rdr ${X11_LIBRARIES})
 
 install(TARGETS vncconfig DESTINATION ${BIN_DIR})
 install(FILES vncconfig.man DESTINATION ${MAN_DIR}/man1 RENAME vncconfig.1)
+
+kasmvnc_static_desktop_target(vncconfig)

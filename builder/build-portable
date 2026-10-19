@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Native-architecture portable packages, using the glibc 2.34 build profile.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+test -s builder/www/index.html || { echo 'Run builder/build-www first' >&2; exit 1; }
+revision=${KASMVNC_COMMIT_ID:-$(git rev-parse HEAD)}
+branch=${CI_COMMIT_REF_NAME:-$(git branch --show-current)}
+version=${KASMVNC_PORTABLE_VERSION:-$(.ci/next_release_version "$branch")}
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid release version' >&2; exit 1; }
+case $(docker info --format '{{.Architecture}}') in
+  x86_64|amd64) arch=amd64 ;;
+  aarch64|arm64) arch=arm64 ;;
+  *) echo 'Unsupported native Docker architecture' >&2; exit 1 ;;
+esac
+basename="kasmvncserver_portable_${version}_${branch//\//_}_${revision:0:6}_${arch}"
+[[ "$basename" =~ ^[a-zA-Z0-9_.+-]+$ ]] || { echo 'Unsafe artifact filename' >&2; exit 1; }
+image="kasmvnc-portable-builder:${revision:0:12}-${arch}"
+docker build -f builder/dockerfile.el9.static -t "$image" .
+docker build -f builder/portable/Dockerfile --build-arg BUILDER_IMAGE="$image" -t "${image}-package" .
+container=$(docker create --entrypoint /src/builder/portable/build-inside-docker \
+  -e KASMVNC_COMMIT_ID="$revision" -e KASMVNC_PORTABLE_VERSION="$version" \
+  -e KASMVNC_PORTABLE_BASENAME="$basename" -e BUILD_JOBS="${BUILD_JOBS:-8}" \
+  "${image}-package")
+trap 'docker rm -f "$container" >/dev/null' EXIT
+docker start -a "$container"
+test "$(docker inspect -f '{{.State.ExitCode}}' "$container")" = 0
+mkdir -p "builder/build/portable_${arch}"
+docker cp "$container:/artifacts/." "builder/build/portable_${arch}/"

@@ -16,6 +16,11 @@ KasmVNC provides remote web-based access to a Desktop or application. While VNC 
 
 ## Installation
 
+Experimental portable DEB/RPM and tar packages are also built for x86_64 and
+ARM64 with glibc 2.34 or newer. See the [portable installation guide](builder/portable/README.md)
+for host dependencies and limitations. Existing distro packages remain the
+established installation option while broader manual qualification continues.
+
 **You must disconnect and reconnect to the server after installation, for the group membership to apply.**
 
 ### Debian/Ubuntu/Kali

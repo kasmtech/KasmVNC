@@ -1,0 +1,225 @@
+{
+  "source": "workspaces-core-images/ci-scripts/template-vars.yaml",
+  "source_revision": "11a313aaf3ebf1d35851d707875c2c7627e8fdd0",
+  "cases": [
+    {
+      "name": "kasmos-kasmos",
+      "image": "debian:bookworm-slim",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "deb",
+      "exclude_reason": null
+    },
+    {
+      "name": "ubuntu-jammy",
+      "image": "ubuntu:22.04",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "deb",
+      "exclude_reason": null
+    },
+    {
+      "name": "ubuntu-noble",
+      "image": "ubuntu:24.04",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "deb",
+      "exclude_reason": null
+    },
+    {
+      "name": "ubuntu-resolute",
+      "image": "ubuntu:26.04",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "deb",
+      "exclude_reason": null
+    },
+    {
+      "name": "debian-bookworm",
+      "image": "debian:bookworm-slim",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "deb",
+      "exclude_reason": null
+    },
+    {
+      "name": "debian-trixie",
+      "image": "debian:trixie-slim",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "deb",
+      "exclude_reason": null
+    },
+    {
+      "name": "kali-rolling",
+      "image": "kalilinux/kali-rolling:latest",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "deb",
+      "exclude_reason": null
+    },
+    {
+      "name": "oracle-8",
+      "image": "oraclelinux:8",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": "glibc 2.28 is below the portable 2.34 baseline"
+    },
+    {
+      "name": "oracle-9",
+      "image": "oraclelinux:9",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": null
+    },
+    {
+      "name": "rhel-9",
+      "image": "registry.access.redhat.com/ubi9/ubi",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": null
+    },
+    {
+      "name": "rockylinux-8",
+      "image": "rockylinux:8",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": "glibc 2.28 is below the portable 2.34 baseline"
+    },
+    {
+      "name": "rockylinux-9",
+      "image": "rockylinux:9",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": null
+    },
+    {
+      "name": "almalinux-8",
+      "image": "almalinux:8",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": "glibc 2.28 is below the portable 2.34 baseline"
+    },
+    {
+      "name": "almalinux-9",
+      "image": "almalinux:9",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": null
+    },
+    {
+      "name": "opensuse-16",
+      "image": "opensuse/leap:16.0",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": null
+    },
+    {
+      "name": "fedora-42",
+      "image": "fedora:42",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": null
+    },
+    {
+      "name": "fedora-43",
+      "image": "fedora:43",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": null
+    },
+    {
+      "name": "parrotos-7",
+      "image": "parrotsec/core:7.1",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "deb",
+      "exclude_reason": null
+    },
+    {
+      "name": "alpine-321",
+      "image": "alpine:3.21",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": "musl does not provide the glibc ABI"
+    },
+    {
+      "name": "alpine-322",
+      "image": "alpine:3.22",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": "musl does not provide the glibc ABI"
+    },
+    {
+      "name": "alpine-323",
+      "image": "alpine:3.23",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": "musl does not provide the glibc ABI"
+    },
+    {
+      "name": "cuda-jammy",
+      "image": "nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04",
+      "architectures": [
+        "amd64"
+      ],
+      "format": "deb",
+      "exclude_reason": null
+    }
+  ]
+}

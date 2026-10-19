@@ -218,3 +218,50 @@ sudo builder/build-package ubuntu focal
 ```
 The resulting deb package can be found under `~/KasmVNC/builder/build/ubuntu_focal`.
 Replace ```focal``` with ```noble``` to build for Ubuntu 24.04LTS.
+
+
+## Portable application packages
+
+This experimental profile supplements the existing distro and Nix builds.
+From a clean checkout on a native x86_64 or ARM64 Docker host, first prepare
+`builder/www` using the existing web build workflow, then run:
+
+```sh
+builder/build-portable
+```
+
+The Oracle Linux 9 builder compiles the application and embedded dependencies,
+then produces `.deb`, `.rpm`, `.tar.gz`, checksums, provenance and an ELF audit
+under `builder/build/portable_amd64/` or `builder/build/portable_arm64/`.
+`KASMVNC_PORTABLE_VERSION` can override the inferred three-part release version;
+`BUILD_JOBS` controls compilation concurrency. Do not reuse an in-source build
+from a different distro or architecture in the Docker context.
+
+CI jobs `build_portable_amd64` and `build_portable_arm64` reuse `build_www`,
+upload to the existing immutable `kasmvnc/<commit>/` S3 prefix, and retain
+GitLab artifacts. `test_portable_amd64` and `test_portable_arm64` install those
+packages and tar archives in the eligible core-image distro matrix. These jobs
+are required when enabled. `BUILD_PORTABLE=false` disables only this profile;
+`BUILD_DISTROS_REGEX=none` disables it alongside the other packaging profiles.
+
+To reproduce one matrix case locally:
+
+```sh
+builder/test-portable builder/build/portable_amd64 --arch amd64 \
+  --case ubuntu-jammy --results /tmp/kasm-portable-jammy
+```
+
+The matrix is recorded in `builder/portable-tests/matrix.json`, including its
+source revision and exclusions. Tests exercise the installed Perl launcher,
+TLS authentication, browser software H.264, keyboard input and package/config
+lifecycle. Pass `--previous-package /path/to/older.deb` (or `.rpm`) to test an
+actual package upgrade; without it, lifecycle coverage is reinstall/removal,
+not an upgrade from an older release. GPU, hardware diversity and older host
+kernels require separate testing. Containers share the runner kernel.
+
+See [installation and runtime requirements](portable/README.md) before using
+these artifacts, and [implementation details](STATIC_BUILD.md) for the static
+library boundary and security maintenance implications. Do not retire existing
+packages until manual end-to-end distro, hardware and kernel qualification is
+complete. Converting the Perl launcher to C++ is deferred until this approach
+has been validated.

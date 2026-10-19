@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""Install and exercise published portable packages on core-image base distros.
+
+Uses native Docker architecture, the installed Perl launcher, authenticated TLS,
+a browser selecting software H.264, keyboard input and package lifecycle checks.
+GPU tests remain a separate hardware validation; CI never fabricates GPU access.
+"""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+import time
+import uuid
+
+parser = argparse.ArgumentParser()
+parser.add_argument('artifact_directory')
+parser.add_argument('--case', required=True)
+parser.add_argument('--arch', required=True, choices=['amd64', 'arm64'])
+parser.add_argument('--results', required=True)
+parser.add_argument('--formats', nargs='+', choices=['native', 'tar'], default=['native', 'tar'])
+parser.add_argument('--previous-package', default=os.getenv('PORTABLE_PREVIOUS_PACKAGE'))
+args = parser.parse_args()
+repo = Path(__file__).resolve().parent.parent
+tests = repo / 'builder/portable-tests'
+manifest = json.loads((tests/'matrix.json').read_text())
+row = next((r for r in manifest['cases'] if r['name'] == args.case), None)
+if row is None:
+    parser.error('Unknown core-image matrix case')
+results = Path(args.results).resolve()
+results.mkdir(parents=True, exist_ok=True)
+report = {'case': row, 'architecture': args.arch, 'source_matrix': manifest['source'],
+          'source_revision': manifest['source_revision'], 'formats': [], 'pass': False}
+
+def run(command, *, log=None, check=True, timeout=1200):
+    completed = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               text=True, timeout=timeout)
+    if log:
+        Path(log).write_text(completed.stdout)
+    if check and completed.returncode:
+        raise RuntimeError('Command failed: ' + ' '.join(command) + '\n' + completed.stdout[-6000:])
+    return completed
+
+if row['exclude_reason'] or args.arch not in row['architectures']:
+    report.update(skipped=True, reason=row['exclude_reason'] or 'Core-image pipeline builds this image only on amd64')
+    (results/'report.json').write_text(json.dumps(report, indent=2)+'\n')
+    print(report['reason'])
+    raise SystemExit(0)
+
+artifact_dir = Path(args.artifact_directory).resolve()
+# Verify any published checksum manifests before installing the artifact.
+for checksum in artifact_dir.glob('*.sha256'):
+    for line in checksum.read_text().splitlines():
+        if not line.strip():
+            continue
+        digest, filename = line.split(maxsplit=1)
+        target = (artifact_dir/filename.lstrip('*')).resolve()
+        if artifact_dir not in target.parents or hashlib.sha256(target.read_bytes()).hexdigest() != digest:
+            raise SystemExit('Published artifact checksum mismatch: '+filename)
+run(['docker', 'info', '--format', '{{.Architecture}}'], log=results/'docker-architecture.txt')
+architecture = (results/'docker-architecture.txt').read_text().strip()
+if architecture not in ({'x86_64', 'amd64'} if args.arch == 'amd64' else {'aarch64', 'arm64'}):
+    raise SystemExit('Portable matrix must run on native architecture, not QEMU')
+unique = uuid.uuid4().hex[:12]
+browser_image = 'kasm-portable-browser:' + unique
+try:
+    run(['docker', 'build', '--platform', 'linux/'+args.arch, '-t', browser_image,
+         '-f', str(tests/'browser.Dockerfile'), str(tests)], log=results/'browser-build.log')
+    for requested_format in args.formats:
+        fmt = row['format'] if requested_format == 'native' else 'tar'
+        extension = 'tar.gz' if fmt == 'tar' else fmt
+        files = list(artifact_dir.glob('kasmvncserver_portable_*.'+extension))
+        if len(files) != 1:
+            raise RuntimeError('Expected exactly one published '+extension+' artifact')
+        artifact = files[0]
+        out = results/fmt
+        out.mkdir(exist_ok=True)
+        item = {'format': fmt, 'artifact': artifact.name, 'pass': False,
+                'lifecycle': 'manual tar extraction/removal, not a package manager' if fmt == 'tar' else 'native package manager',
+                'upgrade': 'not tested: no previous package provided'}
+        report['formats'].append(item)
+        image = 'kasm-portable-test:'+unique+'-'+fmt
+        container = 'kasm-portable-'+unique+'-'+fmt
+        browser = container+'-browser'
+        try:
+            with tempfile.TemporaryDirectory(prefix='kasm-portable-test-') as temp:
+                context = Path(temp)
+                shutil.copytree(tests, context/'test')
+                (context/'artifacts').mkdir()
+                shutil.copy2(artifact, context/'artifacts'/artifact.name)
+                initial = artifact.name
+                replacement_action = 'reinstall'
+                if args.previous_package and fmt != 'tar':
+                    previous = Path(args.previous_package).resolve()
+                    if previous.suffix != '.'+fmt:
+                        raise RuntimeError('Previous package must match native package format')
+                    initial = 'previous.'+fmt
+                    replacement_action = 'upgrade'
+                    shutil.copy2(previous, context/'artifacts'/initial)
+                    item['upgrade'] = 'previous package installed, then candidate replaces it'
+                (context/'Dockerfile').write_text(
+                    'ARG BASE\nFROM ${BASE}\nUSER root\n'
+                    'COPY test/prerequisites.sh /portable/prerequisites.sh\n'
+                    'RUN bash /portable/prerequisites.sh '+fmt+(' all' if fmt == 'tar' else ' bootstrap')+'\n'
+                    'COPY artifacts /artifacts\nCOPY test/package.sh /portable/package.sh\n'
+                    'RUN bash /portable/package.sh install '+fmt+' /artifacts/'+initial+'\n'
+                    + ('RUN bash /portable/prerequisites.sh '+fmt+' tools\n' if fmt != 'tar' else '') +
+                    'RUN bash /portable/package.sh mark '+fmt+'\n'
+                    'RUN bash /portable/package.sh '+replacement_action+' '+fmt+' /artifacts/'+artifact.name+'\n'
+                    'COPY test/session.sh /portable/session.sh\n'
+                    'ENTRYPOINT ["runuser", "-u", "kasm_test", "--", "bash", "/portable/session.sh"]\n')
+                run(['docker','build','--platform','linux/'+args.arch,'--build-arg','BASE='+row['image'],
+                     '-t',image,str(context)], log=out/'install.log')
+            run(['docker','run','-d','--runtime=runc','--name',container,'--shm-size=512m',image], log=out/'launch.log')
+            ready = False
+            for _ in range(60):
+                if run(['docker','exec',container,'test','-f','/home/kasm_test/ready'],check=False,timeout=20).returncode == 0:
+                    ready = True
+                    break
+                if run(['docker','inspect','--format','{{.State.Running}}',container]).stdout.strip() != 'true':
+                    break
+                time.sleep(1)
+            if not ready:
+                raise RuntimeError('Packaged Perl launcher did not start a ready session')
+            browser_run = run(['docker','run','--name',browser,'--runtime=runc','--network','container:'+container,
+                              '--shm-size=512m',browser_image],check=False,timeout=120)
+            (out/'browser-command.log').write_text(browser_run.stdout)
+            run(['docker','cp',browser+':/results/.',str(out)],check=False)
+            if browser_run.returncode:
+                raise RuntimeError('Browser software H.264 test failed')
+            proof = run(['docker','exec',container,'cat','/home/kasm_test/input-proof']).stdout
+            if proof != 'portable-input-ok':
+                raise RuntimeError('Browser keyboard input did not reach desktop terminal')
+            logs = run(['docker','exec',container,'bash','-c','cat /home/kasm_test/.vnc/*.log']).stdout
+            (out/'xvnc.log').write_text(logs)
+            if 'SoftwareEncoder: Screen id 0, codec 16, frame size:' not in logs:
+                raise RuntimeError('Server did not confirm software H.264 frame encoding')
+            run(['docker','exec',container,'runuser','-u','kasm_test','--','kasmvncserver','-kill',':1'],log=out/'stop.log')
+            if run(['docker','exec',container,'runuser','-u','kasm_test','--','xdpyinfo','-display',':1'],check=False).returncode == 0:
+                raise RuntimeError('Launcher stop left the X server running')
+            run(['docker','exec',container,'bash','/portable/package.sh','remove',fmt],log=out/'uninstall.log')
+            # Reinstall after removal also exercises residual config handling.
+            run(['docker','exec',container,'bash','/portable/package.sh','install',fmt,'/artifacts/'+artifact.name],log=out/'install-after-remove.log')
+            item['pass'] = True
+            item.update(authentication='401/401/200',
+                        keyboard_input=True, software_h264=True,
+                        reinstall_config_preserved=True, uninstall_config_preserved=True)
+        finally:
+            run(['docker','logs',container],log=out/'container.log',check=False)
+            shutil.rmtree(out/'session-logs', ignore_errors=True)
+            run(['docker','cp',container+':/home/kasm_test/.vnc',str(out/'session-logs')],check=False)
+            # Retain runtime diagnostics, not generated test private keys.
+            for diagnostic in (out/'session-logs').rglob('*'):
+                if diagnostic.is_file() and diagnostic.suffix != '.log':
+                    diagnostic.unlink()
+            run(['docker','cp',container+':/tmp/portable-ldd.txt',str(out/'ldd.txt')],check=False)
+            run(['docker','rm','-f',browser,container],check=False)
+            run(['docker','image','rm',image],check=False)
+    report['pass'] = True
+except Exception as error:
+    report['error'] = str(error)
+    print(str(error))
+finally:
+    (results/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+    run(['docker','image','rm',browser_image],check=False)
+raise SystemExit(0 if report['pass'] else 1)

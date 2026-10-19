@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+"""Reject ELF binaries requiring a newer glibc than the selected baseline."""
+import argparse
+import re
+import subprocess
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--maximum", default="2.34")
+parser.add_argument("binaries", nargs="+")
+args = parser.parse_args()
+ceiling = tuple(map(int, args.maximum.split(".")))
+failed = False
+for binary in args.binaries:
+    # Only version needs, not exported definitions, determine the runtime floor.
+    output = subprocess.check_output(["readelf", "--version-info", "--wide", binary], text=True)
+    needs = output.partition("Version needs section")[2]
+    names = set(re.findall(r"Name: (GLIBC_[^\s]+)", needs))
+    unknown = sorted(name for name in names if not re.fullmatch(r"GLIBC_[0-9]+(?:\.[0-9]+)+", name))
+    if unknown:
+        raise SystemExit(f"{binary}: unreviewed glibc ABI tags: {', '.join(unknown)}")
+    versions = {tuple(map(int, v.split("."))) for v in re.findall(r"Name: GLIBC_([0-9]+(?:\.[0-9]+)+)", needs)}
+    if not versions:
+        raise SystemExit(f"{binary}: no GLIBC version requirements found; refusing an unaudited artifact")
+    maximum = max(versions)
+    too_new = sorted(v for v in versions if v > ceiling)
+    print(f"{binary}: highest required GLIBC_{'.'.join(map(str, maximum))}; limit {args.maximum}")
+    if too_new:
+        print("  FAIL: " + ", ".join("GLIBC_" + ".".join(map(str, v)) for v in too_new))
+        failed = True
+raise SystemExit(1 if failed else 0)

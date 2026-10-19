@@ -9,6 +9,9 @@
 CMakeFiles
 CMakeCache.txt
 *.cmake
+!/cmake/StaticFFmpeg.cmake
+!/cmake/StaticRuntime.cmake
+!/cmake/StaticDesktop.cmake
 Makefile
 Makefile.in
 config.h
@@ -42,3 +45,10 @@ alpine/packages/
 .claude/scheduled_tasks.lock
 # Optional workspace build reports
 workspace-image-report/
+# Generated optional static-link settings for the Xorg build
+/kasmvnc-static-runtime.mk
+
+/kasmvnc-static-desktop.mk
+
+# Python build/test helper bytecode
+__pycache__/

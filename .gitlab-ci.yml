@@ -16,6 +16,7 @@ variables:
   # E.g. BUILD_DISTROS_REGEX: "jammy|\ focal".
   BUILD_DISTROS_REGEX: all
   BUILD_NIX: "true"
+  BUILD_PORTABLE: "true"
   # To debug upload stage, you can limit BUILD_DISTROS_REGEX to jammy and allow
   # run_test distros to fail, by setting ALLOW_RUN_TESTS_TO_FAIL to true.
   ALLOW_RUN_TESTS_TO_FAIL: false
@@ -472,3 +473,79 @@ test_nix_arm64:
   dependencies: [build_nix_arm64]
   variables:
     NIX_SYSTEM: aarch64-linux
+
+# Portable application builds supplement every existing distro and Nix job.
+.build_portable:
+  stage: build
+  timeout: 3h
+  retry:
+    max: 2
+    when: [runner_system_failure, api_failure]
+  image: $DEBIAN_STABLE_IMAGE
+  dependencies: [build_www]
+  allow_failure: false
+  before_script:
+    - *prepare_build
+    - apt-get install -y git
+    - *prepare_www
+    - . .ci/helpers.sh
+  script:
+    - builder/build-portable
+    - upload_portable_packages
+    - mkdir -p output
+    - cp -r builder/build/portable_* output/
+  artifacts:
+    paths: [output/]
+  rules:
+    - if: '$BUILD_PORTABLE == "false" || $BUILD_DISTROS_REGEX == "none"'
+      when: never
+    - when: on_success
+
+build_portable_amd64:
+  extends: .build_portable
+  tags: [oci-fixed-amd]
+
+build_portable_arm64:
+  extends: .build_portable
+  tags: [oci-fixed-arm]
+
+.test_portable:
+  stage: run_test
+  timeout: 40m
+  retry:
+    max: 2
+    when: [runner_system_failure, api_failure]
+  image: $DEBIAN_STABLE_IMAGE
+  allow_failure: false
+  before_script:
+    - *prepare_build
+    - apt-get install -y python3 curl
+  script:
+    - builder/test-portable "output/portable_${PORTABLE_ARCH}" --case "$PORTABLE_CASE" --arch "$PORTABLE_ARCH" --results "output/portable-tests/${PORTABLE_ARCH}/${PORTABLE_CASE}"
+  artifacts:
+    when: always
+    paths: [output/portable-tests/]
+  rules:
+    - if: '$BUILD_PORTABLE == "false" || $BUILD_DISTROS_REGEX == "none"'
+      when: never
+    - when: on_success
+
+test_portable_amd64:
+  extends: .test_portable
+  tags: [oci-fixed-amd]
+  needs: [build_portable_amd64]
+  variables:
+    PORTABLE_ARCH: amd64
+  parallel:
+    matrix:
+      - PORTABLE_CASE: [kasmos-kasmos, ubuntu-jammy, ubuntu-noble, ubuntu-resolute, debian-bookworm, debian-trixie, kali-rolling, oracle-9, rhel-9, rockylinux-9, almalinux-9, opensuse-16, fedora-42, fedora-43, parrotos-7, cuda-jammy]
+
+test_portable_arm64:
+  extends: .test_portable
+  tags: [oci-fixed-arm]
+  needs: [build_portable_arm64]
+  variables:
+    PORTABLE_ARCH: arm64
+  parallel:
+    matrix:
+      - PORTABLE_CASE: [kasmos-kasmos, ubuntu-jammy, ubuntu-noble, ubuntu-resolute, debian-bookworm, debian-trixie, kali-rolling, oracle-9, rhel-9, rockylinux-9, almalinux-9, opensuse-16, fedora-42, fedora-43, parrotos-7]

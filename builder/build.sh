@@ -70,11 +70,11 @@ setup_sccache() {
 
 setup_compilers_to_see_libs_in_dot_local() {
   export PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig:$HOME/.local/lib64/pkgconfig:$HOME/.local/share/pkgconfig:${PKG_CONFIG_PATH}"
-  export CPATH="$HOME/.local/include${CPATH:+:CPATH}"
+  export CPATH="$HOME/.local/include${CPATH:+:$CPATH}"
 }
 
 ensure_libturbojpeg_links() {
-  export LDFLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64"
+  export LDFLAGS="${KASMVNC_GCC_RUNTIME_PREFIX:+-L$KASMVNC_GCC_RUNTIME_PREFIX/lib }${KASMVNC_STATIC_RUNTIME_PREFIX:+-L$KASMVNC_STATIC_RUNTIME_PREFIX/lib }-L$HOME/.local/lib -L$HOME/.local/lib64"
 }
 
 # For build-dep to work, the apt sources need to have the source server
@@ -118,10 +118,13 @@ ensure_libturbojpeg_links
 
 cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
   -DENABLE_GNUTLS:BOOL=OFF \
+  -DKASMVNC_STATIC_FFMPEG:BOOL="${KASMVNC_STATIC_FFMPEG:-OFF}" \
+  -DKASMVNC_STATIC_RUNTIME_PREFIX="${KASMVNC_STATIC_RUNTIME_PREFIX:-}" \
+  -DKASMVNC_STATIC_DESKTOP_PREFIX="${KASMVNC_STATIC_DESKTOP_PREFIX:-}" \
   -DCMAKE_PREFIX_PATH="$HOME/.local" \
   -DCMAKE_LIBRARY_PATH="$HOME/.local/lib;$HOME/.local/lib64" \
   -DCMAKE_INCLUDE_PATH="$HOME/.local/include" \
-  -DCMAKE_EXE_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64" \
+  -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
   -DCMAKE_SHARED_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64" \
   -DCMAKE_MODULE_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64"
 
@@ -153,7 +156,7 @@ else
   cd unix/xserver
 fi
 
-autoreconf -i
+autoreconf -fi
 # Configuring Xorg is long and has many distro-specific paths.
 # The distro paths start after prefix and end with the font path,
 # everything after that is based on BUILDING.txt to remove unneeded

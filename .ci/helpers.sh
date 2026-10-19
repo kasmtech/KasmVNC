@@ -222,6 +222,19 @@ upload_nix_packages() {
   check_regular_packages_were_uploaded "$count"
 }
 
+# Portable filenames already include version, revision and native architecture.
+# Upload packages plus their audits/checksums through the existing S3/index path.
+upload_portable_packages() {
+  prepare_to_run_scripts_and_s3_uploads
+  local package
+  local count=0
+  while IFS= read -r -d '' package; do
+    upload_regular_package_to_build_dir "$package"
+    count=$((count + 1))
+  done < <(find builder/build -path '*/portable_*/*' -type f -name 'kasmvncserver_portable_*' -print0)
+  check_regular_packages_were_uploaded "$count"
+}
+
 detect_alpine_doc_package() {
   is_alpine_doc_package=
   if [[ $package =~ kasmvncserver-doc ]]; then

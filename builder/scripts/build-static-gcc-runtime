@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Build a private GCC 14 unwind runtime without glibc's optional 2.35 API.
+# Requires C/C++ build tools, GMP/MPFR/MPC development headers, flex/bison,
+# make, curl, xz and Python 3. Does not install/replace the system compiler.
+set -euo pipefail
+prefix=${KASMVNC_GCC_RUNTIME_PREFIX:-/opt/kasm-gcc-runtime}
+work=${KASMVNC_GCC_RUNTIME_BUILD_DIR:-/tmp/kasm-gcc-runtime}
+jobs=${BUILD_JOBS:-8}
+version=14.2.0
+sha=a7b39bc69cbf9e25826c5a60ab26477001f7c08d85cec04bc0e29cabed6f3cc9
+url=https://ftp.gnu.org/gnu/gcc/gcc-${version}/gcc-${version}.tar.xz
+mkdir -p "$work" "$prefix/lib" "$prefix/share/gcc-runtime"
+cd "$work"
+if [[ ! -f gcc-${version}.tar.xz ]]; then
+  curl -fL --retry 3 -o gcc-${version}.tar.xz "$url"
+fi
+echo "$sha  gcc-${version}.tar.xz" | sha256sum -c -
+if [[ ! -d gcc-${version} ]]; then
+  tar -xf gcc-${version}.tar.xz
+fi
+python3 - "$work/gcc-${version}/libgcc/unwind-dw2-fde-dip.c" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1]);s=p.read_text()
+old='#if defined(DLFO_STRUCT_HAS_EH_DBASE) && !defined(__nios2__)'
+new='#if 0 /* KasmVNC: use upstream dl_iterate_phdr path for glibc 2.34. */'
+if old in s:
+    assert s.count(old)==1
+    p.write_text(s.replace(old,new))
+else:
+    assert new in s, 'Unexpected upstream unwind source'
+PY
+mkdir -p build
+cd build
+if [[ ! -f Makefile ]]; then
+  ../gcc-${version}/configure --prefix="$prefix/toolchain" \
+    --disable-bootstrap --disable-multilib --disable-nls \
+    --enable-languages=c --disable-libsanitizer --disable-libquadmath \
+    --disable-libgomp --disable-libatomic --disable-libssp
+fi
+# libgcc requires generated target headers and xgcc; build only the C compiler
+# and libgcc, not the C++ compiler or the other target runtime libraries.
+make -j"$jobs" all-gcc
+make -j"$jobs" CFLAGS_FOR_TARGET="${CFLAGS:--O2 -fPIC}" all-target-libgcc
+target=$(./gcc/xgcc -B./gcc/ -dumpmachine)
+for lib in libgcc.a libgcc_eh.a; do
+  cp "$target/libgcc/$lib" "$prefix/lib/$lib"
+done
+nm -u "$prefix/lib/libgcc_eh.a" > "$prefix/share/gcc-runtime/undefined-symbols.txt"
+if grep _dl_find_object >/dev/null "$prefix/share/gcc-runtime/undefined-symbols.txt"; then
+  echo 'Unexpected glibc 2.35 unwind dependency' >&2
+  exit 1
+fi
+cp ../gcc-${version}/COPYING.RUNTIME ../gcc-${version}/COPYING3 "$prefix/share/gcc-runtime/"
+cp ../gcc-${version}/libgcc/unwind-dw2-fde-dip.c "$prefix/share/gcc-runtime/"
+python3 - "$prefix" "$url" "$sha" <<'PY'
+import hashlib,json,pathlib,subprocess,sys
+p=pathlib.Path(sys.argv[1])
+manifest={'source_url':sys.argv[2],'source_sha256':sys.argv[3],
+ 'target':subprocess.check_output(['gcc','-dumpmachine'],text=True).strip(),
+ 'version':'14.2.0','patch':'Disable _dl_find_object branch; retain upstream dl_iterate_phdr implementation',
+ 'builder_compiler':subprocess.check_output(['gcc','--version'],text=True).splitlines()[0],
+ 'archives':{f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in (p/'lib').glob('libgcc*.a')}}
+(p/'share/gcc-runtime/manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+PY

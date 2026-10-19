@@ -218,7 +218,18 @@ build configuration or module dependencies.
 Add `-DCMAKE_BUILD_TYPE=Debug` to the CMake command line.
 
 
-## Portable (semi-static) Build
+## Portable application packages (experimental)
+
+The glibc 2.34 portable profile produces native x86_64 and ARM64 DEB, RPM and
+filesystem-root tar archives. It embeds the application libraries, including
+FFmpeg, while retaining host glibc and graphics loaders/drivers. Existing distro
+and Nix builds remain available. Perl launcher dependencies are still required.
+
+See [portable build and CI instructions](builder/README.md#portable-application-packages),
+[installation and compatibility](builder/portable/README.md), and
+[static-link implementation details](builder/STATIC_BUILD.md).
+
+## Legacy semi-static Build
 
 KasmVNC can under favourble circumstances be built in a way that allows
 the resulting binaries to run on any system without having to also install

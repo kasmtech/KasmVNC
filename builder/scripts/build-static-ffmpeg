@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Run inside a build container. This prefix must precede distro pkg-config paths.
+set -euo pipefail
+prefix=${KASMVNC_CODEC_PREFIX:-/opt/kasm-codecs}
+source_dir=${KASMVNC_CODEC_SOURCES:-/tmp/static-sources}
+jobs=${BUILD_JOBS:-8}
+mkdir -p "$source_dir" "$prefix"
+cd "$source_dir"
+fetch_git() {
+    local name=$1 url=$2 revision=$3
+    if [[ ! -d $name/.git ]]; then
+        git init "$name"
+        git -C "$name" remote add origin "$url"
+        git -C "$name" fetch --depth 1 origin "$revision"
+        git -C "$name" checkout --detach FETCH_HEAD
+    fi
+    test "$(git -C "$name" rev-parse HEAD)" = "$revision"
+}
+fetch_git x264 https://code.videolan.org/videolan/x264.git b35605ace3ddf7c1a5d67a2eb553f034aef41d55
+fetch_git x265 https://github.com/Multicorewareinc/x265.git e9b88125dc21393b3fd8d68e98083bdfb89778a8
+# x265 only generates its pkg-config metadata when its release tag is present.
+# A commit-only shallow checkout does not carry that tag.
+git -C x265 fetch --depth 1 origin tag 4.3
+test "$(git -C x265 rev-parse '4.3^{commit}')" = e9b88125dc21393b3fd8d68e98083bdfb89778a8
+fetch_git svt-av1 https://gitlab.com/AOMediaCodec/SVT-AV1.git 9292ec8e32bce26f781f277ec8739b53426c4300
+# 13.1 requires NVIDIA 610; 13.0 supports drivers >=570, including our 595 test host.
+fetch_git nv-codec-headers https://github.com/FFmpeg/nv-codec-headers.git 88fee5c37318c991a8762d423530f91681e32e3a
+if [[ ! -f ffmpeg-9.0.2.tar.xz ]]; then
+    curl -fL --retry 3 https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz -o ffmpeg-9.0.2.tar.xz
+fi
+echo '8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e  ffmpeg-9.0.2.tar.xz' | sha256sum -c -
+[[ -d ffmpeg-9.0.2 ]] || tar -xf ffmpeg-9.0.2.tar.xz
+export PKG_CONFIG_PATH="$prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+(
+    cd x264
+    ./configure --prefix="$prefix" --enable-static --enable-pic --disable-cli --disable-opencl
+    make -j"$jobs"
+    make install
+)
+cmake -S x265/source -B x265/build-static -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
+    -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DENABLE_PIC=ON -DNATIVE_BUILD=OFF
+cmake --build x265/build-static -j"$jobs"
+cmake --install x265/build-static
+cmake -S svt-av1 -B svt-av1/build-static -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_APPS=OFF -DBUILD_TESTING=OFF -DNATIVE=OFF
+cmake --build svt-av1/build-static -j"$jobs"
+cmake --install svt-av1/build-static
+make -C nv-codec-headers PREFIX="$prefix" install
+(
+    cd ffmpeg-9.0.2
+    ./configure --prefix="$prefix" --enable-static --disable-shared --enable-pic \
+        --disable-autodetect --disable-doc --disable-programs --disable-debug \
+        --disable-avdevice --disable-avfilter --disable-network \
+        --enable-gpl --enable-libx264 --enable-libx265 --enable-libsvtav1 \
+        --enable-vaapi --enable-libdrm --enable-ffnvcodec --enable-cuda --enable-nvenc \
+        --pkg-config-flags=--static
+    make -j"$jobs"
+    make install
+)
+pkg-config --modversion libavcodec libavformat libavutil libswscale x264 x265 SvtAv1Enc ffnvcodec

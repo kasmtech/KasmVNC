@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd /src
+# Stage directly, so the legacy tarball's bundled Mesa swrast is not included.
+# Web assets are still mandatory and supplied by the same build_www CI job.
+test -s builder/www/index.html
+builder/build-static-glibc234-inside-docker --no-servertarball
+export KASMVNC_PORTABLE_REQUIRE_PROVENANCE=1
+builder/portable/package

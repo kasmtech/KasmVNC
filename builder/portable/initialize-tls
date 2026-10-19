@@ -1,0 +1,13 @@
+#!/bin/sh
+# Used by the RPM and by administrators installing the portable tar archive.
+set -eu
+cert=/etc/pki/tls/private/kasmvnc.pem
+getent group kasmvnc-cert >/dev/null || groupadd --system kasmvnc-cert
+if [ ! -e "$cert" ]; then
+    install -d -m 755 /etc/pki/tls/private
+    umask 077
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+        -keyout "$cert" -out "$cert" -subj /CN=KasmVNC
+    chgrp kasmvnc-cert "$cert"
+    chmod 640 "$cert"
+fi

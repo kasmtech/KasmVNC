@@ -1,0 +1,27 @@
+# Experimental glibc 2.34 static-application builder (native x86_64/aarch64).
+FROM oraclelinux:9
+RUN dnf install -y dnf-plugins-core && \
+    dnf config-manager --enable ol9_codeready_builder ol9_distro_builder && \
+    dnf install -y oracle-epel-release-el9 && \
+    dnf install -y gcc-toolset-14 gcc gcc-c++ make cmake meson ninja-build git \
+      curl wget tar xz bzip2 patch autoconf automake libtool pkgconf-pkg-config \
+      python3 python3-pip python3-devel python3-jinja2 bison flex gperf \
+      gettext-devel gmp-devel mpfr-devel libmpc-devel perl-core xorg-x11-util-macros xorg-x11-proto-devel \
+      xorg-x11-xtrans-devel xorg-x11-font-utils libX11-devel libXau-devel \
+      libXdmcp-devel libXfont2-devel libxkbfile-devel libXrandr-devel \
+      libxcvt-devel libXtst-devel libXcursor-devel libSM-devel libuuid-devel at-spi2-core-devel dbus-devel \
+      libva-devel libdrm-devel libxshmfence-devel mesa-libGL-devel mesa-libgbm-devel \
+      pixman-devel freetype-devel zlib-devel libpng-devel libjpeg-turbo-devel \
+      libtiff-devel libxml2-devel libmount-devel libcap-devel lz4-devel \
+      libzstd-devel libgcrypt-devel libselinux-devel libunwind-devel openssl-devel \
+      systemd-devel bzip2-devel brotli-devel libffi-devel pcre2-devel \
+      libtool-ltdl-devel libxcrypt-devel glib2-static libxcrypt-static pcre-static \
+      libselinux-static libsepol-static && \
+    if [ "$(uname -m)" = x86_64 ]; then dnf install -y nasm; fi && \
+    dnf clean all
+COPY builder/scripts/install_sccache_from_github /tmp/install-sccache
+RUN /tmp/install-sccache
+# Build from a clean source snapshot (no Noble CMake/autotools objects).
+COPY . /src/
+ENV BUILD_JOBS=8
+ENTRYPOINT ["/src/builder/build-static-glibc234-inside-docker"]
