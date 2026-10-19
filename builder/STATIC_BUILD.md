@@ -76,7 +76,7 @@ Set `KASMVNC_STATIC_DESKTOP_PREFIX=/opt/kasm-desktop` when invoking
 `build-static-inside-docker` to embed the remaining supported desktop libraries.
 This is opt-in; an empty prefix retains the existing link command. The prototype
 uses Noble development-package archives and builds missing AT-SPI 2.52.0,
-libva 2.20.0, util-linux/libmount 2.39.3, and PIC libunwind 1.6.2 archives with
+libva 2.20.0, util-linux/libmount 2.39.3, and PIC libunwind 1.8.3 archives with
 source hashes. These versions preserve the current experiment's interfaces;
 they are not a claim to be latest upstream or security-approved. Before release,
 reconcile source-built copies with distro security patches and the SBOM policy.
@@ -120,7 +120,7 @@ removed merely to eliminate a link dependency.
 | libcrypt | Static, retaining the builder's password-hash support. |
 | libsystemd | Static, selective archive extraction; notification tested. |
 | libdbus, GLib, GObject, AT-SPI | Static with GIO/GModule, PCRE2, ffi, mount/blkid, SELinux/sepol and X extension closure. |
-| libunwind | Static PIC with LZMA support. |
+| libunwind | Static PIC 1.8.3 with LZMA support; upstream AArch64 context-type fixes for GCC 14. |
 | GCC runtime | Static application runtime; host drivers/glibc may still load libgcc_s. |
 | libGL | Shared host GLVND dispatch; a second private dispatcher risks split GLX/EGL state. |
 | libgbm | Shared host Mesa/backend interface; upstream target is shared and backend modules remain dynamic. |
@@ -223,3 +223,5 @@ See [builder instructions](README.md#portable-application-packages) and the
 above describe the earlier development artifact, not certification of every
 pipeline artifact or supported host. CI matrix results and separate manual
 hardware/kernel testing determine the qualification of each release.
+
+The libunwind 1.8.3 pin incorporates the upstream [AArch64 context-type correction](https://github.com/libunwind/libunwind/pull/524) and [stable ARM unwind fixes](https://github.com/libunwind/libunwind/releases/tag/v1.8.3). Its archive hash and license are captured by the generated portable provenance inventory.

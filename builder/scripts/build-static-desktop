@@ -96,12 +96,14 @@ fetch "util-linux-$util_linux_version.tar.xz" \
     fi
 )
 
-# Noble's libunwind.a uses -fno-PIE LTO. Rebuild PIC to retain server ASLR/PIE.
-fetch libunwind-1.6.2.tar.gz \
-    https://github.com/libunwind/libunwind/releases/download/v1.6.2/libunwind-1.6.2.tar.gz \
-    4a6aec666991fb45d0889c44aede8ad6eb108071c3554fcdff671f9c94794976
+# Rebuild PIC to retain server ASLR/PIE. Stable 1.8.3 includes upstream
+# AArch64 context-type fixes (PR #524) required by GCC 14; do not suppress
+# incompatible-pointer diagnostics or cast away the context mismatch.
+fetch libunwind-1.8.3.tar.gz \
+    https://github.com/libunwind/libunwind/releases/download/v1.8.3/libunwind-1.8.3.tar.gz \
+    be30d910e67f58d82e753231f1357f326a1a088acf126b21ff77e60aab19b90b
 (
-    cd libunwind-1.6.2
+    cd libunwind-1.8.3
     CFLAGS="${CFLAGS:-} -O2 -fPIC -fstack-protector-strong" ./configure \
         --prefix="$prefix" --libdir="$prefix/lib" \
         --enable-static --disable-shared --with-pic \
