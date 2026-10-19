@@ -15,14 +15,55 @@ esac
 basename="kasmvncserver_portable_${version}_${branch//\//_}_${revision:0:6}_${arch}"
 [[ "$basename" =~ ^[a-zA-Z0-9_.+-]+$ ]] || { echo 'Unsafe artifact filename' >&2; exit 1; }
 image="kasmvnc-portable-builder:${revision:0:12}-${arch}"
-docker build -f builder/dockerfile.el9.static -t "$image" .
-docker build -f builder/portable/Dockerfile --build-arg BUILDER_IMAGE="$image" -t "${image}-package" .
+build_dir="builder/build/portable_${arch}"
+log="$build_dir/build.log"
+mkdir -p "$build_dir"
+: > "$log"
+container=
+finish() {
+  local result=$?
+  trap - EXIT
+  set +e
+  if [[ -n "$container" ]]; then
+    docker rm -f "$container" >> "$log" 2>&1
+  fi
+  # EXIT runs for failed Docker builds and failed compilation as well as success.
+  # Keep the log outside /artifacts so no failed package can be published.
+  if ! mkdir -p "output/portable_${arch}" || ! cp "$log" "output/portable_${arch}/build.log"; then
+    echo 'Failed to retain portable build log' >&2
+    [[ "$result" != 0 ]] || result=1
+  fi
+  if [[ "$result" != 0 ]]; then
+    echo "Portable build failed (exit $result); last 200 log lines:" >&2
+    tail -n 200 "$log" >&2
+  fi
+  echo "Complete build log: output/portable_${arch}/build.log"
+  exit "$result"
+}
+trap finish EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+run_logged() {
+  local phase=$1
+  shift
+  printf '\nPortable build phase: %s\n' "$phase" | tee -a "$log"
+  # Retain every byte while keeping the GitLab trace below its output cap.
+  # Emit one bounded progress line per minute while compilation produces output.
+  "$@" 2>&1 | tee -a "$log" | awk '
+    BEGIN { last = systime() }
+    systime() - last >= 60 {
+      print "Portable build progress: " substr($0, 1, 180)
+      fflush()
+      last = systime()
+    }'
+}
+run_logged 'create native builder image' docker build -f builder/dockerfile.el9.static -t "$image" .
+run_logged 'create packaging image' docker build -f builder/portable/Dockerfile --build-arg BUILDER_IMAGE="$image" -t "${image}-package" .
 container=$(docker create --entrypoint /src/builder/portable/build-inside-docker \
   -e KASMVNC_COMMIT_ID="$revision" -e KASMVNC_PORTABLE_VERSION="$version" \
   -e KASMVNC_PORTABLE_BASENAME="$basename" -e BUILD_JOBS="${BUILD_JOBS:-8}" \
-  "${image}-package")
-trap 'docker rm -f "$container" >/dev/null' EXIT
-docker start -a "$container"
-test "$(docker inspect -f '{{.State.ExitCode}}' "$container")" = 0
-mkdir -p "builder/build/portable_${arch}"
-docker cp "$container:/artifacts/." "builder/build/portable_${arch}/"
+  "${image}-package" 2>> "$log")
+run_logged 'compile and package native binaries' docker start -a "$container"
+result=$(docker inspect -f '{{.State.ExitCode}}' "$container" 2>> "$log")
+[[ "$result" == 0 ]] || exit "$result"
+run_logged 'export verified packages' docker cp "$container:/artifacts/." "$build_dir/"

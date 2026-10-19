@@ -239,7 +239,10 @@ from a different distro or architecture in the Docker context.
 
 CI jobs `build_portable_amd64` and `build_portable_arm64` reuse `build_www`,
 upload to the existing immutable `kasmvnc/<commit>/` S3 prefix, and retain
-GitLab artifacts. `test_portable_amd64` and `test_portable_arm64` install those
+GitLab artifacts. Full build logs are retained as
+`output/portable_<arch>/build.log` even when a build fails; they are not
+published to S3. Console output contains bounded progress and failure details.
+`test_portable_amd64` and `test_portable_arm64` install those
 packages and tar archives in the eligible core-image distro matrix. These jobs
 are required when enabled. `BUILD_PORTABLE=false` disables only this profile;
 `BUILD_DISTROS_REGEX=none` disables it alongside the other packaging profiles.

@@ -64,8 +64,13 @@ auto() {
     shift 3
     have "$archive" && return
     fetch "$file"
-    ( cd "$dir"; if [[ -f Makefile ]]; then make clean; fi; ./configure --prefix="$prefix" --libdir="$prefix/lib" \
+    ( cd "$dir"
+      # Some release archives (notably FreeType) ship a bootstrap Makefile
+      # without a clean target. Configure first, then clean generated targets
+      # so resumed builds cannot reuse objects compiled with different flags.
+      ./configure --prefix="$prefix" --libdir="$prefix/lib" \
         --enable-static --disable-shared --with-pic "$@"
+      make clean
       if [[ $archive == dbus-1 ]]; then
           # Only embed the client library; keep host bus daemons external.
           make -C dbus -j"$jobs" libdbus-1.la

@@ -495,6 +495,7 @@ test_nix_arm64:
     - mkdir -p output
     - cp -r builder/build/portable_* output/
   artifacts:
+    when: always
     paths: [output/]
   rules:
     - if: '$BUILD_PORTABLE == "false" || $BUILD_DISTROS_REGEX == "none"'
