@@ -2,6 +2,11 @@
 # Invoked as the non-root test user; exercises the packaged Perl launcher.
 set -euo pipefail
 export HOME=/home/kasm_test DISPLAY=:1 XDG_RUNTIME_DIR=/home/kasm_test/runtime
+# Do not let image overrides hide the portable server's DRI search-path bug.
+if [[ -v LIBGL_DRIVERS_PATH ]]; then
+  echo 'GLX validation requires LIBGL_DRIVERS_PATH to be unset' >&2
+  exit 1
+fi
 mkdir -p "$HOME/.vnc" "$XDG_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
 touch "$HOME/.vnc/.de-was-selected"
@@ -36,6 +41,9 @@ curl -kfsS --retry 30 --retry-delay 1 --retry-connrefused \
 [[ $(curl -ks -o /dev/null -w '%{http_code}' https://127.0.0.1:6901/) = 401 ]]
 [[ $(curl -ks -u kasm_test:wrong -o /dev/null -w '%{http_code}' https://127.0.0.1:6901/) = 401 ]]
 xdpyinfo > "$HOME/xdpyinfo.txt"
+# glxinfo can exit zero on missing GLX visuals: require an actual Mesa renderer.
+LIBGL_ALWAYS_SOFTWARE=1 glxinfo -B > "$HOME/glxinfo.txt" 2>&1
+grep -Eq '^OpenGL renderer string: .*(llvmpipe|softpipe)' "$HOME/glxinfo.txt"
 # The current launcher intentionally exits 1 for -list, even on success.
 kasmvncserver -list > "$HOME/sessions.txt" || [[ $? = 1 ]]
 grep -q ':1' "$HOME/sessions.txt"

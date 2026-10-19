@@ -187,9 +187,11 @@ check, not validation of every driver, CPU, kernel or desktop combination.
 EL9 static archives retain their CPU requirements; x86_64 targets x86-64-v2
 and is not qualified on older CPUs. The pipeline also builds ARM64 natively. It still relies on host
 GL/GBM and drivers, glibc, XKB/fonts and launcher/session helpers. EL8's glibc
-2.28 and musl-only systems remain outside this target. VAAPI driver discovery
-uses EL9's `/usr/lib64/dri`; consumers with a different driver directory must
-set `LIBVA_DRIVERS_PATH` appropriately.
+2.28 and musl-only systems remain outside this target. The standalone development
+profile defaults to EL9's `/usr/lib64/dri`; the portable package entrypoint adds
+the native Debian multiarch directory and `/usr/lib/dri` to Mesa DRI and VAAPI
+driver discovery. `LIBGL_DRIVERS_PATH` and `LIBVA_DRIVERS_PATH` remain available
+for custom driver installations.
 
 EL9 GIO carries a backport using `mnt_monitor_veil_kernel`; its private
 util-linux/libmount is therefore 2.42.4 rather than Noble's 2.39.3. The password
@@ -223,5 +225,10 @@ See [builder instructions](README.md#portable-application-packages) and the
 above describe the earlier development artifact, not certification of every
 pipeline artifact or supported host. CI matrix results and separate manual
 hardware/kernel testing determine the qualification of each release.
+
+The portable distro tests require an actual software Mesa OpenGL renderer as
+well as a browser session. This catches driver discovery failures even on CI
+hosts without a GPU. It does not qualify hardware rendering or buffer capture
+on every vendor driver.
 
 The libunwind 1.8.3 pin incorporates the upstream [AArch64 context-type correction](https://github.com/libunwind/libunwind/pull/524) and [stable ARM unwind fixes](https://github.com/libunwind/libunwind/releases/tag/v1.8.3). Its archive hash and license are captured by the generated portable provenance inventory.

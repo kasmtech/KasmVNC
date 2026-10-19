@@ -4,6 +4,12 @@ cd /src
 # Stage directly, so the legacy tarball's bundled Mesa swrast is not included.
 # Web assets are still mandatory and supplied by the same build_www CI job.
 test -s builder/www/index.html
+KASMVNC_PORTABLE_DRIVER_PATH=$(builder/scripts/portable-driver-path)
+export KASMVNC_PORTABLE_DRIVER_PATH
 builder/build-static-glibc234-inside-docker --no-servertarball
+builder/scripts/portable-driver-path \
+    --verify unix/xserver/hw/vnc/Xvnc \
+    --verify unix/xserver/glx/.libs/glxdricommon.o \
+    --verify "${KASMVNC_STATIC_DESKTOP_PREFIX:-/opt/kasm-desktop}/lib/libva.a"
 export KASMVNC_PORTABLE_REQUIRE_PROVENANCE=1
 builder/portable/package

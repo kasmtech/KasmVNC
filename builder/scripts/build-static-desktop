@@ -67,7 +67,7 @@ fi
     ./configure --prefix="$prefix" --libdir="$prefix/lib" \
         --enable-static --disable-shared --enable-drm \
         --disable-x11 --disable-glx --disable-wayland \
-        --with-drivers-path="$host_libdir/dri"
+        --with-drivers-path="${KASMVNC_PORTABLE_DRIVER_PATH:-$host_libdir/dri}"
     make -j"$jobs"
     make install
 )

@@ -13,7 +13,7 @@ if command -v apt-get >/dev/null; then
     exit 0
   fi
   apt-get install -y --no-install-recommends ca-certificates curl openssl procps \
-    python3 openbox xterm x11-utils dbus-x11 util-linux binutils
+    python3 openbox xterm x11-utils dbus-x11 util-linux binutils mesa-utils libgl1-mesa-dri
   if [[ "$format" = tar ]]; then
     apt-get install -y --no-install-recommends perl ssl-cert xauth x11-xkb-utils \
       xkb-data libswitch-perl libyaml-tiny-perl libhash-merge-simple-perl \
@@ -27,7 +27,7 @@ elif command -v zypper >/dev/null; then
     exit 0
   fi
   zypper --non-interactive install --no-recommends ca-certificates curl openssl \
-    procps python3 openbox xterm xdpyinfo dbus-1-x11 util-linux shadow binutils tar gzip
+    procps python3 openbox xterm xdpyinfo dbus-1-x11 util-linux shadow binutils tar gzip Mesa-dri Mesa-demo-x
   if [[ "$format" = tar ]]; then
     zypper --non-interactive install --no-recommends perl 'perl(lib)' xauth xkeyboard-config \
       xkbcomp perl-Switch perl-YAML-Tiny perl-Hash-Merge-Simple \
@@ -63,7 +63,8 @@ EOF
     exit 0
   fi
   dnf install -y ca-certificates '/usr/bin/curl' openssl procps-ng python3 openbox xterm \
-    '/usr/bin/xdpyinfo' dbus-x11 util-linux shadow-utils binutils tar gzip
+    '/usr/bin/xdpyinfo' dbus-x11 util-linux shadow-utils binutils tar gzip \
+    '/usr/bin/glxinfo' mesa-dri-drivers
   if [[ "$format" = tar ]]; then
     dnf install -y perl 'perl(lib)' xorg-x11-xauth xkeyboard-config xkbcomp perl-Switch \
       perl-YAML-Tiny perl-Hash-Merge-Simple perl-Scalar-List-Utils \

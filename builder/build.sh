@@ -191,6 +191,12 @@ fi
     --with-xkb-output=/var/lib/xkb \
     --with-xkb-path=/usr/share/X11/xkb "${CONFIG_OPTIONS}"
 
+# Xorg configure obtains this from the build distro dri.pc and has no override.
+# Portable packages use upstream colon-separated search and environment overrides.
+if [[ -n "${KASMVNC_PORTABLE_DRIVER_PATH:-}" ]]; then
+  /src/builder/scripts/portable-driver-path --header include/dix-config.h
+fi
+
 # remove array bounds errors for new versions of GCC
 find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
 

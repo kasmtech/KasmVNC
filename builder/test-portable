@@ -128,7 +128,9 @@ try:
                     break
                 time.sleep(1)
             if not ready:
-                raise RuntimeError('Packaged Perl launcher did not start a ready session')
+                raise RuntimeError('Packaged session did not pass launcher/GLX readiness checks')
+            glx = run(['docker','exec',container,'cat','/home/kasm_test/glxinfo.txt']).stdout
+            item['software_glx_renderer'] = next(line for line in glx.splitlines() if line.startswith('OpenGL renderer string:'))
             browser_run = run(['docker','run','--name',browser,'--runtime=runc','--network','container:'+container,
                               '--shm-size=512m','--mount','type=volume,source='+probe_volume+',target=/probe,readonly',browser_image],check=False,timeout=120)
             (out/'browser-command.log').write_text(browser_run.stdout)
@@ -160,6 +162,7 @@ try:
             for diagnostic in (out/'session-logs').rglob('*'):
                 if diagnostic.is_file() and diagnostic.suffix != '.log':
                     diagnostic.unlink()
+            run(['docker','cp',container+':/home/kasm_test/glxinfo.txt',str(out/'glxinfo.txt')],check=False)
             run(['docker','cp',container+':/tmp/portable-ldd.txt',str(out/'ldd.txt')],check=False)
             run(['docker','rm','-f',browser,container],check=False)
             run(['docker','image','rm',image],check=False)

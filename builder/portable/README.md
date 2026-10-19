@@ -25,9 +25,13 @@ manager tracking or automatic uninstaller; retain its file listing.
 Tar dependencies include glibc, libGL, libgbm, Perl, xauth, xdpyinfo, xkbcomp, XKB data,
 procps, hostname, openssl, and Perl modules Switch, YAML::Tiny,
 Hash::Merge::Simple, List::Util, List::MoreUtils, Try::Tiny, DateTime and
-DateTime::TimeZone. Group creation uses groupadd/getent. For VAAPI set
-`LIBVA_DRIVERS_PATH` to the host driver directory when it differs from
-`/usr/lib64/dri` (for example `/usr/lib/x86_64-linux-gnu/dri` on Ubuntu).
+DateTime::TimeZone. Group creation uses groupadd/getent. Mesa DRI and VAAPI
+drivers are supplied by the host. Their default search checks the native Debian
+multiarch directory (`/usr/lib/x86_64-linux-gnu/dri` or
+`/usr/lib/aarch64-linux-gnu/dri`), then `/usr/lib64/dri` and `/usr/lib/dri`.
+Explicit `LIBGL_DRIVERS_PATH` and `LIBVA_DRIVERS_PATH` retain their upstream
+override behavior for custom driver locations. These paths do not guarantee
+compatibility with every host driver; validate the intended GPU and distro.
 
 All shipped ELF executables are checked for architecture, PIE, unexpected
 dynamic dependencies, search paths, and a maximum glibc ABI requirement of 2.34.
