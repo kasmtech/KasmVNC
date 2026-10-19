@@ -128,8 +128,10 @@ struct kasmpasswd_t *readkasmpasswd(const char path[]) {
 }
 
 int write_kasm_passwd(const char path[], const struct kasmpasswd_t *set) {
+    int result = -1;
+
 	if (!set || !set->entries || !set->num)
-		return -1;
+		return result;
 
     char tmp_name[PATH_MAX];
     snprintf(tmp_name, PATH_MAX, "%s", path);
@@ -142,14 +144,16 @@ int write_kasm_passwd(const char path[], const struct kasmpasswd_t *set) {
 	const int fd = mkstemp(dest);
 	if (fd == -1) {
 		perror("mkstemp");
-		return -1;
+		return result;
 	}
 
 	FILE *f = fdopen(fd, "w");
 	if (!f) {
 		perror("fdopen");
+	    close(fd);
+	    unlink(dest);
 
-		goto cleanup;
+	    return result;
 	}
 
 	for (unsigned i = 0; i < set->num; i++) {
@@ -169,15 +173,16 @@ int write_kasm_passwd(const char path[], const struct kasmpasswd_t *set) {
 
 	if (rename(dest, path)) {
 		fprintf(stderr, "Failed writing the password file %s\n", path);
+	    unlink(dest);
 
 		goto cleanup;
 	}
 
 	chmod(path, S_IRUSR|S_IWUSR);
-	return 0;
+	result = 0;
 
 cleanup:
-	close(fd);
-	unlink(dest);
-	return -1;
+    fclose(f);
+
+	return result;
 }
