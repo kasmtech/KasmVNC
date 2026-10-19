@@ -330,7 +330,7 @@ make_build_preview_html:
     - oci-fixed-amd
   artifacts:
     paths:
-      - output/
+      - output/index.html
   before_script:
     - . .ci/helpers.sh
   script:
