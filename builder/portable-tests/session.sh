@@ -39,6 +39,7 @@ xdpyinfo > "$HOME/xdpyinfo.txt"
 # The current launcher intentionally exits 1 for -list, even on success.
 kasmvncserver -list > "$HOME/sessions.txt" || [[ $? = 1 ]]
 grep -q ':1' "$HOME/sessions.txt"
+python3 /portable/focus.py > "$HOME/.vnc/focus.log" 2>&1 &
 printf 'ready\n' > "$HOME/ready"
 # Keep container running; orchestrator stops through the launcher after browser test.
 tail -f /dev/null

@@ -26,6 +26,17 @@ const fs = require('fs');
     if (bytes - before < 1000) throw new Error('No sustained encoded framebuffer traffic');
     const canvas = page.locator('#noVNC_container canvas').first();
     await canvas.click({position: {x: 180, y: 120}});
+    // X/Openbox focus changes are asynchronous to browser pointer delivery.
+    // Observe the real remote input target before sending the first key.
+    let focus;
+    const clickedAt = Date.now();
+    for (let attempt = 0; attempt < 100; attempt++) {
+      try { focus = JSON.parse(fs.readFileSync('/probe/focus.json', 'utf8')); } catch (_) {}
+      if (focus?.focused && focus.observedAt >= clickedAt) break;
+      await page.waitForTimeout(100);
+    }
+    fs.writeFileSync('/results/input-focus.json', JSON.stringify(focus ?? null, null, 2));
+    if (!focus?.focused || focus.observedAt < clickedAt) throw new Error('Remote terminal did not acquire keyboard focus');
     await page.keyboard.type('printf portable-input-ok > /home/kasm_test/input-proof', {delay: 20});
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);

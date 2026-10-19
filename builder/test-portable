@@ -85,6 +85,7 @@ try:
         image = 'kasm-portable-test:'+unique+'-'+fmt
         container = 'kasm-portable-'+unique+'-'+fmt
         browser = container+'-browser'
+        probe_volume = container+'-probe'
         try:
             with tempfile.TemporaryDirectory(prefix='kasm-portable-test-') as temp:
                 context = Path(temp)
@@ -111,10 +112,13 @@ try:
                     'RUN bash /portable/package.sh mark '+fmt+'\n'
                     'RUN bash /portable/package.sh '+replacement_action+' '+fmt+' /artifacts/'+artifact.name+'\n'
                     'COPY test/session.sh /portable/session.sh\n'
+                    'COPY test/focus.py /portable/focus.py\n'
+                    'RUN mkdir /probe && chmod 1777 /probe\n'
                     'ENTRYPOINT ["runuser", "-u", "kasm_test", "--", "bash", "/portable/session.sh"]\n')
                 run(['docker','build','--platform','linux/'+args.arch,'--build-arg','BASE='+row['image'],
                      '-t',image,str(context)], log=out/'install.log')
-            run(['docker','run','-d','--runtime=runc','--name',container,'--shm-size=512m',image], log=out/'launch.log')
+            run(['docker','run','-d','--runtime=runc','--name',container,'--shm-size=512m',
+                 '--mount','type=volume,source='+probe_volume+',target=/probe',image], log=out/'launch.log')
             ready = False
             for _ in range(60):
                 if run(['docker','exec',container,'test','-f','/home/kasm_test/ready'],check=False,timeout=20).returncode == 0:
@@ -126,7 +130,7 @@ try:
             if not ready:
                 raise RuntimeError('Packaged Perl launcher did not start a ready session')
             browser_run = run(['docker','run','--name',browser,'--runtime=runc','--network','container:'+container,
-                              '--shm-size=512m',browser_image],check=False,timeout=120)
+                              '--shm-size=512m','--mount','type=volume,source='+probe_volume+',target=/probe,readonly',browser_image],check=False,timeout=120)
             (out/'browser-command.log').write_text(browser_run.stdout)
             run(['docker','cp',browser+':/results/.',str(out)],check=False)
             if browser_run.returncode:
@@ -159,6 +163,7 @@ try:
             run(['docker','cp',container+':/tmp/portable-ldd.txt',str(out/'ldd.txt')],check=False)
             run(['docker','rm','-f',browser,container],check=False)
             run(['docker','image','rm',image],check=False)
+            run(['docker','volume','rm',probe_volume],check=False)
     report['pass'] = True
 except Exception as error:
     report['error'] = str(error)
