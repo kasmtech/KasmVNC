@@ -42,7 +42,7 @@ prepare_source() {
         TBB_RELEASE="${TBB_RELEASE:-v2023.0.0}"
     fi
 
-    curl -Ls "https://github.com/uxlfoundation/oneTBB/archive/${TBB_RELEASE}.tar.gz" | \
+    curl -fLs "https://github.com/uxlfoundation/oneTBB/archive/${TBB_RELEASE}.tar.gz" | \
         tar xzvf - -C ${DIR}/ --strip-components=1
 
     cd ${DIR}

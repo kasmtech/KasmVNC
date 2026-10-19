@@ -102,8 +102,30 @@ cd /src
 
 ensure_libturbojpeg_links
 
+# Pick the highest _FORTIFY_SOURCE level the build glibc supports. Level 3
+# needs glibc 2.33+; glibc 2.31 (Bullseye) silently treats it as level 2,
+# so level 3 must not be claimed there. musl (Alpine) has no GNU_LIBC_VERSION
+# and no fortified wrappers, so fortification is turned off (level 0).
+glibc_version="$(getconf GNU_LIBC_VERSION 2>/dev/null | awk '{print $2}')"
+if [ -z "$glibc_version" ]; then
+  FORTIFY_LEVEL=0
+  echo "No glibc detected; building without _FORTIFY_SOURCE"
+else
+  case "$glibc_version" in
+    [0-9]*.[0-9]*) ;;
+    *) echo "Cannot parse glibc version: '$glibc_version'" >&2; exit 1 ;;
+  esac
+  if [ "$(printf '%s\n' 2.33 "$glibc_version" | sort -V | head -n 1)" = "2.33" ]; then
+    FORTIFY_LEVEL=3
+  else
+    FORTIFY_LEVEL=2
+  fi
+  echo "Using _FORTIFY_SOURCE=${FORTIFY_LEVEL} (glibc ${glibc_version})"
+fi
+
 cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
   -DENABLE_GNUTLS:BOOL=OFF \
+  -DKASMVNC_FORTIFY_LEVEL="${FORTIFY_LEVEL}" \
   -DCMAKE_PREFIX_PATH="$HOME/.local" \
   -DCMAKE_LIBRARY_PATH="$HOME/.local/lib;$HOME/.local/lib64" \
   -DCMAKE_INCLUDE_PATH="$HOME/.local/include" \
@@ -143,8 +165,16 @@ if [ "${KASMVNC_BUILD_OS}" == "opensuse" ] || ([ "${KASMVNC_BUILD_OS}" == "oracl
   sed -i 's/LIBGL="gl >= 7.1.0"/LIBGL="gl >= 1.1"/g' configure
 fi
 
+# The CMake hardening flags do not reach this configure/make, so pass them
+# explicitly (see KSN-2026-006). -g -O2 keeps the autoconf default.
+FORTIFY_FLAG=""
+if [ "$FORTIFY_LEVEL" -gt 0 ]; then
+  FORTIFY_FLAG="-D_FORTIFY_SOURCE=${FORTIFY_LEVEL}"
+fi
+XSERVER_HARDENING_FLAGS="${FORTIFY_FLAG} -fstack-protector-strong -fstack-clash-protection"
+
 # build X11
-./configure \
+CFLAGS="-g -O2 ${XSERVER_HARDENING_FLAGS}" CXXFLAGS="-g -O2 ${XSERVER_HARDENING_FLAGS}" ./configure \
     --disable-config-hal \
     --disable-config-udev \
     --disable-dmx \
