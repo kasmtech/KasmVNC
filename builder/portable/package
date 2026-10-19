@@ -101,7 +101,8 @@ BuildArch: $rpmarch
 Requires: /usr/bin/perl, /usr/bin/xauth, /usr/bin/xkbcomp, /usr/bin/openssl
 Requires: /usr/bin/xdpyinfo
 Requires: /usr/bin/ps, /usr/bin/hostname, /usr/sbin/groupadd, /usr/bin/getent
-Requires: /usr/share/X11/xkb/rules/evdev
+# Repository file indexes are not portable for data files (notably SUSE).
+Requires: xkeyboard-config
 Requires: perl(Switch), perl(YAML::Tiny), perl(Hash::Merge::Simple)
 Requires: perl(List::Util), perl(List::MoreUtils), perl(Try::Tiny)
 Requires: perl(DateTime), perl(DateTime::TimeZone)

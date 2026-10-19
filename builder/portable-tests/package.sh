@@ -34,6 +34,7 @@ case "$action" in
     command -v Xkasmvnc
     perl -c /usr/bin/kasmvncserver
     for tool in xdpyinfo xauth xkbcomp openssl hostname; do command -v "$tool"; done
+    test -s /usr/share/X11/xkb/rules/evdev
     Xkasmvnc -version
     test -s /usr/share/kasmvnc/www/index.html
     test -f "$config"

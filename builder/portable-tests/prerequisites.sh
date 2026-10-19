@@ -40,14 +40,29 @@ else
   case "$ID" in
     ol) dnf install -y oracle-epel-release-el9 dnf-plugins-core; dnf config-manager --set-enabled ol9_codeready_builder ;;
     rocky|almalinux) dnf install -y epel-release dnf-plugins-core; dnf config-manager --set-enabled crb ;;
-    rhel) dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm ;;
+    rhel)
+      # Match workspaces-core-images install_rhel.sh (11a313aa): its RHEL
+      # desktop is UBI9 with Oracle repositories, not an entitled RHEL base.
+      # UBI alone omits required X11 and Perl packages even with EPEL.
+      for repo in appstream codeready/builder baseos/latest distro/builder; do
+        id=${repo//\//_}
+        cat > "/etc/yum.repos.d/portable-core-el9-${id}.repo" <<EOF
+[portable_core_el9_${id}]
+name=Core images EL9 ${repo}
+baseurl=https://yum.oracle.com/repo/OracleLinux/OL9/${repo}/\$basearch/
+gpgkey=https://yum.oracle.com/RPM-GPG-KEY-oracle-ol9
+gpgcheck=1
+enabled=1
+EOF
+      done
+      dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm ;;
   esac
   fi
   if [[ "$stage" = bootstrap ]]; then
     dnf install -y ca-certificates
     exit 0
   fi
-  dnf install -y ca-certificates curl openssl procps-ng python3 openbox xterm \
+  dnf install -y ca-certificates '/usr/bin/curl' openssl procps-ng python3 openbox xterm \
     '/usr/bin/xdpyinfo' dbus-x11 util-linux shadow-utils binutils tar gzip
   if [[ "$format" = tar ]]; then
     dnf install -y perl 'perl(lib)' xorg-x11-xauth xkeyboard-config xkbcomp perl-Switch \

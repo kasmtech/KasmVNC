@@ -94,6 +94,7 @@
     },
     {
       "name": "rhel-9",
+      "environment_note": "UBI9 plus signed Oracle EL9 repositories, matching core-images install_rhel.sh; not pristine or entitled RHEL",
       "image": "registry.access.redhat.com/ubi9/ubi",
       "architectures": [
         "amd64",
