@@ -280,6 +280,8 @@ void SMsgReader::readBinaryClipboard() const
 {
   const rdr::U8 num = is->readU8();
   rdr::U8 i, valid = 0;
+  rdr::U32 total_occupied_memory = 0;
+
   char tmpmimes[num][32];
 
   handler->clearBinaryClipboard();
@@ -297,10 +299,16 @@ void SMsgReader::readBinaryClipboard() const
     tmpmimes[valid][31] = '\0';
 
     const rdr::U32 len = is->readU32();
-    if ((Server::DLP_ClipAcceptMax && len > static_cast<unsigned>(Server::DLP_ClipAcceptMax)) || len > MAX_BINARY_CLIPBOARD_SIZE) {
-      vlog.info("DLP: refused to receive binary clipboard, too large");
-      continue;
+    if ((len > MAX_BINARY_CLIPBOARD_SIZE || total_occupied_memory + len > MAX_BINARY_CLIPBOARD_SIZE) ||
+        (Server::DLP_ClipAcceptMax && (len > static_cast<unsigned>(Server::DLP_ClipAcceptMax) ||
+        total_occupied_memory + len > static_cast<unsigned>(Server::DLP_ClipAcceptMax)))) {
+        vlog.info("DLP: refused to receive binary clipboard, too large");
+
+        is->skip(len);
+        continue;
     }
+
+    total_occupied_memory += len;
 
     const CharArray ca(len);
     is->readBytes(ca.buf, len);
