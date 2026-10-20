@@ -93,7 +93,64 @@ def load_frontend(frontdir, www):
             raise RuntimeError(f'Frontend asset does not match provenance: {name}')
     if sha(frontdir / 'sources.tar.gz') != frontend['source_sha256']:
         raise RuntimeError('Frontend source hash mismatch')
+    notices = frontdir / 'notices'
+    actual_notices = {str(p.relative_to(notices)) for p in notices.rglob('*') if p.is_file()}
+    if not frontend.get('notices') or actual_notices != set(frontend['notices']):
+        raise RuntimeError('Frontend notice set does not match provenance')
+    for name, digest in frontend['notices'].items():
+        if sha(notices / name) != digest:
+            raise RuntimeError(f'Frontend notice does not match provenance: {name}')
     return frontend
+
+
+def archived_notices(archive, destination):
+    """Copy notice text from the actual source input, never unpack archive paths."""
+    destination.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(archive) as tar:
+        members = tar.getmembers()
+        notices = [m for m in members if m.isfile() and Path(m.name).name.upper().startswith(
+            ('LICENSE', 'COPYING', 'COPYRIGHT', 'NOTICE'))]
+        # Some projects (notably libdrm) put their licenses only in source-file
+        # headers. Retain those complete files rather than truncate legal text.
+        if not notices:
+            for member in members:
+                if not member.isfile() or Path(member.name).suffix not in ['.c', '.h', '.cc', '.cpp', '.hpp']:
+                    continue
+                with tar.extractfile(member) as stream:
+                    header = stream.read(65536).lower()
+                if b'copyright' in header or b'spdx-license-identifier' in header:
+                    notices.append(member)
+        if not notices:
+            raise RuntimeError(f'No license notices found in source archive: {archive}')
+        for member in notices:
+            path = Path(member.name)
+            if path.is_absolute() or '..' in path.parts or member.size > 10 * 1024 * 1024:
+                raise RuntimeError(f'Unsafe license notice member: {member.name}')
+            target = destination / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with tar.extractfile(member) as src, target.open('wb') as out:
+                shutil.copyfileobj(src, out)
+
+
+def vendored_notices(source, destination, files):
+    """Keep embedded copyright/license headers and any sibling notice texts."""
+    destination.mkdir(parents=True, exist_ok=True)
+    copied = set()
+    for name in files:
+        path = source / name
+        # Preserve paths to avoid collisions between nested copies.
+        target = destination / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, target)
+        copied.add(name)
+        for notice in path.parent.iterdir():
+            if notice.is_file() and notice.name.upper().startswith(('LICENSE', 'COPYING', 'COPYRIGHT', 'NOTICE')):
+                relative = str(notice.relative_to(source))
+                target = destination / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(notice, target)
+                copied.add(relative)
+    return sorted(copied)
 
 
 class Inventory:
@@ -179,6 +236,7 @@ class Inventory:
             c['cpe'] = f'cpe:2.3:a:{entry["cpe"]}:{version}:*:*:*:*:*:*:*'
         if directory:
             self.notices(directory, name)
+        archived_notices(self.bundle / record['file'], self.doc / 'third-party-licenses/embedded' / name)
         # Full upstream archives retain all license texts, including nested ones.
         c['properties'].append(prop('license-notices', 'Corresponding source archive and third-party-licenses/embedded/' + name))
         inv_license = entry.get('license')
@@ -219,12 +277,23 @@ class Inventory:
                           licenses=[{'license': {'name': license_}}], properties=[prop('delivery', 'embedded-static'),
                           prop('source-rpm', srpm), prop('rpm-epoch', epoch), prop('source-sha256', sha(target))])
             self.components[key] = c
-            license_paths = run('rpm', '-q', '--licensefiles', name).splitlines()
-            for p in license_paths:
+            # Static subpackages often inherit notices from an installed sibling
+            # package. Select only siblings built from this exact source RPM.
+            siblings = [row.split('\t')[0] for row in run('rpm', '-qa', '--qf', '%{NAME}\t%{SOURCERPM}\n').splitlines()
+                        if row.split('\t')[1] == srpm]
+            license_paths = set()
+            for sibling in siblings:
+                license_paths.update(run('rpm', '-q', '--licensefiles', sibling).splitlines())
+            found_notice = False
+            for p in sorted(license_paths):
                 if Path(p).is_file():
+                    found_notice = True
                     dest = self.doc / 'third-party-licenses/embedded' / name
-                    dest.mkdir(exist_ok=True)
-                    shutil.copy2(p, dest / Path(p).name)
+                    target = dest / Path(p).relative_to('/')
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(p, target)
+            if not found_notice:
+                raise RuntimeError(f'No installed license notices for source RPM {srpm}; inspect its source notices')
         return self.components[key]
 
     def archive(self, path):
@@ -285,7 +354,9 @@ def main():
         # Vendored code has exact file hashes even when upstream version is absent.
         for name, files in [('qoi', ['common/rfb/qoi.h']), ('xxhash', ['common/rfb/xxhash.h', 'common/rfb/xxhash.c']),
                             ('tinyxml2', ['third_party/tinyxml2/tinyxml2.h', 'third_party/tinyxml2/tinyxml2.cpp']),
-                            ('websocket', ['common/network/websocket.c', 'common/network/websocket.h'])]:
+                            ('websocket', ['common/network/websocket.c', 'common/network/websocket.h']),
+                            ('webudp', sorted(str(p.relative_to(SRC)) for p in (SRC / 'common/network/webudp').iterdir()
+                                              if p.is_file() and p.suffix in ['.cpp', '.h', '.hpp']))]:
             version = 'git-' + os.environ['KASMVNC_COMMIT_ID']
             text = (SRC / files[0]).read_text()
             if name == 'xxhash':
@@ -297,15 +368,20 @@ def main():
             c = component(name, version, properties=[prop('delivery', 'vendored-source'),
                 prop('file-sha256', json.dumps({p: sha(SRC / p) for p in files}, sort_keys=True))],
                 licenses=[{'expression': {'qoi': 'MIT', 'xxhash': 'BSD-2-Clause', 'tinyxml2': 'Zlib',
-                                         'websocket': 'LGPL-3.0-only'}[name]}])
+                                         'websocket': 'LGPL-3.0-only', 'webudp': 'MIT'}[name]}])
             if name in ['tinyxml2', 'xxhash']:
                 vendor = {'tinyxml2': 'tinyxml2_project', 'xxhash': 'xxhash_project'}[name]
                 c['cpe'] = f'cpe:2.3:a:{vendor}:{name}:{version}:*:*:*:*:*:*:*'
                 c['purl'] = f'pkg:generic/{name}@{version}'
+            notice_inputs = files + (['builder/portable/licenses/LGPL-3.0.txt', 'builder/portable/licenses/GPL-3.0.txt']
+                                     if name == 'websocket' else [])
+            notices = vendored_notices(SRC, args.doc / 'third-party-licenses/embedded' / name, notice_inputs)
+            c['properties'].append(prop('license-notice-files', json.dumps(notices)))
             inv.components['vendored-' + name] = c
             deps.add(c['bom-ref'])
         frontdir = SRC / 'builder/www-supply-chain'
         frontend = load_frontend(frontdir, SRC / 'builder/www')
+        shutil.copytree(frontdir / 'notices', args.doc / 'third-party-licenses/frontend', dirs_exist_ok=True)
         inv.preserve(frontdir / 'sources.tar.gz', 'frontend-sources.tar.gz')
         inv.preserve(frontdir / 'manifest.json', 'frontend-manifest.json')
         inv.limitations.extend(frontend.get('limitations', []))

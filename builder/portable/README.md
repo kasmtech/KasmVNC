@@ -93,7 +93,10 @@ Source-built inputs retain their release archives or exact Git snapshots,
 license notices, and hashes. KasmVNC's tracked source archive supplies its
 patches and build scripts; the private functional-test repository is omitted.
 The web build separately records rendered module identities and hashes every
-shipped asset, and native packaging verifies that handoff before publishing.
+shipped asset and exported license notice, and native packaging verifies that
+handoff before publishing. Runtime packages install notices under
+`/usr/share/doc/kasmvncserver/third-party-licenses`, including vendored license
+headers and source files when upstream has no standalone license text.
 
 Host glibc, Perl/modules, desktop tools/data and GPU loaders/drivers remain host
 requirements, not builder-versioned runtime components in this SBOM. Scan the

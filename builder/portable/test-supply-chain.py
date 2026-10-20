@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import tarfile
+import io
 
 spec = importlib.util.spec_from_file_location('supply', Path(__file__).with_name('supply-chain.py'))
 m = importlib.util.module_from_spec(spec)
@@ -25,12 +27,21 @@ with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp)
     front, www = base / 'front', base / 'www'
     front.mkdir(); www.mkdir()
+    (front / 'notices').mkdir()
+    (front / 'notices/LICENSE.txt').write_text('License notice')
     (www / 'index.html').write_text('original')
     (front / 'sources.tar.gz').write_bytes(b'source fixture')
     manifest = {'assets': {'index.html': m.sha(www / 'index.html')},
-                'source_sha256': m.sha(front / 'sources.tar.gz')}
+                'source_sha256': m.sha(front / 'sources.tar.gz'),
+                'notices': {'LICENSE.txt': m.sha(front / 'notices/LICENSE.txt')}}
     (front / 'manifest.json').write_text(json.dumps(manifest))
     m.load_frontend(front, www)
+    (front / 'notices/LICENSE.txt').write_text('tampered license')
+    rejects(lambda: m.load_frontend(front, www), 'notice does not match')
+    (front / 'notices/LICENSE.txt').write_text('License notice')
+    (front / 'notices/extra.txt').write_text('unlisted notice')
+    rejects(lambda: m.load_frontend(front, www), 'notice set does not match')
+    (front / 'notices/extra.txt').unlink()
     (www / 'index.html').write_text('tampered')
     rejects(lambda: m.load_frontend(front, www), 'asset does not match')
     (www / 'index.html').write_text('original')
@@ -39,6 +50,28 @@ with tempfile.TemporaryDirectory() as tmp:
     (www / 'extra.js').unlink()
     (front / 'sources.tar.gz').write_bytes(b'tampered sources')
     rejects(lambda: m.load_frontend(front, www), 'source hash mismatch')
+    archive = base / 'source.tar.gz'
+    with tarfile.open(archive, 'w:gz') as tar:
+        for name in ['project/COPYING', 'project/vendor/LICENSE.txt']:
+            info = tarfile.TarInfo(name); info.size = 7
+            tar.addfile(info, io.BytesIO(b'License'))
+    m.archived_notices(archive, base / 'extracted-notices')
+    assert (base / 'extracted-notices/project/vendor/LICENSE.txt').read_text() == 'License'
+    with tarfile.open(archive, 'w:gz') as tar:
+        content = b'/* Copyright holder; permission notice */\nint function(void);'
+        info = tarfile.TarInfo('project/header.h'); info.size = len(content)
+        tar.addfile(info, io.BytesIO(content))
+    m.archived_notices(archive, base / 'header-notices')
+    assert (base / 'header-notices/project/header.h').read_bytes() == content
+    with tarfile.open(archive, 'w:gz') as tar:
+        info = tarfile.TarInfo('../LICENSE.txt'); info.size = 7
+        tar.addfile(info, io.BytesIO(b'License'))
+    rejects(lambda: m.archived_notices(archive, base / 'bad-notices'), 'Unsafe license notice')
+    source = base / 'vendored'; source.mkdir()
+    (source / 'header.h').write_text('/* MIT license header */')
+    (source / 'LICENSE.txt').write_text('MIT')
+    assert m.vendored_notices(source, base / 'vendored-notices', ['header.h']) == ['LICENSE.txt', 'header.h']
+    assert (base / 'vendored-notices/header.h').read_text() == '/* MIT license header */'
     bundle, doc = base / 'bundle', base / 'doc'
     bundle.mkdir(); doc.mkdir()
     inv = m.Inventory(bundle, doc, 'amd64')
@@ -64,4 +97,4 @@ Path(sys.argv[sys.argv.index('--file')+1]).write_text(json.dumps({"matches":[{"v
     result = subprocess.run([str(Path(__file__).with_name('scan')), str(base / 'test')], env=env)
     assert result.returncode == 0
     assert json.loads((base / 'test.vulnerability-summary.json').read_text())['match_counts_by_severity'] == {'Critical': 1}
-print('PASS: frontend byte/set/source integrity, unknown actual link input, scanner execution failure, advisory critical finding')
+print('PASS: frontend asset/source/notice integrity, nested and header-only notices, path traversal rejection, vendored headers, unknown actual link input, scanner errors, advisory critical findings')

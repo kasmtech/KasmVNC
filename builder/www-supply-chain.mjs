@@ -41,6 +41,29 @@ fs.copyFileSync('/src/www-source.tar.gz', `${staging}/novnc-source.tar.gz`);
 fs.copyFileSync('package-lock.json', `${staging}/package-lock.json`);
 fs.copyFileSync('.kasm-supply-chain.mjs', `${staging}/build.mjs`);
 const lock = JSON.parse(fs.readFileSync('package-lock.json'));
+const noticesDir = '/supply-chain/notices';
+fs.rmSync(noticesDir, { recursive: true, force: true });
+fs.mkdirSync(noticesDir, { recursive: true });
+function collectNotices(directory, destination) {
+  let count = 0;
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (['node_modules', '.git'].includes(entry.name)) continue;
+    const source = path.join(directory, entry.name);
+    const target = path.join(destination, entry.name);
+    if (entry.isDirectory()) count += collectNotices(source, target);
+    else if (entry.isFile() && /^(LICENSE|LICENCE|COPYING|COPYRIGHT|NOTICE|AUTHORS)/i.test(entry.name)) {
+      fs.mkdirSync(destination, { recursive: true });
+      fs.copyFileSync(source, target);
+      count++;
+    }
+  }
+  return count;
+}
+for (const name of ['LICENSE.txt', 'AUTHORS']) {
+  fs.mkdirSync(path.join(noticesDir, 'novnc'), { recursive: true });
+  fs.copyFileSync(name, path.join(noticesDir, 'novnc', name));
+}
+collectNotices('docs', path.join(noticesDir, 'novnc/docs'));
 const components = [];
 for (const dir of [...bundled].sort()) {
   const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json')));
@@ -51,12 +74,22 @@ for (const dir of [...bundled].sort()) {
   const dest = path.join(staging, relative);
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.cpSync(dir, dest, { recursive: true, filter: p => !path.relative(dir, p).split(path.sep).some(part => ['node_modules', '.git', '.env', '.npmrc'].includes(part)) });
+  if (!collectNotices(dest, path.join(noticesDir, relative))) throw new Error(`No license notice found for bundled package ${pkg.name}`);
   components.push({ name: pkg.name, version: pkg.version, license: pkg.license || 'NOASSERTION',
     purl: `pkg:npm/${pkg.name.replace('@', '%40')}@${pkg.version}`,
     source: relative, resolved: entry.resolved, integrity: entry.integrity,
     modules: [...evidence.get(dir)].sort() });
 }
 const sha256 = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+const notices = {};
+function hashNotices(dir) {
+  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+    const file = path.join(dir, ent.name);
+    if (ent.isDirectory()) hashNotices(file);
+    else if (ent.isFile()) notices[path.relative(noticesDir, file)] = sha256(file);
+  }
+}
+hashNotices(noticesDir);
 const assets = {};
 function walk(dir) {
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -73,7 +106,7 @@ const pkg = JSON.parse(fs.readFileSync('package.json'));
 const manifest = { format: 'frontend-provenance-v1', name: pkg.name, version: pkg.version,
   revision: fs.readFileSync('/src/www-source-revision', 'utf8').trim(),
   repository: 'https://github.com/kasmtech/noVNC', license: pkg.license,
-  components, assets, source_archive: 'sources.tar.gz', source_sha256: sha256('/supply-chain/sources.tar.gz'),
+  components, assets, notices, source_archive: 'sources.tar.gz', source_sha256: sha256('/supply-chain/sources.tar.gz'),
   limitations: ['The vendored QOI WebAssembly binary is preserved by hash in the noVNC snapshot; its original Rust source and dependency lockfile are not present in this repository. Complete corresponding-source verification for that pre-existing binary remains outstanding.',
     'Installed npm package contents and the generated lockfile are preserved for rendered modules. Build-only npm dependencies are recorded in the lockfile, not classified as shipped components. Vendored frontend code remains part of the noVNC source snapshot.'] };
 fs.writeFileSync('/supply-chain/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
