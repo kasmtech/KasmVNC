@@ -74,6 +74,9 @@ if musl:
 elif gcc_manifest.exists():
     shutil.copytree(gcc_manifest, doc / "gcc-runtime", dirs_exist_ok=True)
     manifest["gcc_runtime"] = json.loads((gcc_manifest / "manifest.json").read_text())
+    manifest["gcc_runtime"]["builder_image"] = os.environ.get("KASMVNC_GCC_RUNTIME_IMAGE")
+    manifest["gcc_runtime"]["recipe_sha256"] = os.environ.get("KASMVNC_GCC_RUNTIME_KEY")
+    shutil.copytree('/src/builder/scripts/portable-gcc-runtime', doc / 'gcc-runtime-recipes', dirs_exist_ok=True)
 else:
     if os.environ.get("KASMVNC_PORTABLE_REQUIRE_PROVENANCE") == "1":
         raise SystemExit("Missing mandatory GCC runtime source manifest")

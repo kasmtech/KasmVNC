@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -eo pipefail
+source /opt/rh/gcc-toolset-14/enable
+set -u
+[[ $(getconf GNU_LIBC_VERSION) == 'glibc 2.34' ]]
+case $(uname -m) in
+ x86_64) baseline='-march=x86-64 -mtune=generic' ;;
+ aarch64) baseline='-march=armv8-a -mtune=generic' ;;
+ *) exit 1 ;;
+esac
+export CFLAGS="-O2 -fPIC $baseline -g" CXXFLAGS="-O2 -fPIC $baseline -g"
+/opt/kasm-gcc-recipes/build-static-gcc-runtime
+rpm -qa --qf '%{NAME} %{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort > /opt/kasm-gcc-runtime/share/gcc-runtime/builder-rpms.txt
+# Retain source and patches for source bundles and DWARF, but not generated xgcc.
+rm -rf /tmp/kasm-gcc-runtime/build

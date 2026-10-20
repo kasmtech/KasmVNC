@@ -32,6 +32,8 @@ mkdir -p "$build_dir" "output/${profile}_${arch}"
 container=
 context_archive=
 assembled_context=
+gcc_image=
+gcc_key=
 finish() {
   local result=$?
   trap - EXIT
@@ -67,10 +69,46 @@ run_logged() {
   "$@" 2>&1 | tee -a "$log" | python3 -u builder/portable/progress.py
   printf 'Portable phase complete: %s (%ss)\n' "$phase" "$((SECONDS - started))" | tee -a "$log"
 }
+# Resolve each content-keyed image independently; authentication failures never
+# trigger rebuilds. Resource groups serialize each architecture's publishers.
+prepare_dependency_image() {
+  if [[ -n ${CI_REGISTRY_IMAGE:-} ]]; then
+    # CI resource_group serializes this check and publish across branches/pipelines.
+    reference="$CI_REGISTRY_IMAGE/$cache_repository:${cache_repository}-${arch}-${key}"
+    status=0
+    resolved=$(python3 builder/portable/dependency-cache.py lookup "$reference") || status=$?
+    if [[ $status == 3 ]]; then
+      echo "Dependency cache MISS: $cache_repository $arch $key" | tee -a "$log"
+      run_logged 'compile dependency image' docker build --pull "${extra_build_args[@]}" --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" - < "$context_archive"
+      run_logged 'publish dependency image' docker push "$reference"
+      resolved=$(python3 builder/portable/dependency-cache.py lookup "$reference")
+    elif [[ $status != 0 ]]; then
+      echo 'Dependency registry lookup failed; refusing to rebuild on an ambiguous error' >&2
+      exit "$status"
+    else
+      echo "Dependency cache HIT: $cache_repository $arch $key" | tee -a "$log"
+    fi
+    run_logged 'pull immutable dependency image' docker pull "$resolved"
+    image_base=$resolved
+  else
+    # Local builds use Docker's content-addressed layer cache; no registry writes.
+    reference="kasmvnc-$cache_repository:${cache_repository}-${arch}-${key}"
+    run_logged 'prepare local dependency image' docker build "${extra_build_args[@]}" --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" - < "$context_archive"
+    resolved=$(docker image inspect --format '{{.Id}}' "$reference")
+    # BuildKit interprets a bare sha256:image-ID as a Docker Hub image name.
+    # The local content-keyed tag resolves to the ID recorded in provenance.
+    image_base=$reference
+  fi
+  [[ $(docker image inspect --format '{{index .Config.Labels "org.kasmweb.portable-dependency-key"}}' "$resolved") == "$key" ]] || {
+    echo 'Dependency image recipe label mismatch' >&2; exit 1;
+  }
+
+}
 # git archive omits gitlink contents, including the private functional-test repo.
 git archive --format=tar HEAD -o builder/portable/kasmvnc-source.tar
 context=builder/scripts/portable-dependencies
 inputs=("$context")
+[[ "$libc" != glibc ]] || inputs+=(builder/scripts/portable-gcc-runtime)
 [[ "$libc" != musl ]] || inputs+=(builder/musl/dependencies)
 [[ -z $(git ls-files --others -- "${inputs[@]}") ]] || {
   echo 'Dependency context contains untracked or ignored files; remove or commit them first' >&2
@@ -79,6 +117,31 @@ inputs=("$context")
 cache_repository=portable-deps
 packaging_dockerfile=builder/portable/Dockerfile
 entrypoint=/src/builder/portable/build-inside-docker
+extra_build_args=()
+if [[ -n ${CI_REGISTRY_IMAGE:-} ]]; then
+  : "${CI_REGISTRY_USER:?}" "${CI_REGISTRY_PASSWORD:?}" "${CI_REGISTRY:?}"
+  printf '%s' "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin >> "$log" 2>&1
+fi
+if [[ "$libc" == glibc ]]; then
+  context=builder/scripts/portable-gcc-runtime
+  cache_repository=portable-gcc-runtime
+  key=$(python3 builder/portable/dependency-cache.py key "$context" "$arch")
+  context_archive="$build_dir/gcc-runtime-context.tar"
+  python3 builder/portable/dependency-cache.py archive "$context" "$context_archive"
+  prepare_dependency_image
+  rm -f "$context_archive"
+  gcc_image=$resolved
+  gcc_key=$key
+  extra_build_args=(--build-arg "GCC_RUNTIME_IMAGE=$image_base")
+  # Parent identity is part of the dependency key, including the immutable digest
+  # so rebuilding an expired toolchain tag cannot reuse a stale child image.
+  assembled_context=$(mktemp -d /tmp/kasm-glibc-dependencies.XXXXXX)
+  cp -a builder/scripts/portable-dependencies/. "$assembled_context/"
+  printf '%s\n' "$gcc_image" > "$assembled_context/gcc-runtime-image.txt"
+  printf '%s\n' "$gcc_key" > "$assembled_context/gcc-runtime-key.txt"
+  context=$assembled_context
+  cache_repository=portable-deps
+fi
 if [[ "$libc" == musl ]]; then
   # Docker can see only this assembled context. Hash every shared recipe and
   # musl-only dependency input; application/packaging edits do not invalidate it.
@@ -96,38 +159,7 @@ key=$(python3 builder/portable/dependency-cache.py key "$context" "$arch")
 # context; runner checkout umask must not change either the key or image inputs.
 context_archive="$build_dir/dependency-context.tar"
 python3 builder/portable/dependency-cache.py archive "$context" "$context_archive"
-if [[ -n ${CI_REGISTRY_IMAGE:-} ]]; then
-  # CI resource_group serializes this check and publish across branches/pipelines.
-  : "${CI_REGISTRY_USER:?}" "${CI_REGISTRY_PASSWORD:?}" "${CI_REGISTRY:?}"
-  printf '%s' "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin >> "$log" 2>&1
-  reference="$CI_REGISTRY_IMAGE/$cache_repository:${cache_repository}-${arch}-${key}"
-  status=0
-  resolved=$(python3 builder/portable/dependency-cache.py lookup "$reference") || status=$?
-  if [[ $status == 3 ]]; then
-    echo "Dependency cache MISS: $arch $key" | tee -a "$log"
-    run_logged 'compile dependency image' docker build --pull --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" - < "$context_archive"
-    run_logged 'publish dependency image' docker push "$reference"
-    resolved=$(python3 builder/portable/dependency-cache.py lookup "$reference")
-  elif [[ $status != 0 ]]; then
-    echo 'Dependency registry lookup failed; refusing to rebuild on an ambiguous error' >&2
-    exit "$status"
-  else
-    echo "Dependency cache HIT: $arch $key" | tee -a "$log"
-  fi
-  run_logged 'pull immutable dependency image' docker pull "$resolved"
-  image_base=$resolved
-else
-  # Local builds use Docker's content-addressed layer cache; no registry writes.
-  reference="kasmvnc-$cache_repository:${cache_repository}-${arch}-${key}"
-  run_logged 'prepare local dependency image' docker build --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" - < "$context_archive"
-  resolved=$(docker image inspect --format '{{.Id}}' "$reference")
-  # BuildKit interprets a bare sha256:image-ID as a Docker Hub image name.
-  # The local content-keyed tag resolves to the ID recorded in provenance.
-  image_base=$reference
-fi
-[[ $(docker image inspect --format '{{index .Config.Labels "org.kasmweb.portable-dependency-key"}}' "$resolved") == "$key" ]] || {
-  echo 'Dependency image recipe label mismatch' >&2; exit 1;
-}
+prepare_dependency_image
 printf '%s\n' "$resolved" > "$build_dir/dependency-image.txt"
 run_logged 'create packaging image' docker build -f "$packaging_dockerfile" --build-arg BUILDER_IMAGE="$image_base" -t "${image}-package" .
 signing_environment=()
@@ -139,6 +171,7 @@ fi
 container=$(docker create --entrypoint "$entrypoint" \
   "${signing_environment[@]}" -e KASMVNC_LIBC="$libc" \
   -e KASMVNC_DEPENDENCY_IMAGE="$resolved" -e KASMVNC_DEPENDENCY_KEY="$key" \
+  -e KASMVNC_GCC_RUNTIME_IMAGE="$gcc_image" -e KASMVNC_GCC_RUNTIME_KEY="$gcc_key" \
   -e KASMVNC_COMMIT_ID="$revision" -e KASMVNC_PORTABLE_VERSION="$version" \
   -e KASMVNC_PORTABLE_BASENAME="$basename" -e BUILD_JOBS="${BUILD_JOBS:-8}" \
   "${image}-package" 2>> "$log")

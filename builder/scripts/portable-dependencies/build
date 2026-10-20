@@ -17,7 +17,13 @@ export LIBYUV_COMMIT=eb6e7bb63738e29efd82ea3cf2a115238a89fa51
 export KASMVNC_PORTABLE_DRIVER_PATH=$(/opt/kasm-dependency-recipes/portable-driver-path)
 cd /tmp
 recipes=/opt/kasm-dependency-recipes
-python3 "$recipes/run-phase.py" gcc "$recipes/build-static-gcc-runtime"
+# The parent image supplies the audited private unwind runtime.
+test -s "$KASMVNC_GCC_RUNTIME_PREFIX/lib/libgcc.a"
+test -s "$KASMVNC_GCC_RUNTIME_PREFIX/lib/libgcc_eh.a"
+test -s "$KASMVNC_GCC_RUNTIME_PREFIX/share/gcc-runtime/manifest.json"
+if nm -u "$KASMVNC_GCC_RUNTIME_PREFIX/lib/libgcc_eh.a" | grep _dl_find_object >/dev/null; then
+    echo 'Cached libgcc requires glibc 2.35' >&2; exit 1
+fi
 python3 "$recipes/run-phase.py" runtime "$recipes/build-static-runtime"
 python3 "$recipes/run-phase.py" desktop "$recipes/build-static-desktop"
 export PKG_CONFIG_PATH="$KASMVNC_STATIC_RUNTIME_PREFIX/lib/pkgconfig:$KASMVNC_CODEC_PREFIX/lib/pkgconfig:$KASMVNC_STATIC_DESKTOP_PREFIX/lib/pkgconfig"

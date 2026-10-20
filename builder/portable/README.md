@@ -153,18 +153,20 @@ embedded startup objects; they do not mean all of libc or GCC is linked in.
 
 ### Reusing compiled dependencies
 
-The native portable jobs share one combined toolchain/dependency image per
-architecture in `$CI_REGISTRY_IMAGE/portable-deps`. Tags are
-`portable-deps-amd64-<sha256>` and `portable-deps-arm64-<sha256>`. The key covers **every filename, Git executable bit
-and byte** in `builder/scripts/portable-dependencies/`, plus the architecture.
-This directory is the complete Docker build context: dependency recipes, pinned
-source revisions/checksums, build flags, Dockerfile and base-image digest live
-there. Symlinks are rejected. Docker receives a canonical tar context with 0644/0755
+The glibc portable jobs use an independently cached GCC-runtime parent image
+and an application-dependency child image per architecture. Child images live in
+`$CI_REGISTRY_IMAGE/portable-deps` with tags
+`portable-deps-amd64-<sha256>` and `portable-deps-arm64-<sha256>`. Their key covers
+**every filename, Git executable bit and byte** in
+`builder/scripts/portable-dependencies/`, the architecture, and the resolved
+GCC-runtime parent digest/key. The parent is described below.
+
+Symlinks are rejected. Docker receives a canonical tar context with 0644/0755
 file modes and normalized owner/timestamps, so runner checkout umasks do not
-change cache keys or image input permissions. Add new dependency inputs inside that directory;
-do not read application files or introduce untracked build-argument overrides.
-Application commits, web assets, branch names and timestamps do not change the
-key. Compatibility wrappers keep the existing distro build entry points working.
+change cache keys or image input permissions. Add dependency inputs inside their
+own context; do not read application files or introduce untracked build-argument
+overrides. Application commits, web assets, branch names and timestamps do not
+change the keys. Compatibility wrappers keep existing build entry points working.
 
 A native GitLab `resource_group` serializes the cache lookup and publication for
 each architecture across branches. While holding that lock, a registry manifest
@@ -191,7 +193,7 @@ the dependency image cache.
 
 The Oracle Linux base is pinned by multiarchitecture digest. RPM repositories
 are resolved when the image is created; this is **not** a bit-reproducible RPM
-snapshot. Update `repository-refresh.txt` deliberately to refresh RPMs, and update
+snapshot. Update `builder/scripts/portable-gcc-runtime/repository-refresh.txt` deliberately to refresh RPMs, and update
 the base digest/source pins when needed for security maintenance. A deleted image
 rebuilt under the same recipe key can resolve newer RPMs. The published image
 digest and exact RPM inventory in each package's provenance identify what was
@@ -215,3 +217,22 @@ rebuild on demand. Keep published source bundles and release provenance in S3
 independently of builder-image cleanup. Storage is reclaimed according to the
 registry's garbage-collection policy, not necessarily immediately when a tag is
 removed.
+
+### Independent glibc unwind-runtime cache
+
+The patched GCC runtime and its pinned Oracle Linux build environment use a
+separate `portable-gcc-runtime` registry image, keyed by architecture and every
+file in `builder/scripts/portable-gcc-runtime`. The main glibc dependency image
+inherits its immutable digest; both the parent digest and recipe key are included
+in the child cache context and packaged provenance. Unrelated runtime/codec recipe
+changes therefore reuse libgcc. Musl never resolves or builds this image.
+
+The first run populates the new cache. Later toolchain hits avoid compiling GCC
+again, even if other dependencies change. Authentication/network errors fail
+closed; only a registry manifest 404 permits rebuilding. Bump the toolchain's
+`repository-refresh.txt` to refresh its RPM environment deliberately. Source,
+patches, runtime notices and the toolchain RPM inventory remain available to the
+source/SBOM pipeline. No libc ABI, compiler baseline or linkage policy changed.
+
+Container validation: `python3 builder/portable/test-gcc-cache.py` and
+`python3 builder/portable/test-dependency-cache.py` in a dedicated test container.
