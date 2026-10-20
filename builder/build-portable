@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
-# Native-architecture portable packages, using the glibc 2.34 build profile.
+# Native-architecture portable packages, using glibc 2.34 or musl 1.2.5.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+libc=glibc
+if [[ $# == 2 && $1 == --libc && $2 == musl ]]; then
+  libc=musl
+elif [[ $# != 0 ]]; then
+  echo 'Usage: builder/build-portable [--libc musl]' >&2; exit 2
+fi
+profile=portable
+[[ "$libc" != musl ]] || profile=portable_musl
 test -s builder/www/index.html || { echo 'Run builder/build-www first' >&2; exit 1; }
 revision=${KASMVNC_COMMIT_ID:-$(git rev-parse HEAD)}
 [[ "$revision" == "$(git rev-parse HEAD)" ]] || { echo "Portable source revision must match HEAD" >&2; exit 1; }
@@ -14,26 +22,28 @@ case $(docker info --format '{{.Architecture}}') in
   aarch64|arm64) arch=arm64 ;;
   *) echo 'Unsupported native Docker architecture' >&2; exit 1 ;;
 esac
-basename="kasmvncserver_portable_${version}_${branch//\//_}_${revision:0:6}_${arch}"
+basename="kasmvncserver_${profile}_${version}_${branch//\//_}_${revision:0:6}_${arch}"
 [[ "$basename" =~ ^[a-zA-Z0-9_.+-]+$ ]] || { echo 'Unsafe artifact filename' >&2; exit 1; }
-image="kasmvnc-portable-builder:${revision:0:12}-${arch}"
-build_dir="builder/build/portable_${arch}"
-log="output/portable_${arch}/build.log"
-mkdir -p "$build_dir" "output/portable_${arch}"
+image="kasmvnc-${profile}-builder:${revision:0:12}-${arch}"
+build_dir="builder/build/${profile}_${arch}"
+log="output/${profile}_${arch}/build.log"
+mkdir -p "$build_dir" "output/${profile}_${arch}"
 : > "$log"
 container=
 context_archive=
+assembled_context=
 finish() {
   local result=$?
   trap - EXIT
   set +e
   [[ -z "$context_archive" ]] || rm -f "$context_archive"
+  [[ -z "$assembled_context" ]] || rm -rf "$assembled_context"
   if [[ -n "$container" ]]; then
     docker rm -f "$container" >> "$log" 2>&1
   fi
   # EXIT runs for failed Docker builds and failed compilation as well as success.
   # Keep the log outside /artifacts so no failed package can be published.
-  if ! mkdir -p "output/portable_${arch}" || ! cp "$log" "$build_dir/build.log"; then
+  if ! mkdir -p "output/${profile}_${arch}" || ! cp "$log" "$build_dir/build.log"; then
     echo 'Failed to retain portable build log' >&2
     [[ "$result" != 0 ]] || result=1
   fi
@@ -41,7 +51,7 @@ finish() {
     echo "Portable build failed (exit $result); last 200 log lines:" >&2
     tail -n 200 "$log" >&2
   fi
-  echo "Complete build log: output/portable_${arch}/build.log"
+  echo "Complete build log: output/${profile}_${arch}/build.log"
   exit "$result"
 }
 trap finish EXIT
@@ -60,10 +70,27 @@ run_logged() {
 # git archive omits gitlink contents, including the private functional-test repo.
 git archive --format=tar HEAD -o builder/portable/kasmvnc-source.tar
 context=builder/scripts/portable-dependencies
-[[ -z $(git ls-files --others -- "$context") ]] || {
+inputs=("$context")
+[[ "$libc" != musl ]] || inputs+=(builder/musl/dependencies)
+[[ -z $(git ls-files --others -- "${inputs[@]}") ]] || {
   echo 'Dependency context contains untracked or ignored files; remove or commit them first' >&2
   exit 1
 }
+cache_repository=portable-deps
+packaging_dockerfile=builder/portable/Dockerfile
+entrypoint=/src/builder/portable/build-inside-docker
+if [[ "$libc" == musl ]]; then
+  # Docker can see only this assembled context. Hash every shared recipe and
+  # musl-only dependency input; application/packaging edits do not invalidate it.
+  assembled_context=$(mktemp -d /tmp/kasm-musl-dependencies.XXXXXX)
+  cp -a "$context" "$assembled_context/recipes"
+  cp -a builder/musl/dependencies "$assembled_context/musl"
+  cp builder/musl/dependencies/Dockerfile "$assembled_context/Dockerfile"
+  context=$assembled_context
+  cache_repository=portable-musl-deps
+  packaging_dockerfile=builder/musl/Dockerfile
+  entrypoint=/src/builder/musl/build-inside-docker
+fi
 key=$(python3 builder/portable/dependency-cache.py key "$context" "$arch")
 # Normalize Git-tracked executable modes and ownership before Docker sees the
 # context; runner checkout umask must not change either the key or image inputs.
@@ -73,7 +100,7 @@ if [[ -n ${CI_REGISTRY_IMAGE:-} ]]; then
   # CI resource_group serializes this check and publish across branches/pipelines.
   : "${CI_REGISTRY_USER:?}" "${CI_REGISTRY_PASSWORD:?}" "${CI_REGISTRY:?}"
   printf '%s' "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin >> "$log" 2>&1
-  reference="$CI_REGISTRY_IMAGE/portable-deps:portable-deps-${arch}-${key}"
+  reference="$CI_REGISTRY_IMAGE/$cache_repository:${cache_repository}-${arch}-${key}"
   status=0
   resolved=$(python3 builder/portable/dependency-cache.py lookup "$reference") || status=$?
   if [[ $status == 3 ]]; then
@@ -91,7 +118,7 @@ if [[ -n ${CI_REGISTRY_IMAGE:-} ]]; then
   image_base=$resolved
 else
   # Local builds use Docker's content-addressed layer cache; no registry writes.
-  reference="kasmvnc-portable-deps:portable-deps-${arch}-${key}"
+  reference="kasmvnc-$cache_repository:${cache_repository}-${arch}-${key}"
   run_logged 'prepare local dependency image' docker build --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" - < "$context_archive"
   resolved=$(docker image inspect --format '{{.Id}}' "$reference")
   # BuildKit interprets a bare sha256:image-ID as a Docker Hub image name.
@@ -102,8 +129,15 @@ fi
   echo 'Dependency image recipe label mismatch' >&2; exit 1;
 }
 printf '%s\n' "$resolved" > "$build_dir/dependency-image.txt"
-run_logged 'create packaging image' docker build -f builder/portable/Dockerfile --build-arg BUILDER_IMAGE="$image_base" -t "${image}-package" .
-container=$(docker create --entrypoint /src/builder/portable/build-inside-docker \
+run_logged 'create packaging image' docker build -f "$packaging_dockerfile" --build-arg BUILDER_IMAGE="$image_base" -t "${image}-package" .
+signing_environment=()
+if [[ "$libc" == musl ]]; then
+  # Forward signing secrets only into the disposable runtime container. Never
+  # pass them to Docker build, include them in cache keys, or print their values.
+  signing_environment=(-e KASMVNC_ALPINE_PRIVATE_KEY -e KASMVNC_ALPINE_PUBLIC_KEY -e KASMVNC_APK_ALLOW_TEST_KEY -e CI)
+fi
+container=$(docker create --entrypoint "$entrypoint" \
+  "${signing_environment[@]}" -e KASMVNC_LIBC="$libc" \
   -e KASMVNC_DEPENDENCY_IMAGE="$resolved" -e KASMVNC_DEPENDENCY_KEY="$key" \
   -e KASMVNC_COMMIT_ID="$revision" -e KASMVNC_PORTABLE_VERSION="$version" \
   -e KASMVNC_PORTABLE_BASENAME="$basename" -e BUILD_JOBS="${BUILD_JOBS:-8}" \

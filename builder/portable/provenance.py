@@ -15,6 +15,7 @@ doc = Path(sys.argv[1])
 licenses = doc / "third-party-licenses"
 licenses.mkdir(parents=True, exist_ok=True)
 sources = []
+musl = os.environ.get("KASMVNC_LIBC") == "musl"
 def sha256(path):
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -44,8 +45,11 @@ for base in sorted({Path(os.environ.get("KASMVNC_RUNTIME_SOURCES", "/tmp/static-
 # package versions and installed license notices alongside source-built notices.
 # Embedded RPM license notices are selected by supply-chain.py from link evidence.
 # Keep builder inventory for diagnostics only; it is not the runtime SBOM.
-rpms = subprocess.check_output(["rpm", "-qa", "--qf", "%{NAME}\t%{VERSION}-%{RELEASE}\t%{ARCH}\t%{LICENSE}\n"], text=True)
-(doc / "builder-rpms.tsv").write_text(rpms)
+if musl:
+    shutil.copy2('/lib/apk/db/installed', doc / 'builder-apk-installed.txt')
+else:
+    rpms = subprocess.check_output(["rpm", "-qa", "--qf", "%{NAME}\t%{VERSION}-%{RELEASE}\t%{ARCH}\t%{LICENSE}\n"], text=True)
+    (doc / "builder-rpms.tsv").write_text(rpms)
 manifest = {"format": "kasmvnc-portable-build-provenance-v1", "revision": os.environ["KASMVNC_COMMIT_ID"],
             "version": os.environ["KASMVNC_PORTABLE_VERSION"], "glibc_abi_maximum": "2.34",
             "architecture": sys.argv[2], "sources": sources,
@@ -56,9 +60,18 @@ manifest["dependency_builder"] = {
     "recipe_sha256": os.environ.get("KASMVNC_DEPENDENCY_KEY"),
     "rpm_resolution": "Pinned base; RPM repositories resolved at image creation. Image digest identifies exact build environment; cold rebuild may resolve newer RPMs.",
 }
+if musl:
+    manifest.pop("glibc_abi_maximum")
+    manifest["musl_abi_minimum"] = "1.2.5"
+    manifest["runtime_boundary"] = "Host musl, musl-compatible GPU drivers/loaders, Perl modules, XKB tools/data and desktop remain external."
+    manifest["dependency_builder"].pop("rpm_resolution")
+    manifest["dependency_builder"]["apk_resolution"] = "Pinned Alpine base; APK repositories resolved at image creation; image digest and installed APK inventory identify the environment."
+    shutil.copytree('/src/builder/musl/dependencies', doc / 'musl-dependency-recipes', dirs_exist_ok=True)
 shutil.copytree("/src/builder/scripts/portable-dependencies", doc / "dependency-recipes", dirs_exist_ok=True)
 gcc_manifest = Path(os.environ.get("KASMVNC_GCC_RUNTIME_PREFIX", "/opt/kasm-gcc-runtime")) / "share/gcc-runtime"
-if gcc_manifest.exists():
+if musl:
+    manifest["gcc_runtime"] = "Native Alpine GCC archives; exact APK ownership, aports commit, patches and verified upstream sources recorded by supply-chain.py."
+elif gcc_manifest.exists():
     shutil.copytree(gcc_manifest, doc / "gcc-runtime", dirs_exist_ok=True)
     manifest["gcc_runtime"] = json.loads((gcc_manifest / "manifest.json").read_text())
 else:

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Additional EL9 archives for the experimental glibc-2.34 profile.
+# Additional source-built desktop archives for the experimental glibc-2.34 profile.
 # Run in its isolated builder; never reuse a prefix populated by another distro.
 set -euo pipefail
 prefix=${KASMVNC_STATIC_DESKTOP_PREFIX:-/opt/kasm-desktop}
@@ -58,7 +58,9 @@ fetch() {
     echo "$sha  $file" | sha256sum -c -
     tar -xf "$file"
 }
-have() { [[ -f "$prefix/lib/lib$1.a" || -f "/usr/lib64/lib$1.a" ]]; }
+host_archive_dir=/usr/lib64
+[[ ${KASMVNC_LIBC:-} != musl ]] || host_archive_dir=/usr/lib
+have() { [[ -f "$prefix/lib/lib$1.a" || -f "$host_archive_dir/lib$1.a" ]]; }
 auto() {
     local archive=$1 file=$2 dir=$3
     shift 3
@@ -81,7 +83,11 @@ auto() {
       fi )
 }
 # Keep patched distro GLib and its PCRE1 closure; these packages exist in CRB.
-for archive in glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0 pcre crypt selinux sepol; do
+required_archives='glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0 pcre crypt selinux sepol'
+if [[ ${KASMVNC_LIBC:-} == musl ]]; then
+    required_archives='glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0 intl'
+fi
+for archive in $required_archives; do
     have "$archive" || { echo "Install EL9 static development packages: missing lib$archive.a" >&2; exit 1; }
 done
 auto ffi libffi-3.5.2.tar.gz libffi-3.5.2 --disable-docs
@@ -142,7 +148,7 @@ if ! have drm; then
     ninja -C drm-build -j"$jobs"
     meson install -C drm-build
 fi
-if ! have systemd; then
+if [[ ${KASMVNC_LIBC:-} != musl ]] && ! have systemd; then
     fetch systemd-255.4.tar.gz
     # EL9 backported pidfs kernel headers postdate this systemd snapshot.
     # Add the missing name/magic mapping; keep the upstream completeness check.
@@ -156,4 +162,6 @@ if ! have systemd; then
     ninja -C systemd-build -j"$jobs" libsystemd.a
     cp systemd-build/libsystemd.a "$prefix/lib/"
 fi
-auto dbus-1 dbus-1.14.10.tar.xz dbus-1.14.10 --disable-tests --disable-doxygen-docs --disable-xml-docs --enable-systemd
+dbus_systemd=--enable-systemd
+[[ ${KASMVNC_LIBC:-} != musl ]] || dbus_systemd=--disable-systemd
+auto dbus-1 dbus-1.14.10.tar.xz dbus-1.14.10 --disable-tests --disable-doxygen-docs --disable-xml-docs "$dbus_systemd"

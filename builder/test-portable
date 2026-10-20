@@ -21,7 +21,7 @@ parser.add_argument('artifact_directory')
 parser.add_argument('--case', required=True)
 parser.add_argument('--arch', required=True, choices=['amd64', 'arm64'])
 parser.add_argument('--results', required=True)
-parser.add_argument('--formats', nargs='+', choices=['native', 'tar'], default=['native', 'tar'])
+parser.add_argument('--formats', nargs='+', choices=['native', 'tar'], default=None)
 parser.add_argument('--previous-package', default=os.getenv('PORTABLE_PREVIOUS_PACKAGE'))
 args = parser.parse_args()
 repo = Path(__file__).resolve().parent.parent
@@ -30,6 +30,9 @@ manifest = json.loads((tests/'matrix.json').read_text())
 row = next((r for r in manifest['cases'] if r['name'] == args.case), None)
 if row is None:
     parser.error('Unknown core-image matrix case')
+formats = args.formats or (['native'] if row['format'] == 'apk' else ['native', 'tar'])
+if row['format'] == 'apk' and 'tar' in formats:
+    parser.error('The musl profile publishes a native APK runtime, not a runtime tar archive')
 results = Path(args.results).resolve()
 results.mkdir(parents=True, exist_ok=True)
 report = {'case': row, 'architecture': args.arch, 'source_matrix': manifest['source'],
@@ -75,10 +78,11 @@ browser_image = 'kasm-portable-browser:' + unique
 try:
     run(['docker', 'build', '--platform', 'linux/'+args.arch, '-t', browser_image,
          '-f', str(tests/'browser.Dockerfile'), str(tests)], log=results/'browser-build.log')
-    for requested_format in args.formats:
+    for requested_format in formats:
         fmt = row['format'] if requested_format == 'native' else 'tar'
         extension = 'tar.gz' if fmt == 'tar' else fmt
-        files = list(artifact_dir.glob('kasmvncserver_portable_*_'+args.arch+'.'+extension))
+        basename = 'kasmvncserver_portable_musl_*_' if fmt == 'apk' else 'kasmvncserver_portable_*_'
+        files = list(artifact_dir.glob(basename+args.arch+'.'+extension))
         if len(files) != 1:
             raise RuntimeError('Expected exactly one published '+extension+' artifact')
         artifact = files[0]
@@ -98,6 +102,12 @@ try:
                 shutil.copytree(tests, context/'test')
                 (context/'artifacts').mkdir()
                 shutil.copy2(artifact, context/'artifacts'/artifact.name)
+                if fmt == 'apk':
+                    keys = list(artifact_dir.glob('*.rsa.pub'))
+                    if len(keys) != 1:
+                        raise RuntimeError('Expected exactly one published APK signing public key')
+                    shutil.copy2(keys[0], context/'artifacts'/'kasmvnc_signing_key.rsa.pub')
+                    item['signature'] = 'apk verify with published public key'
                 initial = artifact.name
                 replacement_action = 'reinstall'
                 if args.previous_package and fmt != 'tar':
@@ -110,6 +120,7 @@ try:
                     item['upgrade'] = 'previous package installed, then candidate replaces it'
                 (context/'Dockerfile').write_text(
                     'ARG BASE\nFROM ${BASE}\nUSER root\n'
+                    + ('RUN apk add --no-cache bash ca-certificates\n' if fmt == 'apk' else '') +
                     'COPY test/prerequisites.sh /portable/prerequisites.sh\n'
                     'RUN bash /portable/prerequisites.sh '+fmt+(' all' if fmt == 'tar' else ' bootstrap')+'\n'
                     'COPY artifacts /artifacts\nCOPY test/package.sh /portable/package.sh\n'

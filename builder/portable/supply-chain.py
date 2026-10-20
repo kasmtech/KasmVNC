@@ -8,6 +8,7 @@ import argparse
 import datetime
 import fnmatch
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -193,6 +194,13 @@ class Inventory:
             ('KASMVNC_GCC_RUNTIME_BUILD_DIR', '/tmp/kasm-gcc-runtime')])) + [Path('/tmp')]
         (bundle / 'upstream').mkdir()
         (bundle / 'rpm').mkdir()
+        (bundle / 'apk').mkdir()
+        self.musl = os.environ.get('KASMVNC_LIBC') == 'musl'
+        if self.musl:
+            spec = importlib.util.spec_from_file_location('apk_sources', SRC / 'builder/musl/dependencies/cache-apk-sources.py')
+            self.apk_sources = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(self.apk_sources)
+            self.apk_packages = self.apk_sources.installed()
         (bundle / 'evidence').mkdir()
         (doc / 'third-party-licenses/embedded').mkdir(parents=True, exist_ok=True)
 
@@ -323,9 +331,46 @@ class Inventory:
                 raise RuntimeError(f'No installed license notices for source RPM {srpm}; inspect its source notices')
         return self.components[key]
 
+    def apk(self, package):
+        key = package['P'] + '-' + package['V']
+        if key not in self.components:
+            archive, record = self.apk_sources.checked_source(Path('/opt/kasm-apk-sources'), package)
+            dest = 'apk/' + archive.name
+            self.preserve(archive, dest)
+            self.sources[dest].update({k: record[k] for k in ['url', 'aports_commit', 'checksums']})
+            c = component(package['P'], package['V'],
+                purl=f"pkg:apk/alpine/{quote(package['P'])}@{quote(package['V'])}?arch={package['A']}&distro=alpine-3.21",
+                licenses=[{'license': {'name': package['L']}}], properties=[
+                    prop('delivery', 'embedded-static'), prop('apk-origin', package['o']),
+                    prop('aports-commit', package['c']), prop('apk-package-checksum', package['C']),
+                    prop('source-file', dest), prop('source-sha256', record['sha256'])])
+            notice_dir = self.doc / 'third-party-licenses/embedded' / package['P']
+            notice_dir.mkdir(exist_ok=True)
+            # The exact APKBUILD source bundle contains nested upstream release
+            # archives. Extract only into a disposable directory with data filter.
+            with tempfile.TemporaryDirectory(prefix='kasm-apk-notices-') as tmp:
+                stage = Path(tmp)
+                with tarfile.open(archive) as tf:
+                    tf.extractall(stage, filter='data')
+                for source in (stage / 'upstream').iterdir():
+                    if source.is_file() and tarfile.is_tarfile(source):
+                        archived_notices(source, notice_dir / source.name)
+                for notice in stage.rglob('*'):
+                    if notice.is_file() and notice.name.upper().startswith(('LICENSE', 'COPYING', 'COPYRIGHT', 'NOTICE')):
+                        target = notice_dir / notice.relative_to(stage)
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(notice, target)
+            if not any(p.is_file() for p in notice_dir.rglob('*')):
+                raise RuntimeError('Missing corresponding APK license notices: ' + key)
+            self.components[key] = c
+        return self.components[key]
+
     def archive(self, path):
         # Package ownership wins over an upstream name (EL backports matter).
-        if subprocess.run(['rpm', '-qf', str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+        package = self.apk_sources.owner(path, self.apk_packages) if self.musl else None
+        if package:
+            c = self.apk(package)
+        elif not self.musl and subprocess.run(['rpm', '-qf', str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
             c = self.rpm(path)
         else:
             lib = re.sub(r'^lib|\.a$', '', path.name)
@@ -452,7 +497,7 @@ def main():
             deps.add(c['bom-ref'])
         audit = json.loads((args.doc / 'elf-audit.json').read_text())
         host = {'shared_libraries': sorted({lib for elf in audit for lib in elf['needed']}),
-                'other_requirements': ['glibc >= 2.34', 'Perl and package-declared Perl modules',
+                'other_requirements': ['musl >= 1.2.5' if inv.musl else 'glibc >= 2.34', 'Perl and package-declared Perl modules',
                     'XKB tools/data', 'desktop/session applications', 'GPU vendor drivers/loaders when enabled'],
                 'versions': 'Supplied and patched by the host; deliberately not assigned builder versions.'}
         inv.limitations += ['Link evidence records archive members selected by ld; a library entry does not imply every upstream feature is enabled.',
@@ -465,9 +510,9 @@ def main():
                     'host_requirements': host, 'limitations': inv.limitations}
         write(bundle / 'manifest.json', manifest)
         (bundle / 'README.txt').write_text('KasmVNC portable source inputs\n\nExtract kasmvnc-source.tar for source, patches and builder scripts.\n'
-            'upstream/ contains exact release archives and Git snapshots; rpm/ contains signed exact source RPMs with distro patches/specs.\n'
+            'upstream/ contains exact release archives and Git snapshots; rpm/ contains signed exact source RPMs; apk/ contains exact aports recipes/patches and checksum-verified upstream inputs.\n'
             'frontend-sources.tar.gz contains the web client source inventory.\n'
-            'Build entry point: builder/build-portable; see builder/portable/README.md.\n'
+            f'Build entry point: builder/build-portable{" --libc musl" if inv.musl else ""}; see builder documentation.\n'
             'It downloads dependencies and is not an offline or bit-reproducible rebuild command.\n'
             'For exact input reproduction restore these archives and recorded Git revisions, rather than following floating branches.\n'
             'Read manifest.json limitations before claiming source-compliance completeness.\n')

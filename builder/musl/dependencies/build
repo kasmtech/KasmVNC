@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+[[ $(/lib/ld-musl-*.so.1 2>&1 || :) == *'Version 1.2.5'* ]]
+case $(uname -m) in
+ x86_64) baseline='-march=x86-64 -mtune=generic' ;;
+ aarch64) baseline='-march=armv8-a -mtune=generic' ;;
+ *) exit 1 ;;
+esac
+export CFLAGS="-O2 -fPIC $baseline -g" CXXFLAGS="-O2 -fPIC $baseline -g"
+export KASMVNC_STATIC_RUNTIME_PREFIX=/opt/kasm-runtime
+export KASMVNC_CODEC_PREFIX=/opt/kasm-codecs
+export KASMVNC_STATIC_DESKTOP_PREFIX=/opt/kasm-desktop
+export LIBYUV_COMMIT=eb6e7bb63738e29efd82ea3cf2a115238a89fa51
+export KASMVNC_PORTABLE_DRIVER_PATH=$(/opt/kasm-dependency-recipes/portable-driver-path)
+cd /tmp
+recipes=/opt/kasm-dependency-recipes
+python3 "$recipes/run-phase.py" runtime "$recipes/build-static-runtime"
+python3 "$recipes/run-phase.py" desktop "$recipes/build-static-desktop"
+export PKG_CONFIG_PATH="$KASMVNC_STATIC_RUNTIME_PREFIX/lib/pkgconfig:$KASMVNC_CODEC_PREFIX/lib/pkgconfig:$KASMVNC_STATIC_DESKTOP_PREFIX/lib/pkgconfig"
+python3 "$recipes/run-phase.py" codecs "$recipes/build-static-ffmpeg"
+export CPATH="$KASMVNC_STATIC_RUNTIME_PREFIX/include:$KASMVNC_CODEC_PREFIX/include"
+export PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig:$HOME/.local/lib64/pkgconfig:$HOME/.local/share/pkgconfig:$PKG_CONFIG_PATH"
+export CPATH="$HOME/.local/include:$CPATH"
+python3 "$recipes/run-phase.py" helpers "$recipes/build-deps.sh"
+python3 "$recipes/run-phase.py" apk-sources python3 /opt/kasm-musl-profile/cache-apk-sources.py
+# Sources and build logs are retained for corresponding-source artifacts.
+test -s /opt/kasm-codecs/lib/libavcodec.a
+test -s /root/.local/lib/libyuv.a
+apk info -v | sort > /opt/kasm-dependency-apks.txt
+cp /lib/apk/db/installed /opt/kasm-apk-installed
+printf 'kasmvnc-portable-musl-dependencies-v1\n' > /opt/kasm-dependencies-ready

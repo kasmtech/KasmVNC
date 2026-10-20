@@ -125,18 +125,7 @@ stages:
         DISTRO_SLUG: 'fedora_43'
         LEGACY_REQUIRED: "false"
         GROUP: 12
-      - DISTRO: 'alpine 321'
-        DISTRO_SLUG: 'alpine_321'
-        LEGACY_REQUIRED: "true"
-        GROUP: 13
-      - DISTRO: 'alpine 322'
-        DISTRO_SLUG: 'alpine_322'
-        LEGACY_REQUIRED: "true"
-        GROUP: 14
-      - DISTRO: 'alpine 323'
-        DISTRO_SLUG: 'alpine_323'
-        LEGACY_REQUIRED: "true"
-        GROUP: 15
+
 
 default:
   retry: 2
@@ -497,6 +486,26 @@ build_portable_arm64:
   extends: .build_portable
   tags: [oci-fixed-arm]
 
+# One native musl build per architecture replaces the per-release Alpine builds.
+# Keep a separate cache: glibc-built archives cannot be linked into musl binaries.
+.build_portable_musl:
+  extends: .build_portable
+  script:
+    - builder/build-portable --libc musl
+    - upload_portable_packages
+    - mkdir -p output
+    - cp -r builder/build/portable_musl_* output/
+
+build_portable_musl_amd64:
+  extends: .build_portable_musl
+  resource_group: portable-musl-deps-amd64
+  tags: [oci-fixed-amd]
+
+build_portable_musl_arm64:
+  extends: .build_portable_musl
+  resource_group: portable-musl-deps-arm64
+  tags: [oci-fixed-arm]
+
 .test_portable:
   stage: run_test
   timeout: 40m
@@ -537,3 +546,25 @@ test_portable_arm64:
   parallel:
     matrix:
       - PORTABLE_CASE: [kasmos-kasmos, ubuntu-jammy, ubuntu-noble, ubuntu-resolute, debian-bookworm, debian-trixie, kali-rolling, oracle-9, rhel-9, rockylinux-9, almalinux-9, opensuse-16, fedora-42, fedora-43, parrotos-7]
+
+.test_portable_musl:
+  extends: .test_portable
+  script:
+    - builder/test-portable "output/portable_musl_${PORTABLE_ARCH}" --case "$PORTABLE_CASE" --arch "$PORTABLE_ARCH" --formats native --results "output/portable-tests/${PORTABLE_ARCH}/${PORTABLE_CASE}"
+  parallel:
+    matrix:
+      - PORTABLE_CASE: [alpine-3.21, alpine-3.22, alpine-3.23, alpine-3.24]
+
+test_portable_musl_amd64:
+  extends: .test_portable_musl
+  tags: [oci-fixed-amd]
+  needs: [build_portable_musl_amd64]
+  variables:
+    PORTABLE_ARCH: amd64
+
+test_portable_musl_arm64:
+  extends: .test_portable_musl
+  tags: [oci-fixed-arm]
+  needs: [build_portable_musl_arm64]
+  variables:
+    PORTABLE_ARCH: arm64

@@ -184,42 +184,56 @@
       "exclude_reason": null
     },
     {
-      "name": "alpine-321",
-      "image": "alpine:3.21",
-      "architectures": [
-        "amd64",
-        "arm64"
-      ],
-      "format": "rpm",
-      "exclude_reason": "musl does not provide the glibc ABI"
-    },
-    {
-      "name": "alpine-322",
-      "image": "alpine:3.22",
-      "architectures": [
-        "amd64",
-        "arm64"
-      ],
-      "format": "rpm",
-      "exclude_reason": "musl does not provide the glibc ABI"
-    },
-    {
-      "name": "alpine-323",
-      "image": "alpine:3.23",
-      "architectures": [
-        "amd64",
-        "arm64"
-      ],
-      "format": "rpm",
-      "exclude_reason": "musl does not provide the glibc ABI"
-    },
-    {
       "name": "cuda-jammy",
       "image": "nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04",
       "architectures": [
         "amd64"
       ],
       "format": "deb",
+      "exclude_reason": null
+    },
+    {
+      "name": "alpine-3.21",
+      "image": "alpine:3.21",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "apk",
+      "profile": "musl",
+      "exclude_reason": null
+    },
+    {
+      "name": "alpine-3.22",
+      "image": "alpine:3.22",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "apk",
+      "profile": "musl",
+      "exclude_reason": null
+    },
+    {
+      "name": "alpine-3.23",
+      "image": "alpine:3.23",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "apk",
+      "profile": "musl",
+      "exclude_reason": null
+    },
+    {
+      "name": "alpine-3.24",
+      "image": "alpine:3.24",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "apk",
+      "profile": "musl",
       "exclude_reason": null
     }
   ]

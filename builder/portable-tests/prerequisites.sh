@@ -6,7 +6,16 @@ format=${1:?package format required}
 stage=${2:-all}
 . /etc/os-release
 export DEBIAN_FRONTEND=noninteractive
-if command -v apt-get >/dev/null; then
+if command -v apk >/dev/null; then
+  if [[ "$stage" = bootstrap ]]; then
+    apk add --no-cache bash ca-certificates
+    exit 0
+  fi
+  # Install test tools only after the native APK has proved its own runtime
+  # dependencies resolve. The browser runs in a separate Ubuntu container.
+  apk add --no-cache curl openssl procps python3 openbox xterm xdpyinfo \
+    dbus-x11 runuser shadow binutils mesa-utils mesa-dri-gallium
+elif command -v apt-get >/dev/null; then
   apt-get update
   if [[ "$stage" = bootstrap ]]; then
     apt-get install -y --no-install-recommends ca-certificates

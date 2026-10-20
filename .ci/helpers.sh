@@ -225,7 +225,11 @@ upload_portable_packages() {
     debug_base=${manifest%.debug.json}
     binary_md5=$(python3 -c 'import json,sys; print(next(r["md5"] for r in json.load(open(sys.argv[1])) if r["binary"] == "/usr/bin/Xkasmvnc"))' "$manifest") || return 1
     [[ "$binary_md5" =~ ^[a-f0-9]{32}$ ]] || return 1
-    upload_to_s3 "$debug_base.dbgsym.deb" "$s3_crashpad_build_directory/$binary_md5/kasmvncserver-dbgsym.deb" "$S3_BUCKET" || return 1
+    if [[ -f "$debug_base.debug.apk" ]]; then
+      upload_to_s3 "$debug_base.debug.apk" "$s3_crashpad_build_directory/$binary_md5/kasmvncserver-debug.apk" "$S3_BUCKET" || return 1
+    else
+      upload_to_s3 "$debug_base.dbgsym.deb" "$s3_crashpad_build_directory/$binary_md5/kasmvncserver-dbgsym.deb" "$S3_BUCKET" || return 1
+    fi
     upload_to_s3 "$debug_base.debug.tar.gz" "$s3_crashpad_build_directory/$binary_md5/kasmvncserver-debug.tar.gz" "$S3_BUCKET" || return 1
   done
 }

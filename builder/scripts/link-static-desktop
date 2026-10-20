@@ -36,10 +36,12 @@ def main():
     modules = ['atspi-2', 'dbus-1', 'x11', 'xfont2', 'freetype2',
                'pixman-1', 'libunwind', 'libva-drm', 'libdrm',
                'xshmfence', 'libsystemd', 'sm', 'ice', 'xrandr', 'xrender', 'xcursor']
+    if env.get('KASMVNC_LIBC') == 'musl':
+        modules.remove('libsystemd')
     closure = shlex.split(subprocess.check_output(
         ['pkg-config', '--static', '--libs'] + modules, env=env, text=True))
     # libsystemd's distro .pc omits this private archive dependency.
-    closure += ['-lcrypt', '-lgomp', '-lcap']
+    closure += ['-lgomp'] if env.get('KASMVNC_LIBC') == 'musl' else ['-lcrypt', '-lgomp', '-lcap']
     directories = [str(Path(p) / d) for p in prefixes for d in ('lib', 'lib64')]
     for seq in (arguments, closure):
         for i, arg in enumerate(seq):

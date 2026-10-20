@@ -4,8 +4,28 @@ set -euo pipefail
 action=${1:?}; format=${2:?}; package=${3:-}
 config=/etc/kasmvnc/kasmvnc.yaml
 marker='# portable-ci-config-preservation'
+apk_installed_version() {
+  apk info --installed --verbose kasmvncserver | sed -n 's/^kasmvncserver-//p'
+}
+apk_candidate_version() {
+  # Published APKs deliberately use format 2 for Alpine 3.21 compatibility.
+  tar -xOf "$package" .PKGINFO | sed -n 's/^pkgver = //p'
+}
 install_package() {
   case "$format" in
+    apk)
+      install -m 644 /artifacts/kasmvnc_signing_key.rsa.pub /etc/apk/keys/kasmvnc_signing_key.rsa.pub
+      apk verify "$package"
+      # Cache the signed local APK so apk fix exercises a real reinstall even
+      # though this development artifact is not in an Alpine repository.
+      mkdir -p /var/cache/apk
+      [[ -e /etc/apk/cache ]] || ln -s /var/cache/apk /etc/apk/cache
+      if [[ "$action" = reinstall ]]; then
+        [[ "$(apk_installed_version)" = "$(apk_candidate_version)" ]]
+        apk fix --no-network --reinstall kasmvncserver
+      else
+        apk add "$package"
+      fi ;;
     deb) apt-get install -y --reinstall -o Dpkg::Options::=--force-confold "$package" ;;
     rpm)
       if command -v zypper >/dev/null; then
@@ -42,9 +62,11 @@ case "$action" in
       test -s /etc/ssl/certs/ssl-cert-snakeoil.pem
       test -s /etc/ssl/private/ssl-cert-snakeoil.key
     else
-      test -s /etc/pki/tls/private/kasmvnc.pem
-      [[ $(stat -c '%a' /etc/pki/tls/private/kasmvnc.pem) = 640 ]]
-      [[ $(stat -c '%G' /etc/pki/tls/private/kasmvnc.pem) = kasmvnc-cert ]]
+      tls=/etc/pki/tls/private/kasmvnc.pem
+      [[ "$format" != apk ]] || tls=/etc/ssl/private/kasmvnc.pem
+      test -s "$tls"
+      [[ $(stat -c '%a' "$tls") = 640 ]]
+      [[ $(stat -c '%G' "$tls") = kasmvnc-cert ]]
     fi
     # Linker dependencies must resolve in the target, without builder libraries.
     ldd /usr/bin/Xkasmvnc > /tmp/portable-ldd.txt
@@ -56,6 +78,11 @@ case "$action" in
       before=$(dpkg-query -W -f='${Version}' kasmvncserver)
       candidate=$(dpkg-deb -f "$package" Version)
       dpkg --compare-versions "$before" lt "$candidate"
+    elif [[ "$format" = apk ]]; then
+      apk verify "$package"
+      before=$(apk_installed_version)
+      candidate=$(apk_candidate_version)
+      [[ "$(apk version -t "$before" "$candidate")" = '<' ]]
     else
       before=$(rpm -q --qf '%{VERSION}-%{RELEASE}' kasmvncserver)
       candidate=$(rpm -qp --qf '%{VERSION}-%{RELEASE}' "$package")
@@ -64,6 +91,8 @@ case "$action" in
     install_package
     if [[ "$format" = deb ]]; then
       after=$(dpkg-query -W -f='${Version}' kasmvncserver)
+    elif [[ "$format" = apk ]]; then
+      after=$(apk_installed_version)
     else
       after=$(rpm -q --qf '%{VERSION}-%{RELEASE}' kasmvncserver)
     fi
@@ -77,6 +106,7 @@ case "$action" in
     ;;
   remove)
     case "$format" in
+      apk) apk del kasmvncserver ;;
       deb) apt-get remove -y kasmvncserver ;;
       rpm) rpm -e kasmvncserver ;;
       tar)
@@ -99,7 +129,11 @@ PYREMOVE
     test ! -e /usr/bin/Xkasmvnc
     # RPM may save a modified config as .rpmsave when removing the package.
     if ! grep -Fq "$marker" "$config" 2>/dev/null; then
-      grep -Fq "$marker" "$config.rpmsave"
+      if [[ "$format" = apk ]]; then
+        grep -Fq "$marker" "$config.apk-save"
+      else
+        grep -Fq "$marker" "$config.rpmsave"
+      fi
     fi
     ;;
   *) exit 2 ;;

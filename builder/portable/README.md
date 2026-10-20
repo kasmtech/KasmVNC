@@ -1,7 +1,8 @@
 # Portable KasmVNC packages
 
 These packages contain the same native application build in DEB, RPM and tar
-formats. They require glibc 2.34 or newer; Alpine/musl and EL8 are not supported.
+formats. They require glibc 2.34 or newer; these files do not run on musl or EL8.
+Alpine uses the separate [portable musl APK profile](../musl/README.md).
 The x86_64 build uses EL9 distro archives, so its supported CPU baseline is
 x86-64-v2. ARM64 is built natively. GPU loaders and drivers, Perl and its modules,
 XKB tools/data, and the desktop remain host dependencies.
@@ -44,17 +45,19 @@ of corresponding-source distribution and all embedded dependency licenses.
 
 ## Portable CI and legacy fallback
 
-The default pipeline builds portable DEB/RPM/tar packages for amd64 and arm64.
-It retains native distro builds for Ubuntu Focal, Oracle 8, openSUSE 15 and
-Alpine 3.21–3.23. The 31 portable distro/architecture test jobs remain mandatory.
+The default pipeline builds glibc DEB/RPM/tar packages and separate musl APKs
+for amd64 and arm64. Native distro builds remain for Ubuntu Focal, Oracle 8
+and openSUSE 15. The 31 glibc cases and eight Alpine 3.21–3.24 cases are mandatory.
 Functional and vncserver specification tests consume the portable amd64 DEB.
-Set `BUILD_FULL_LEGACY=true` to additionally build/test every traditional distro
-for comparison. `BUILD_PORTABLE=false` restores the traditional-only matrix and
-Jammy test artifacts. Existing distro recipes remain available locally.
+Set `BUILD_FULL_LEGACY=true` to additionally build/test the other non-Alpine
+traditional distros. `BUILD_PORTABLE=false` disables both portable profiles,
+including Alpine CI, and restores the non-Alpine traditional matrix and Jammy
+test artifacts. Old Alpine recipes remain available locally for comparison;
+per-release Alpine build jobs have been retired.
 `BUILD_DISTROS_REGEX` still filters legacy builds; it does not narrow the portable
 test matrix. Its special `none` value disables portable builds as before.
 
-This reduces feature-branch jobs from 101 to 61 and package builds from 34 to 14
+This reduces feature-branch jobs from 101 to 59 and package builds from 34 to 10
 compared with the combined portable/legacy pipeline after Nix was removed.
 Compare total job duration (runner time), pipeline wall time, and artifact bytes
 against the prior successful pipeline; counts alone do not predict time savings.
