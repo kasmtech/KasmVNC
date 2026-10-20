@@ -52,8 +52,10 @@ case "$action" in
     install_package
     command -v kasmvncserver
     command -v Xkasmvnc
-    perl -c /usr/bin/kasmvncserver
-    for tool in xdpyinfo xauth xkbcomp openssl hostname; do command -v "$tool"; done
+    test "$(head -c4 /usr/bin/kasmvncserver)" = "$(printf '\177ELF')"
+    test ! -d /usr/share/perl5/KasmVNC
+    test ! -d /usr/share/perl5/vendor_perl/KasmVNC
+    for tool in xdpyinfo xauth xkbcomp openssl; do command -v "$tool"; done
     test -s /usr/share/X11/xkb/rules/evdev
     Xkasmvnc -version
     test -s /usr/share/kasmvnc/www/index.html
@@ -69,7 +71,7 @@ case "$action" in
       [[ $(stat -c '%G' "$tls") = kasmvnc-cert ]]
     fi
     # Linker dependencies must resolve in the target, without builder libraries.
-    ldd /usr/bin/Xkasmvnc > /tmp/portable-ldd.txt
+    ldd /usr/bin/Xkasmvnc /usr/bin/kasmvncserver > /tmp/portable-ldd.txt
     ! grep -q 'not found' /tmp/portable-ldd.txt
     ;;
   mark) printf '\n%s\n' "$marker" >> "$config" ;;

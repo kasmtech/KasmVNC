@@ -22,14 +22,12 @@ root=$work/root
 doc=$root/usr/share/doc/kasmvncserver
 debugroot=$work/debug
 mkdir -p "$root/usr/bin" "$root/usr/share/man/man1" "$doc" \
-  "$root/usr/share/perl5/vendor_perl" "$root/usr/share/kasmvnc" \
+  "$root/usr/share/kasmvnc" \
   "$root/etc/kasmvnc" "$root/usr/lib/kasmvncserver" /artifacts
 install -m755 unix/xserver/hw/vnc/Xvnc "$root/usr/bin/Xkasmvnc"
-install -m755 unix/vncserver "$root/usr/bin/kasmvncserver"
-sed -i '2i use lib "/usr/share/perl5/vendor_perl";' "$root/usr/bin/kasmvncserver"
+install -m755 unix/vncserver-native/vncserver-native "$root/usr/bin/kasmvncserver"
 install -m755 unix/vncconfig/vncconfig "$root/usr/bin/kasmvncconfig"
 install -m755 unix/kasmvncpasswd/kasmvncpasswd unix/kasmxproxy/kasmxproxy "$root/usr/bin/"
-cp -a unix/KasmVNC "$root/usr/share/perl5/vendor_perl/"
 cp -a builder/www "$root/usr/share/kasmvnc/"
 test -s "$root/usr/share/kasmvnc/www/index.html"
 install -m644 unix/kasmvnc_defaults.yaml "$root/usr/share/kasmvnc/"
@@ -69,7 +67,7 @@ for flavor in runtime debug; do
   if [[ $flavor == runtime ]]; then
     pkgname=kasmvncserver
     stage=$root
-    dependencies='musl>=1.2.5 mesa-gl mesa-gbm at-spi2-core xterm setxkbmap bash openssl perl perl-datetime perl-datetime-timezone perl-hash-merge-simple perl-list-moreutils perl-switch perl-try-tiny perl-yaml-tiny xauth xdpyinfo xkbcomp xkeyboard-config procps busybox mcookie py3-xdg'
+    dependencies='musl>=1.2.5 mesa-gl mesa-gbm at-spi2-core xterm setxkbmap bash openssl tzdata xauth xdpyinfo xkbcomp xkeyboard-config busybox'
     cp alpine/kasmvncserver/kasmvncserver.post-install "$recipe/"
     cp alpine/kasmvncserver/kasmvncserver.post-deinstall "$recipe/"
     # The baseline package hook assumes this directory exists; ensure clean

@@ -409,5 +409,15 @@
     ],
     "source": "libXcursor-*",
     "cpe": "x:libxcursor"
+  },
+  {
+    "name": "libyaml",
+    "libraries": [
+      "yaml"
+    ],
+    "source": "yaml-*",
+    "pc": "yaml-0.1",
+    "cpe": "pyyaml:libyaml",
+    "license": "MIT"
   }
 ]

@@ -17,16 +17,12 @@ trap 'rm -rf "$work"' EXIT
 root=$work/root
 doc=$root/usr/share/doc/kasmvncserver
 mkdir -p "$root/usr/bin" "$root/usr/share/man/man1" "$doc" \
-  "$root/usr/share/perl5" "$root/usr/share/kasmvnc" "$root/etc/kasmvnc" \
+  "$root/usr/share/kasmvnc" "$root/etc/kasmvnc" \
   "$root/usr/lib/kasmvncserver" "$root/usr/lib/systemd/user" /artifacts
 install -m755 unix/xserver/hw/vnc/Xvnc "$root/usr/bin/Xkasmvnc"
-install -m755 unix/vncserver "$root/usr/bin/kasmvncserver"
-# SUSE's default @INC differs from Debian/EL. Use the package-owned module path
-# explicitly instead of requiring a distro-specific installation location.
-sed -i '2i use lib "/usr/share/perl5";' "$root/usr/bin/kasmvncserver"
+install -m755 unix/vncserver-native/vncserver-native "$root/usr/bin/kasmvncserver"
 install -m755 unix/vncconfig/vncconfig "$root/usr/bin/kasmvncconfig"
 install -m755 unix/kasmvncpasswd/kasmvncpasswd unix/kasmxproxy/kasmxproxy "$root/usr/bin/"
-cp -a unix/KasmVNC "$root/usr/share/perl5/"
 cp -a builder/www "$root/usr/share/kasmvnc/"
 test -s "$root/usr/share/kasmvnc/www/index.html"
 install -m644 unix/kasmvnc_defaults.yaml "$root/usr/share/kasmvnc/"
@@ -57,7 +53,7 @@ Maintainer: Kasm Technologies LLC <info@kasmweb.com>
 Section: debug
 Priority: optional
 Description: Matching build-ID debug symbols for portable KasmVNC
- Symbols for all four executables. Match the build ID, not just the version.
+ Symbols for all five executables. Match the build ID, not just the version.
 EOF
 dpkg-deb --root-owner-group -Zgzip --build "$debugroot" "/artifacts/$basename.dbgsym.deb"
 rm -rf "$debugroot/DEBIAN"
@@ -66,7 +62,7 @@ builder/portable/provenance.py "$doc" "$arch"
 builder/portable/supply-chain.py "$doc" "$arch" "/artifacts/$basename"
 builder/portable/scan "/artifacts/$basename"
 # Source snapshots can come from restrictive developer umasks. Installed code,
-# Perl modules and web assets must be readable by ordinary desktop users.
+# Native helpers and web assets must be readable by ordinary desktop users.
 find "$root" -type d -exec chmod 755 {} +
 find "$root" -type f -exec chmod 644 {} +
 chmod 755 "$root/usr/bin/"* "$root/usr/lib/kasmvncserver/select-de.sh" \
@@ -83,7 +79,7 @@ Architecture: $arch
 Maintainer: Kasm Technologies LLC <info@kasmweb.com>
 Section: x11
 Priority: optional
-Depends: libc6 (>= 2.34), libgl1, libgbm1, perl, ssl-cert, xauth, x11-utils, x11-xkb-utils, xkb-data, procps, hostname, openssl, libswitch-perl, libyaml-tiny-perl, libhash-merge-simple-perl, libscalar-list-utils-perl, liblist-moreutils-perl, libtry-tiny-perl, libdatetime-perl, libdatetime-timezone-perl
+Depends: libc6 (>= 2.34), libgl1, libgbm1, bash, tzdata, ssl-cert, xauth, x11-utils, x11-xkb-utils, xkb-data, openssl
 Provides: vnc-server
 Description: KasmVNC browser desktop server (portable static application build)
  Application dependencies are embedded; glibc and GPU drivers remain external.
@@ -115,19 +111,12 @@ Summary: KasmVNC browser desktop server (portable static application build)
 License: GPL-2.0-or-later
 URL: https://github.com/kasmtech/KasmVNC
 BuildArch: $rpmarch
-# Use file and Perl capabilities across EL, Fedora and openSUSE naming schemes.
-Requires: /usr/bin/perl, /usr/bin/xauth, /usr/bin/xkbcomp, /usr/bin/openssl
+# Use file capabilities across EL, Fedora and openSUSE naming schemes.
+Requires: bash, (tzdata or timezone), /usr/bin/xauth, /usr/bin/xkbcomp, /usr/bin/openssl
 Requires: /usr/bin/xdpyinfo
-Requires: /usr/bin/ps, /usr/bin/hostname, /usr/sbin/groupadd, /usr/bin/getent
+Requires: /usr/sbin/groupadd, /usr/bin/getent
 # Repository file indexes are not portable for data files (notably SUSE).
 Requires: xkeyboard-config
-Requires: perl(Switch), perl(YAML::Tiny), perl(Hash::Merge::Simple)
-Requires: perl(List::Util), perl(List::MoreUtils), perl(Try::Tiny)
-Requires: perl(DateTime), perl(DateTime::TimeZone)
-Requires: perl(lib), perl(File::Basename), perl(Data::Dumper), perl(Exporter)
-Requires: perl(Time::HiRes), perl(Socket), perl(if), perl(constant), perl(overload)
-Requires: perl(strict), perl(warnings), perl(utf8)
-Requires: perl(open), perl(Encode), perl(PerlIO::encoding)
 Conflicts: tigervnc-server, tigervnc-server-minimal
 Provides: vnc-server
 %description
@@ -145,7 +134,6 @@ cp -a $root/. %{buildroot}/
 /usr/lib/kasmvncserver
 /usr/lib/systemd/user/kasmvncserver@.service
 /usr/share/kasmvnc
-/usr/share/perl5/KasmVNC
 /usr/share/man/man1/*
 %doc /usr/share/doc/kasmvncserver
 EOF
@@ -162,7 +150,7 @@ License: GPL-2.0-or-later
 BuildArch: $rpmarch
 AutoReqProv: no
 %description
-Symbols for all four executables. Match the build ID, not just the version.
+Symbols for all five executables. Match the build ID, not just the version.
 %install
 mkdir -p %{buildroot}
 cp -a $debugroot/. %{buildroot}/

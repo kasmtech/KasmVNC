@@ -1,0 +1,6 @@
+/vncserver-native
+/*.link-map
+/*.static-link.json
+/*.static-archives/
+/vncserver-sanitized
+!/config.h

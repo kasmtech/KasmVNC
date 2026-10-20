@@ -34,8 +34,8 @@ def audit(root, arch):
             raise RuntimeError('Nonportable relocations/search path/glibc symbols: ' + str(path))
         records.append({'path': '/' + str(path.relative_to(root)), 'needed': needed,
                         'musl_minimum': '1.2.5', 'interpreter': expected_interpreter, 'pie': True})
-    if len(records) != 4:
-        raise RuntimeError('Expected four ELF executables, found ' + str(len(records)))
+    if len(records) != 5:
+        raise RuntimeError('Expected five ELF executables, found ' + str(len(records)))
     return records
 
 

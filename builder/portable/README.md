@@ -4,12 +4,12 @@ These packages contain the same native application build in DEB, RPM and tar
 formats. They require glibc 2.34 or newer; these files do not run on musl or EL8.
 Alpine uses the separate [portable musl APK profile](../musl/README.md).
 The x86_64 build uses EL9 distro archives, so its supported CPU baseline is
-x86-64-v2. ARM64 is built natively. GPU loaders and drivers, Perl and its modules,
+x86-64-v2. ARM64 is built natively. GPU loaders and drivers, timezone data,
 XKB tools/data, and the desktop remain host dependencies.
 
 Install the DEB/RPM with the distro package manager, allowing it to resolve
 dependencies. The package name remains `kasmvncserver`, replacing an existing
-distro-specific KasmVNC package. RPM systems may need EPEL/CRB for Perl modules.
+distro-specific KasmVNC package. The portable launcher is C++20; traditional distro builds retain Perl.
 DEB uses the existing command alternatives and ssl-cert certificate; RPM uses
 the existing `kasmvnc-cert` group and `/etc/pki/tls/private/kasmvnc.pem` certificate.
 The package does not add desktop users to privileged certificate groups.
@@ -23,10 +23,8 @@ or add that user to `kasmvnc-cert`. Do not overlay a package-managed installatio
 with the tar archive; use its DEB/RPM instead. Tar installation has no package
 manager tracking or automatic uninstaller; retain its file listing.
 
-Tar dependencies include glibc, libGL, libgbm, Perl, xauth, xdpyinfo, xkbcomp, XKB data,
-procps, hostname, openssl, and Perl modules Switch, YAML::Tiny,
-Hash::Merge::Simple, List::Util, List::MoreUtils, Try::Tiny, DateTime and
-DateTime::TimeZone. Group creation uses groupadd/getent. Mesa DRI and VAAPI
+Tar dependencies include glibc, libGL, libgbm, bash, tzdata, xauth, xdpyinfo,
+xkbcomp, XKB data and openssl. Group creation uses groupadd/getent. Mesa DRI and VAAPI
 drivers are supplied by the host. Their default search checks the native Debian
 multiarch directory (`/usr/lib/x86_64-linux-gnu/dri` or
 `/usr/lib/aarch64-linux-gnu/dri`), then `/usr/lib64/dri` and `/usr/lib/dri`.
@@ -87,7 +85,7 @@ need not download them. The matrix permits only that specific source archive to
 be absent; all other listed artifacts still require checksum verification.
 
 Native inventory comes from GNU ld's selected archive-member evidence for all
-four executables, including compiler runtimes and CRT objects. It maps packaged
+five executables, including compiler runtimes and CRT objects. It maps packaged
 archives to their installed RPM versions and source RPMs, rather than treating
 `rpm -qa` as a list of shipped software. Unknown native inputs or missing source
 fail packaging. Source RPMs must have the exact expected identity and a trusted
@@ -102,7 +100,7 @@ handoff before publishing. Runtime packages install notices under
 `/usr/share/doc/kasmvncserver/third-party-licenses`, including vendored license
 headers and source files when upstream has no standalone license text.
 
-Host glibc, Perl/modules, desktop tools/data and GPU loaders/drivers remain host
+Host glibc, Bash, timezone data, desktop tools/data and GPU loaders/drivers remain host
 requirements, not builder-versioned runtime components in this SBOM. Scan the
 final deployed image separately to cover them. A linked library entry does not
 mean every upstream feature is enabled; archive/member selection and compiler

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Invoked as the non-root test user; exercises the packaged Perl launcher.
+# Invoked as the non-root test user; exercises the packaged native launcher.
 set -euo pipefail
 export HOME=/home/kasm_test DISPLAY=:1 XDG_RUNTIME_DIR=/home/kasm_test/runtime
 # Do not let image overrides hide the portable server's DRI search-path bug.
@@ -13,7 +13,7 @@ touch "$HOME/.vnc/.de-was-selected"
 printf 'portableTest42\nportableTest42\n' | kasmvncpasswd -u kasm_test -wo
 openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
   -keyout "$HOME/.vnc/test.pem" -out "$HOME/.vnc/test.pem" -subj /CN=localhost
-# The Perl wrapper validates YAML TLS paths before translating server flags.
+# The launcher validates YAML TLS paths before translating server flags.
 cat > "$HOME/.vnc/kasmvnc.yaml" <<'CONFIG'
 network:
   ssl:

@@ -70,11 +70,11 @@ class PackagingTests(unittest.TestCase):
             root = Path(tmp)
             source = root / 'probe.c'
             source.write_text('int main(void){return 0;}\n')
-            for name in ['one','two','three','four']:
+            for name in ['one','two','three','four','five']:
                 subprocess.run(['gcc','-g','-fPIE','-pie',str(source),'-o',str(root/name)],check=True)
             arch = {'x86_64':'amd64', 'aarch64':'arm64'}[platform.machine()]
             wrong = 'arm64' if arch == 'amd64' else 'amd64'
-            self.assertEqual(len(audit.audit(root, arch)),4)
+            self.assertEqual(len(audit.audit(root, arch)),5)
             with self.assertRaises(RuntimeError): audit.audit(root, wrong)
             subprocess.run(['gcc','-static',str(source),'-o',str(root/'one')],check=True)
             with self.assertRaises(RuntimeError): audit.audit(root, arch)

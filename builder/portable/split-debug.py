@@ -16,7 +16,7 @@ def build_id(path):
         raise SystemExit(f'Missing ELF build ID: {path}')
     return match[1]
 records = []
-for name in ('Xkasmvnc', 'kasmvncconfig', 'kasmvncpasswd', 'kasmxproxy'):
+for name in ('Xkasmvnc', 'kasmvncconfig', 'kasmvncpasswd', 'kasmxproxy', 'kasmvncserver'):
     binary = root / 'usr/bin' / name
     identity = build_id(binary)
     debug = debugroot / 'usr/lib/debug/.build-id' / identity[:2] / (identity[2:] + '.debug')

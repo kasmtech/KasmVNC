@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Install and exercise published portable packages on core-image base distros.
 
-Uses native Docker architecture, the installed Perl launcher, authenticated TLS,
+Uses native Docker architecture, the installed native launcher, authenticated TLS,
 a browser selecting software H.264, keyboard input and package lifecycle checks.
 GPU tests remain a separate hardware validation; CI never fabricates GPU access.
 """

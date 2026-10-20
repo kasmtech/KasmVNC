@@ -21,6 +21,7 @@ if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
 else
     test "$(cat /opt/kasm-dependencies-ready)" = kasmvnc-portable-dependencies-v1
 fi
+export KASMVNC_NATIVE_LAUNCHER=ON
 export XORG_VER=21.1.25
 export KASMVNC_BUILD_OS=oracle KASMVNC_BUILD_OS_CODENAME=9
 export KASMVNC_STATIC_DESKTOP_PREFIX=${KASMVNC_STATIC_DESKTOP_PREFIX:-/opt/kasm-desktop}

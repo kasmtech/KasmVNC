@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Invoke from repository root. The bind mount permits writing reports and a
+# separately compiled candidate, but all test HOME/process state is disposable.
+docker build -t kasmvnc-launcher-parity:local -f builder/launcher-tests/Dockerfile .
+docker run --rm --network none -v "$PWD:/src" kasmvnc-launcher-parity:local "$@"

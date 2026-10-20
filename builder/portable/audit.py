@@ -32,6 +32,6 @@ for path in sorted(root.rglob("*")):
     subprocess.run(["/src/builder/scripts/check-glibc-floor", "--maximum", "2.34", str(path)], check=True)
     records.append({"path": "/" + str(path.relative_to(root)), "needed": needed,
                     "glibc_maximum": "2.34", "pie": True})
-if len(records) != 4:
-    raise SystemExit(f"Expected all four packaged executables, found {len(records)}")
+if len(records) != 5:
+    raise SystemExit(f"Expected all five packaged executables, found {len(records)}")
 Path(sys.argv[3]).write_text(json.dumps(records, indent=2) + "\n")

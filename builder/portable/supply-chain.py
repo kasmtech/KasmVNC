@@ -21,7 +21,8 @@ from urllib.parse import quote
 
 SRC = Path('/src')
 BINARIES = ['unix/xserver/hw/vnc/Xvnc', 'unix/vncconfig/vncconfig',
-            'unix/kasmvncpasswd/kasmvncpasswd', 'unix/kasmxproxy/kasmxproxy']
+            'unix/kasmvncpasswd/kasmvncpasswd', 'unix/kasmxproxy/kasmxproxy',
+            'unix/vncserver-native/vncserver-native']
 
 
 def run(*args):
@@ -497,7 +498,7 @@ def main():
             deps.add(c['bom-ref'])
         audit = json.loads((args.doc / 'elf-audit.json').read_text())
         host = {'shared_libraries': sorted({lib for elf in audit for lib in elf['needed']}),
-                'other_requirements': ['musl >= 1.2.5' if inv.musl else 'glibc >= 2.34', 'Perl and package-declared Perl modules',
+                'other_requirements': ['musl >= 1.2.5' if inv.musl else 'glibc >= 2.34', 'Bash and host timezone data',
                     'XKB tools/data', 'desktop/session applications', 'GPU vendor drivers/loaders when enabled'],
                 'versions': 'Supplied and patched by the host; deliberately not assigned builder versions.'}
         inv.limitations += ['Link evidence records archive members selected by ld; a library entry does not imply every upstream feature is enabled.',

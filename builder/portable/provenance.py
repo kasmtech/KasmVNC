@@ -54,7 +54,7 @@ manifest = {"format": "kasmvnc-portable-build-provenance-v1", "revision": os.env
             "version": os.environ["KASMVNC_PORTABLE_VERSION"], "glibc_abi_maximum": "2.34",
             "architecture": sys.argv[2], "sources": sources,
             "elf_audit": json.loads((doc / "elf-audit.json").read_text()),
-            "runtime_boundary": "Host glibc, GPU loader/driver stack, Perl modules, XKB tools/data and desktop remain external."}
+            "runtime_boundary": "Host glibc, GPU loader/driver stack, timezone data, XKB tools/data and desktop remain external."}
 manifest["dependency_builder"] = {
     "image": os.environ.get("KASMVNC_DEPENDENCY_IMAGE"),
     "recipe_sha256": os.environ.get("KASMVNC_DEPENDENCY_KEY"),
@@ -63,7 +63,7 @@ manifest["dependency_builder"] = {
 if musl:
     manifest.pop("glibc_abi_maximum")
     manifest["musl_abi_minimum"] = "1.2.5"
-    manifest["runtime_boundary"] = "Host musl, musl-compatible GPU drivers/loaders, Perl modules, XKB tools/data and desktop remain external."
+    manifest["runtime_boundary"] = "Host musl, musl-compatible GPU drivers/loaders, timezone data, XKB tools/data and desktop remain external."
     manifest["dependency_builder"].pop("rpm_resolution")
     manifest["dependency_builder"]["apk_resolution"] = "Pinned Alpine base; APK repositories resolved at image creation; image digest and installed APK inventory identify the environment."
     shutil.copytree('/src/builder/musl/dependencies', doc / 'musl-dependency-recipes', dirs_exist_ok=True)

@@ -8,11 +8,9 @@ be used as substitutes on Alpine.
 
 Application libraries, including FFmpeg, are linked statically where possible.
 musl remains dynamic, preserving runtime loading of graphics drivers. The host
-provides musl, Mesa/graphics drivers, Perl and its modules, desktop tools and
-keyboard data. The package declares these prerequisites; it does not copy
-Perl XS modules from the build distribution. Files retain the Alpine package
-locations, including `/usr/share/perl5/vendor_perl/KasmVNC` and the certificate
-at `/etc/ssl/private/kasmvnc.pem`.
+provides musl, Mesa/graphics drivers, timezone data, desktop tools and
+keyboard data. The package installs the C++20 launcher and has no Perl runtime
+requirement. The certificate stays at `/etc/ssl/private/kasmvnc.pem`.
 
 ## Build and install
 
