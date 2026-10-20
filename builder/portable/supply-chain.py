@@ -27,6 +27,19 @@ def run(*args):
     return subprocess.check_output([str(a) for a in args], text=True).strip()
 
 
+def rpm_notice_paths(srpm):
+    siblings = [row.split('\t')[0] for row in run('rpm', '-qa', '--qf', '%{NAME}\t%{SOURCERPM}\n').splitlines()
+                if row.split('\t')[1] == srpm]
+    license_paths = set()
+    for sibling in siblings:
+        license_paths.update(run('rpm', '-q', '--licensefiles', sibling).splitlines())
+        # GCC toolsets label COPYING texts as %doc instead of %license.
+        # Keep the same exact-SRPM ownership boundary for these files.
+        license_paths.update(p for p in run('rpm', '-ql', sibling).splitlines()
+                             if re.match(r'(?i)^(license|copying|copyright|notice)', Path(p).name))
+    return license_paths
+
+
 def sha(path):
     h = hashlib.sha256()
     with Path(path).open('rb') as stream:
@@ -279,11 +292,7 @@ class Inventory:
             self.components[key] = c
             # Static subpackages often inherit notices from an installed sibling
             # package. Select only siblings built from this exact source RPM.
-            siblings = [row.split('\t')[0] for row in run('rpm', '-qa', '--qf', '%{NAME}\t%{SOURCERPM}\n').splitlines()
-                        if row.split('\t')[1] == srpm]
-            license_paths = set()
-            for sibling in siblings:
-                license_paths.update(run('rpm', '-q', '--licensefiles', sibling).splitlines())
+            license_paths = rpm_notice_paths(srpm)
             found_notice = False
             for p in sorted(license_paths):
                 if Path(p).is_file():
@@ -354,7 +363,12 @@ def main():
         # Vendored code has exact file hashes even when upstream version is absent.
         for name, files in [('qoi', ['common/rfb/qoi.h']), ('xxhash', ['common/rfb/xxhash.h', 'common/rfb/xxhash.c']),
                             ('tinyxml2', ['third_party/tinyxml2/tinyxml2.h', 'third_party/tinyxml2/tinyxml2.cpp']),
-                            ('websocket', ['common/network/websocket.c', 'common/network/websocket.h']),
+                            ('websocket', ['common/network/websocket.c', 'common/network/websocket.h', 'common/network/websockify.c']),
+                            ('cjson', ['common/network/cJSON.h', 'common/network/cJSON.c']),
+                            ('d3des', ['common/rfb/d3des.c', 'common/rfb/d3des.h']),
+                            ('x11-vendored', ['common/rfb/keysymdef.h', 'unix/xserver/hw/vnc/xvnc.c'] +
+                             sorted(str(p.relative_to(SRC)) for p in (SRC / 'common/Xregion').iterdir()
+                                    if p.is_file() and p.suffix in ['.c', '.h'])),
                             ('webudp', sorted(str(p.relative_to(SRC)) for p in (SRC / 'common/network/webudp').iterdir()
                                               if p.is_file() and p.suffix in ['.cpp', '.h', '.hpp']))]:
             version = 'git-' + os.environ['KASMVNC_COMMIT_ID']
@@ -365,12 +379,22 @@ def main():
             elif name == 'tinyxml2':
                 version = '.'.join(re.search(r'#define TINYXML2_' + part + r'_VERSION\s+(\d+)', text)[1]
                                    for part in ['MAJOR', 'MINOR', 'PATCH'])
+            elif name == 'cjson':
+                version = '.'.join(re.search(r'#define CJSON_VERSION_' + part + r'\s+(\d+)', text)[1]
+                                   for part in ['MAJOR', 'MINOR', 'PATCH'])
+            elif name == 'd3des':
+                version = re.search(r'D3DES \(V([0-9.]+)\)', text)[1]
             c = component(name, version, properties=[prop('delivery', 'vendored-source'),
                 prop('file-sha256', json.dumps({p: sha(SRC / p) for p in files}, sort_keys=True))],
                 licenses=[{'expression': {'qoi': 'MIT', 'xxhash': 'BSD-2-Clause', 'tinyxml2': 'Zlib',
-                                         'websocket': 'LGPL-3.0-only', 'webudp': 'MIT'}[name]}])
-            if name in ['tinyxml2', 'xxhash']:
-                vendor = {'tinyxml2': 'tinyxml2_project', 'xxhash': 'xxhash_project'}[name]
+                                         'websocket': 'LGPL-3.0-only', 'webudp': 'MIT', 'cjson': 'MIT',
+                                         'd3des': 'LicenseRef-D3DES-VNC', 'x11-vendored': 'LicenseRef-X11-Vendored'}[name]}])
+            if name in ['d3des', 'x11-vendored']:
+                c['licenses'] = [{'license': {'name': {'d3des': 'Public-domain D3DES with VNC modification notices',
+                    'x11-vendored': 'X11/Open Group, DEC and X Consortium permissive notices'}[name]}}]
+                c['properties'].append(prop('modified-source', 'Inherited VNC fork code; source hashes identify the supplied variant'))
+            if name in ['tinyxml2', 'xxhash', 'cjson']:
+                vendor = {'tinyxml2': 'tinyxml2_project', 'xxhash': 'xxhash_project', 'cjson': 'davegamble'}[name]
                 c['cpe'] = f'cpe:2.3:a:{vendor}:{name}:{version}:*:*:*:*:*:*:*'
                 c['purl'] = f'pkg:generic/{name}@{version}'
             notice_inputs = files + (['builder/portable/licenses/LGPL-3.0.txt', 'builder/portable/licenses/GPL-3.0.txt']
@@ -400,6 +424,13 @@ def main():
                 licenses=[{'license': {'name': item.get('license') or 'Unknown'}}],
                 properties=[prop('delivery', 'bundled-web-dependency'), prop('source', item['source'])])
             inv.components['npm-' + c['bom-ref']] = c
+            deps.add(c['bom-ref'])
+        for item in frontend.get('vendored_components', []):
+            c = component(item['name'], item['version'],
+                licenses=[{'license': {'name': item['license']}}],
+                hashes=[{'alg': 'SHA-256', 'content': item['file_sha256']}],
+                properties=[prop('delivery', 'vendored-web-source'), prop('source', item['source'])])
+            inv.components['web-vendored-' + c['bom-ref']] = c
             deps.add(c['bom-ref'])
         audit = json.loads((args.doc / 'elf-audit.json').read_text())
         host = {'shared_libraries': sorted({lib for elf in audit for lib in elf['needed']}),

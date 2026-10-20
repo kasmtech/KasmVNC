@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process';
 
 const bundled = new Set();
 const evidence = new Map();
+const renderedSources = new Set();
 const root = process.cwd();
 const inventoryPlugin = () => ({
   name: 'kasm-shipped-module-inventory',
@@ -15,8 +16,10 @@ const inventoryPlugin = () => ({
     for (const chunk of Object.values(bundle)) {
       if (chunk.type !== 'chunk') continue;
       for (const [id, info] of Object.entries(chunk.modules)) {
-        if (info.renderedLength === 0 || !id.includes('/node_modules/')) continue;
+        if (info.renderedLength === 0) continue;
         const file = id.replace(/^\0/, '').split('?')[0];
+        if (file.startsWith(root + '/') && !file.includes('/node_modules/') && fs.existsSync(file) && fs.statSync(file).isFile()) renderedSources.add(path.relative(root, file));
+        if (!id.includes('/node_modules/')) continue;
         let dir = path.dirname(file);
         while (dir.startsWith(root) && !fs.existsSync(path.join(dir, 'package.json'))) dir = path.dirname(dir);
         if (!dir.startsWith(root) || !dir.includes('/node_modules/')) throw new Error(`No package owner: ${id}`);
@@ -36,6 +39,7 @@ fs.mkdirSync('dist/core/decoders/qoi', { recursive: true });
 fs.copyFileSync('core/decoders/qoi/qoi_viewer_bg.wasm', 'dist/core/decoders/qoi/qoi_viewer_bg.wasm');
 fs.copyFileSync('dist/index.html', 'dist/vnc.html');
 const staging = '/tmp/frontend-sources';
+fs.rmSync(staging, { recursive: true, force: true });
 fs.mkdirSync(staging, { recursive: true });
 fs.copyFileSync('/src/www-source.tar.gz', `${staging}/novnc-source.tar.gz`);
 fs.copyFileSync('package-lock.json', `${staging}/package-lock.json`);
@@ -81,6 +85,21 @@ for (const dir of [...bundled].sort()) {
     modules: [...evidence.get(dir)].sort() });
 }
 const sha256 = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+// Preserve original attribution in rendered project sources too: generic
+// project license texts do not replace file-specific BSD/MIT notices.
+for (const relative of [...renderedSources].sort()) {
+  if (!/\.(js|css)$/.test(relative)) continue;
+  const text = fs.readFileSync(relative, 'utf8');
+  if (!/copyright|licen[sc]e|permission to|redistribution/i.test(text.slice(0, 65536))) continue;
+  const target = path.join(noticesDir, 'novnc/source-notices', relative);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.copyFileSync(relative, target);
+}
+const revision = fs.readFileSync('/src/www-source-revision', 'utf8').trim();
+const vendoredComponents = [
+  { name: 'novnc-des', source: 'core/des.js', license: 'Custom BSD-style notices; see original source' },
+  { name: 'novnc-base64', source: 'core/base64.js', license: 'MPL-2.0 and MIT; see original source' }
+].filter(item => renderedSources.has(item.source)).map(item => ({ ...item, version: 'git-' + revision, file_sha256: sha256(item.source) }));
 const notices = {};
 function hashNotices(dir) {
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -104,10 +123,10 @@ fs.mkdirSync('/supply-chain', { recursive: true });
 execFileSync('tar', ['-czf', '/supply-chain/sources.tar.gz', '-C', staging, '.']);
 const pkg = JSON.parse(fs.readFileSync('package.json'));
 const manifest = { format: 'frontend-provenance-v1', name: pkg.name, version: pkg.version,
-  revision: fs.readFileSync('/src/www-source-revision', 'utf8').trim(),
+  revision,
   repository: 'https://github.com/kasmtech/noVNC', license: pkg.license,
-  components, assets, notices, source_archive: 'sources.tar.gz', source_sha256: sha256('/supply-chain/sources.tar.gz'),
-  limitations: ['The vendored QOI WebAssembly binary is preserved by hash in the noVNC snapshot; its original Rust source and dependency lockfile are not present in this repository. Complete corresponding-source verification for that pre-existing binary remains outstanding.',
+  components, vendored_components: vendoredComponents, rendered_sources: [...renderedSources].sort(), assets, notices, source_archive: 'sources.tar.gz', source_sha256: sha256('/supply-chain/sources.tar.gz'),
+  limitations: ['The vendored DES and base64 implementations have no independently verified upstream release versions; original source notices are preserved, and vulnerability matching may be incomplete.', 'The vendored QOI WebAssembly binary is preserved by hash in the noVNC snapshot; its original Rust source and dependency lockfile are not present in this repository. Complete corresponding-source verification for that pre-existing binary remains outstanding.',
     'Installed npm package contents and the generated lockfile are preserved for rendered modules. Build-only npm dependencies are recorded in the lockfile, not classified as shipped components. Vendored frontend code remains part of the noVNC source snapshot.'] };
 fs.writeFileSync('/supply-chain/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
 console.log(`Recorded ${components.length} bundled npm packages and ${Object.keys(assets).length} frontend assets`);

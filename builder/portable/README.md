@@ -70,7 +70,8 @@ Each architecture publishes the following alongside its runtime and debug
 packages under the same S3 commit directory:
 
 * `.cdx.json`: CycloneDX 1.6 JSON for embedded native components, vendored code
-  and the web client's actually bundled npm dependencies. The same application
+  and the web client's actually bundled npm dependencies and identified vendored
+  DES/base64 code. The same application
   inventory applies to the DEB, RPM and tarball; packaging metadata differs.
 * `.sources.tar.gz` and `.sources.json`: exact source inputs and their hashes,
   native link evidence, build revision, host requirements and known limitations.

@@ -23,6 +23,23 @@ def rejects(call, message):
         raise AssertionError('Expected rejection: ' + message)
 
 
+# RPMs may tag license texts as %doc; never borrow unrelated RPM notices.
+original_run = m.run
+rpm_fixture = {
+    ('rpm', '-qa', '--qf', '%{NAME}\t%{SOURCERPM}\n'): 'compiler\tcompiler.src.rpm\ncompiler-libs\tcompiler.src.rpm\nunrelated\tother.src.rpm',
+    ('rpm', '-q', '--licensefiles', 'compiler'): '',
+    ('rpm', '-ql', 'compiler'): '/opt/compiler/share/doc/COPYING.RUNTIME\n/opt/compiler/bin/gcc',
+    ('rpm', '-q', '--licensefiles', 'compiler-libs'): '/opt/compiler/licenses/LICENSE',
+    ('rpm', '-ql', 'compiler-libs'): '/opt/compiler/lib/libstdc++.a',
+}
+try:
+    m.run = lambda *args: rpm_fixture[args]
+    assert m.rpm_notice_paths('compiler.src.rpm') - {''} == {
+        '/opt/compiler/share/doc/COPYING.RUNTIME', '/opt/compiler/licenses/LICENSE'}
+finally:
+    m.run = original_run
+
+
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp)
     front, www = base / 'front', base / 'www'
