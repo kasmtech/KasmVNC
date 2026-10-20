@@ -84,8 +84,10 @@ def link_inputs(binary):
             path = Path(metadata['cwd']) / path
         path = path.resolve()
         path = Path(reverse.get(str(path), str(path)))
-        # GCC's temporary LTO objects are generated from already catalogued inputs.
-        if re.fullmatch(r'cc[^/]+\.ltrans[0-9]+\.ltrans\.o', path.name) and path.parent == Path('/tmp'):
+        # GCC's LTO code/debug objects derive from already catalogued inputs.
+        # lto-wrapper.cc debug_objcopy copies .gnu.debuglto sections into
+        # make_temp_file(".debug.temp.o"); it is not another source dependency.
+        if re.fullmatch(r'cc[^/]+\.(?:ltrans[0-9]+\.ltrans|debug\.temp)\.o', path.name) and path.parent == Path('/tmp'):
             continue
         if SRC not in path.parents:
             if not path.is_file():

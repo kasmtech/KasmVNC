@@ -99,6 +99,15 @@ with tempfile.TemporaryDirectory() as tmp:
     Path(str(binary) + '.link-map').write_text(f'Archive member included to satisfy reference by file (symbol)\n{unknown}(object.o)\nDiscarded input sections\n')
     inputs = m.link_inputs(binary)
     assert inputs == [unknown]
+    map_path = Path(str(binary) + '.link-map')
+    original_map = map_path.read_text()
+    map_path.write_text(original_map + 'LOAD /tmp/ccABC123.debug.temp.o\nLOAD /tmp/ccABC123.ltrans0.ltrans.o\n')
+    assert m.link_inputs(binary) == [unknown]
+    for missing in ['/tmp/real-library.o', '/tmp/ccABC123.unrecognized.o',
+                    str(base / 'ccABC123.debug.temp.o')]:
+        map_path.write_text(original_map + 'LOAD ' + missing + '\n')
+        rejects(lambda: m.link_inputs(binary), 'Missing link input')
+    map_path.write_text(original_map)
     rejects(lambda: inv.archive(inputs[0]), 'Uncatalogued static archive')
     (base / 'test.cdx.json').write_text('{}')
     scanner = base / 'grype'
