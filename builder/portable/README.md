@@ -79,6 +79,25 @@ packages under the same S3 commit directory:
 * `.vulnerabilities.json` and `.vulnerability-summary.json`: Grype findings,
   scanner/database metadata and advisory severity counts.
 
+GitLab also receives `gl-sbom.cdx.json` (a byte-identical SBOM copy) and
+`gl-dependency-scanning-report.json` as typed CI reports for every glibc/musl
+architecture. These stable-name files are GitLab artifacts only; the original
+revision-named files above remain the published, checksummed S3 evidence.
+The adapter converts the existing Grype results without rescanning. Stable IDs
+exclude build paths, architecture and commit names; package versions and advisory
+IDs remain distinct. Exact duplicate matches are collapsed, conflicting duplicates
+fail conversion. Findings remain advisory; scanner/conversion errors fail the job.
+GitLab Ultimate can display the reports in pipeline Security and MR security
+views; useful MR new/resolved comparisons also require reports on the target
+branch. Project vulnerability tracking uses default-branch results.
+
+Validate the adapter in a dedicated container with
+`builder/portable/test-gitlab-dependency-report`. The test downloads the pinned
+GitLab 15.2.3 schema and verifies its SHA256 before validating generated reports.
+Optional positional arguments are local Grype JSON reports to validate as well.
+This adapter and its tests live outside the dependency-image contexts, so changes
+here do not invalidate the expensive dependency caches.
+
 The existing `.sha256` manifest covers these artifacts too. Source archives are
 uploaded to S3 but excluded from GitLab's build artifact ZIP so every distro test
 need not download them. The matrix permits only that specific source archive to

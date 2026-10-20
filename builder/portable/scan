@@ -2,7 +2,11 @@
 # Advisory findings; generation, database and scanner execution errors are fatal.
 set -euo pipefail
 basename=${1:?artifact basename required}
+report_dir=$(dirname "$basename")
+# A failed rescan must not leave a stale successful GitLab report for upload.
+rm -f "$report_dir/gl-dependency-scanning-report.json" "$report_dir/gl-sbom.cdx.json"
 export GRYPE_DB_REQUIRE_UPDATE_CHECK=true GRYPE_CHECK_FOR_APP_UPDATE=false
+scan_start=$(date -u +%Y-%m-%dT%H:%M:%S)
 grype "sbom:$basename.cdx.json" --output json --file "$basename.vulnerabilities.json"
 python3 - "$basename" <<'PY'
 from collections import Counter
@@ -20,3 +24,9 @@ summary = {'scanned_sbom_sha256': hashlib.sha256(pathlib.Path(base + '.cdx.json'
 pathlib.Path(base + '.vulnerability-summary.json').write_text(json.dumps(summary, indent=2) + '\n')
 print(json.dumps(summary['match_counts_by_severity']))
 PY
+
+# Stable report locations support GitLab finding tracking across revisions.
+cp "$basename.cdx.json" "$report_dir/gl-sbom.cdx.json"
+python3 "$(dirname "$0")/gitlab-dependency-report.py" \
+  "$basename.vulnerabilities.json" "$report_dir/gl-dependency-scanning-report.json" \
+  --start "$scan_start" --end "$(date -u +%Y-%m-%dT%H:%M:%S)"

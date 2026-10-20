@@ -470,7 +470,8 @@ build_workspace_noble_arm64:
     # Published to S3 above; avoid redownloading source bundles in every distro test.
     exclude: ["output/**/*.sources.tar.gz"]
     reports:
-      cyclonedx: ["output/portable_*/*.cdx.json"]
+      cyclonedx: ["output/portable_*/gl-sbom.cdx.json"]
+      dependency_scanning: ["output/portable_*/gl-dependency-scanning-report.json"]
   rules:
     - if: '$BUILD_PORTABLE == "false" || $BUILD_DISTROS_REGEX == "none"'
       when: never
