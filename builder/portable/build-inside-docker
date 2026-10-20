@@ -6,6 +6,7 @@ cd /src
 test -s builder/www/index.html
 KASMVNC_PORTABLE_DRIVER_PATH=$(builder/scripts/portable-driver-path)
 export KASMVNC_PORTABLE_DRIVER_PATH
+export CFLAGS="${CFLAGS:-} -g" CXXFLAGS="${CXXFLAGS:-} -g"
 builder/build-static-glibc234-inside-docker --no-servertarball
 builder/scripts/portable-driver-path \
     --verify unix/xserver/hw/vnc/Xvnc \

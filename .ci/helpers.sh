@@ -220,6 +220,14 @@ upload_portable_packages() {
     count=$((count + 1))
   done < <(find builder/build -path '*/portable_*/*' -type f -name 'kasmvncserver_portable_*' -print0)
   check_regular_packages_were_uploaded "$count"
+  local manifest binary_md5 debug_base
+  for manifest in builder/build/portable_*/*.debug.json; do
+    debug_base=${manifest%.debug.json}
+    binary_md5=$(python3 -c 'import json,sys; print(next(r["md5"] for r in json.load(open(sys.argv[1])) if r["binary"] == "/usr/bin/Xkasmvnc"))' "$manifest") || return 1
+    [[ "$binary_md5" =~ ^[a-f0-9]{32}$ ]] || return 1
+    upload_to_s3 "$debug_base.dbgsym.deb" "$s3_crashpad_build_directory/$binary_md5/kasmvncserver-dbgsym.deb" "$S3_BUCKET" || return 1
+    upload_to_s3 "$debug_base.debug.tar.gz" "$s3_crashpad_build_directory/$binary_md5/kasmvncserver-debug.tar.gz" "$S3_BUCKET" || return 1
+  done
 }
 
 detect_alpine_doc_package() {
@@ -304,7 +312,13 @@ put_report_into_ci_pipeline() {
 }
 
 prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages() {
-  cp -r ../output/ubuntu_jammy output/
+  if [[ "${BUILD_PORTABLE:-false}" != false ]]; then
+    # The private harness expects this directory; stage only the runtime DEB.
+    mkdir -p output/ubuntu_jammy
+    cp ../output/portable_amd64/*_amd64.deb output/ubuntu_jammy/
+  else
+    cp -r ../output/ubuntu_jammy output/
+  fi
 }
 
 prepare_to_run_functional_tests() {

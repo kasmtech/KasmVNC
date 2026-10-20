@@ -43,8 +43,24 @@ for pair in 'unix/xserver/hw/vnc/Xvnc.man Xkasmvnc' 'unix/vncserver.man kasmvncs
   read -r source name <<< "$pair"
   gzip -n -c "$source" > "$root/usr/share/man/man1/$name.1.gz"
 done
-strip --strip-unneeded "$root/usr/bin/Xkasmvnc" "$root/usr/bin/kasmvncconfig" \
-  "$root/usr/bin/kasmvncpasswd" "$root/usr/bin/kasmxproxy"
+debugroot=$work/debug
+python3 builder/portable/split-debug.py "$root" "$debugroot" "/artifacts/$basename.debug.json"
+find "$debugroot" -type d -exec chmod 755 {} +
+find "$debugroot" -type f -exec chmod 644 {} +
+tar --sort=name --owner=0 --group=0 --numeric-owner -czf "/artifacts/$basename.debug.tar.gz" -C "$debugroot" .
+mkdir -p "$debugroot/DEBIAN"
+cat > "$debugroot/DEBIAN/control" <<EOF
+Package: kasmvncserver-dbgsym
+Version: $version-1+portable
+Architecture: $arch
+Maintainer: Kasm Technologies LLC <info@kasmweb.com>
+Section: debug
+Priority: optional
+Description: Matching build-ID debug symbols for portable KasmVNC
+ Symbols for all four executables. Match the build ID, not just the version.
+EOF
+dpkg-deb --root-owner-group -Zgzip --build "$debugroot" "/artifacts/$basename.dbgsym.deb"
+rm -rf "$debugroot/DEBIAN"
 builder/portable/audit.py "$root" "$arch" "$doc/elf-audit.json"
 builder/portable/provenance.py "$doc" "$arch"
 # Source snapshots can come from restrictive developer umasks. Installed code,
@@ -133,8 +149,29 @@ cp -a $root/. %{buildroot}/
 EOF
 rpmbuild --define "_topdir $work/rpm" --define '_build_id_links none' -bb "$work/rpm/SPECS/portable.spec"
 cp "$work/rpm/RPMS/$rpmarch/"*.rpm "/artifacts/$basename.rpm"
+cat > "$work/rpm/SPECS/debug.spec" <<EOF
+%global debug_package %{nil}
+%global __os_install_post %{nil}
+Name: kasmvncserver-debuginfo
+Version: $version
+Release: 1.portable
+Summary: Matching build-ID debug symbols for portable KasmVNC
+License: GPL-2.0-or-later
+BuildArch: $rpmarch
+AutoReqProv: no
+%description
+Symbols for all four executables. Match the build ID, not just the version.
+%install
+mkdir -p %{buildroot}
+cp -a $debugroot/. %{buildroot}/
+%files
+/usr/lib/debug
+EOF
+rpmbuild --define "_topdir $work/rpm" --define '_build_id_links none' -bb "$work/rpm/SPECS/debug.spec"
+cp "$work/rpm/RPMS/$rpmarch/kasmvncserver-debuginfo-"*.rpm "/artifacts/$basename.debuginfo.rpm"
 cp "$doc/provenance.json" "/artifacts/$basename.provenance.json"
 cp "$doc/elf-audit.json" "/artifacts/$basename.elf-audit.json"
 cd /artifacts
 sha256sum "$basename.deb" "$basename.rpm" "$basename.tar.gz" \
-  "$basename.provenance.json" "$basename.elf-audit.json" > "$basename.sha256"
+  "$basename.provenance.json" "$basename.elf-audit.json" \
+  "$basename.dbgsym.deb" "$basename.debuginfo.rpm" "$basename.debug.tar.gz" "$basename.debug.json" > "$basename.sha256"

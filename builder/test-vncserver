@@ -7,7 +7,9 @@ default_os_codename=jammy
 
 . ./builder/os_ver_cli.sh
 
-if [[ -n "$GITLAB_CI" ]]; then
+if [[ -n "${KASMVNC_PACKAGE_DIR:-}" ]]; then
+  package_dir=$KASMVNC_PACKAGE_DIR
+elif [[ -n "$GITLAB_CI" ]]; then
   package_dir="output/${os}_${os_codename}"
 else
   package_dir="builder/build/${os}_${os_codename}"

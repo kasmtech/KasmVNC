@@ -92,9 +92,9 @@ To build no distros, and no www, specify `BUILD_DISTROS_REGEX: none`.
 
 ##### Required distros to build
 
-Functional tests and spec tests use Ubuntu Jammy. If Jammy is not built, those
-stages fail. If you want to debug pipeline stages after `functional_test`,
-building Ubuntu Jammy is required.
+Functional tests and spec tests run on Ubuntu Jammy using the portable package
+by default. Only when `BUILD_PORTABLE=false` is the traditional Jammy build
+required. In that mode, include Jammy in a restricted legacy build selection.
 
 Specify `BUILD_DISTROS_REGEX: "jammy|<distro_you're_interested_in>"`.
 
@@ -601,3 +601,24 @@ Workspaces entrypoint, executable scripts, and unchanged script contents
 relative to the freshly built core image. The shared Docker daemon's images remain
 available for inspection. Full interactive Workspaces testing is a separate
 validation step after publishing.
+## Portable CI and legacy fallback
+
+The default pipeline builds portable DEB/RPM/tar packages for amd64 and arm64.
+It retains native distro builds for Ubuntu Focal, Oracle 8, openSUSE 15 and
+Alpine 3.21–3.23. The 31 portable distro/architecture test jobs remain mandatory.
+Functional and vncserver specification tests consume the portable amd64 DEB.
+Set `BUILD_FULL_LEGACY=true` to additionally build/test every traditional distro
+for comparison. `BUILD_PORTABLE=false` restores the traditional-only matrix and
+Jammy test artifacts. Existing distro recipes remain available locally.
+`BUILD_DISTROS_REGEX` still filters legacy builds; it does not narrow the portable
+test matrix. Its special `none` value disables portable builds as before.
+
+This reduces feature-branch jobs from 101 to 61 and package builds from 34 to 14
+compared with the combined portable/legacy pipeline after Nix was removed.
+Compare total job duration (runner time), pipeline wall time, and artifact bytes
+against the prior successful pipeline; counts alone do not predict time savings.
+Public rollout remains subject to manual host/kernel/GPU validation.
+
+Separate build-ID debug symbols are published in DEB, RPM and tar formats, with
+checksums and a `.debug.json` mapping. See `DEBUGGING.md` for exact-build matching
+and the existing crashpad lookup. SBOM work is deferred; provenance is not an SBOM.

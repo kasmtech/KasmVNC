@@ -16,6 +16,8 @@ variables:
   # E.g. BUILD_DISTROS_REGEX: "jammy|\ focal".
   BUILD_DISTROS_REGEX: all
   BUILD_PORTABLE: "true"
+  # Opt in to rebuilding portable-capable distros for comparison/rollback.
+  BUILD_FULL_LEGACY: "false"
   # To debug upload stage, you can limit BUILD_DISTROS_REGEX to jammy and allow
   # run_test distros to fail, by setting ALLOW_RUN_TESTS_TO_FAIL to true.
   ALLOW_RUN_TESTS_TO_FAIL: false
@@ -73,51 +75,67 @@ stages:
   matrix:
       - DISTRO: 'ubuntu focal'
         DISTRO_SLUG: 'ubuntu_focal'
+        LEGACY_REQUIRED: "true"
         GROUP: 0
       - DISTRO: 'ubuntu jammy'
         DISTRO_SLUG: 'ubuntu_jammy'
+        LEGACY_REQUIRED: "false"
         GROUP: 1
       - DISTRO: 'ubuntu noble'
         DISTRO_SLUG: 'ubuntu_noble'
+        LEGACY_REQUIRED: "false"
         GROUP: 2
       - DISTRO: 'ubuntu resolute'
         DISTRO_SLUG: 'ubuntu_resolute'
+        LEGACY_REQUIRED: "false"
         GROUP: 3
       - DISTRO: 'debian bookworm'
         DISTRO_SLUG: 'debian_bookworm'
+        LEGACY_REQUIRED: "false"
         GROUP: 4
       - DISTRO: 'debian trixie'
         DISTRO_SLUG: 'debian_trixie'
+        LEGACY_REQUIRED: "false"
         GROUP: 5
       - DISTRO: 'kali kali-rolling'
         DISTRO_SLUG: 'kali_kali-rolling'
+        LEGACY_REQUIRED: "false"
         GROUP: 6
       - DISTRO: 'oracle 8'
         DISTRO_SLUG: 'oracle_8'
+        LEGACY_REQUIRED: "true"
         GROUP: 7
       - DISTRO: 'oracle 9'
         DISTRO_SLUG: 'oracle_9'
+        LEGACY_REQUIRED: "false"
         GROUP: 8
       - DISTRO: 'opensuse 15'
         DISTRO_SLUG: 'opensuse_15'
+        LEGACY_REQUIRED: "true"
         GROUP: 9
       - DISTRO: 'opensuse 16'
         DISTRO_SLUG: 'opensuse_16'
+        LEGACY_REQUIRED: "false"
         GROUP: 10
       - DISTRO: 'fedora 42'
         DISTRO_SLUG: 'fedora_42'
+        LEGACY_REQUIRED: "false"
         GROUP: 11
       - DISTRO: 'fedora 43'
         DISTRO_SLUG: 'fedora_43'
+        LEGACY_REQUIRED: "false"
         GROUP: 12
       - DISTRO: 'alpine 321'
         DISTRO_SLUG: 'alpine_321'
+        LEGACY_REQUIRED: "true"
         GROUP: 13
       - DISTRO: 'alpine 322'
         DISTRO_SLUG: 'alpine_322'
+        LEGACY_REQUIRED: "true"
         GROUP: 14
       - DISTRO: 'alpine 323'
         DISTRO_SLUG: 'alpine_323'
+        LEGACY_REQUIRED: "true"
         GROUP: 15
 
 default:
@@ -139,8 +157,11 @@ functional_test:
     - upload_report_to_s3
     - put_report_into_ci_pipeline "$exit_code"
     - exit "$exit_code"
-  dependencies:
-    - build_amd64
+  needs:
+    - job: build_amd64
+      optional: true
+    - job: build_portable_amd64
+      optional: true
   artifacts:
     paths:
       - kasmvnc-functional-tests/output/
@@ -210,6 +231,8 @@ build_amd64:
   parallel:
     *parallel_matrix
   rules:
+    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH =~ /^release\//'
       allow_failure: false
     - allow_failure: true
@@ -245,6 +268,8 @@ build_arm64:
   parallel:
     *parallel_matrix
   rules:
+    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH =~ /^release\//'
       allow_failure: false
     - allow_failure: true
@@ -263,6 +288,8 @@ run_test_amd64:
     - set -e
     - is_build_this_distro "$DISTRO" && builder/test-barebones --run-test $DISTRO
   rules:
+    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true"'
+      when: never
     - if: $ALLOW_RUN_TESTS_TO_FAIL == "false"
     - if: $ALLOW_RUN_TESTS_TO_FAIL == "true"
       allow_failure: true
@@ -291,6 +318,8 @@ run_test_arm64:
     - set -e
     - is_build_this_distro "$DISTRO" && builder/test-barebones --run-test $DISTRO
   rules:
+    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true"'
+      when: never
     - if: $ALLOW_RUN_TESTS_TO_FAIL == "false"
     - if: $ALLOW_RUN_TESTS_TO_FAIL == "true"
       allow_failure: true
@@ -311,6 +340,11 @@ spec_test:
   image: $DEBIAN_STABLE_IMAGE
   tags:
     - kasmvnc-x86
+  needs:
+    - job: build_amd64
+      optional: true
+    - job: build_portable_amd64
+      optional: true
   before_script:
     - *prepare_build
   artifacts:
@@ -319,7 +353,12 @@ spec_test:
         - SelfBench.xml
         - Benchmark.xml
   script:
-    - builder/test-vncserver
+    - |
+      if [ "$BUILD_PORTABLE" != "false" ]; then
+        KASMVNC_PACKAGE_DIR=output/portable_amd64 builder/test-vncserver
+      else
+        builder/test-vncserver
+      fi
 
 
 make_build_preview_html:
@@ -414,7 +453,8 @@ build_workspace_noble_arm64:
             GROUP: 2
       artifacts: true
 
-# Portable application builds supplement every existing distro job.
+# Portable builds replace modern glibc distro builds by default.
+# Keep the full portable runtime matrix; legacy exceptions use the matrix above.
 .build_portable:
   stage: build
   timeout: 3h

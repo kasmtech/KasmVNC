@@ -72,7 +72,7 @@ try:
     for requested_format in args.formats:
         fmt = row['format'] if requested_format == 'native' else 'tar'
         extension = 'tar.gz' if fmt == 'tar' else fmt
-        files = list(artifact_dir.glob('kasmvncserver_portable_*.'+extension))
+        files = list(artifact_dir.glob('kasmvncserver_portable_*_'+args.arch+'.'+extension))
         if len(files) != 1:
             raise RuntimeError('Expected exactly one published '+extension+' artifact')
         artifact = files[0]
