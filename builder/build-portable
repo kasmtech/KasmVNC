@@ -22,10 +22,12 @@ log="output/portable_${arch}/build.log"
 mkdir -p "$build_dir" "output/portable_${arch}"
 : > "$log"
 container=
+context_archive=
 finish() {
   local result=$?
   trap - EXIT
   set +e
+  [[ -z "$context_archive" ]] || rm -f "$context_archive"
   if [[ -n "$container" ]]; then
     docker rm -f "$container" >> "$log" 2>&1
   fi
@@ -63,6 +65,10 @@ context=builder/scripts/portable-dependencies
   exit 1
 }
 key=$(python3 builder/portable/dependency-cache.py key "$context" "$arch")
+# Normalize Git-tracked executable modes and ownership before Docker sees the
+# context; runner checkout umask must not change either the key or image inputs.
+context_archive="$build_dir/dependency-context.tar"
+python3 builder/portable/dependency-cache.py archive "$context" "$context_archive"
 if [[ -n ${CI_REGISTRY_IMAGE:-} ]]; then
   # CI resource_group serializes this check and publish across branches/pipelines.
   : "${CI_REGISTRY_USER:?}" "${CI_REGISTRY_PASSWORD:?}" "${CI_REGISTRY:?}"
@@ -72,7 +78,7 @@ if [[ -n ${CI_REGISTRY_IMAGE:-} ]]; then
   resolved=$(python3 builder/portable/dependency-cache.py lookup "$reference") || status=$?
   if [[ $status == 3 ]]; then
     echo "Dependency cache MISS: $arch $key" | tee -a "$log"
-    run_logged 'compile dependency image' docker build --pull --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" "$context"
+    run_logged 'compile dependency image' docker build --pull --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" - < "$context_archive"
     run_logged 'publish dependency image' docker push "$reference"
     resolved=$(python3 builder/portable/dependency-cache.py lookup "$reference")
   elif [[ $status != 0 ]]; then
@@ -86,7 +92,7 @@ if [[ -n ${CI_REGISTRY_IMAGE:-} ]]; then
 else
   # Local builds use Docker's content-addressed layer cache; no registry writes.
   reference="kasmvnc-portable-deps:portable-deps-${arch}-${key}"
-  run_logged 'prepare local dependency image' docker build --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" "$context"
+  run_logged 'prepare local dependency image' docker build --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" - < "$context_archive"
   resolved=$(docker image inspect --format '{{.Id}}' "$reference")
   # BuildKit interprets a bare sha256:image-ID as a Docker Hub image name.
   # The local content-keyed tag resolves to the ID recorded in provenance.

@@ -4,6 +4,7 @@ import importlib.util
 import io
 from pathlib import Path
 import tempfile
+import tarfile
 import urllib.error
 import unittest
 from unittest.mock import patch
@@ -40,6 +41,37 @@ class Tests(unittest.TestCase):
             (context / 'external').symlink_to(root / 'application.cpp')
             with self.assertRaises(ValueError):
                 cache.context_key(context, 'amd64')
+
+    def test_checkout_umask_does_not_change_key_or_archive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = root / 'context'
+            context.mkdir()
+            script = context / 'build'
+            script.write_text('script')
+            config = context / 'Dockerfile'
+            config.write_text('config')
+            script.chmod(0o755)
+            config.chmod(0o644)
+            nested = context / 'nested'
+            nested.mkdir(mode=0o755)
+            original = cache.context_key(context, 'arm64')
+            archive = root / 'first.tar'
+            cache.context_archive(context, archive)
+            script.chmod(0o777)
+            nested.chmod(0o777)
+            config.chmod(0o666)
+            self.assertEqual(original, cache.context_key(context, 'arm64'))
+            second = root / 'second.tar'
+            cache.context_archive(context, second)
+            self.assertEqual(archive.read_bytes(), second.read_bytes())
+            with tarfile.open(second) as contents:
+                self.assertEqual(contents.getmember('build').mode, 0o755)
+                self.assertEqual(contents.getmember('nested').mode, 0o755)
+                self.assertEqual(contents.getmember('Dockerfile').mode, 0o644)
+                self.assertTrue(all(m.uid == m.gid == m.mtime == 0 for m in contents))
+            script.chmod(0o666)
+            self.assertNotEqual(original, cache.context_key(context, 'arm64'))
 
     def lookup(self, status, digest=None):
         def opener(request, timeout):

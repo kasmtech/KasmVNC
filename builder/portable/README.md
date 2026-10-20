@@ -135,11 +135,13 @@ embedded startup objects; they do not mean all of libc or GCC is linked in.
 
 The native portable jobs share one combined toolchain/dependency image per
 architecture in `$CI_REGISTRY_IMAGE/portable-deps`. Tags are
-`portable-deps-amd64-<sha256>` and `portable-deps-arm64-<sha256>`. The key covers **every filename, file mode
+`portable-deps-amd64-<sha256>` and `portable-deps-arm64-<sha256>`. The key covers **every filename, Git executable bit
 and byte** in `builder/scripts/portable-dependencies/`, plus the architecture.
 This directory is the complete Docker build context: dependency recipes, pinned
 source revisions/checksums, build flags, Dockerfile and base-image digest live
-there. Symlinks are rejected. Add new dependency inputs inside that directory;
+there. Symlinks are rejected. Docker receives a canonical tar context with 0644/0755
+file modes and normalized owner/timestamps, so runner checkout umasks do not
+change cache keys or image input permissions. Add new dependency inputs inside that directory;
 do not read application files or introduce untracked build-argument overrides.
 Application commits, web assets, branch names and timestamps do not change the
 key. Compatibility wrappers keep the existing distro build entry points working.

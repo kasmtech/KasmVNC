@@ -7,23 +7,51 @@ import json
 import os
 from pathlib import Path
 import re
+import tarfile
 import urllib.error
 import urllib.parse
 import urllib.request
 
 
-def context_key(context, architecture):
-    if architecture not in ('amd64', 'arm64'):
-        raise ValueError('Unsupported architecture')
-    digest = hashlib.sha256(b'kasmvnc-dependency-context-v1\0' + architecture.encode() + b'\0')
+def canonical_mode(path):
+    # Git tracks the owner's executable bit, not checkout umask/write bits.
+    return 0o755 if path.is_dir() or path.stat().st_mode & 0o100 else 0o644
+
+
+def context_entries(context):
     for path in sorted(context.rglob('*')):
         if path.is_symlink():
             raise ValueError(f'Symlinks forbidden in dependency context: {path}')
-        if not path.is_file():
-            continue
+        if not path.is_file() and not path.is_dir():
+            raise ValueError(f'Unsupported dependency context entry: {path}')
+        yield path
+
+
+def context_archive(context, output):
+    if context.resolve() in output.resolve().parents:
+        raise ValueError('Archive output must be outside the dependency context')
+    with tarfile.open(output, 'w', format=tarfile.PAX_FORMAT) as archive:
+        for path in context_entries(context):
+            info = archive.gettarinfo(str(path), arcname=path.relative_to(context).as_posix())
+            info.mode = canonical_mode(path)
+            info.uid = info.gid = info.mtime = 0
+            info.uname = info.gname = ''
+            if path.is_dir():
+                archive.addfile(info)
+            else:
+                with path.open('rb') as stream:
+                    archive.addfile(info, stream)
+
+
+def context_key(context, architecture):
+    if architecture not in ('amd64', 'arm64'):
+        raise ValueError('Unsupported architecture')
+    digest = hashlib.sha256(b'kasmvnc-dependency-context-v2\0' + architecture.encode() + b'\0')
+    for path in context_entries(context):
         name = path.relative_to(context).as_posix().encode()
-        content = path.read_bytes()
-        for item in (name, oct(path.stat().st_mode & 0o777).encode(), content):
+        content = b'' if path.is_dir() else path.read_bytes()
+        kind = b'directory' if path.is_dir() else b'file'
+        for item in (kind, name, oct(canonical_mode(path)).encode(), content):
             digest.update(len(item).to_bytes(8, 'big'))
             digest.update(item)
     return digest.hexdigest()
@@ -79,11 +107,16 @@ if __name__ == '__main__':
     key = sub.add_parser('key')
     key.add_argument('context', type=Path)
     key.add_argument('architecture')
+    archive = sub.add_parser('archive')
+    archive.add_argument('context', type=Path)
+    archive.add_argument('output', type=Path)
     lookup = sub.add_parser('lookup')
     lookup.add_argument('reference')
     args = parser.parse_args()
     if args.command == 'key':
         print(context_key(args.context, args.architecture))
+    elif args.command == 'archive':
+        context_archive(args.context, args.output)
     else:
         result = registry_digest(args.reference)
         if result is None:
