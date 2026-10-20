@@ -209,19 +209,6 @@ upload_packages() {
   upload_regular_packages_for_distro_to_build_dir "$os" "$os_codename"
 }
 
-# Nix filenames already include format, version, branch/revision and architecture.
-# Reuse the existing S3 destination, download links and preview-index bookkeeping.
-upload_nix_packages() {
-  prepare_to_run_scripts_and_s3_uploads
-  local package
-  local count=0
-  while IFS= read -r -d '' package; do
-    upload_regular_package_to_build_dir "$package"
-    count=$((count + 1))
-  done < <(find builder/build -path '*/nix_*/*' -type f -name 'kasmvncserver_nix_*' -print0)
-  check_regular_packages_were_uploaded "$count"
-}
-
 # Portable filenames already include version, revision and native architecture.
 # Upload packages plus their audits/checksums through the existing S3/index path.
 upload_portable_packages() {

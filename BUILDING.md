@@ -223,7 +223,7 @@ Add `-DCMAKE_BUILD_TYPE=Debug` to the CMake command line.
 The glibc 2.34 portable profile produces native x86_64 and ARM64 DEB, RPM and
 filesystem-root tar archives. It embeds the application libraries, including
 FFmpeg, while retaining host glibc and graphics loaders/drivers. Existing distro
-and Nix builds remain available. Perl launcher dependencies are still required.
+builds remain available. Perl launcher dependencies are still required.
 
 See [portable build and CI instructions](builder/README.md#portable-application-packages),
 [installation and compatibility](builder/portable/README.md), and

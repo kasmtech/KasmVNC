@@ -222,7 +222,7 @@ Replace ```focal``` with ```noble``` to build for Ubuntu 24.04LTS.
 
 ## Portable application packages
 
-This experimental profile supplements the existing distro and Nix builds.
+This experimental profile supplements the existing distro builds.
 From a clean checkout on a native x86_64 or ARM64 Docker host with Bash, Git
 and Python 3 installed, first prepare `builder/www` using the existing web build
 workflow, then run:
