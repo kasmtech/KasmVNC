@@ -14,7 +14,7 @@ RUN test -n "$DEPENDENCY_CONTEXT_SHA" && apk add --no-cache \
     pixman-dev freetype-dev zlib-dev libpng-dev libjpeg-turbo-dev \
     tiff-dev libxml2-dev util-linux-dev libcap-dev lz4-dev zstd-dev \
     libunwind-dev openssl-dev bzip2-dev brotli-dev libffi-dev pcre2-dev \
-    glib-dev glib-static libucontext-dev libucontext
+    glib-dev glib-static libucontext-dev libucontext libbsd-dev libbsd-static libmd-dev
 COPY recipes/ /opt/kasm-dependency-recipes/
 COPY musl/ /opt/kasm-musl-profile/
 ENV BUILD_JOBS=8 KASMVNC_LIBC=musl
