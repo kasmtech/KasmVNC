@@ -167,6 +167,11 @@ patches integrate application code. Sources and license evidence are retained
 inside the image for later source bundles; the Grype database is refreshed for
 each final package scan, independent of the cache.
 
+Both portable profiles use Xorg 21.1.25. Maintain this source pin independently
+of the libc compatibility baseline: targeting older libc does not require an
+older X server. Updating Xorg rebuilds the application but does not invalidate
+the dependency image cache.
+
 The Oracle Linux base is pinned by multiarchitecture digest. RPM repositories
 are resolved when the image is created; this is **not** a bit-reproducible RPM
 snapshot. Update `repository-refresh.txt` deliberately to refresh RPMs, and update
