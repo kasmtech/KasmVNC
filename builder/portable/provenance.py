@@ -51,6 +51,12 @@ manifest = {"format": "kasmvnc-portable-build-provenance-v1", "revision": os.env
             "architecture": sys.argv[2], "sources": sources,
             "elf_audit": json.loads((doc / "elf-audit.json").read_text()),
             "runtime_boundary": "Host glibc, GPU loader/driver stack, Perl modules, XKB tools/data and desktop remain external."}
+manifest["dependency_builder"] = {
+    "image": os.environ.get("KASMVNC_DEPENDENCY_IMAGE"),
+    "recipe_sha256": os.environ.get("KASMVNC_DEPENDENCY_KEY"),
+    "rpm_resolution": "Pinned base; RPM repositories resolved at image creation. Image digest identifies exact build environment; cold rebuild may resolve newer RPMs.",
+}
+shutil.copytree("/src/builder/scripts/portable-dependencies", doc / "dependency-recipes", dirs_exist_ok=True)
 gcc_manifest = Path(os.environ.get("KASMVNC_GCC_RUNTIME_PREFIX", "/opt/kasm-gcc-runtime")) / "share/gcc-runtime"
 if gcc_manifest.exists():
     shutil.copytree(gcc_manifest, doc / "gcc-runtime", dirs_exist_ok=True)

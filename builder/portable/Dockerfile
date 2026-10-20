@@ -1,6 +1,6 @@
 ARG BUILDER_IMAGE
 FROM ${BUILDER_IMAGE}
-RUN dnf install -y dpkg rpm-build gdb && dnf clean all
-COPY builder/portable /src/builder/portable
-RUN /src/builder/portable/install-scanner && python3 /src/builder/portable/test-supply-chain.py
+COPY . /src/
+ENV KASMVNC_PREBUILT_DEPENDENCIES=1
+RUN /src/builder/portable/install-scanner && python3 /src/builder/portable/test-supply-chain.py && python3 /src/builder/portable/test-progress.py && python3 /src/builder/portable/test-dependency-cache.py && python3 /src/builder/portable/test-dependency-phases.py
 ENTRYPOINT ["/src/builder/portable/build-inside-docker"]

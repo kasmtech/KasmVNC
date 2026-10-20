@@ -130,3 +130,61 @@ the recorded inputs requires restoring the included archives and Git revisions
 (in particular the resolved `libyuv` revision), not fetching floating branches.
 CRT-only entries such as `glibc-devel` or a GCC compiler package describe
 embedded startup objects; they do not mean all of libc or GCC is linked in.
+
+### Reusing compiled dependencies
+
+The native portable jobs share one combined toolchain/dependency image per
+architecture in `$CI_REGISTRY_IMAGE/portable-deps`. Tags are
+`portable-deps-amd64-<sha256>` and `portable-deps-arm64-<sha256>`. The key covers **every filename, file mode
+and byte** in `builder/scripts/portable-dependencies/`, plus the architecture.
+This directory is the complete Docker build context: dependency recipes, pinned
+source revisions/checksums, build flags, Dockerfile and base-image digest live
+there. Symlinks are rejected. Add new dependency inputs inside that directory;
+do not read application files or introduce untracked build-argument overrides.
+Application commits, web assets, branch names and timestamps do not change the
+key. Compatibility wrappers keep the existing distro build entry points working.
+
+A native GitLab `resource_group` serializes the cache lookup and publication for
+each architecture across branches. While holding that lock, a registry manifest
+HTTP 404 triggers a build and push; authentication, rate limits and network/server
+errors fail the job. Existing images are pulled by manifest digest. The image is
+published only after all dependency compiles and mandatory validation complete.
+Both cold and warm builds then create a fresh application image from the current
+checkout, and generate the SBOM, source bundle, debug symbols and vulnerability
+scan for that application revision. No KasmVNC application source or frontend is
+baked into the shared dependency image. Local builds use the same context and
+Docker layer cache without publishing anything.
+
+The image contains compiled GCC unwind runtime, desktop/runtime libraries,
+FFmpeg/codecs and the JPEG/TBB/cpuid/fmt/libyuv/libstatgrab helper dependencies.
+Xorg and KasmVNC are built together for each application commit because the Xorg
+patches integrate application code. Sources and license evidence are retained
+inside the image for later source bundles; the Grype database is refreshed for
+each final package scan, independent of the cache.
+
+The Oracle Linux base is pinned by multiarchitecture digest. RPM repositories
+are resolved when the image is created; this is **not** a bit-reproducible RPM
+snapshot. Update `repository-refresh.txt` deliberately to refresh RPMs, and update
+the base digest/source pins when needed for security maintenance. A deleted image
+rebuilt under the same recipe key can resolve newer RPMs. The published image
+digest and exact RPM inventory in each package's provenance identify what was
+actually used. The recipe key identifies the inputs we control, not a guarantee
+that external repositories never change.
+
+To bound registry storage, configure GitLab's project-wide tag cleanup policy
+with the reserved regex `^portable-deps-(amd64|arm64)-[0-9a-f]{64}$`, an age
+threshold (for example 30 days), and a recent-tag retention count (for example
+10). The count is shared across matched architectures; it does not guarantee a
+minimum for each architecture. These tags live in the dedicated `portable-deps`
+repository and the prefix avoids selecting unrelated image tags elsewhere in
+the project. Before cleanup, preserve builders used by supported releases with
+additional `portable-release-<version>-<arch>` tags, excluded from that regex,
+and configure protection rules for those release tags.
+
+Configure this with the GitLab administrator; this change does not delete images
+or alter the project-wide cleanup policy. There are no per-commit or per-pipeline
+tags and no second registry layer-cache repository. Deleted development images
+rebuild on demand. Keep published source bundles and release provenance in S3
+independently of builder-image cleanup. Storage is reclaimed according to the
+registry's garbage-collection policy, not necessarily immediately when a tag is
+removed.

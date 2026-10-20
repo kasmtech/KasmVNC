@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# Additional EL9 archives for the experimental glibc-2.34 profile.
+# Run in its isolated builder; never reuse a prefix populated by another distro.
+set -euo pipefail
+prefix=${KASMVNC_STATIC_DESKTOP_PREFIX:-/opt/kasm-desktop}
+source_dir=${KASMVNC_DESKTOP_SOURCES:-/tmp/static-desktop-sources}
+jobs=${BUILD_JOBS:-8}
+meson_setup() {
+    local build=$1
+    shift
+    local args=()
+    [[ ! -f "$build/meson-private/coredata.dat" ]] || args+=(--reconfigure)
+    meson setup "${args[@]}" "$build" "$@"
+}
+mkdir -p "$source_dir" "$prefix/lib" "$prefix/include"
+cd "$source_dir"
+export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$prefix/share/pkgconfig:${KASMVNC_STATIC_RUNTIME_PREFIX:-/opt/kasm-runtime}/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export CPPFLAGS="-I$prefix/include -I${KASMVNC_STATIC_RUNTIME_PREFIX:-/opt/kasm-runtime}/include ${CPPFLAGS:-}"
+export LDFLAGS="-L$prefix/lib -L${KASMVNC_STATIC_RUNTIME_PREFIX:-/opt/kasm-runtime}/lib ${LDFLAGS:-}"
+export CFLAGS="-O2 -fPIC -fstack-protector-strong ${CFLAGS:-}"
+export CXXFLAGS="-O2 -fPIC -fstack-protector-strong ${CXXFLAGS:-}"
+fetch() {
+    local file=$1
+    local url sha
+    case "$file" in
+        libffi-3.5.2.tar.gz) url=https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz; sha=f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc ;;
+        libcap-2.69.tar.xz) url=https://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-2.69.tar.xz; sha=f311f8f3dad84699d0566d1d6f7ec943a9298b28f714cae3c931dfd57492d7eb ;;
+        libdrm-2.4.120.tar.xz) url=https://dri.freedesktop.org/libdrm/libdrm-2.4.120.tar.xz; sha=3bf55363f76c7250946441ab51d3a6cc0ae518055c0ff017324ab76cdefb327a ;;
+        freetype-2.13.2.tar.xz) url=https://download.savannah.gnu.org/releases/freetype/freetype-2.13.2.tar.xz; sha=12991c4e55c506dd7f9b765933e62fd2be2e06d421505d7950a132e4f1bb484d ;;
+        dbus-1.14.10.tar.xz) url=https://dbus.freedesktop.org/releases/dbus/dbus-1.14.10.tar.xz; sha=ba1f21d2bd9d339da2d4aa8780c09df32fea87998b73da24f49ab9df1e36a50f ;;
+        systemd-255.4.tar.gz) url=https://github.com/systemd/systemd-stable/archive/refs/tags/v255.4.tar.gz; sha=96e75bd08c57ad401677456fb88ef54a9f05bb1695693013bc6ecce839640fd5 ;;
+        xcb-proto-1.16.0.tar.xz) url=https://xorg.freedesktop.org/archive/individual/proto/xcb-proto-1.16.0.tar.xz; sha=a75a1848ad2a89a82d841a51be56ce988ff3c63a8d6bf4383ae3219d8d915119 ;;
+        libxcb-1.16.1.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libxcb-1.16.1.tar.xz; sha=f24d187154c8e027b358fc7cb6588e35e33e6a92f11c668fe77396a7ae66e311 ;;
+        libXau-1.0.11.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libXau-1.0.11.tar.xz; sha=f3fa3282f5570c3f6bd620244438dbfbdd580fc80f02f549587a0f8ab329bbeb ;;
+        libXdmcp-1.1.5.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libXdmcp-1.1.5.tar.xz; sha=d8a5222828c3adab70adf69a5583f1d32eb5ece04304f7f8392b6a353aa2228c ;;
+        libX11-1.8.7.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libX11-1.8.7.tar.xz; sha=05f267468e3c851ae2b5c830bcf74251a90f63f04dd7c709ca94dc155b7e99ee ;;
+        libXext-1.3.6.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libXext-1.3.6.tar.xz; sha=edb59fa23994e405fdc5b400afdf5820ae6160b94f35e3dc3da4457a16e89753 ;;
+        libXi-1.8.1.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libXi-1.8.1.tar.xz; sha=89bfc0e814f288f784202e6e5f9b362b788ccecdeb078670145eacd8749656a7 ;;
+        libXtst-1.2.4.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libXtst-1.2.4.tar.xz; sha=84f5f30b9254b4ffee14b5b0940e2622153b0d3aed8286a3c5b7eeb340ca33c8 ;;
+        libXfixes-6.0.1.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libXfixes-6.0.1.tar.xz; sha=b695f93cd2499421ab02d22744458e650ccc88c1d4c8130d60200213abc02d58 ;;
+        libfontenc-1.1.8.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libfontenc-1.1.8.tar.xz; sha=7b02c3d405236e0d86806b1de9d6868fe60c313628b38350b032914aa4fd14c6 ;;
+        libXfont2-2.0.6.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libXfont2-2.0.6.tar.xz; sha=74ca20017eb0fb3f56d8d5e60685f560fc85e5ff3d84c61c4cb891e40c27aef4 ;;
+        libxshmfence-1.3.2.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libxshmfence-1.3.2.tar.xz; sha=870df257bc40b126d91b5a8f1da6ca8a524555268c50b59c0acd1a27f361606f ;;
+        expat-2.8.5.tar.xz) url=https://github.com/libexpat/libexpat/releases/download/R_2_8_5/expat-2.8.5.tar.xz; sha=1e727b8933ec51a77a9a9d9afcf8e688bce45d907c13e36ab7393fe36e703182 ;;
+        pcre2-10.49.tar.bz2) url=https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.49/pcre2-10.49.tar.bz2; sha=53c156e1ba416a20da8e65395daa132da0d80e76910424caca3fcdae7831d384 ;;
+        brotli-1.1.0.tar.gz) url=https://github.com/google/brotli/archive/refs/tags/v1.1.0.tar.gz; sha=e720a6ca29428b803f4ad165371771f5398faba397edf6778837a18599ea13ff ;;
+        bzip2-1.0.8.tar.gz) url=https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz; sha=ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269 ;;
+        xz-5.8.1.tar.xz) url=https://github.com/tukaani-project/xz/releases/download/v5.8.1/xz-5.8.1.tar.xz; sha=0b54f79df85912504de0b14aec7971e3f964491af1812d83447005807513cd9e ;;
+        pixman-0.42.2.tar.gz) url=https://cairographics.org/releases/pixman-0.42.2.tar.gz; sha=ea1480efada2fd948bc75366f7c349e1c96d3297d09a3fe62626e38e234a625e ;;
+        libSM-1.2.4.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libSM-1.2.4.tar.xz; sha=fdcbe51e4d1276b1183da77a8a4e74a137ca203e0bcfb20972dd5f3347e97b84 ;;
+        libICE-1.1.1.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libICE-1.1.1.tar.xz; sha=03e77afaf72942c7ac02ccebb19034e6e20f456dcf8dddadfeb572aa5ad3e451 ;;
+        libXrandr-1.5.4.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libXrandr-1.5.4.tar.xz; sha=1ad5b065375f4a85915aa60611cc6407c060492a214d7f9daf214be752c3b4d3 ;;
+        libXrender-0.9.11.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libXrender-0.9.11.tar.xz; sha=bc53759a3a83d1ff702fb59641b3d2f7c56e05051fa0cfa93501166fa782dc24 ;;
+        libXcursor-1.2.1.tar.xz) url=https://xorg.freedesktop.org/archive/individual/lib/libXcursor-1.2.1.tar.xz; sha=46c143731610bafd2070159a844571b287ac26192537d047a39df06155492104 ;;
+        *) echo "Unpinned source: $file" >&2; exit 1 ;;
+    esac
+    [[ -f $file ]] || curl --connect-timeout 30 --max-time 900 -fL --retry 3 "$url" -o "$file"
+    echo "$sha  $file" | sha256sum -c -
+    tar -xf "$file"
+}
+have() { [[ -f "$prefix/lib/lib$1.a" || -f "/usr/lib64/lib$1.a" ]]; }
+auto() {
+    local archive=$1 file=$2 dir=$3
+    shift 3
+    have "$archive" && return
+    fetch "$file"
+    ( cd "$dir"
+      # Some release archives (notably FreeType) ship a bootstrap Makefile
+      # without a clean target. Configure first, then clean generated targets
+      # so resumed builds cannot reuse objects compiled with different flags.
+      ./configure --prefix="$prefix" --libdir="$prefix/lib" \
+        --enable-static --disable-shared --with-pic "$@"
+      make clean
+      if [[ $archive == dbus-1 ]]; then
+          # Only embed the client library; keep host bus daemons external.
+          make -C dbus -j"$jobs" libdbus-1.la
+          make -C dbus install-libLTLIBRARIES install-dbusincludeHEADERS install-nodist_dbusarchincludeHEADERS
+          make install-pkgconfigDATA
+      else
+          make -j"$jobs"; make install
+      fi )
+}
+# Keep patched distro GLib and its PCRE1 closure; these packages exist in CRB.
+for archive in glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0 pcre crypt selinux sepol; do
+    have "$archive" || { echo "Install EL9 static development packages: missing lib$archive.a" >&2; exit 1; }
+done
+auto ffi libffi-3.5.2.tar.gz libffi-3.5.2 --disable-docs
+auto pcre2-8 pcre2-10.49.tar.bz2 pcre2-10.49 --enable-jit --disable-pcre2grep-libz --disable-pcre2grep-libbz2
+auto expat expat-2.8.5.tar.xz expat-2.8.5 --without-xmlwf --without-examples --without-tests --without-docbook
+auto lzma xz-5.8.1.tar.xz xz-5.8.1 --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-scripts --disable-doc
+if ! have bz2; then
+    fetch bzip2-1.0.8.tar.gz
+    make -C bzip2-1.0.8 -j"$jobs" CFLAGS="$CFLAGS" libbz2.a
+    cp bzip2-1.0.8/libbz2.a "$prefix/lib/"
+    cp bzip2-1.0.8/bzlib.h "$prefix/include/"
+fi
+if ! have brotlidec; then
+    fetch brotli-1.1.0.tar.gz
+    cmake -S brotli-1.1.0 -B brotli-build -DCMAKE_INSTALL_PREFIX="$prefix" \
+        -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DCMAKE_BUILD_TYPE=Release -DBROTLI_DISABLE_TESTS=ON
+    cmake --build brotli-build -j"$jobs"
+    cmake --install brotli-build
+fi
+if ! have cap; then
+    fetch libcap-2.69.tar.xz
+    make -C libcap-2.69/libcap -j"$jobs" CFLAGS="$CFLAGS" libcap.a
+    cp libcap-2.69/libcap/libcap.a "$prefix/lib/"
+fi
+# Freetype matches the Noble prototype: PNG/Brotli/BZ2, no HarfBuzz.
+auto freetype freetype-2.13.2.tar.xz freetype-2.13.2 --with-harfbuzz=no --with-png=yes --with-brotli=yes --with-bzip2=yes
+auto Xau libXau-1.0.11.tar.xz libXau-1.0.11
+auto Xdmcp libXdmcp-1.1.5.tar.xz libXdmcp-1.1.5
+if ! have xcb; then
+    fetch xcb-proto-1.16.0.tar.xz
+    ( cd xcb-proto-1.16.0; ./configure --prefix="$prefix"; make install )
+    export PYTHONPATH="$(find "$prefix" -type d -name site-packages -print | paste -sd:)${PYTHONPATH:+:$PYTHONPATH}"
+fi
+auto xcb libxcb-1.16.1.tar.xz libxcb-1.16.1 --disable-doxygen-doc
+auto X11 libX11-1.8.7.tar.xz libX11-1.8.7 --disable-specs --without-xmlto --without-fop
+auto Xext libXext-1.3.6.tar.xz libXext-1.3.6 --disable-specs --without-xmlto
+auto Xfixes libXfixes-6.0.1.tar.xz libXfixes-6.0.1
+auto Xi libXi-1.8.1.tar.xz libXi-1.8.1 --disable-specs --without-xmlto
+auto Xtst libXtst-1.2.4.tar.xz libXtst-1.2.4 --disable-specs --without-xmlto
+# Desktop helper tools also ship in the portable archive.
+auto ICE libICE-1.1.1.tar.xz libICE-1.1.1 --disable-docs --disable-specs --without-xmlto
+auto SM libSM-1.2.4.tar.xz libSM-1.2.4 --disable-docs --without-xmlto
+auto Xrender libXrender-0.9.11.tar.xz libXrender-0.9.11
+auto Xrandr libXrandr-1.5.4.tar.xz libXrandr-1.5.4
+auto Xcursor libXcursor-1.2.1.tar.xz libXcursor-1.2.1
+auto fontenc libfontenc-1.1.8.tar.xz libfontenc-1.1.8
+auto Xfont2 libXfont2-2.0.6.tar.xz libXfont2-2.0.6 "FREETYPE_LIBS=$(pkg-config --static --libs freetype2)"
+auto xshmfence libxshmfence-1.3.2.tar.xz libxshmfence-1.3.2
+# Pixman test executables use our private static libpng; its zlib dependency
+# is in Libs.private and must be included explicitly (normal pkg-config omits it).
+auto pixman-1 pixman-0.42.2.tar.gz pixman-0.42.2 --disable-gtk \
+    "PNG_LIBS=$(pkg-config --static --libs libpng)"
+if ! have drm; then
+    fetch libdrm-2.4.120.tar.xz
+    meson_setup drm-build libdrm-2.4.120 --prefix="$prefix" --libdir=lib \
+        --default-library=static -Db_staticpic=true -Dtests=false -Dman-pages=disabled -Dvalgrind=disabled
+    ninja -C drm-build -j"$jobs"
+    meson install -C drm-build
+fi
+if ! have systemd; then
+    fetch systemd-255.4.tar.gz
+    # EL9 backported pidfs kernel headers postdate this systemd snapshot.
+    # Add the missing name/magic mapping; keep the upstream completeness check.
+    if grep -q PID_FS_MAGIC /usr/include/linux/magic.h; then
+        printf 'pidfs, {PID_FS_MAGIC}\n' >> systemd-stable-255.4/src/basic/filesystems-gperf.gperf
+    fi
+    meson_setup systemd-build systemd-stable-255.4 \
+        --prefix="$prefix" --libdir=lib --auto-features=disabled \
+        -Dstatic-libsystemd=pic -Db_lto=false -Dmode=release -Dtests=false \
+        -Dman=disabled -Dhtml=disabled
+    ninja -C systemd-build -j"$jobs" libsystemd.a
+    cp systemd-build/libsystemd.a "$prefix/lib/"
+fi
+auto dbus-1 dbus-1.14.10.tar.xz dbus-1.14.10 --disable-tests --disable-doxygen-docs --disable-xml-docs --enable-systemd

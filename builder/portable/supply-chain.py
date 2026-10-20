@@ -48,6 +48,18 @@ def sha(path):
     return h.hexdigest()
 
 
+def cached_rpm_source(cache, srpm, target):
+    if not re.fullmatch(r'[a-zA-Z0-9_.+~-]+\.src\.rpm', srpm):
+        raise RuntimeError('Invalid cached source RPM name')
+    manifest = json.loads((cache / 'manifest.json').read_text())
+    record = manifest.get(srpm)
+    source = cache / srpm
+    if not record or not source.is_file() or sha(source) != record['sha256']:
+        raise RuntimeError('Cached source RPM missing or hash mismatch: ' + srpm)
+    shutil.copyfile(source, target)
+    return record['url']
+
+
 def write(path, obj):
     Path(path).write_text(json.dumps(obj, indent=2) + '\n')
 
@@ -269,14 +281,18 @@ class Inventory:
         if key not in self.components:
             target = self.bundle / 'rpm' / srpm
             if not target.exists():
-                machine = 'x86_64' if self.arch == 'amd64' else 'aarch64'
-                for repo in ['baseos/latest', 'appstream', 'codeready/builder', 'developer/EPEL']:
-                    url = f'https://yum.oracle.com/repo/OracleLinux/OL9/{repo}/{machine}/getPackageSource/{srpm}'
-                    result = subprocess.run(['curl', '-fLsS', '--retry', '3', '--connect-timeout', '30', '--max-time', '600', url, '-o', str(target)])
-                    if result.returncode == 0:
-                        break
+                cache = Path('/opt/kasm-rpm-sources')
+                if cache.exists():
+                    url = cached_rpm_source(cache, srpm, target)
                 else:
-                    raise RuntimeError(f'Exact corresponding SRPM unavailable: {srpm}')
+                    machine = 'x86_64' if self.arch == 'amd64' else 'aarch64'
+                    for repo in ['baseos/latest', 'appstream', 'codeready/builder', 'developer/EPEL']:
+                        url = f'https://yum.oracle.com/repo/OracleLinux/OL9/{repo}/{machine}/getPackageSource/{srpm}'
+                        result = subprocess.run(['curl', '-fLsS', '--retry', '3', '--connect-timeout', '30', '--max-time', '600', url, '-o', str(target)])
+                        if result.returncode == 0:
+                            break
+                    else:
+                        raise RuntimeError(f'Exact corresponding SRPM unavailable: {srpm}')
                 identity = run('rpm', '-qp', '--qf', '%{NAME}-%{VERSION}-%{RELEASE}.src.rpm', target)
                 if identity != srpm:
                     raise RuntimeError(f'SRPM identity mismatch: {identity} != {srpm}')

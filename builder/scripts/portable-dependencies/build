@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -eo pipefail
+source /opt/rh/gcc-toolset-14/enable
+set -u
+[[ $(getconf GNU_LIBC_VERSION) == 'glibc 2.34' ]]
+case $(uname -m) in
+ x86_64) baseline='-march=x86-64 -mtune=generic' ;;
+ aarch64) baseline='-march=armv8-a -mtune=generic' ;;
+ *) exit 1 ;;
+esac
+export CFLAGS="-O2 -fPIC $baseline -g" CXXFLAGS="-O2 -fPIC $baseline -g"
+export KASMVNC_GCC_RUNTIME_PREFIX=/opt/kasm-gcc-runtime
+export KASMVNC_STATIC_RUNTIME_PREFIX=/opt/kasm-runtime
+export KASMVNC_CODEC_PREFIX=/opt/kasm-codecs
+export KASMVNC_STATIC_DESKTOP_PREFIX=/opt/kasm-desktop
+export LIBYUV_COMMIT=eb6e7bb63738e29efd82ea3cf2a115238a89fa51
+export KASMVNC_PORTABLE_DRIVER_PATH=$(/opt/kasm-dependency-recipes/portable-driver-path)
+cd /tmp
+recipes=/opt/kasm-dependency-recipes
+python3 "$recipes/run-phase.py" gcc "$recipes/build-static-gcc-runtime"
+python3 "$recipes/run-phase.py" runtime "$recipes/build-static-runtime"
+python3 "$recipes/run-phase.py" desktop "$recipes/build-static-desktop"
+export PKG_CONFIG_PATH="$KASMVNC_STATIC_RUNTIME_PREFIX/lib/pkgconfig:$KASMVNC_CODEC_PREFIX/lib/pkgconfig:$KASMVNC_STATIC_DESKTOP_PREFIX/lib/pkgconfig"
+python3 "$recipes/run-phase.py" codecs "$recipes/build-static-ffmpeg"
+export CPATH="$KASMVNC_STATIC_RUNTIME_PREFIX/include:$KASMVNC_CODEC_PREFIX/include"
+export PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig:$HOME/.local/lib64/pkgconfig:$HOME/.local/share/pkgconfig:$PKG_CONFIG_PATH"
+export CPATH="$HOME/.local/include:$CPATH"
+python3 "$recipes/run-phase.py" helpers "$recipes/build-deps.sh"
+python3 "$recipes/run-phase.py" rpm-sources python3 "$recipes/cache-rpm-sources.py"
+# Keep source archives/checkouts for SBOM and corresponding-source packaging.
+# Application compilation and /src are deliberately absent from this image.
+test -s /opt/kasm-codecs/lib/libavcodec.a
+test -s /root/.local/lib/libyuv.a
+rpm -qa --qf '%{NAME} %{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort > /opt/kasm-dependency-rpms.txt
+printf 'kasmvnc-portable-dependencies-v1\n' > /opt/kasm-dependencies-ready
+# Discard the large generated GCC compiler after installing its two runtime
+# archives. Original GCC source/patches remain for notices, sources and DWARF.
+rm -rf /tmp/kasm-gcc-runtime/build

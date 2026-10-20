@@ -19,7 +19,7 @@ RUN dnf install -y dnf-plugins-core && \
       libselinux-static libsepol-static && \
     if [ "$(uname -m)" = x86_64 ]; then dnf install -y nasm; fi && \
     dnf clean all
-COPY builder/scripts/install_sccache_from_github /tmp/install-sccache
+COPY builder/scripts/portable-dependencies/install_sccache_from_github /tmp/install-sccache
 RUN /tmp/install-sccache
 # Build from a clean source snapshot (no Noble CMake/autotools objects).
 COPY . /src/

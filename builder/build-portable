@@ -18,8 +18,8 @@ basename="kasmvncserver_portable_${version}_${branch//\//_}_${revision:0:6}_${ar
 [[ "$basename" =~ ^[a-zA-Z0-9_.+-]+$ ]] || { echo 'Unsafe artifact filename' >&2; exit 1; }
 image="kasmvnc-portable-builder:${revision:0:12}-${arch}"
 build_dir="builder/build/portable_${arch}"
-log="$build_dir/build.log"
-mkdir -p "$build_dir"
+log="output/portable_${arch}/build.log"
+mkdir -p "$build_dir" "output/portable_${arch}"
 : > "$log"
 container=
 finish() {
@@ -31,7 +31,7 @@ finish() {
   fi
   # EXIT runs for failed Docker builds and failed compilation as well as success.
   # Keep the log outside /artifacts so no failed package can be published.
-  if ! mkdir -p "output/portable_${arch}" || ! cp "$log" "output/portable_${arch}/build.log"; then
+  if ! mkdir -p "output/portable_${arch}" || ! cp "$log" "$build_dir/build.log"; then
     echo 'Failed to retain portable build log' >&2
     [[ "$result" != 0 ]] || result=1
   fi
@@ -47,17 +47,58 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 run_logged() {
   local phase=$1
+  local started=$SECONDS
   shift
   printf '\nPortable build phase: %s\n' "$phase" | tee -a "$log"
   # Retain every byte while keeping the GitLab trace below its output cap.
   # Emit one bounded progress line per minute while compilation produces output.
   "$@" 2>&1 | tee -a "$log" | python3 -u builder/portable/progress.py
+  printf 'Portable phase complete: %s (%ss)\n' "$phase" "$((SECONDS - started))" | tee -a "$log"
 }
 # git archive omits gitlink contents, including the private functional-test repo.
 git archive --format=tar HEAD -o builder/portable/kasmvnc-source.tar
-run_logged 'create native builder image' docker build -f builder/dockerfile.el9.static -t "$image" .
-run_logged 'create packaging image' docker build -f builder/portable/Dockerfile --build-arg BUILDER_IMAGE="$image" -t "${image}-package" .
+context=builder/scripts/portable-dependencies
+[[ -z $(git ls-files --others -- "$context") ]] || {
+  echo 'Dependency context contains untracked or ignored files; remove or commit them first' >&2
+  exit 1
+}
+key=$(python3 builder/portable/dependency-cache.py key "$context" "$arch")
+if [[ -n ${CI_REGISTRY_IMAGE:-} ]]; then
+  # CI resource_group serializes this check and publish across branches/pipelines.
+  : "${CI_REGISTRY_USER:?}" "${CI_REGISTRY_PASSWORD:?}" "${CI_REGISTRY:?}"
+  printf '%s' "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin >> "$log" 2>&1
+  reference="$CI_REGISTRY_IMAGE/portable-deps:portable-deps-${arch}-${key}"
+  status=0
+  resolved=$(python3 builder/portable/dependency-cache.py lookup "$reference") || status=$?
+  if [[ $status == 3 ]]; then
+    echo "Dependency cache MISS: $arch $key" | tee -a "$log"
+    run_logged 'compile dependency image' docker build --pull --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" "$context"
+    run_logged 'publish dependency image' docker push "$reference"
+    resolved=$(python3 builder/portable/dependency-cache.py lookup "$reference")
+  elif [[ $status != 0 ]]; then
+    echo 'Dependency registry lookup failed; refusing to rebuild on an ambiguous error' >&2
+    exit "$status"
+  else
+    echo "Dependency cache HIT: $arch $key" | tee -a "$log"
+  fi
+  run_logged 'pull immutable dependency image' docker pull "$resolved"
+  image_base=$resolved
+else
+  # Local builds use Docker's content-addressed layer cache; no registry writes.
+  reference="kasmvnc-portable-deps:portable-deps-${arch}-${key}"
+  run_logged 'prepare local dependency image' docker build --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" "$context"
+  resolved=$(docker image inspect --format '{{.Id}}' "$reference")
+  # BuildKit interprets a bare sha256:image-ID as a Docker Hub image name.
+  # The local content-keyed tag resolves to the ID recorded in provenance.
+  image_base=$reference
+fi
+[[ $(docker image inspect --format '{{index .Config.Labels "org.kasmweb.portable-dependency-key"}}' "$resolved") == "$key" ]] || {
+  echo 'Dependency image recipe label mismatch' >&2; exit 1;
+}
+printf '%s\n' "$resolved" > "$build_dir/dependency-image.txt"
+run_logged 'create packaging image' docker build -f builder/portable/Dockerfile --build-arg BUILDER_IMAGE="$image_base" -t "${image}-package" .
 container=$(docker create --entrypoint /src/builder/portable/build-inside-docker \
+  -e KASMVNC_DEPENDENCY_IMAGE="$resolved" -e KASMVNC_DEPENDENCY_KEY="$key" \
   -e KASMVNC_COMMIT_ID="$revision" -e KASMVNC_PORTABLE_VERSION="$version" \
   -e KASMVNC_PORTABLE_BASENAME="$basename" -e BUILD_JOBS="${BUILD_JOBS:-8}" \
   "${image}-package" 2>> "$log")

@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""Set and verify portable host-driver defaults; upstream env overrides still win."""
+import argparse
+import pathlib
+import platform
+import re
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--arch', default=platform.machine(), choices=('x86_64', 'aarch64'))
+parser.add_argument('--header', type=pathlib.Path)
+parser.add_argument('--verify', type=pathlib.Path, action='append', default=[])
+args = parser.parse_args()
+triplet = {'x86_64': 'x86_64-linux-gnu', 'aarch64': 'aarch64-linux-gnu'}[args.arch]
+paths = f'/usr/lib/{triplet}/dri:/usr/lib64/dri:/usr/lib/dri'
+if args.header:
+    original = args.header.read_text()
+    updated, count = re.subn(r'^#define DRI_DRIVER_PATH "[^"\n]*"$',
+                            f'#define DRI_DRIVER_PATH "{paths}"', original,
+                            flags=re.MULTILINE)
+    if count != 1:
+        raise SystemExit(f'{args.header}: expected exactly one DRI_DRIVER_PATH definition, found {count}')
+    args.header.write_text(updated)
+for binary in args.verify:
+    if paths.encode() + b'\0' not in binary.read_bytes():
+        raise SystemExit(f'{binary}: compiled portable driver search path is missing')
+if not args.header and not args.verify:
+    print(paths)

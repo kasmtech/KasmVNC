@@ -630,3 +630,9 @@ verification and scanner execution errors fail CI; vulnerability findings are
 reported without an initial severity gate. See
 [`builder/portable/README.md`](builder/portable/README.md#sbom-source-inputs-and-advisory-vulnerability-reports)
 for scope, host dependencies, source limitations and artifact names.
+
+Portable CI builds reuse a precompiled dependency image per architecture, keyed by
+all files in `builder/scripts/portable-dependencies/`. Ordinary KasmVNC changes
+rebuild the server and Xorg integration, not the toolchain and dependencies.
+See [dependency cache maintenance](builder/portable/README.md#reusing-compiled-dependencies)
+for deliberate security refreshes, provenance and registry cleanup.

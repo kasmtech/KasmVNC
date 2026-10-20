@@ -4,12 +4,24 @@ set -euo pipefail
 export KASMVNC_STATIC_FFMPEG=ON
 export KASMVNC_CODEC_PREFIX=${KASMVNC_CODEC_PREFIX:-/opt/kasm-codecs}
 export KASMVNC_STATIC_RUNTIME_PREFIX=${KASMVNC_STATIC_RUNTIME_PREFIX:-/opt/kasm-runtime}
+if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
 /src/builder/scripts/build-static-runtime
+else
+    test "$(cat /opt/kasm-dependencies-ready)" = kasmvnc-portable-dependencies-v1
+fi
 if [[ -n ${KASMVNC_STATIC_DESKTOP_PREFIX:-} ]]; then
+if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
     /src/builder/scripts/build-static-desktop
+else
+    test "$(cat /opt/kasm-dependencies-ready)" = kasmvnc-portable-dependencies-v1
+fi
     export PKG_CONFIG_PATH="$KASMVNC_STATIC_DESKTOP_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 fi
 export PKG_CONFIG_PATH="$KASMVNC_STATIC_RUNTIME_PREFIX/lib/pkgconfig:$KASMVNC_CODEC_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
 /src/builder/scripts/build-static-ffmpeg
+else
+    test "$(cat /opt/kasm-dependencies-ready)" = kasmvnc-portable-dependencies-v1
+fi
 export CPATH="$KASMVNC_STATIC_RUNTIME_PREFIX/include:$KASMVNC_CODEC_PREFIX/include${CPATH:+:$CPATH}"
 exec /src/builder/build.sh "$@"

@@ -292,3 +292,7 @@ Separate build-ID debug symbols are published in DEB, RPM and tar formats, with
 checksums and a `.debug.json` mapping. See `DEBUGGING.md` for exact-build matching
 and the existing crashpad lookup. Portable SBOM, source-bundle and advisory scan
 artifacts are described in `builder/portable/README.md`.
+
+Portable builds reuse content-keyed, precompiled native dependency images. See
+[portable cache maintenance](portable/README.md#reusing-compiled-dependencies)
+for the complete build context, security refresh and registry retention policy.

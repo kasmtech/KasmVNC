@@ -488,10 +488,12 @@ build_workspace_noble_arm64:
     - when: on_success
 
 build_portable_amd64:
+  resource_group: portable-deps-amd64
   extends: .build_portable
   tags: [oci-fixed-amd]
 
 build_portable_arm64:
+  resource_group: portable-deps-arm64
   extends: .build_portable
   tags: [oci-fixed-arm]
 

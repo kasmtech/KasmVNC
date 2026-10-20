@@ -42,6 +42,17 @@ finally:
 
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp)
+    cache = base / 'rpm-cache'; cache.mkdir()
+    srpm = 'example-1-1.src.rpm'
+    (cache / srpm).write_bytes(b'source archive')
+    (cache / 'manifest.json').write_text(json.dumps({srpm: {'sha256': m.sha(cache / srpm), 'url': 'https://example.invalid/source'}}))
+    target = base / 'copied.src.rpm'
+    assert m.cached_rpm_source(cache, srpm, target) == 'https://example.invalid/source'
+    assert target.read_bytes() == b'source archive'
+    (cache / srpm).write_bytes(b'tampered')
+    rejects(lambda: m.cached_rpm_source(cache, srpm, target), 'hash mismatch')
+    rejects(lambda: m.cached_rpm_source(cache, 'missing.src.rpm', target), 'missing')
+    rejects(lambda: m.cached_rpm_source(cache, '../outside.src.rpm', target), 'Invalid')
     front, www = base / 'front', base / 'www'
     front.mkdir(); www.mkdir()
     (front / 'notices').mkdir()

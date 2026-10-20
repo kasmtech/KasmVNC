@@ -91,7 +91,11 @@ cd /tmp
 setup_sccache
 setup_compilers_to_see_libs_in_dot_local
 
+if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
 $SCRIPTS_DIR/build-deps.sh
+else
+    test "$(cat /opt/kasm-dependencies-ready)" = kasmvnc-portable-dependencies-v1
+fi
 
 # default to the version of x in Ubuntu 18.04, otherwise caller will need to specify
 XORG_VER=${XORG_VER:-"1.19.6"}

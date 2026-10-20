@@ -1,25 +1,3 @@
 #!/usr/bin/env bash
-
-set -euo pipefail
-
-build_and_install() {
-  cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/.local \
-    -DCMAKE_POSITION_INDEPENDENT_CODE=ON -GNinja \
-    .
-  ninja -C build install
-}
-
-prepare_libjpeg_source() {
-  JPEG_TURBO_RELEASE="${JPEG_TURBO_RELEASE:-3.2.0}"
-  [ -d ./libjpeg-turbo ] && rm -rf ./libjpeg-turbo
-  mkdir libjpeg-turbo
-  curl -fLsS --retry 3 "https://github.com/libjpeg-turbo/libjpeg-turbo/archive/${JPEG_TURBO_RELEASE}.tar.gz" -o "/tmp/libjpeg-turbo-${JPEG_TURBO_RELEASE}.tar.gz"
-  tar xzvf "/tmp/libjpeg-turbo-${JPEG_TURBO_RELEASE}.tar.gz" -C libjpeg-turbo/ --strip-components=1
-  cd libjpeg-turbo
-}
-
-source_dir=$(dirname "$0")
-. "$source_dir/common.sh"
-
-prepare_libjpeg_source
-build_and_install
+# Shared recipe: portable cache hashes its complete build context.
+exec "$(dirname "${BASH_SOURCE[0]}")/portable-dependencies/build-libjpeg-turbo" "$@"

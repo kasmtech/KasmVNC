@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+"""Exercise cache keys and registry failures without credentials/network."""
+import importlib.util
+import io
+from pathlib import Path
+import tempfile
+import urllib.error
+import unittest
+from unittest.mock import patch
+
+spec = importlib.util.spec_from_file_location('cache', Path(__file__).with_name('dependency-cache.py'))
+cache = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(cache)
+
+class Response(io.BytesIO):
+    def __init__(self, headers=None):
+        super().__init__(b'')
+        self.headers = headers or {}
+
+class Tests(unittest.TestCase):
+    def test_complete_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = root / 'dependencies'
+            context.mkdir()
+            recipe = context / 'recipe'
+            recipe.write_text('version one')
+            original = cache.context_key(context, 'amd64')
+            (root / 'application.cpp').write_text('new app revision')
+            self.assertEqual(original, cache.context_key(context, 'amd64'))
+            self.assertNotEqual(original, cache.context_key(context, 'arm64'))
+            recipe.write_text('version two')
+            self.assertNotEqual(original, cache.context_key(context, 'amd64'))
+            recipe.write_text('version one')
+            recipe.chmod(0o755)
+            self.assertNotEqual(original, cache.context_key(context, 'amd64'))
+            recipe.chmod(0o644)
+            recipe.rename(context / 'renamed')
+            self.assertNotEqual(original, cache.context_key(context, 'amd64'))
+            (context / 'external').symlink_to(root / 'application.cpp')
+            with self.assertRaises(ValueError):
+                cache.context_key(context, 'amd64')
+
+    def lookup(self, status, digest=None):
+        def opener(request, timeout):
+            if request.full_url.endswith('/v2/'):
+                return Response()
+            if status != 200:
+                raise urllib.error.HTTPError(request.full_url, status, 'test', {}, None)
+            return Response({'Docker-Content-Digest': digest} if digest else {})
+        return cache.registry_digest('registry.example/project/portable-deps:amd64-key', opener)
+
+    def test_authenticated_lookup(self):
+        calls = []
+        def opener(request, timeout):
+            calls.append(request)
+            if request.full_url.endswith('/v2/'):
+                raise urllib.error.HTTPError(request.full_url, 401, 'auth', {
+                    'WWW-Authenticate': 'Bearer realm="https://gitlab.com/jwt/auth",service="container_registry"'}, None)
+            if request.full_url.startswith('https://gitlab.com/jwt/auth?'):
+                self.assertEqual(request.get_header('Authorization'), 'Basic dXNlcjpwYXNz')
+                return io.BytesIO(b'{"token":"test-token"}')
+            self.assertEqual(request.get_header('Authorization'), 'Bearer test-token')
+            return Response({'Docker-Content-Digest': 'sha256:' + 'a' * 64})
+        with patch.dict(cache.os.environ, {'CI_REGISTRY_USER': 'user', 'CI_REGISTRY_PASSWORD': 'pass'}):
+            result = cache.registry_digest('registry.gitlab.com/project/deps:key', opener)
+        self.assertEqual(len(calls), 3)
+        self.assertIn('@sha256:', result)
+
+    def test_untrusted_auth_realm(self):
+        def opener(request, timeout):
+            raise urllib.error.HTTPError(request.full_url, 401, 'auth', {
+                'WWW-Authenticate': 'Bearer realm="https://other.example/token"'}, None)
+        with self.assertRaisesRegex(RuntimeError, 'Untrusted'):
+            cache.registry_digest('registry.gitlab.com/project/deps:key', opener)
+
+    def test_hit_is_immutable(self):
+        digest = 'sha256:' + 'a' * 64
+        self.assertEqual(self.lookup(200, digest), 'registry.example/project/portable-deps@' + digest)
+
+    def test_only_missing_is_cache_miss(self):
+        self.assertIsNone(self.lookup(404))
+        for status in (401, 403, 429, 500, 503):
+            with self.assertRaises(urllib.error.HTTPError):
+                self.lookup(status)
+        with self.assertRaises(RuntimeError):
+            self.lookup(200)
+
+if __name__ == '__main__':
+    unittest.main()
