@@ -9,7 +9,10 @@ COPY builder/scripts $SCRIPTS_DIR
 ARG OUTPUT_OWNER_UID
 RUN $SCRIPTS_DIR/add-docker-user "$OUTPUT_OWNER_UID"
 
-COPY --chown=$OUTPUT_OWNER_UID  kasmweb/ /src/www
+RUN mkdir -p /src/www && chown "$OUTPUT_OWNER_UID" /src/www
+COPY --chown=$OUTPUT_OWNER_UID builder/www-source.tar.gz builder/www-source-revision /src/
+RUN tar -xzf /src/www-source.tar.gz -C /src/www
+COPY --chown=$OUTPUT_OWNER_UID builder/www-supply-chain.mjs /src/www/.kasm-supply-chain.mjs
 COPY --chown=$OUTPUT_OWNER_UID  builder/build-www-inside-docker /src/
 
 WORKDIR /src/www

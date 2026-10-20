@@ -17,9 +17,8 @@ prepare_source() {
 
     LIBSTATGRAB_RELEASE="${LIBSTATGRAB_RELEASE:-LIBSTATGRAB_0_92_1}"
 
-    curl -Ls "https://github.com/libstatgrab/libstatgrab/archive/${LIBSTATGRAB_RELEASE}.tar.gz" | \
-
-    tar xzvf - -C ${DIR}/ --strip-components=1
+    curl -fLsS --retry 3 "https://github.com/libstatgrab/libstatgrab/archive/${LIBSTATGRAB_RELEASE}.tar.gz" -o "/tmp/libstatgrab-${LIBSTATGRAB_RELEASE}.tar.gz"
+    tar xzvf "/tmp/libstatgrab-${LIBSTATGRAB_RELEASE}.tar.gz" -C ${DIR}/ --strip-components=1
     cd ${DIR}
 }
 

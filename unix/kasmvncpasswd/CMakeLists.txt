@@ -18,7 +18,7 @@ target_link_libraries(kasmvncpasswd ${kasmvnc_crypt_library} ${KASMVNC_CRYPTO_LI
 
 if(KASMVNC_STATIC_RUNTIME_PREFIX)
   set_target_properties(kasmvncpasswd PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  set_property(TARGET kasmvncpasswd APPEND_STRING PROPERTY LINK_FLAGS " -pie -Wl,--as-needed")
+  set_property(TARGET kasmvncpasswd APPEND_STRING PROPERTY LINK_FLAGS " -pie -Wl,--as-needed -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/kasmvncpasswd.link-map")
 endif()
 
 install(TARGETS kasmvncpasswd DESTINATION ${BIN_DIR})

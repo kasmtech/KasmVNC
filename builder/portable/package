@@ -63,6 +63,8 @@ dpkg-deb --root-owner-group -Zgzip --build "$debugroot" "/artifacts/$basename.db
 rm -rf "$debugroot/DEBIAN"
 builder/portable/audit.py "$root" "$arch" "$doc/elf-audit.json"
 builder/portable/provenance.py "$doc" "$arch"
+builder/portable/supply-chain.py "$doc" "$arch" "/artifacts/$basename"
+builder/portable/scan "/artifacts/$basename"
 # Source snapshots can come from restrictive developer umasks. Installed code,
 # Perl modules and web assets must be readable by ordinary desktop users.
 find "$root" -type d -exec chmod 755 {} +
@@ -174,4 +176,6 @@ cp "$doc/elf-audit.json" "/artifacts/$basename.elf-audit.json"
 cd /artifacts
 sha256sum "$basename.deb" "$basename.rpm" "$basename.tar.gz" \
   "$basename.provenance.json" "$basename.elf-audit.json" \
-  "$basename.dbgsym.deb" "$basename.debuginfo.rpm" "$basename.debug.tar.gz" "$basename.debug.json" > "$basename.sha256"
+  "$basename.dbgsym.deb" "$basename.debuginfo.rpm" "$basename.debug.tar.gz" "$basename.debug.json" \
+  "$basename.cdx.json" "$basename.sources.json" "$basename.sources.tar.gz" \
+  "$basename.vulnerabilities.json" "$basename.vulnerability-summary.json" > "$basename.sha256"

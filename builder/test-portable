@@ -58,6 +58,12 @@ for checksum in artifact_dir.glob('*.sha256'):
             continue
         digest, filename = line.split(maxsplit=1)
         target = (artifact_dir/filename.lstrip('*')).resolve()
+        # Sources are checksum-published to S3 but deliberately excluded from
+        # GitLab artifacts to avoid 31 redundant large downloads. No runtime,
+        # debug, SBOM or report artifact may be missing.
+        source_archive = checksum.name.removesuffix('.sha256') + '.sources.tar.gz'
+        if filename.lstrip('*') == source_archive and not target.exists():
+            continue
         if artifact_dir not in target.parents or hashlib.sha256(target.read_bytes()).hexdigest() != digest:
             raise SystemExit('Published artifact checksum mismatch: '+filename)
 run(['docker', 'info', '--format', '{{.Architecture}}'], log=results/'docker-architecture.txt')

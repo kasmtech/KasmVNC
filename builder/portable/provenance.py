@@ -42,7 +42,8 @@ for base in sorted({Path(os.environ.get("KASMVNC_RUNTIME_SOURCES", "/tmp/static-
                     shutil.copy2(notice, dest / notice.name)
 # Retained distro archives carry distro security backports; preserve their exact
 # package versions and installed license notices alongside source-built notices.
-shutil.copytree("/usr/share/licenses", licenses / "builder-rpm-licenses", dirs_exist_ok=True)
+# Embedded RPM license notices are selected by supply-chain.py from link evidence.
+# Keep builder inventory for diagnostics only; it is not the runtime SBOM.
 rpms = subprocess.check_output(["rpm", "-qa", "--qf", "%{NAME}\t%{VERSION}-%{RELEASE}\t%{ARCH}\t%{LICENSE}\n"], text=True)
 (doc / "builder-rpms.tsv").write_text(rpms)
 manifest = {"format": "kasmvnc-portable-build-provenance-v1", "revision": os.environ["KASMVNC_COMMIT_ID"],

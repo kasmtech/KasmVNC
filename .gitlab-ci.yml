@@ -186,13 +186,14 @@ build_www:
   before_script:
     - *prepare_build
   script:
+    - apt-get install -y git
     - builder/build-www
     - mkdir -p output/www
     - cd builder
     - echo $PWD
     - ls -l
     - ls -l ../output
-    - tar -zcvf ../output/www/kasm_www.tar.gz www
+    - tar -zcvf ../output/www/kasm_www.tar.gz www www-supply-chain
   only:
     variables:
       - $BUILD_DISTROS_REGEX !~ /^none$/
@@ -477,6 +478,10 @@ build_workspace_noble_arm64:
   artifacts:
     when: always
     paths: [output/]
+    # Published to S3 above; avoid redownloading source bundles in every distro test.
+    exclude: ["output/**/*.sources.tar.gz"]
+    reports:
+      cyclonedx: ["output/portable_*/*.cdx.json"]
   rules:
     - if: '$BUILD_PORTABLE == "false" || $BUILD_DISTROS_REGEX == "none"'
       when: never

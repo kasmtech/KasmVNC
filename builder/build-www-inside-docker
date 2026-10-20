@@ -1,10 +1,12 @@
 #!/bin/sh
 
+set -eu
+
 # clear previous build
 rm -rf /build/*
 
-# build webpack
-npm run build
+# Build web assets and their source/dependency inventory.
+node .kasm-supply-chain.mjs
 
 # copy all to build dir
 cp -R ./dist/* /build/

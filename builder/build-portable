@@ -4,6 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 test -s builder/www/index.html || { echo 'Run builder/build-www first' >&2; exit 1; }
 revision=${KASMVNC_COMMIT_ID:-$(git rev-parse HEAD)}
+[[ "$revision" == "$(git rev-parse HEAD)" ]] || { echo "Portable source revision must match HEAD" >&2; exit 1; }
+git diff --quiet HEAD -- . || { echo "Commit tracked changes before creating portable source artifacts" >&2; exit 1; }
 branch=${CI_COMMIT_REF_NAME:-$(git branch --show-current)}
 version=${KASMVNC_PORTABLE_VERSION:-$(.ci/next_release_version "$branch")}
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid release version' >&2; exit 1; }
@@ -51,6 +53,8 @@ run_logged() {
   # Emit one bounded progress line per minute while compilation produces output.
   "$@" 2>&1 | tee -a "$log" | python3 -u builder/portable/progress.py
 }
+# git archive omits gitlink contents, including the private functional-test repo.
+git archive --format=tar HEAD -o builder/portable/kasmvnc-source.tar
 run_logged 'create native builder image' docker build -f builder/dockerfile.el9.static -t "$image" .
 run_logged 'create packaging image' docker build -f builder/portable/Dockerfile --build-arg BUILDER_IMAGE="$image" -t "${image}-package" .
 container=$(docker create --entrypoint /src/builder/portable/build-inside-docker \

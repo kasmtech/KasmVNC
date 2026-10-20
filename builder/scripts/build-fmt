@@ -17,9 +17,8 @@ prepare_source() {
 
     FMT_RELEASE="${FMT_RELEASE:-12.2.0}"
 
-    curl -Ls "https://github.com/fmtlib/fmt/archive/${FMT_RELEASE}.tar.gz" | \
-
-    tar xzvf - -C ${DIR}/ --strip-components=1
+    curl -fLsS --retry 3 "https://github.com/fmtlib/fmt/archive/${FMT_RELEASE}.tar.gz" -o "/tmp/fmt-${FMT_RELEASE}.tar.gz"
+    tar xzvf "/tmp/fmt-${FMT_RELEASE}.tar.gz" -C ${DIR}/ --strip-components=1
     cd ${DIR}
 }
 

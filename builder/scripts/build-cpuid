@@ -18,9 +18,8 @@ prepare_source() {
 
     LIBCPUID_RELEASE="${LIBCPUID_RELEASE:-v0.8.1}"
 
-    curl -Ls "https://github.com/anrieff/libcpuid/archive/${LIBCPUID_RELEASE}.tar.gz" | \
-
-    tar xzvf - -C ${DIR}/ --strip-components=1
+    curl -fLsS --retry 3 "https://github.com/anrieff/libcpuid/archive/${LIBCPUID_RELEASE}.tar.gz" -o "/tmp/cpuid-${LIBCPUID_RELEASE}.tar.gz"
+    tar xzvf "/tmp/cpuid-${LIBCPUID_RELEASE}.tar.gz" -C ${DIR}/ --strip-components=1
     cd ${DIR}
 }
 

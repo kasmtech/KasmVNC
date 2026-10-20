@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+version=0.120.1
+# Official immutable release asset SHA256s, reviewed 2026-10-20:
+# https://github.com/anchore/grype/releases/tag/v0.120.1
+case $(uname -m) in
+  x86_64) arch=amd64; sha=0a9ee97ef5ae2ee953b0a80098105052e846cdbe319a57d808b519c33cd1343d ;;
+  aarch64) arch=arm64; sha=29f47391dc283aa79fcc38e65224cd61f64dec0ecfd0db7074128ebf8ff23514 ;;
+  *) exit 1 ;;
+esac
+curl -fLsS --retry 3 "https://github.com/anchore/grype/releases/download/v$version/grype_${version}_linux_${arch}.tar.gz" -o /tmp/grype.tar.gz
+echo "$sha  /tmp/grype.tar.gz" | sha256sum -c -
+tar -xzf /tmp/grype.tar.gz -C /usr/local/bin grype
+rm /tmp/grype.tar.gz
+grype version

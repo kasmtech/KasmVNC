@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Advisory findings; generation, database and scanner execution errors are fatal.
+set -euo pipefail
+basename=${1:?artifact basename required}
+export GRYPE_DB_REQUIRE_UPDATE_CHECK=true GRYPE_CHECK_FOR_APP_UPDATE=false
+grype "sbom:$basename.cdx.json" --output json --file "$basename.vulnerabilities.json"
+python3 - "$basename" <<'PY'
+from collections import Counter
+import hashlib, json, pathlib, sys
+base = sys.argv[1]
+report = json.loads(pathlib.Path(base + '.vulnerabilities.json').read_text())
+if not isinstance(report.get('matches'), list) or report.get('descriptor', {}).get('db', {}).get('status', {}).get('valid') is not True:
+    raise SystemExit('Scanner did not produce a valid report/database descriptor')
+summary = {'scanned_sbom_sha256': hashlib.sha256(pathlib.Path(base + '.cdx.json').read_bytes()).hexdigest(),
+           'policy': 'advisory: findings do not fail CI; scanner errors do',
+           'scanner': report['descriptor'],
+           'match_counts_by_severity': dict(Counter(m['vulnerability']['severity'] for m in report['matches'])),
+           'scope': 'Embedded native and web dependencies. Host packages/drivers are excluded and must be scanned in the deployed image.',
+           'interpretation': 'Matches require review for backports, enabled features and reachability; no match is not proof of absence.'}
+pathlib.Path(base + '.vulnerability-summary.json').write_text(json.dumps(summary, indent=2) + '\n')
+print(json.dumps(summary['match_counts_by_severity']))
+PY

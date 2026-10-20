@@ -121,7 +121,7 @@ def main():
     linked = [resolve(arg) for arg in arguments + closure]
     # GCC adds libgomp for -fopenmp; explicit archive resolves its references,
     # and --as-needed prevents a redundant DT_NEEDED on the implicit DSO.
-    flags = ['-pie', '-static-libgcc', '-static-libstdc++', '-Wl,--as-needed']
+    flags = ['-Wl,-Map=' + str(Path(output + '.link-map').resolve()), '-pie', '-static-libgcc', '-static-libstdc++', '-Wl,--as-needed']
     if env.get('KASMVNC_GCC_RUNTIME_PREFIX'):
         gccdir = str(Path(env['KASMVNC_GCC_RUNTIME_PREFIX']) / 'lib')
         for name in ('libgcc.a', 'libgcc_eh.a'):
@@ -134,7 +134,7 @@ def main():
             {Path(p).name for p in archives} | {'libstdc++.a', 'libgcc.a', 'libgcc_eh.a'})))
     final = compiler + flags + ['-Wl,--start-group'] + linked + ['-Wl,--end-group']
     Path(output + '.static-link.json').write_text(json.dumps({
-        'archives': sorted(archives), 'allowed_shared': sorted(shared),
+        'archives': sorted(archives), 'cwd': str(Path.cwd()), 'allowed_shared': sorted(shared),
         'private_archive_copies': private_archives,
         'symbol_renames': {'XkbFreeGeomOverlayKeys': 'kasm_x11_XkbFreeGeomOverlayKeys'}
             if private_archives else {},

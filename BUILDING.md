@@ -621,4 +621,12 @@ Public rollout remains subject to manual host/kernel/GPU validation.
 
 Separate build-ID debug symbols are published in DEB, RPM and tar formats, with
 checksums and a `.debug.json` mapping. See `DEBUGGING.md` for exact-build matching
-and the existing crashpad lookup. SBOM work is deferred; provenance is not an SBOM.
+and the existing crashpad lookup. Portable SBOM, source-bundle and advisory scan
+artifacts are described in `builder/portable/README.md`.
+
+Portable builds also publish a CycloneDX SBOM, exact source-input bundle and
+advisory vulnerability reports for each architecture. Generation, source
+verification and scanner execution errors fail CI; vulnerability findings are
+reported without an initial severity gate. See
+[`builder/portable/README.md`](builder/portable/README.md#sbom-source-inputs-and-advisory-vulnerability-reports)
+for scope, host dependencies, source limitations and artifact names.

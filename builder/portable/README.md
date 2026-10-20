@@ -37,8 +37,8 @@ All shipped ELF executables are checked for architecture, PIE, unexpected
 dynamic dependencies, search paths, and a maximum glibc ABI requirement of 2.34.
 The adjacent checksum and provenance files identify the build inputs and ELF
 boundary. Installed documentation includes dependency license notices and the
-builder RPM inventory. This provenance is not a complete SBOM or vulnerability
-assessment. Embedded dependencies require rebuilding KasmVNC for security fixes;
+builder RPM inventory (build provenance only). The separate CycloneDX SBOM
+and advisory scan reports are described below. Embedded dependencies require rebuilding KasmVNC for security fixes;
 host package updates do not patch them. A public release still requires review
 of corresponding-source distribution and all embedded dependency licenses.
 
@@ -62,4 +62,67 @@ Public rollout remains subject to manual host/kernel/GPU validation.
 
 Separate build-ID debug symbols are published in DEB, RPM and tar formats, with
 checksums and a `.debug.json` mapping. See `DEBUGGING.md` for exact-build matching
-and the existing crashpad lookup. SBOM work is deferred; provenance is not an SBOM.
+and the existing crashpad lookup.
+
+## SBOM, source inputs and advisory vulnerability reports
+
+Each architecture publishes the following alongside its runtime and debug
+packages under the same S3 commit directory:
+
+* `.cdx.json`: CycloneDX 1.6 JSON for embedded native components, vendored code
+  and the web client's actually bundled npm dependencies. The same application
+  inventory applies to the DEB, RPM and tarball; packaging metadata differs.
+* `.sources.tar.gz` and `.sources.json`: exact source inputs and their hashes,
+  native link evidence, build revision, host requirements and known limitations.
+* `.vulnerabilities.json` and `.vulnerability-summary.json`: Grype findings,
+  scanner/database metadata and advisory severity counts.
+
+The existing `.sha256` manifest covers these artifacts too. Source archives are
+uploaded to S3 but excluded from GitLab's build artifact ZIP so every distro test
+need not download them. The matrix permits only that specific source archive to
+be absent; all other listed artifacts still require checksum verification.
+
+Native inventory comes from GNU ld's selected archive-member evidence for all
+four executables, including compiler runtimes and CRT objects. It maps packaged
+archives to their installed RPM versions and source RPMs, rather than treating
+`rpm -qa` as a list of shipped software. Unknown native inputs or missing source
+fail packaging. Source RPMs must have the exact expected identity and a trusted
+RPM signature. They retain the distribution's patches/specs; a plain upstream
+release would not be the corresponding source for a backported distro archive.
+Source-built inputs retain their release archives or exact Git snapshots,
+license notices, and hashes. KasmVNC's tracked source archive supplies its
+patches and build scripts; the private functional-test repository is omitted.
+The web build separately records rendered module identities and hashes every
+shipped asset, and native packaging verifies that handoff before publishing.
+
+Host glibc, Perl/modules, desktop tools/data and GPU loaders/drivers remain host
+requirements, not builder-versioned runtime components in this SBOM. Scan the
+final deployed image separately to cover them. A linked library entry does not
+mean every upstream feature is enabled; archive/member selection and compiler
+optimization can remove unused code.
+
+Grype 0.120.1 is pinned by architecture-specific SHA256. Vulnerability findings
+are initially advisory and do not fail the build. Failure to produce the SBOM,
+retrieve/validate required sources, update/check the vulnerability database, or
+execute the scanner does fail the build. Review findings for enabled features,
+reachability and distribution backports; neither an upstream-version match nor
+an empty report establishes exploitability or safety. Reports record the DB
+used, so later scans may differ without a binary change.
+
+Read the `limitations` fields before any public release. Some vendored sources
+have no independently verified upstream release number and may not match
+vulnerability databases. The existing QOI WebAssembly asset currently has
+unverified corresponding source/license provenance; it is explicitly recorded
+by SHA256, not silently represented as audited source. Included source material
+and notices support compliance review, but do not certify that every legal
+obligation has been satisfied. In particular, the source bundle is not claimed
+to close a recorded source gap or to make the build bit-for-bit reproducible.
+
+Portable artifact generation requires committed tracked sources and a revision
+matching `HEAD`, so Docker's build inputs cannot silently differ from the
+published KasmVNC source snapshot. The source bundle preserves dependency
+inputs, but `builder/build-portable` still uses online repositories. Reproducing
+the recorded inputs requires restoring the included archives and Git revisions
+(in particular the resolved `libyuv` revision), not fetching floating branches.
+CRT-only entries such as `glibc-devel` or a GCC compiler package describe
+embedded startup objects; they do not mean all of libc or GCC is linked in.
