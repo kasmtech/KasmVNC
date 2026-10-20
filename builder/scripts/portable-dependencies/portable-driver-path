@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Set and verify portable host-driver defaults; upstream env overrides still win."""
 import argparse
+import os
 import pathlib
 import platform
 import re
@@ -12,6 +13,9 @@ parser.add_argument('--verify', type=pathlib.Path, action='append', default=[])
 args = parser.parse_args()
 triplet = {'x86_64': 'x86_64-linux-gnu', 'aarch64': 'aarch64-linux-gnu'}[args.arch]
 paths = f'/usr/lib/{triplet}/dri:/usr/lib64/dri:/usr/lib/dri'
+if os.environ.get('KASMVNC_LIBC') == 'musl':
+    # Alpine 3.21 retains the Xorg module layout; newer releases use /usr/lib/dri.
+    paths += ':/usr/lib/xorg/modules/dri'
 if args.header:
     original = args.header.read_text()
     updated, count = re.subn(r'^#define DRI_DRIVER_PATH "[^"\n]*"$',
