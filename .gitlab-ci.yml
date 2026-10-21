@@ -172,18 +172,21 @@ functional_test_standard:
   stage: functional_test
   image: python:3.13-slim-trixie
   services: []
-  timeout: 60m
+  timeout: 90m
   retry: 0
   variables:
     FUNCTIONAL_TEST_TIER: "standard"
   needs:
     - job: build_portable_amd64
       optional: true
+    - job: build_portable_musl_amd64
+      optional: true
   before_script:
     - . .ci/helpers.sh
     - prepare_to_run_scripts_and_s3_uploads
     - apt-get install -y --no-install-recommends openssh-client ca-certificates
-    - pip install --no-cache-dir -r kasmvnc-functional-tests/requirements-vm.txt
+    - python -m venv kasmvnc-functional-tests/.vm/venv
+    - kasmvnc-functional-tests/.vm/venv/bin/python -m pip install --no-cache-dir -r kasmvnc-functional-tests/requirements-vm.txt
   script:
     - prepare_standard_functional_tests
     - >-
@@ -191,7 +194,7 @@ functional_test_standard:
       (export AWS_ACCESS_KEY_ID="${EC2_LAUNCHER_ID:-$AWS_ACCESS_KEY_ID}"
       AWS_SECRET_ACCESS_KEY="${EC2_LAUNCHER_SECRET:-$AWS_SECRET_ACCESS_KEY}";
       if [ -n "${EC2_LAUNCHER_ID:-}" ]; then unset AWS_SESSION_TOKEN AWS_SECURITY_TOKEN; fi;
-      python -m virtualization.standard --state .vm/state.json --report-dir report
+      .vm/venv/bin/python -m virtualization.matrix --state .vm/state.json --report-dir report
       --package-deb "$FUNCTIONAL_TEST_DEB" --package-rpm "$FUNCTIONAL_TEST_RPM");
       exit_code=$?; set -e
     - upload_report_to_s3
@@ -204,14 +207,14 @@ functional_test_standard:
       (export AWS_ACCESS_KEY_ID="${EC2_LAUNCHER_ID:-$AWS_ACCESS_KEY_ID}"
       AWS_SECRET_ACCESS_KEY="${EC2_LAUNCHER_SECRET:-$AWS_SECRET_ACCESS_KEY}";
       if [ -n "${EC2_LAUNCHER_ID:-}" ]; then unset AWS_SESSION_TOKEN AWS_SECURITY_TOKEN; fi;
-      python -m virtualization cleanup --state .vm/state.json);
+      .vm/venv/bin/python -m virtualization cleanup --state .vm/state.json);
       fi
   artifacts:
     when: always
     expire_in: 14 days
     paths: [kasmvnc-functional-tests/report/]
     reports:
-      junit: kasmvnc-functional-tests/report/*/junit.xml
+      junit: kasmvnc-functional-tests/report/*/*/junit.xml
   rules:
     - if: '$BUILD_PORTABLE == "false" || $BUILD_DISTROS_REGEX == "none"'
       when: never

@@ -350,6 +350,12 @@ prepare_standard_functional_tests() {
   export FUNCTIONAL_TEST_DEB="$(realpath "${deb_packages[0]}")"
   export FUNCTIONAL_TEST_RPM="$(realpath "${rpm_packages[0]}")"
   prepare_functional_tests_source_and_cd_into_it
+  # Preflight this pipeline's exact published DEB/RPM/APK and pinned APK key
+  # before launching hosts. Never resolve another pipeline as a fallback.
+  python3 -m runner.resolve_candidate --output-dir candidate || return 1
+  export KASMVNC_ALPINE_KEY_SHA256
+  KASMVNC_ALPINE_KEY_SHA256=$(python3 -c 'import json; print(json.load(open("candidate/candidate.json"))["signing_key"]["sha256"])') || return 1
+  cp candidate/candidate.json report/candidate.json
 }
 
 prepare_to_run_functional_tests() {
