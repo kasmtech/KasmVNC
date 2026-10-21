@@ -206,7 +206,14 @@ fi
 find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
 
 
-make -j"$(nproc)"
+# Portable packages ship the standalone Xvnc, never the loadable Xorg module.
+# Linking that module repeats the static codec archives' LTO work and competes
+# with Xvnc for CPU/memory. Keep the traditional build's default targets intact.
+xserver_make_options=()
+if [[ ${KASMVNC_BUILD_XORG_MODULE:-1} == 0 ]]; then
+  xserver_make_options+=(libvnc_la_LTLIBRARIES=)
+fi
+make -j"$(nproc)" "${xserver_make_options[@]}"
 
 # modifications for the servertarball
 cd /src

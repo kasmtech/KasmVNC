@@ -304,3 +304,22 @@ for the complete build context, security refresh and registry retention policy.
 Use `builder/build-portable --libc musl` for the native Alpine profile. It shares
 source recipes and cache orchestration with glibc, but builds separate musl archives.
 See [musl builds, installation, signing and maintenance](musl/README.md).
+
+### Cached launcher spec environment
+
+`spec_dependencies` prepares a registry image in parallel with package builds.
+Its key covers the architecture, `builder/spec-dependencies/` recipes and refresh
+marker, and the root `Pipfile` and `Pipfile.lock`. It caches desktop prerequisites,
+Pipenv, and the locked Python environment; it never contains a KasmVNC package or
+test checkout. Increment the refresh marker to refresh distro packages/base image.
+
+`builder/test-vncserver` resolves that image by immutable digest, installs the
+current build's DEB, and mounts the current checkout for every run. Registry
+errors fail closed; only a missing manifest triggers a build. Local invocation
+uses Docker's local layer cache without publishing. Portable `spec_test` waits
+only for this environment and `build_portable_amd64`; legacy mode retains its
+legacy package dependencies. `builder/portable/test-spec-cache.py` exercises
+cache hits, misses, registry errors and recipe-label rejection.
+
+Keep `spec-dependencies` tags matching `^spec-(amd64|arm64)-[0-9a-f]{64}$`
+when configuring registry cleanup; deleting one safely causes a cold rebuild.

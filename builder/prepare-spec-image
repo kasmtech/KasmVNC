@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Cache only prerequisites: the current DEB and test checkout are always fresh.
+set -euo pipefail
+case $(uname -m) in
+  x86_64) arch=amd64 ;;
+  aarch64) arch=arm64 ;;
+  *) echo 'Unsupported spec architecture' >&2; exit 1 ;;
+esac
+context=$(mktemp -d)
+trap 'rm -rf "$context"' EXIT
+cp builder/spec-dependencies/* "$context/"
+cp Pipfile Pipfile.lock "$context/"
+key=$(python3 builder/portable/dependency-cache.py key "$context" "$arch")
+if [[ -n ${CI_REGISTRY_IMAGE:-} ]]; then
+  echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin >&2
+  reference="$CI_REGISTRY_IMAGE/spec-dependencies:spec-${arch}-${key}"
+  status=0
+  resolved=$(python3 builder/portable/dependency-cache.py lookup "$reference") || status=$?
+  if [[ $status == 3 ]]; then
+    echo "Spec dependency cache MISS: $key" >&2
+    docker build --pull --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" "$context" >&2
+    docker push "$reference" >&2
+    resolved=$(python3 builder/portable/dependency-cache.py lookup "$reference")
+  elif [[ $status != 0 ]]; then
+    echo 'Spec registry lookup failed; refusing an ambiguous rebuild' >&2
+    exit "$status"
+  else
+    echo "Spec dependency cache HIT: $key" >&2
+  fi
+  docker pull "$resolved" >&2
+else
+  reference="kasmvnc-spec-dependencies:${arch}-${key}"
+  docker build --pull --build-arg DEPENDENCY_CONTEXT_SHA="$key" -t "$reference" "$context" >&2
+  resolved=$reference
+fi
+[[ $(docker image inspect --format '{{index .Config.Labels "org.kasmweb.spec-dependency-key"}}' "$resolved") == "$key" ]] || {
+  echo 'Spec dependency image recipe label mismatch' >&2; exit 1;
+}
+printf '%s\n' "$resolved"

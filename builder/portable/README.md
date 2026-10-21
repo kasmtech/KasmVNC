@@ -236,3 +236,17 @@ source/SBOM pipeline. No libc ABI, compiler baseline or linkage policy changed.
 
 Container validation: `python3 builder/portable/test-gcc-cache.py` and
 `python3 builder/portable/test-dependency-cache.py` in a dedicated test container.
+
+### Application link cost
+
+Portable builds omit the loadable `libvnc` Xorg extension: the DEB, RPM, tar and
+APK packages ship the standalone `Xkasmvnc` executable and never install that
+extension. Traditional builds retain their existing targets. This avoids a
+second link of the static codec archives (including their embedded LTO work)
+competing with the executable link for CPU and memory.
+
+The static desktop linker reports wall time, child CPU time and peak child RSS
+in the build log. Peak RSS is the largest individual child process, not summed
+memory across concurrent LTO workers. These measurements distinguish the final
+link from compilation, audit, compression and source-bundle generation without
+changing compiler optimization flags or the runtime dependency allowlist.

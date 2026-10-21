@@ -15,7 +15,9 @@ else
   package_dir="builder/build/${os}_${os_codename}"
 fi
 
-docker build --build-arg KASMVNC_PACKAGE_DIR="$package_dir" \
+spec_base=$(builder/prepare-spec-image)
+
+docker build --build-arg SPEC_BASE_IMAGE="$spec_base" --build-arg KASMVNC_PACKAGE_DIR="$package_dir" \
   -t kasmvnctester_${os}:$os_codename \
   -f builder/dockerfile.${os}_${os_codename}.specs.test .
 docker run -v $(realpath ${PWD}):/src \

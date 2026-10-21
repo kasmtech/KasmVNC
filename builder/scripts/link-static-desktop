@@ -9,9 +9,11 @@ import json
 import os
 from pathlib import Path
 import re
+import resource
 import shlex
 import subprocess
 import sys
+import time
 
 
 def main():
@@ -142,7 +144,20 @@ def main():
         'symbol_renames': {'XkbFreeGeomOverlayKeys': 'kasm_x11_XkbFreeGeomOverlayKeys'}
             if private_archives else {},
         'command': final}, indent=2) + '\n')
-    return subprocess.call(final, env=env)
+    # Record the final link separately from compilation and package compression.
+    # Cached codec archives can carry LTO bytecode, so linking includes compiler
+    # work even when the application itself was built without -flto.
+    print(f'Static link starting: {output}', flush=True)
+    started = time.monotonic()
+    before = resource.getrusage(resource.RUSAGE_CHILDREN)
+    result = subprocess.call(final, env=env)
+    after = resource.getrusage(resource.RUSAGE_CHILDREN)
+    print(f'Static link complete: {output}; exit={result}; '
+          f'wall={time.monotonic() - started:.1f}s; '
+          f'user={after.ru_utime - before.ru_utime:.1f}s; '
+          f'system={after.ru_stime - before.ru_stime:.1f}s; '
+          f'peak_child_rss={after.ru_maxrss}KiB', flush=True)
+    return result
 
 
 if __name__ == '__main__':

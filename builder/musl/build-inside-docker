@@ -5,6 +5,7 @@ test -s builder/www/index.html
 export KASMVNC_LIBC=musl
 KASMVNC_PORTABLE_DRIVER_PATH=$(builder/scripts/portable-driver-path)
 export KASMVNC_PORTABLE_DRIVER_PATH
+export KASMVNC_BUILD_XORG_MODULE=0
 export CFLAGS="${CFLAGS:-} -g" CXXFLAGS="${CXXFLAGS:-} -g"
 builder/build-static-musl-inside-docker --no-servertarball
 builder/scripts/portable-driver-path \

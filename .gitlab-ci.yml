@@ -325,16 +325,39 @@ run_test_arm64:
   parallel:
     *parallel_matrix
 
+spec_dependencies:
+  stage: build
+  image: $DEBIAN_STABLE_IMAGE
+  tags:
+    - kasmvnc-x86
+  needs: []
+  resource_group: spec-dependencies-amd64
+  rules:
+    - if: '$BUILD_DISTROS_REGEX == "none"'
+      when: never
+    - when: on_success
+  before_script:
+    - *prepare_build
+  script:
+    - apt-get install -y python3
+    - python3 builder/portable/test-spec-cache.py
+    - builder/prepare-spec-image
+
 spec_test:
   stage: test
   image: $DEBIAN_STABLE_IMAGE
   tags:
     - kasmvnc-x86
-  needs:
-    - job: build_amd64
-      optional: true
-    - job: build_portable_amd64
-      optional: true
+  rules:
+    - if: '$BUILD_DISTROS_REGEX == "none"'
+      when: never
+    - if: '$BUILD_PORTABLE != "false"'
+      needs: [spec_dependencies, build_portable_amd64]
+    - when: on_success
+      needs:
+        - spec_dependencies
+        - job: build_amd64
+          optional: true
   before_script:
     - *prepare_build
   artifacts:
@@ -343,6 +366,7 @@ spec_test:
         - SelfBench.xml
         - Benchmark.xml
   script:
+    - apt-get install -y python3
     - |
       if [ "$BUILD_PORTABLE" != "false" ]; then
         KASMVNC_PACKAGE_DIR=output/portable_amd64 builder/test-vncserver

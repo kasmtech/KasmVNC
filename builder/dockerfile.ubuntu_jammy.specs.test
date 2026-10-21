@@ -1,18 +1,11 @@
-FROM ubuntu:jammy
+ARG SPEC_BASE_IMAGE
+FROM ${SPEC_BASE_IMAGE}
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && apt-get install -y vim less
-RUN apt-get update && apt-get install -y python3-pip
-RUN apt-get update && apt-get install -y strace silversearcher-ag xfonts-base
-RUN apt-get update && apt-get install -y cinnamon
-RUN apt-get update && apt-get install -y mate wget
-
-RUN useradd -m docker
+USER root
 
 ARG KASMVNC_PACKAGE_DIR
 COPY $KASMVNC_PACKAGE_DIR/kasmvncserver_*.deb /tmp/
-RUN apt-get install -y /tmp/*$(dpkg --print-architecture).deb
+RUN apt-get update && apt-get install -y /tmp/*$(dpkg --print-architecture).deb
 
 ENV USER docker
 ENV HOME /home/docker
@@ -20,9 +13,6 @@ ENV HOME /home/docker
 RUN chown -R 1000:0 $HOME
 USER 1000:ssl-cert
 WORKDIR $HOME
-
-RUN pip3 install --user pipenv
-RUN echo 'PATH="~/.local/bin/:$PATH"' >> ~/.bashrc
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
