@@ -342,7 +342,7 @@ prepare_standard_functional_tests() {
   export KASMVNC_ARTIFACT_BRANCH="$CI_COMMIT_REF_NAME"
   local -a deb_packages rpm_packages
   mapfile -t deb_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*_amd64.deb' -print)
-  mapfile -t rpm_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*.rpm' -print)
+  mapfile -t rpm_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*_amd64.rpm' -print)
   if [[ ${#deb_packages[@]} != 1 || ${#rpm_packages[@]} != 1 ]]; then
     echo 'Standard requires exactly one pipeline AMD64 portable DEB and RPM' >&2
     return 1
