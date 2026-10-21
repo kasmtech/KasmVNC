@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.4.2
+Version:        1.4.3
 Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
@@ -82,6 +82,8 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Tue Oct 20 2026 KasmTech <info@kasmweb.com> - 1.4.3-1
+- Upstream release
 * Fri Apr 24 2026 KasmTech <info@kasmweb.com> - 1.4.2-1
 - Fixed bug with server-side enforced idle-timeout.
 * Mon Dec 01 2025 KasmTech <info@kasmweb.com> - 1.4.1-1

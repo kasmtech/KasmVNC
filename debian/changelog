@@ -1,3 +1,9 @@
+kasmvnc (1.4.3-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Kasm Technologies LLC <info@kasmweb.com>  Tue, 20 Oct 2026 21:30:18 -0400
+
 kasmvnc (1.4.2-1) unstable; urgency=medium
 
   * Fixed bug with server-side enforced idle-timeout.

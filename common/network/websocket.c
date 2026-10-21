@@ -629,29 +629,55 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     char *start, *end;
     headers_t *headers = ws_ctx->headers;
     const uint8_t extralogs = !!strstr(handshake, "/websockify");
-    #define err(x) if (extralogs) { wserr("/websockify request failed websocket checks, " x "\n"); }
+
+#define err(x) if (extralogs) { wserr("/websockify request failed websocket checks, " x "\n"); }
+#define CHECK_PTR(x, msg)                           \
+    if (!(x)) {                                     \
+        err(msg);                                   \
+                                                    \
+        return 0;                                   \
+    }
+
+#define CHECK_HEADER_PART(x, msg)                   \
+    if ((size_t)(end - start) > sizeof(x) - 1) {    \
+        err(msg);                                   \
+                                                    \
+        return 0;                                   \
+    }
+
 
     headers->key1[0] = '\0';
     headers->key2[0] = '\0';
     headers->key3[0] = '\0';
 
-    if ((strlen(handshake) < 92) || (bcmp(handshake, "GET ", 4) != 0) ||
-        (!strcasestr(handshake, "Upgrade: websocket"))) {
+    if (strlen(handshake) < 92
+        || bcmp(handshake, "GET ", 4) != 0
+        || !strcasestr(handshake, "Upgrade: websocket")) {
         err("not a GET request, or missing Upgrade header");
         return 0;
     }
+
     start = handshake+4;
     end = strstr(start, " HTTP/1.1");
-    if (!end) { err("not HTTP"); return 0; }
-    strncpy(headers->path, start, end-start);
-    headers->path[end-start] = '\0';
+
+    CHECK_PTR(end, "not HTTP");
+    CHECK_HEADER_PART(headers->path, "request path exceeds allowed length");
+
+    strncpy(headers->path, start, end - start);
+    headers->path[end - start] = '\0';
 
     start = strcasestr(handshake, "\r\nHost: ");
-    if (!start) { err("missing Host header"); return 0; }
+
+    CHECK_PTR(start, "missing Host header");
+
     start += 8;
     end = strstr(start, "\r\n");
-    strncpy(headers->host, start, end-start);
-    headers->host[end-start] = '\0';
+
+    CHECK_PTR(end, "missing or malformed Host header");
+    CHECK_HEADER_PART(headers->host, "request host exceeds allowed length");
+
+    strncpy(headers->host, start, end - start);
+    headers->host[end - start] = '\0';
 
     headers->origin[0] = '\0';
     start = strcasestr(handshake, "\r\nOrigin: ");
@@ -659,10 +685,14 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         start += 10;
     } else {
         start = strcasestr(handshake, "\r\nSec-WebSocket-Origin: ");
-        if (!start) { err("missing Sec-WebSocket-Origin header"); return 0; }
+        CHECK_PTR(start, "missing Sec-WebSocket-Origin header");
         start += 24;
     }
     end = strstr(start, "\r\n");
+
+    CHECK_PTR(end, "missing or malformed Origin header");
+    CHECK_HEADER_PART(headers->origin, "Origin exceeds allowed length");
+
     strncpy(headers->origin, start, end-start);
     headers->origin[end-start] = '\0';
 
@@ -671,29 +701,51 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         // HyBi/RFC 6455
         start += 25;
         end = strstr(start, "\r\n");
+
+        CHECK_PTR(end, "missing or malformed Sec-WebSocket-Version header");
+        CHECK_HEADER_PART(headers->version, "Sec-WebSocket-Version exceeds allowed length");
+
         strncpy(headers->version, start, end-start);
         headers->version[end-start] = '\0';
         ws_ctx->hixie = 0;
         ws_ctx->hybi = strtol(headers->version, NULL, 10);
 
         start = strcasestr(handshake, "\r\nSec-WebSocket-Key: ");
-        if (!start) { err("missing Sec-WebSocket-Key header"); return 0; }
+
+        CHECK_PTR(start, "missing Sec-WebSocket-Key header");
+
         start += 21;
         end = strstr(start, "\r\n");
+
+        CHECK_PTR(end, "missing Sec-WebSocket-Key header");
+        CHECK_HEADER_PART(headers->key1, "request Sec-WebSocket-Key exceeds allowed length");
+
         strncpy(headers->key1, start, end-start);
         headers->key1[end-start] = '\0';
 
         start = strcasestr(handshake, "\r\nConnection: ");
-        if (!start) { err("missing Connection header"); return 0; }
+
+        CHECK_PTR(start, "missing Connection header");
+
         start += 14;
         end = strstr(start, "\r\n");
+
+        CHECK_PTR(end, "missing or malformed Connection header");
+        CHECK_HEADER_PART(headers->connection, "request Connection exceeds allowed length");
+
         strncpy(headers->connection, start, end-start);
         headers->connection[end-start] = '\0';
 
         start = strcasestr(handshake, "\r\nSec-WebSocket-Protocol: ");
-        if (!start) { err("missing Sec-WebSocket-Protocol header"); return 0; }
+
+        CHECK_PTR(start, "missing Sec-WebSocket-Protocol header");
+
         start += 26;
         end = strstr(start, "\r\n");
+
+        CHECK_PTR(end, "missing or malformed Sec-WebSocket-Protocol header");
+        CHECK_HEADER_PART(headers->protocols, "request Sec-WebSocket-Protocol exceeds allowed length");
+
         strncpy(headers->protocols, start, end-start);
         headers->protocols[end-start] = '\0';
     } else {
@@ -701,7 +753,9 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         ws_ctx->hybi = 0;
 
         start = strstr(handshake, "\r\n\r\n");
-        if (!start) { err("headers too large"); return 0; }
+
+        CHECK_PTR(start, "headers too large");
+
         start += 4;
         if (strlen(start) == 8) {
             ws_ctx->hixie = 76;
@@ -709,25 +763,38 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
             headers->key3[8] = '\0';
 
             start = strcasestr(handshake, "\r\nSec-WebSocket-Key1: ");
-            if (!start) { err("missing Sec-WebSocket-Key1 header"); return 0; }
+
+            CHECK_PTR(start, "missing Sec-WebSocket-Key1 header");
+
             start += 22;
             end = strstr(start, "\r\n");
+
+            CHECK_PTR(end, "missing or malformed Sec-WebSocket-Key1 header");
+            CHECK_HEADER_PART(headers->key1, "request Sec-WebSocket-Key1 exceeds allowed length");
+
             strncpy(headers->key1, start, end-start);
             headers->key1[end-start] = '\0';
 
             start = strcasestr(handshake, "\r\nSec-WebSocket-Key2: ");
-            if (!start) { err("missing Sec-WebSocket-Key2 header"); return 0; }
+
+            CHECK_PTR(start, "missing Sec-WebSocket-Key2 header");
+
             start += 22;
             end = strstr(start, "\r\n");
+
+            CHECK_PTR(end, "missing or malformed Sec-WebSocket-Key2 header");
+            CHECK_HEADER_PART(headers->key2, "request Sec-WebSocket-Key2 exceeds allowed length");
+
             strncpy(headers->key2, start, end-start);
             headers->key2[end-start] = '\0';
         } else {
             ws_ctx->hixie = 75;
         }
-
     }
 
-    #undef err
+#undef CHECK_HEADER_PART
+#undef CHECK_PTR
+#undef err
 
     return 1;
 }
