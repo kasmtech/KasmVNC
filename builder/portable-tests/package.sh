@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Package lifecycle operations inside disposable test containers only.
 set -euo pipefail
+# Each Docker RUN has a fresh environment; prerequisites.sh's setting does not
+# reach package installation (notably tzdata on the minimal CUDA base).
+export DEBIAN_FRONTEND=noninteractive
 action=${1:?}; format=${2:?}; package=${3:-}
 config=/etc/kasmvnc/kasmvnc.yaml
 marker='# portable-ci-config-preservation'

@@ -39,8 +39,18 @@ report = {'case': row, 'architecture': args.arch, 'source_matrix': manifest['sou
           'source_revision': manifest['source_revision'], 'formats': [], 'pass': False}
 
 def run(command, *, log=None, check=True, timeout=1200):
-    completed = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                               text=True, timeout=timeout)
+    try:
+        completed = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                   text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        # communicate() returns bytes on timeout even with text=True. Keep the
+        # partial build output so CI artifacts explain where a fixture stalled.
+        output = error.stdout or b''
+        if isinstance(output, bytes):
+            output = output.decode('utf-8', errors='replace')
+        if log:
+            Path(log).write_text(output)
+        raise RuntimeError('Command timed out: ' + ' '.join(command) + '\n' + output[-6000:]) from error
     if log:
         Path(log).write_text(completed.stdout)
     if check and completed.returncode:
