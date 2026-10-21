@@ -1,3 +1,9 @@
+kasmvnc (1.5.2-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Kasm Technologies LLC <info@kasm.com>  Tue, 20 Oct 2026 21:37:45 -0400
+
 kasmvnc (1.5.1-1) unstable; urgency=medium
 
   * Fixed Kasm Workspaces sessions failing to recover from unexpected connection drops. The web client now reconnects in place with bounded retries while preserving idle-timeout tracking.

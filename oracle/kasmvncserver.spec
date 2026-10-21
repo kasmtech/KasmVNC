@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.5.1
+Version:        1.5.2
 Release:        1%{?dist}
 Summary:        VNC server accessible from a web browser
 
@@ -83,6 +83,8 @@ cd $DST_MAN && ln -s vncpasswd.1 kasmvncpasswd.1;
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Tue Oct 20 2026 KasmTech <info@kasm.com> - 1.5.2-1
+- Upstream release
 * Mon Jul 27 2026 KasmTech <info@kasm.com> - 1.5.1-1
 - Fixed Kasm Workspaces sessions failing to recover from unexpected connection drops. The web client now reconnects in place with bounded retries while preserving idle-timeout tracking.
 - Fixed excessive server log output in newly generated user configurations by aligning their default log level with KasmVNC defaults.
