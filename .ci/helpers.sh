@@ -295,18 +295,19 @@ upload_directory_to_s3() {
 
 prepare_functional_tests_source_and_cd_into_it() {
   cd kasmvnc-functional-tests
-  mkdir output && chown 1000:1000 output
-  mkdir report && chown 1000:1000 report
+  mkdir -p output report
+  chown 1000:1000 output report
 }
 
 upload_report_to_s3() {
-  s3_tests_directory="kasmvnc/${CI_COMMIT_SHA}/tests"
-  upload_directory_to_s3 report "$s3_tests_directory" "$S3_BUCKET"
+  s3_tests_directory="kasmvnc/${CI_COMMIT_SHA}/tests/${FUNCTIONAL_TEST_TIER:-minimal}"
+  # Keep the report tree intact: screenshots, JSON and logs use relative links.
+  aws s3 cp report/ "s3://${S3_BUCKET}/${s3_tests_directory}/report/" --recursive
 }
 
 put_report_into_ci_pipeline() {
   local functional_tests_exit_code="$1"
-  local report_name="Functional%20test%20report"
+  local report_name="${FUNCTIONAL_TEST_TIER:-minimal}%20functional%20test%20report"
   local report_url="https://${S3_BUCKET}.s3.amazonaws.com/${s3_tests_directory}/report/index.html"
   local state="success"
   if [ "$functional_tests_exit_code" -ne 0 ]; then
@@ -316,13 +317,39 @@ put_report_into_ci_pipeline() {
 }
 
 prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages() {
+  local package_dir
+  local -a candidates
   if [[ "${BUILD_PORTABLE:-false}" != false ]]; then
-    # The private harness expects this directory; stage only the runtime DEB.
-    mkdir -p output/ubuntu_jammy
-    cp ../output/portable_amd64/*_amd64.deb output/ubuntu_jammy/
+    package_dir=../output/portable_amd64
   else
-    cp -r ../output/ubuntu_jammy output/
+    package_dir=../output/ubuntu_jammy
   fi
+  # Do not fall back to a previously published artifact when this pipeline's
+  # package is missing or ambiguous.
+  mapfile -t candidates < <(find "$package_dir" -maxdepth 1 -type f -name '*_amd64.deb' -print)
+  if [[ ${#candidates[@]} != 1 ]]; then
+    echo "Expected exactly one pipeline AMD64 runtime DEB in $package_dir" >&2
+    return 1
+  fi
+  export FUNCTIONAL_TEST_PACKAGE="$(realpath "${candidates[0]}")"
+}
+
+
+prepare_standard_functional_tests() {
+  detect_release_version
+  export KASMVNC_ARTIFACT_VERSION="$RELEASE_VERSION"
+  export KASMVNC_ARTIFACT_COMMIT="$CI_COMMIT_SHA"
+  export KASMVNC_ARTIFACT_BRANCH="$CI_COMMIT_REF_NAME"
+  local -a deb_packages rpm_packages
+  mapfile -t deb_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*_amd64.deb' -print)
+  mapfile -t rpm_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*.rpm' -print)
+  if [[ ${#deb_packages[@]} != 1 || ${#rpm_packages[@]} != 1 ]]; then
+    echo 'Standard requires exactly one pipeline AMD64 portable DEB and RPM' >&2
+    return 1
+  fi
+  export FUNCTIONAL_TEST_DEB="$(realpath "${deb_packages[0]}")"
+  export FUNCTIONAL_TEST_RPM="$(realpath "${rpm_packages[0]}")"
+  prepare_functional_tests_source_and_cd_into_it
 }
 
 prepare_to_run_functional_tests() {
@@ -344,7 +371,7 @@ heed_debug_variable_and_toggle_debug_in_functional_tests() {
 
 install_packages_needed_for_functional_tests() {
   prepare_to_run_scripts_and_s3_uploads
-  apt-get install -y tree docker.io
+  apt-get install -y tree docker.io docker-cli python3 curl ca-certificates
 }
 
 is_build_this_distro() {

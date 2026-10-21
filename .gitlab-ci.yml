@@ -18,6 +18,7 @@ variables:
   BUILD_PORTABLE: "true"
   # Opt in to rebuilding portable-capable distros for comparison/rollback.
   BUILD_FULL_LEGACY: "false"
+  WORKSPACE_IMAGE_TAG: "develop"
   # To debug upload stage, you can limit BUILD_DISTROS_REGEX to jammy and allow
   # run_test distros to fail, by setting ALLOW_RUN_TESTS_TO_FAIL to true.
   ALLOW_RUN_TESTS_TO_FAIL: false
@@ -130,6 +131,8 @@ default:
 
 functional_test:
   stage: functional_test
+  variables:
+    FUNCTIONAL_TEST_TIER: "minimal"
   image: $DEBIAN_STABLE_IMAGE
   tags:
     - oci-fixed-amd
@@ -138,7 +141,7 @@ functional_test:
     - . .ci/helpers.sh
   script:
     - prepare_to_run_functional_tests
-    - set +e; ./functional-test; exit_code=$?; set -e
+    - set +e; ./functional-test --tier minimal --package "$FUNCTIONAL_TEST_PACKAGE"; exit_code=$?; set -e
     - upload_report_to_s3
     - put_report_into_ci_pipeline "$exit_code"
     - exit "$exit_code"
@@ -149,18 +152,72 @@ functional_test:
       optional: true
   artifacts:
     paths:
-      - kasmvnc-functional-tests/output/
+      - kasmvnc-functional-tests/report/
+    when: always
+    expire_in: 14 days
     reports:
       junit:
-        - kasmvnc-functional-tests/report/*.xml
+        - kasmvnc-functional-tests/report/*/junit.xml
+  allow_failure: false
   rules:
-    # Allow functional tests to fail on feature branches.
-    - if: '$CI_COMMIT_REF_NAME =~ /^feature\//'
-      allow_failure: true
-      when: on_success
-
-    # Fail pipeline on all other branches, if functional tests fail.
     - when: on_success
+
+
+# Initial Standard qualification is opt-in. Set RUN_STANDARD=true to require
+# success for a qualification pipeline. MR merge gating needs a separate workflow
+# change: this repository currently excludes merge_request_event pipelines.
+functional_test_standard:
+  stage: functional_test
+  image: python:3.13-slim-trixie
+  services: []
+  timeout: 60m
+  retry: 0
+  variables:
+    FUNCTIONAL_TEST_TIER: "standard"
+  needs:
+    - job: build_portable_amd64
+      optional: true
+  before_script:
+    - . .ci/helpers.sh
+    - prepare_to_run_scripts_and_s3_uploads
+    - apt-get install -y --no-install-recommends openssh-client ca-certificates
+    - pip install --no-cache-dir -r kasmvnc-functional-tests/requirements-vm.txt
+  script:
+    - prepare_standard_functional_tests
+    - >-
+      set +e;
+      (export AWS_ACCESS_KEY_ID="${EC2_LAUNCHER_ID:-$AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY="${EC2_LAUNCHER_SECRET:-$AWS_SECRET_ACCESS_KEY}";
+      if [ -n "${EC2_LAUNCHER_ID:-}" ]; then unset AWS_SESSION_TOKEN AWS_SECURITY_TOKEN; fi;
+      python -m virtualization.standard --state .vm/state.json --report-dir report
+      --package-deb "$FUNCTIONAL_TEST_DEB" --package-rpm "$FUNCTIONAL_TEST_RPM");
+      exit_code=$?; set -e
+    - upload_report_to_s3
+    - put_report_into_ci_pipeline "$exit_code"
+    - exit "$exit_code"
+  after_script:
+    - cd "$CI_PROJECT_DIR/kasmvnc-functional-tests"
+    - >-
+      if [ -f .vm/state.json ]; then
+      (export AWS_ACCESS_KEY_ID="${EC2_LAUNCHER_ID:-$AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY="${EC2_LAUNCHER_SECRET:-$AWS_SECRET_ACCESS_KEY}";
+      if [ -n "${EC2_LAUNCHER_ID:-}" ]; then unset AWS_SESSION_TOKEN AWS_SECURITY_TOKEN; fi;
+      python -m virtualization cleanup --state .vm/state.json);
+      fi
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths: [kasmvnc-functional-tests/report/]
+    reports:
+      junit: kasmvnc-functional-tests/report/*/junit.xml
+  rules:
+    - if: '$BUILD_PORTABLE == "false" || $BUILD_DISTROS_REGEX == "none"'
+      when: never
+    - if: '$RUN_STANDARD == "true"'
+      when: on_success
+      allow_failure: false
+    - when: manual
+      allow_failure: true
 
 build_www:
   stage: www
