@@ -129,9 +129,17 @@ with tempfile.TemporaryDirectory() as tmp:
     scanner.write_text('''#!/usr/bin/env python3
 import json,sys
 from pathlib import Path
-Path(sys.argv[sys.argv.index('--file')+1]).write_text(json.dumps({"matches":[{"vulnerability":{"severity":"Critical"}}],"descriptor":{"db":{"status":{"valid":True}}}}))
+Path(sys.argv[sys.argv.index('--file')+1]).write_text(json.dumps({
+    "matches": [{"vulnerability": {"id": "CVE-2026-12345", "severity": "Critical"},
+                 "artifact": {"name": "fixture", "version": "1.0", "type": "binary"}}],
+    "descriptor": {"version": "0.104.4", "db": {"status": {"valid": True}}}}))
 ''')
     result = subprocess.run([str(Path(__file__).with_name('scan')), str(base / 'test')], env=env)
     assert result.returncode == 0
     assert json.loads((base / 'test.vulnerability-summary.json').read_text())['match_counts_by_severity'] == {'Critical': 1}
+    gitlab_report = json.loads((base / 'gl-dependency-scanning-report.json').read_text())
+    assert gitlab_report['scan']['status'] == 'success'
+    assert len(gitlab_report['vulnerabilities']) == 1
+    assert gitlab_report['vulnerabilities'][0]['severity'] == 'Critical'
+    assert (base / 'gl-sbom.cdx.json').read_bytes() == (base / 'test.cdx.json').read_bytes()
 print('PASS: frontend asset/source/notice integrity, nested and header-only notices, path traversal rejection, vendored headers, unknown actual link input, scanner errors, advisory critical findings')
