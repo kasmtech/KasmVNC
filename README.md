@@ -16,40 +16,91 @@ KasmVNC provides remote web-based access to a Desktop or application. While VNC 
 
 ## Installation
 
-Experimental portable DEB/RPM and tar packages are also built for x86_64 and
-ARM64 with glibc 2.34 or newer. See the [portable installation guide](builder/portable/README.md)
-for host dependencies and limitations. Existing distro packages remain the
-established installation option while broader manual qualification continues.
+Choose a package from the [release assets](https://github.com/kasmtech/KasmVNC/releases)
+for your CPU architecture and Linux distribution. Universal packages share one
+build across compatible distributions; legacy packages target an individual
+distribution release.
 
-**You must disconnect and reconnect to the server after installation, for the group membership to apply.**
+| Package | Compatible systems | Release asset name |
+| --- | --- | --- |
+| Universal DEB | Debian, Ubuntu, Kali and derivatives with **glibc 2.34 or newer** | `kasmvncserver_portable_…_<arch>.deb` |
+| Universal RPM | Fedora, RHEL-compatible systems and openSUSE with **glibc 2.34 or newer** | `kasmvncserver_portable_…_<arch>.rpm` |
+| Universal APK | **Alpine 3.21 or newer**, with musl 1.2.5 or newer | `kasmvncserver_portable_musl_…_<arch>.apk` |
+| Legacy distro package | Older systems such as Ubuntu 20.04, Oracle Linux 8 and openSUSE 15 | Select the asset named for your exact distribution and release |
 
-### Debian/Ubuntu/Kali
+Universal packages are available for **AMD64 (x86_64)** and **ARM64 (aarch64)**.
+The glibc AMD64 packages require an **x86-64-v2** CPU. Check `uname -m` for your
+architecture and `getconf GNU_LIBC_VERSION` for the glibc version on DEB/RPM
+systems. Alpine uses musl and requires the APK build; the DEB/RPM binaries are
+not interchangeable with it.
+
+Universal packages include the native C++ `vncserver` launcher and do not
+require Perl. They statically link application dependencies while retaining
+the host's libc and graphics drivers. Your package manager installs the
+remaining runtime dependencies; install your preferred desktop environment
+separately. Use a newer KasmVNC release to update its embedded libraries.
+Legacy packages retain their distro-specific dependencies and Perl launcher.
+
+Download the runtime package, rather than a debug-symbol package, and verify it
+against the release's checksum manifest. Replace the example filenames below
+with the exact files you downloaded. For upgrades, stop existing VNC sessions
+and back up `/etc/kasmvnc/kasmvnc.yaml` first. The installed package remains
+`kasmvncserver`, and the `vncserver` / `vncpasswd` commands and configuration
+locations remain the same.
+
+### Universal DEB: Debian / Ubuntu / Kali
+
 ```sh
-# Please choose the package for your distro here (under Assets):
-# https://github.com/kasmtech/KasmVNC/releases
-wget <package_url>
-
-sudo apt-get install ./kasmvncserver_*.deb
-
-# Add your user to the ssl-cert group
-sudo adduser $USER ssl-cert
+sudo apt-get install ./<downloaded-package>.deb
+sudo adduser "$USER" ssl-cert
 ```
 
-### Oracle 8
-```sh
-# Please choose the package for your distro here (under Assets):
-# https://github.com/kasmtech/KasmVNC/releases
-wget <package_url>
+### Universal RPM: Fedora / RHEL-compatible systems / openSUSE
 
-# Ensure KasmVNC dependencies are available
+```sh
+sudo dnf install ./<downloaded-package>.rpm
+sudo usermod -a -G kasmvnc-cert "$USER"
+```
+
+On openSUSE, use `sudo zypper install ./<downloaded-package>.rpm` in place of
+`dnf install`.
+
+### Universal APK: Alpine
+
+Obtain the APK and its accompanying public signing key from the same trusted
+release. Run these commands as root, substituting your desktop username:
+
+```sh
+install -m 644 <downloaded-signing-key>.rsa.pub /etc/apk/keys/kasmvnc_signing_key.rsa.pub
+apk verify ./<downloaded-package>.apk
+apk add --no-cache ./<downloaded-package>.apk
+addgroup <desktop-user> kasmvnc-cert
+```
+
+Keep signature verification enabled; `--allow-untrusted` is not needed.
+
+**Log out and log back in after adding your user to the certificate group.**
+This gives new sessions access to the TLS certificate's private key.
+
+### Legacy distro packages
+
+Use a legacy package when your distribution does not meet the universal
+package requirements. Choose the exact distribution, release and architecture
+from the release assets; availability depends on the KasmVNC release.
+Install legacy DEBs with `apt-get` and RPMs with your distro's package manager.
+
+Oracle Linux 8 requires its additional dependency repositories:
+
+```sh
 sudo dnf config-manager --set-enabled ol8_codeready_builder
 sudo dnf install oracle-epel-release-el8
-
-sudo dnf localinstall ./kasmvncserver_*.rpm
-
-# Add your user to the kasmvnc-cert group
-sudo usermod -a -G kasmvnc-cert $USER
+sudo dnf install ./<downloaded-oracle-8-package>.rpm
+sudo usermod -a -G kasmvnc-cert "$USER"
 ```
+
+See the [DEB/RPM and tar installation details](builder/portable/README.md) and
+[APK installation details](builder/musl/README.md) for host dependencies,
+manual tar installation, debug symbols and build information.
 
 
 ## Getting Started
