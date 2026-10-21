@@ -15,7 +15,8 @@ docker build --build-arg OUTPUT_OWNER_UID="$output_owner_uid" \
 
 deb_output_dir=$(cd .. && echo $PWD)
 
+repo_dir_name=$(basename "$PWD")
 docker run --rm -v "$deb_output_dir":/src -e BUILD_TAG="$build_tag" \
   --user "$output_owner_uid:$output_owner_gid" \
   "$builder_image" /bin/bash -c \
-  '/src/*/builder/build-deb-inside-docker'
+  "/src/$repo_dir_name/builder/build-deb-inside-docker"
