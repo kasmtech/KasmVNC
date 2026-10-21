@@ -133,6 +133,8 @@ functional_test:
   stage: functional_test
   variables:
     FUNCTIONAL_TEST_TIER: "minimal"
+    DOCKER_BUILDKIT: "1"
+    BUILDKIT_PROGRESS: "plain"
   image: $DEBIAN_STABLE_IMAGE
   tags:
     - oci-fixed-amd

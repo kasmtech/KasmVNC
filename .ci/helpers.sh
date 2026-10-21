@@ -371,7 +371,7 @@ heed_debug_variable_and_toggle_debug_in_functional_tests() {
 
 install_packages_needed_for_functional_tests() {
   prepare_to_run_scripts_and_s3_uploads
-  apt-get install -y tree docker.io docker-cli python3 curl ca-certificates
+  apt-get install -y tree docker.io docker-cli docker-buildx python3 curl ca-certificates
 }
 
 is_build_this_distro() {
