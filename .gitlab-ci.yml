@@ -9,11 +9,11 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_FORCE_HTTPS: "true"
   GIT_FETCH_EXTRA_FLAGS: --tags --force
-  # For example, BUILD_DISTROS_REGEX: "jammy|focal".
+  # For example, BUILD_DISTROS_REGEX: "jammy|noble".
   # "BUILD_DISTROS_REGEX: none" won't build any distros, nor www.
   # "BUILD_DISTROS_REGEX: all" would build all distros.
   # Make sure you quote any whitespace characters you use.
-  # E.g. BUILD_DISTROS_REGEX: "jammy|\ focal".
+  # E.g. BUILD_DISTROS_REGEX: "jammy|\ noble".
   BUILD_DISTROS_REGEX: all
   BUILD_PORTABLE: "true"
   # Opt in to rebuilding portable-capable distros for comparison/rollback.
@@ -73,10 +73,6 @@ stages:
 
 .parallel_matrix: &parallel_matrix
   matrix:
-      - DISTRO: 'ubuntu focal'
-        DISTRO_SLUG: 'ubuntu_focal'
-        LEGACY_REQUIRED: "true"
-        GROUP: 0
       - DISTRO: 'ubuntu jammy'
         DISTRO_SLUG: 'ubuntu_jammy'
         LEGACY_REQUIRED: "false"

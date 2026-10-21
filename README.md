@@ -26,7 +26,7 @@ distribution release.
 | Universal DEB | Debian, Ubuntu, Kali and derivatives with **glibc 2.34 or newer** | `kasmvncserver_portable_…_<arch>.deb` |
 | Universal RPM | Fedora, RHEL-compatible systems and openSUSE with **glibc 2.34 or newer** | `kasmvncserver_portable_…_<arch>.rpm` |
 | Universal APK | **Alpine 3.21 or newer**, with musl 1.2.5 or newer | `kasmvncserver_portable_musl_…_<arch>.apk` |
-| Legacy distro package | Older systems such as Ubuntu 20.04, Oracle Linux 8 and openSUSE 15 | Select the asset named for your exact distribution and release |
+| Legacy distro package | Older systems such as Oracle Linux 8 and openSUSE 15 | Select the asset named for your exact distribution and release |
 
 Universal packages are available for **AMD64 (x86_64)** and **ARM64 (aarch64)**.
 The glibc AMD64 packages require an **x86-64-v2** CPU. Check `uname -m` for your

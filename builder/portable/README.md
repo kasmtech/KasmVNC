@@ -44,8 +44,9 @@ of corresponding-source distribution and all embedded dependency licenses.
 ## Portable CI and legacy fallback
 
 The default pipeline builds glibc DEB/RPM/tar packages and separate musl APKs
-for amd64 and arm64. Native distro builds remain for Ubuntu Focal, Oracle 8
-and openSUSE 15. The 31 glibc cases and eight Alpine 3.21–3.24 cases are mandatory.
+for amd64 and arm64. Native distro builds remain for Oracle 8 and openSUSE 15.
+Ubuntu Focal is no longer built or tested in CI because workspaces-core-images
+no longer produces a Focal image. The 31 glibc cases and eight Alpine 3.21–3.24 cases are mandatory.
 Functional and vncserver specification tests consume the portable amd64 DEB.
 Set `BUILD_FULL_LEGACY=true` to additionally build/test the other non-Alpine
 traditional distros. `BUILD_PORTABLE=false` disables both portable profiles,
@@ -55,8 +56,8 @@ per-release Alpine build jobs have been retired.
 `BUILD_DISTROS_REGEX` still filters legacy builds; it does not narrow the portable
 test matrix. Its special `none` value disables portable builds as before.
 
-This reduces feature-branch jobs from 101 to 59 and package builds from 34 to 10
-compared with the combined portable/legacy pipeline after Nix was removed.
+The default feature-branch pipeline has 56 jobs and eight package builds,
+including the cached spec-environment preparation job.
 Compare total job duration (runner time), pipeline wall time, and artifact bytes
 against the prior successful pipeline; counts alone do not predict time savings.
 Public rollout remains subject to manual host/kernel/GPU validation.
