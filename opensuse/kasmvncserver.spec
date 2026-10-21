@@ -1,5 +1,5 @@
 Name:           kasmvncserver
-Version:        1.5.1
+Version:        1.5.2
 Release:        leap15
 Summary:        VNC server accessible from a web browser
 
@@ -115,6 +115,8 @@ stop_vncserver_systemd_services_for_all_logged_in_users
 %doc /usr/share/doc/kasmvncserver/README.md
 
 %changelog
+* Tue Oct 20 2026 KasmTech <info@kasm.com> - 1.5.2-leap15
+- Upstream release
 * Mon Jul 27 2026 KasmTech <info@kasm.com> - 1.5.1-leap15
 - Fixed Kasm Workspaces sessions failing to recover from unexpected connection drops. The web client now reconnects in place with bounded retries while preserving idle-timeout tracking.
 - Fixed excessive server log output in newly generated user configurations by aligning their default log level with KasmVNC defaults.

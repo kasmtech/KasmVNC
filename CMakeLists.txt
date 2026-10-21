@@ -74,6 +74,38 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
 # Tell the compiler to be stringent
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wformat=2")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wformat=2")
+
+# Hardening: fortified libc calls, stack protector and stack-clash probes (see KSN-2026-006)
+# Each part can be turned off on its own. The _FORTIFY_SOURCE level is chosen by
+# builder/build.sh from the target glibc; level 2 is the fallback for direct cmake
+# runs, since level 3 needs glibc 2.33+. Level 0 disables fortification (musl).
+option(ENABLE_FORTIFY_SOURCE "Define _FORTIFY_SOURCE in optimized builds" ON)
+option(ENABLE_STACK_PROTECTOR "Build with -fstack-protector-strong" ON)
+option(ENABLE_STACK_CLASH_PROTECTION "Build with -fstack-clash-protection" ON)
+# DEFINED, not NOT: "0" is false in CMake and would otherwise be reset to 2.
+if(NOT DEFINED KASMVNC_FORTIFY_LEVEL)
+  set(KASMVNC_FORTIFY_LEVEL 2)
+endif()
+
+# _FORTIFY_SOURCE only has effect with optimization, so it is defined for optimized
+# build types only. Debug (-O0) builds get nothing from it and can trip -Werror.
+set(KASMVNC_OPTIMIZED_BUILD OFF)
+if(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo|MinSizeRel)$")
+  set(KASMVNC_OPTIMIZED_BUILD ON)
+endif()
+
+set(KASMVNC_HARDENING_FLAGS "")
+if(ENABLE_FORTIFY_SOURCE AND KASMVNC_OPTIMIZED_BUILD AND KASMVNC_FORTIFY_LEVEL GREATER 0)
+  string(APPEND KASMVNC_HARDENING_FLAGS " -D_FORTIFY_SOURCE=${KASMVNC_FORTIFY_LEVEL}")
+endif()
+if(ENABLE_STACK_PROTECTOR)
+  string(APPEND KASMVNC_HARDENING_FLAGS " -fstack-protector-strong")
+endif()
+if(ENABLE_STACK_CLASH_PROTECTION)
+  string(APPEND KASMVNC_HARDENING_FLAGS " -fstack-clash-protection")
+endif()
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}${KASMVNC_HARDENING_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}${KASMVNC_HARDENING_FLAGS}")
 # Make sure we catch these issues whilst developing
 IF(CMAKE_BUILD_TYPE MATCHES Debug)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
