@@ -30,6 +30,7 @@ build_and_install() {
         cp -r include/* /usr/include/
     else
         cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DCMAKE_CXX_FLAGS="-Wno-stringop-overflow" \
             -DTBB_TEST=OFF -DBUILD_SHARED_LIBS=OFF -GNinja .
         ninja -C build install
     fi
@@ -44,11 +45,10 @@ prepare_source() {
     if [ $older_release -eq 1 ]; then
         TBB_RELEASE="v2020.3.3"
     else
-        TBB_RELEASE=$(curl -sL "https://api.github.com/repos/uxlfoundation/oneTBB/releases/latest" \
-        | grep '"tag_name":' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
+        TBB_RELEASE="${TBB_RELEASE:-v2023.0.0}"
     fi
 
-    curl -Ls "https://github.com/uxlfoundation/oneTBB/archive/${TBB_RELEASE}.tar.gz" | \
+    curl -fLs "https://github.com/uxlfoundation/oneTBB/archive/${TBB_RELEASE}.tar.gz" | \
 
     tar xzvf - -C ${DIR}/ --strip-components=1
     cd ${DIR}
