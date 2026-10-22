@@ -27,46 +27,39 @@ EncCache::EncCache() {
 }
 
 EncCache::~EncCache() {
+    clear();
 }
 
 void EncCache::clear() {
-  std::map<EncId, const void *>::iterator it;
-  for (it = cache.begin(); it != cache.end(); it++)
-    free((void *) it->second);
-
-  cache.clear();
+    for (const auto &item : cache)
+        free(item.second.data);
+    cache.clear();
 }
 
 void EncCache::add(uint8_t type, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
                    uint32_t len, const void *data) {
+    const EncId id{type, x, y, w, h};
 
-  EncId id;
+    const auto [it, inserted] = cache.try_emplace(id, const_cast<void *>(data), len);
+    if (inserted)
+        return;
 
-  id.type = type;
-  id.x = x;
-  id.y = y;
-  id.w = w;
-  id.h = h;
-  id.len = len;
-
-  cache[id] = data;
+    Entry &entry = it->second;
+    if (entry.data != data) {
+        free(entry.data);
+        entry.data = const_cast<void *>(data);
+    }
+    entry.len = len;
 }
 
 const void *EncCache::get(uint8_t type, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
                           uint32_t &len) const {
+    EncId id{.type = type, .x = x, .y = y, .w = w, .h = h};
 
-  EncId id;
-
-  id.type = type;
-  id.x = x;
-  id.y = y;
-  id.w = w;
-  id.h = h;
-
-  std::map<EncId, const void *>::const_iterator it = cache.find(id);
+  const auto it = cache.find(id);
   if (it == cache.end())
-    return NULL;
+    return nullptr;
 
-  len = it->first.len;
-  return it->second;
+  len = it->second.len;
+  return it->second.data;
 }
