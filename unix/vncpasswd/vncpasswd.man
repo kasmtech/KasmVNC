@@ -2,7 +2,7 @@
 .SH NAME
 vncpasswd \- setup VNC users and passwords
 .SH SYNOPSIS
-\fBvncpasswd\fR -u [\fIusername\fR] [\fI-rwnod\fR] [\fIpasswd-file\fR]
+\fBvncpasswd\fR -u \fIusername\fR [\fI-rwnod\fR] [\fIpasswd-file\fR]
 .SH DESCRIPTION
 .B vncpasswd
 allows you to add users and passwords used to access VNC desktops. Multiple
