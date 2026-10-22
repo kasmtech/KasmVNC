@@ -40,7 +40,7 @@ Specify the username. Multiple users can be configured.
 .B \-r
 
 View permission. Allow the user to view remote desktop.
-This permission is also included with \fB-w\fR.
+This permission is included with \fB-w\fR.
 
 .TP
 .B \-w
@@ -57,7 +57,7 @@ permissions.
 .TP
 .B \-d
 
-Delete the user specified with \fI-u\fR. You need the owner permission for that.
+Delete the user specified with \fB-u\fR. You need the owner permission for that.
 
 .TP
 .B \-n
@@ -75,7 +75,7 @@ Create a new user foo that can view and control remote desktop:
 $ vncpasswd -u foo -w
 
 .TP
-Change user foo from write access to view-only access without changing the password:
+Change user foo from write access to view-only access. Don't touch the password:
 $ vncpasswd -u foo -r -n
 
 .TP
@@ -83,11 +83,11 @@ Create a new user foo that can view remote desktop, but can't use mouse and keyb
 $ vncpasswd -u foo -r
 
 .TP
-Create a new user foo that can add new users AND view remote desktop, use mouse and keyboard:
+Create a new user foo that can add new users AND view and control remote desktop:
 $ vncpasswd -u foo -ow
 
 .TP
-Delete user foo
+Delete user foo:
 $ vncpasswd -u foo -d
 
 .TP
@@ -95,7 +95,7 @@ Allow existing user foo to view remote desktop, use mouse and keyboard. Write pe
 $ vncpasswd -u foo -w -n
 
 .TP
-Remove all permissions from user foo and prompt for a new password.  The user will no longer be able to view or control remote desktops.
+Remove all permissions from existing user foo and prompt for a new password.  The user will no longer be able to view or control remote desktops.
 $ vncpasswd -u foo
 
 .SH SEE ALSO
