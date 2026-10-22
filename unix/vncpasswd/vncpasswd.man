@@ -2,13 +2,18 @@
 .SH NAME
 vncpasswd \- setup VNC users and passwords
 .SH SYNOPSIS
-\fBvncpasswd\fR -u [\fIusername\fR] [\fI-wnod\fR] [\fIpasswd-file\fR]
+\fBvncpasswd\fR \fB-u\fR \fIusername\fR [\fB-rwon\fR] [\fIpasswd-file\fR]
+.br
+\fBvncpasswd\fR \fB-u\fR \fIusername\fR \fB-d\fR [\fIpasswd-file\fR]
 .SH DESCRIPTION
 .B vncpasswd
 allows you to add users and passwords used to access VNC desktops. Multiple
-users can be added, each with its own permissions. You can set view-only, use of
-mouse and keyboard allowed (-w), user managment permissions (-o). See OPTIONS
-below for details.
+users can be added, each with its own permissions.
+You can grant view permission (\fB-r\fR), view and control permission (use of
+mouse and keyboard) (\fB-w\fR), and user management permission
+(\fB-o\fR).  When updating an existing user, the specified permissions replace
+all previously assigned permissions. Any permissions not specified are revoked.
+See OPTIONS below for details.
 
 Its default behavior is to prompt for a VNC password and then store an
 obfuscated version of this password to \fIpasswd-file\fR (or to
@@ -27,15 +32,21 @@ snooping on the network.
 .SH OPTIONS
 
 .TP
-.B \-u \fIname\fR
+.B \-u \fIusername\fR
 
-Specify user name. There can be multiple users.
+Specify the username. Multiple users can be configured.
+
+.TP
+.B \-r
+
+View permission. Allow the user to view remote desktop.
+This permission is included with \fB-w\fR.
 
 .TP
 .B \-w
 
-Write permission. Enable user to use mouse and keyboard. The default mode is to
-view only.
+Write permission. Allow the user to view and control remote desktop with mouse
+and keyboard. The \fB-r\fR option is not required when \fB-w\fR is specified.
 
 .TP
 .B \-o
@@ -46,12 +57,12 @@ permissions.
 .TP
 .B \-d
 
-Delete user specified with \fI-u\fR. You need the owner permission for that.
+Delete the user specified with \fB-u\fR. You need the owner permission for that.
 
 .TP
 .B \-n
 
-Don't update their password, while updating permissions.
+Don't update the user's password, while updating permissions.
 
 .SH FILES
 .TP
@@ -60,36 +71,36 @@ Default location of the VNC password file.
 
 .SH EXAMPLES
 .TP
-Create a new user foo that can to use mouse and keyboard:
+Create a new user foo that can view and control remote desktop:
 $ vncpasswd -u foo -w
 
 .TP
-Create a new user foo that can view, but can't use mouse and keyboard:
-$ vncpasswd -u foo
+Change user foo from write access to view-only access. Don't touch the password:
+$ vncpasswd -u foo -r -n
 
 .TP
-Create a new user foo that can add new users AND use mouse and keyboard:
+Create a new user foo that can view remote desktop, but can't use mouse and keyboard:
+$ vncpasswd -u foo -r
+
+.TP
+Create a new user foo that can add new users AND view and control remote desktop:
 $ vncpasswd -u foo -ow
 
 .TP
-Delete user foo
+Delete user foo:
 $ vncpasswd -u foo -d
 
 .TP
-Strip all permissions from user foo, making it view only. Don't touch password.
-$ vncpasswd -u foo -n
-
-.TP
-Strip all permissions from user foo, making it view only. Change password.
-$ vncpasswd -u foo
-
-.TP
-Add write permission for user foo. Don't touch password.
+Allow existing user foo to view remote desktop, use mouse and keyboard. Write permission (\fB-w\fR) is granted, all other permissions are revoked. Don't touch password.
 $ vncpasswd -u foo -w -n
+
+.TP
+Remove all permissions from existing user foo and prompt for a new password.  The user will no longer be able to view or control remote desktops.
+$ vncpasswd -u foo
 
 .SH SEE ALSO
 .BR vncserver (1),
-.BR Xvnc (1)
+.BR Xvnc (1),
 .BR vncconfig (1),
 .br
 http://kasmweb.com
@@ -101,7 +112,7 @@ VNC was originally developed by the RealVNC team while at Olivetti
 Research Ltd / AT&T Laboratories Cambridge.  TightVNC additions were
 implemented by Constantin Kaplinsky. Many other people have since
 participated in development, testing and support. KasmVNC has since
-forked and the project and has added many modern features and made
+forked the project and has added many modern features and made
 the solution web native.
 
 This manual is part of the KasmVNC software suite.
