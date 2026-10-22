@@ -75,6 +75,10 @@ Create a new user foo that can view and control remote desktop:
 $ vncpasswd -u foo -w
 
 .TP
+Change user foo from write access to view-only access without changing the password:
+$ vncpasswd -u foo -r -n
+
+.TP
 Create a new user foo that can view remote desktop, but can't use mouse and keyboard:
 $ vncpasswd -u foo -r
 
