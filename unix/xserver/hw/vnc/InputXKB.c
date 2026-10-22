@@ -547,6 +547,60 @@ int vncIsAffectedByNumLock(KeyCode keycode)
 	return 1;
 }
 
+static void applyAddedKeysym(DeviceIntPtr dev, KeyCode key, KeySym keysym, KeySym lower, KeySym upper)
+{
+	XkbDescPtr xkb = dev->key->xkbInfo->desc;
+	XkbEventCauseRec cause;
+	XkbChangesRec changes;
+	int types[1];
+	KeySym *syms;
+	unsigned int check = 0;
+
+	/*
+	 * Tools like xkbcomp get confused if there isn't a name
+	 * assigned to the keycode we're trying to use.
+	 */
+	memset(&changes, 0, sizeof(changes));
+	memset(&cause, 0, sizeof(cause));
+	XkbSetCauseUnknown(&cause);
+
+	if (xkb->names && xkb->names->keys) {
+		xkb->names->keys[key].name[0] = 'I';
+		xkb->names->keys[key].name[1] = '0' + (key / 100) % 10;
+		xkb->names->keys[key].name[2] = '0' + (key /  10) % 10;
+		xkb->names->keys[key].name[3] = '0' + (key /   1) % 10;
+
+		changes.names.changed |= XkbKeyNamesMask;
+		changes.names.first_key = key;
+		changes.names.num_keys = 1;
+	}
+
+	if (upper == lower)
+		types[XkbGroup1Index] = XkbOneLevelIndex;
+	else
+		types[XkbGroup1Index] = XkbAlphabeticIndex;
+
+	XkbChangeTypesOfKey(xkb, key, 1, XkbGroup1Mask, types, &changes.map);
+
+	syms = XkbKeySymsPtr(xkb, key);
+	if (upper == lower)
+		syms[0] = keysym;
+	else {
+		syms[0] = lower;
+		syms[1] = upper;
+	}
+
+	changes.map.changed |= XkbKeySymsMask;
+	changes.map.first_key_sym = key;
+	changes.map.num_key_syms = 1;
+
+	XkbUpdateActions(dev, key, 1, &changes, &check, &cause);
+	if (check)
+		XkbCheckSecondaryEffects(dev->key->xkbInfo, 1, &changes, &cause);
+
+	XkbSendNotification(dev, &changes, &cause);
+}
+
 KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool freeKeys)
 {
 	DeviceIntPtr master;
@@ -556,12 +610,7 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool
 	unsigned int newest_k = 0;
 	unsigned int oldest_k = 0;
 	unsigned int freeCnt = 0;
-	
-	XkbEventCauseRec cause;
-	XkbChangesRec changes;
 
-	int types[1];
-	KeySym *syms;
 	KeySym upper, lower;
 
 	master = GetMaster(vncKeyboardDev, KEYBOARD_OR_FLOAT);
@@ -570,7 +619,7 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool
 	//find the first free key to map
 	for (i = xkb->max_key_code; i >= xkb->min_key_code; i--) {
 		if (XkbKeyNumGroups(xkb, i) == 0 && *(needFree + i) != UINT_MAX) {
-			if (++freeCnt == 1) 
+			if (++freeCnt == 1)
 				key = i;
 		}
 	}
@@ -579,7 +628,7 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool
 		return 0;
 
 	//find the oldest and newest keys that have been remapped
-	for (i = 1;i < 256;i++) {
+	for (i = 1; i < 256; i++) {
 		//protect from uint rollover
 		if (*(needFree + i) == MAX_MAPPINGS)
 			*(needFree + i) = 1;
@@ -592,7 +641,7 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool
 			*(needFree + i) = 0;
 	}
 	*(needFree + key) = ++(*(needFree + newest_k));
-	
+
 	//if running low on free keys, free the oldest key that was used
 	if (freeCnt < 3 && *(needFree + oldest_k) > 0 && freeKeys) {
 		vncRemoveKeycode(oldest_k);
@@ -605,27 +654,6 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool
 		return 0;
 	}
 
-	memset(&changes, 0, sizeof(changes));
-	memset(&cause, 0, sizeof(cause));
-
-	XkbSetCauseUnknown(&cause);
-
-	/*
-	 * Tools like xkbcomp get confused if there isn't a name
-	 * assigned to the keycode we're trying to use.
-	 */
-	if (xkb->names && xkb->names->keys &&
-	    (xkb->names->keys[key].name[0] == '\0')) {
-		xkb->names->keys[key].name[0] = 'I';
-		xkb->names->keys[key].name[1] = '0' + (key / 100) % 10;
-		xkb->names->keys[key].name[2] = '0' + (key /  10) % 10;
-		xkb->names->keys[key].name[3] = '0' + (key /   1) % 10;
-
-		changes.names.changed |= XkbKeyNamesMask;
-		changes.names.first_key = key;
-		changes.names.num_keys = 1;
-	}
-
 	/* FIXME: Verify that ONE_LEVEL/ALPHABETIC isn't screwed up */
 
 	/*
@@ -634,26 +662,10 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool
 	 * generally cannot produce lower case when Lock is active.
 	 */
 	XkbConvertCase(keysym, &lower, &upper);
-	if (upper == lower)
-		types[XkbGroup1Index] = XkbOneLevelIndex;
-	else
-		types[XkbGroup1Index] = XkbAlphabeticIndex;
 
-	XkbChangeTypesOfKey(xkb, key, 1, XkbGroup1Mask, types, &changes.map);
-
-	syms = XkbKeySymsPtr(xkb,key);
-	if (upper == lower)
-		syms[0] = keysym;
-	else {
-		syms[0] = lower;
-		syms[1] = upper;
-	}
-
-	changes.map.changed |= XkbKeySymsMask;
-	changes.map.first_key_sym = key;
-	changes.map.num_key_syms = 1;
-
-	XkbSendNotification(master, &changes, &cause);
+	applyAddedKeysym(master, key, keysym, lower, upper);
+	if (vncKeyboardDev->key && vncKeyboardDev->key->xkbInfo->desc != xkb)
+		applyAddedKeysym(vncKeyboardDev, key, keysym, lower, upper);
 
 	return key;
 }
