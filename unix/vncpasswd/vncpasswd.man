@@ -2,13 +2,16 @@
 .SH NAME
 vncpasswd \- setup VNC users and passwords
 .SH SYNOPSIS
-\fBvncpasswd\fR -u \fIusername\fR [\fI-rwnod\fR] [\fIpasswd-file\fR]
+\fBvncpasswd\fR -u \fIusername\fR [-rwond] [\fIpasswd-file\fR]
 .SH DESCRIPTION
 .B vncpasswd
 allows you to add users and passwords used to access VNC desktops. Multiple
-users can be added, each with its own permissions. You can set view-only (-r),
-view and use of mouse and keyboard allowed (-w), user managment permissions
-(-o). See OPTIONS below for details.
+users can be added, each with its own permissions.
+You can grant view permission (\fB-r\fR), view and control (use of mouse and
+keyboard) permission (\fB-w\fR), and user management permission (\fB-o\fR).
+When updating an existing user, the specified permissions replace all
+previously assigned permissions. Any permissions not specified are revoked.
+See OPTIONS below for details.
 
 Its default behavior is to prompt for a VNC password and then store an
 obfuscated version of this password to \fIpasswd-file\fR (or to
@@ -43,7 +46,7 @@ Use \fB-w\fR to grant mouse and keyboard control.
 .B \-w
 
 Write permission. Enable user to view remote desktop, use mouse and
-keyboard.
+keyboard. The \fB-r\fR option is not required when \fB-w\fR is specified.
 
 .TP
 .B \-o
@@ -59,7 +62,7 @@ Delete user specified with \fI-u\fR. You need the owner permission for that.
 .TP
 .B \-n
 
-Don't update their password, while updating permissions.
+Don't update the user password, while updating permissions.
 
 .SH FILES
 .TP
@@ -68,15 +71,15 @@ Default location of the VNC password file.
 
 .SH EXAMPLES
 .TP
-Create a new user foo that can to use mouse and keyboard:
+Create a new user foo that can view and control remote desktop:
 $ vncpasswd -u foo -w
 
 .TP
-Create a new user foo that can view, but can't use mouse and keyboard:
+Create a new user foo that can view remote desktop, but can't use mouse and keyboard:
 $ vncpasswd -u foo -r
 
 .TP
-Create a new user foo that can add new users AND use mouse and keyboard:
+Create a new user foo that can add new users AND view remote desktop, use mouse and keyboard:
 $ vncpasswd -u foo -ow
 
 .TP
@@ -84,18 +87,12 @@ Delete user foo
 $ vncpasswd -u foo -d
 
 .TP
-Strip all permissions from user foo. The user is not able to view remote
-desktop. Don't touch password.
-$ vncpasswd -u foo -n
-
-.TP
-Strip all permissions from user foo. The user is not able to view remote
-desktops. Change password.
-$ vncpasswd -u foo
-
-.TP
-Add write permission for user foo. Don't touch password.
+Allow existing user foo to view remote desktop, use mouse and keyboard. Write permission (\fB-w\fR) is granted, all other permissions are revoked. Don't touch password.
 $ vncpasswd -u foo -w -n
+
+.TP
+Remove all permissions from user foo and prompt for a new password.  The user will no longer be able to view or control remote desktops.
+$ vncpasswd -u foo
 
 .SH SEE ALSO
 .BR vncserver (1),
