@@ -2,13 +2,13 @@
 .SH NAME
 vncpasswd \- setup VNC users and passwords
 .SH SYNOPSIS
-\fBvncpasswd\fR -u [\fIusername\fR] [\fI-wnod\fR] [\fIpasswd-file\fR]
+\fBvncpasswd\fR -u [\fIusername\fR] [\fI-rwnod\fR] [\fIpasswd-file\fR]
 .SH DESCRIPTION
 .B vncpasswd
 allows you to add users and passwords used to access VNC desktops. Multiple
-users can be added, each with its own permissions. You can set view-only, use of
-mouse and keyboard allowed (-w), user managment permissions (-o). See OPTIONS
-below for details.
+users can be added, each with its own permissions. You can set view-only (-r),
+view and use of mouse and keyboard allowed (-w), user managment permissions
+(-o). See OPTIONS below for details.
 
 Its default behavior is to prompt for a VNC password and then store an
 obfuscated version of this password to \fIpasswd-file\fR (or to
@@ -32,10 +32,18 @@ snooping on the network.
 Specify user name. There can be multiple users.
 
 .TP
+.B \-r
+
+View permission. Enable user to view remote desktop.
+This option does not grant mouse or keyboard control.
+Use \fB-w\fR to grant mouse and keyboard control.
+
+
+.TP
 .B \-w
 
-Write permission. Enable user to use mouse and keyboard. The default mode is to
-view only.
+Write permission. Enable user to view remote desktop, use mouse and
+keyboard.
 
 .TP
 .B \-o
@@ -65,7 +73,7 @@ $ vncpasswd -u foo -w
 
 .TP
 Create a new user foo that can view, but can't use mouse and keyboard:
-$ vncpasswd -u foo
+$ vncpasswd -u foo -r
 
 .TP
 Create a new user foo that can add new users AND use mouse and keyboard:
@@ -76,11 +84,13 @@ Delete user foo
 $ vncpasswd -u foo -d
 
 .TP
-Strip all permissions from user foo, making it view only. Don't touch password.
+Strip all permissions from user foo. The user is not able to view remote
+desktop. Don't touch password.
 $ vncpasswd -u foo -n
 
 .TP
-Strip all permissions from user foo, making it view only. Change password.
+Strip all permissions from user foo. The user is not able to view remote
+desktops. Change password.
 $ vncpasswd -u foo
 
 .TP
