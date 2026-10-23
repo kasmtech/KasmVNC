@@ -34,12 +34,21 @@ def main():
             base = str(path).removesuffix('.assessments.json')
             snap = read(path); bom = read(base + '.cdx.json'); report = read(base + '.vulnerabilities.json')
             raw = read(base + '.grype.raw.json'); vex = read(base + '.openvex.json')
+            applied = read(base + '.vex-applied.json')
             gl = read(directory / 'gl-dependency-scanning-report.json')
             for key, document in [('cdx', bom), ('gitlab', gl), ('vex', vex)]:
                 validators[key].validate(document)
             assert bom == read(directory / 'gl-sbom.cdx.json'), 'GitLab SBOM differs'
             assert snap['raw_scan_sha256'] == hashlib.sha256(Path(base + '.grype.raw.json').read_bytes()).hexdigest()
             assert len(raw['matches']) == len(report['matches']) == len(gl['vulnerabilities']) == len(bom['vulnerabilities'])
+            def key(m):
+                return (m['vulnerability']['id'], m['artifact']['name'], m['artifact']['version'])
+            ignored = {key(m) for m in applied.get('ignoredMatches', [])}
+            remaining = {key(m) for m in applied['matches']}
+            expected_ignored = {key(m) for m in report['matches'] if m['kasmvncAssessment']['state'] in ('not_affected', 'false_positive', 'resolved')}
+            assert ignored == expected_ignored, 'Grype did not apply exactly the reviewed exceptions'
+            assert not ignored & remaining
+            assert ignored | remaining == {key(m) for m in raw['matches']}, 'VEX consumer lost/added findings'
             for m in report['matches']:
                 a = m['kasmvncAssessment']; cve = m['vulnerability']['id']; package = m['artifact']
                 assert a in snap['assessments']

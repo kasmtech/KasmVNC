@@ -72,6 +72,16 @@ class Assessments(unittest.TestCase):
         self.assertEqual(vex['statements'][0]['status'], 'under_investigation')
         self.assertNotIn('flags', adapter.convert(report, NOW[:-1], NOW[:-1])['vulnerabilities'][0])
 
+    def test_openvex_package_identity_is_bound_to_build(self):
+        cdx, report, vex, _ = self.reconcile()
+        purl = cdx['components'][0]['purl']
+        self.assertIn('kasmvnc_build=abc123', purl)
+        self.assertIn('arch=amd64', purl)
+        self.assertIn('libc=glibc', purl)
+        self.assertEqual(vex['statements'][0]['products'][0]['@id'], purl)
+        self.assertEqual(report['matches'][0]['artifact']['purl'], purl)
+        self.assertNotEqual(purl, engine.scoped_purl('pkg:generic/example@1.0', 'other-build', 'amd64', 'glibc'))
+
     def test_changed_recipe_or_removed_evidence_invalidates(self):
         for content in ['feature enabled', None]:
             p = self.root / 'recipe'

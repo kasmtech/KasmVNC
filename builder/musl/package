@@ -116,5 +116,5 @@ cd /artifacts
 sha256sum "$basename.apk" "$basename.debug.apk" "$basename.debug.tar.gz" "$basename.debug.json" \
   "$basename.provenance.json" "$basename.elf-audit.json" "$basename.cdx.json" \
   "$basename.sources.json" "$basename.sources.tar.gz" "$basename.vulnerabilities.json" \
-  "$basename.grype.raw.json" "$basename.assessments.json" "$basename.openvex.json" \
+  "$basename.vex-applied.json" "$basename.grype.raw.json" "$basename.assessments.json" "$basename.openvex.json" \
   "$basename.vulnerability-summary.json" "$basename.rsa.pub" > "$basename.sha256"

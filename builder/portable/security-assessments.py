@@ -11,7 +11,7 @@ import datetime
 import hashlib
 import json
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, parse_qsl, urlencode
 
 STATES = {'not_affected', 'false_positive', 'resolved', 'in_triage', 'exploitable'}
 JUSTIFICATIONS = {'code_not_present', 'code_not_reachable', 'requires_environment'}
@@ -23,6 +23,18 @@ def digest(path):
 
 def write(path, value):
     Path(path).write_text(json.dumps(value, indent=2) + '\n')
+
+
+def scoped_purl(purl, revision, arch, libc):
+    # Grype's CycloneDX reader loses application-level product identity. Its
+    # package-as-product VEX matching does preserve PURL qualifiers. Identify
+    # our embedded variant without asserting anything about arbitrary upstream
+    # copies of the same library/version, and preserve ecosystem/version fields.
+    head, separator, subpath = purl.partition('#')
+    base, _, query = head.partition('?')
+    qualifiers = dict(parse_qsl(query))
+    qualifiers.update(kasmvnc_build=revision, arch=arch, libc=libc)
+    return base + '?' + urlencode(sorted(qualifiers.items())) + (separator + subpath if separator else '')
 
 
 def validate_registry(registry):
@@ -56,12 +68,18 @@ def reconcile(bom, raw, registry, root, now):
     if libc is None:  # Existing 1.6 inventories, before explicit libc metadata.
         libc = 'musl' if 'musl >=' in props.get('kasmvnc:host-requirements', '') else 'glibc'
     revision = props['kasmvnc:revision']
-    components = {(c['name'], c.get('version')): c for c in bom['components']}
+    cdx = copy.deepcopy(bom)
+    for c in cdx['components']:
+        if c.get('purl', '').startswith('pkg:generic/'):
+            original = c['purl']
+            c['purl'] = scoped_purl(original, revision, arch, libc)
+            if not any(p['name'] == 'kasmvnc:upstream-purl' for p in c.get('properties', [])):
+                c.setdefault('properties', []).append({'name': 'kasmvnc:upstream-purl', 'value': original})
+    components = {(c['name'], c.get('version')): c for c in cdx['components']}
     rules = {(r['cve'], r['package']): r for r in registry['assessments']}
     observed = set()
     annotated = copy.deepcopy(raw)
     annotated['matches'] = []
-    cdx = copy.deepcopy(bom)
     cdx['vulnerabilities'] = []
     records = []
     evidence_cache = {}
@@ -111,6 +129,8 @@ def reconcile(bom, raw, registry, root, now):
                     a['justification'] = r['justification']
         records.append(a)
         item = copy.deepcopy(match); item['kasmvncAssessment'] = a
+        if component.get('purl'):
+            item['artifact']['purl'] = component['purl']
         annotated['matches'].append(item)
         analysis = {'state': a['state'], 'detail': a['detail'], 'lastUpdated': now}
         if 'justification' in a:
@@ -121,7 +141,8 @@ def reconcile(bom, raw, registry, root, now):
         status = {'resolved': 'fixed', 'false_positive': 'not_affected', 'not_affected': 'not_affected',
                   'in_triage': 'under_investigation', 'exploitable': 'affected'}[a['state']]
         statement = {'vulnerability': {'name': vuln['id']}, 'timestamp': now,
-                     'products': [{'@id': product_id, 'subcomponents': [{'@id': component.get('purl', 'pkg:generic/' + component['bom-ref'])}]}],
+                     'products': [{'@id': component['purl']}] if component.get('purl', '').startswith('pkg:generic/') else
+                                 [{'@id': product_id, 'subcomponents': [{'@id': component.get('purl', 'pkg:generic/' + component['bom-ref'])}]}],
                      'status': status, 'status_notes': a['detail'] + '\nAssessment: ' + json.dumps(a, sort_keys=True)}
         if status == 'not_affected':
             statement['impact_statement'] = a['detail']
@@ -143,6 +164,8 @@ def reconcile(bom, raw, registry, root, now):
     snapshot = {'schema_version': 1, 'product': product_id, 'generated_at': now,
                 'assessments': records, 'counts': dict(Counter(a['lifecycle'] for a in records))}
     # Carry inactive history in SBOM metadata, without inventing current findings.
+    cdx['metadata']['properties'] = [p for p in cdx['metadata'].get('properties', [])
+                                   if p['name'] != 'kasmvnc:security-assessments']
     cdx['metadata'].setdefault('properties', []).append({'name': 'kasmvnc:security-assessments',
                                                        'value': json.dumps(snapshot, sort_keys=True)})
     annotated['kasmvncAssessmentSummary'] = snapshot

@@ -85,6 +85,8 @@ packages under the same S3 commit directory:
 * `.openvex.json`: the same decisions in OpenVEX 0.2 format, bound to the exact
   revision, architecture and libc. SBOM `vulnerabilities[].analysis` records
   current CycloneDX VEX decisions; metadata also retains inactive review history.
+* `.vex-applied.json`: the pinned Grype consumer's result using that OpenVEX.
+  Exceptions remain visible in `ignoredMatches`; the remaining matches are open.
 
 GitLab also receives `gl-sbom.cdx.json` (a byte-identical SBOM copy) and
 `gl-dependency-scanning-report.json` as typed CI reports for every glibc/musl
@@ -134,6 +136,13 @@ before publishing: pinned CycloneDX, OpenVEX and GitLab schema checks plus an
 assessment-by-assessment consistency check. `test-security-assessments.py`
 exercises disappearance, reappearance, changed versions/evidence, new callers,
 and unknown findings. The two unresolved Xorg issues are not exceptions.
+
+Embedded generic component PURLs retain their upstream names/versions and add
+`kasmvnc_build`, `arch`, and `libc` qualifiers; `kasmvnc:upstream-purl` preserves
+the unqualified identifier. This lets Grype match OpenVEX to our exact embedded
+variant despite its CycloneDX reader discarding application-level identity.
+CI verifies that Grype moves exactly the reviewed exceptions to `ignoredMatches`,
+and that its remaining plus ignored findings equal the complete raw scan.
 
 Validate the adapter in a dedicated container with
 `builder/portable/test-gitlab-dependency-report`. The test downloads the pinned

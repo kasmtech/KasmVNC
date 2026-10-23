@@ -166,5 +166,5 @@ sha256sum "$basename.deb" "$basename.rpm" "$basename.tar.gz" \
   "$basename.provenance.json" "$basename.elf-audit.json" \
   "$basename.dbgsym.deb" "$basename.debuginfo.rpm" "$basename.debug.tar.gz" "$basename.debug.json" \
   "$basename.cdx.json" "$basename.sources.json" "$basename.sources.tar.gz" \
-  "$basename.vulnerabilities.json" "$basename.grype.raw.json" "$basename.assessments.json" "$basename.openvex.json" \
+  "$basename.vulnerabilities.json" "$basename.vex-applied.json" "$basename.grype.raw.json" "$basename.assessments.json" "$basename.openvex.json" \
   "$basename.vulnerability-summary.json" > "$basename.sha256"
