@@ -61,6 +61,14 @@ Backported fixes can remain in version-based scanner results.
 | CVE-2026-34743 | xz | Medium | Updated | XZ 5.8.1 to 5.8.3. |
 | CVE-2026-85091 | zlib | High | Patched | Backport upstream zlib df84af25; version remains 1.3.2. |
 
+## Additional finding in the fresh scan
+
+The cJSON update exposes CVE-2026-16554 in version-based matching. The
+[assigning CERT advisory](https://cert.pl/en/posts/2026/07/CVE-2026-16554/)
+describes a 32-bit `size_t` overflow. Both portable targets are 64-bit
+(amd64/aarch64), so this finding is not applicable to these packages.
+It is retained in raw scan reports, not suppressed.
+
 ## Evidence and limits
 
 * [X.Org security advisories](https://www.x.org/Development/Security/) identify
