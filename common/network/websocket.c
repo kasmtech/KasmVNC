@@ -255,6 +255,16 @@ ws_ctx_t *alloc_ws_ctx() {
 }
 
 void free_ws_ctx(ws_ctx_t *ctx) {
+    if (ctx->ssl) {
+        SSL_free(ctx->ssl);
+        ctx->ssl = NULL;
+    }
+
+    if (ctx->ssl_ctx) {
+        SSL_CTX_free(ctx->ssl_ctx);
+        ctx->ssl_ctx = NULL;
+    }
+
     free(ctx->cin_buf);
     free(ctx->cout_buf);
     free(ctx->tin_buf);
@@ -308,10 +318,17 @@ ws_ctx_t *ws_socket_ssl(ws_ctx_t *ctx, int socket, const char * certfile, const 
 
     // Associate socket and ssl object
     ctx->ssl = SSL_new(ctx->ssl_ctx);
+    if (!ctx->ssl) {
+        ERR_print_errors_fp(stderr);
+        return NULL;
+    }
     SSL_set_fd(ctx->ssl, socket);
 
+    // 0 means the TLS/SSL handshake was not successful
+    // but was shut down controlled and by the specifications
+    // of the TLS/SSL protocol
     ret = SSL_accept(ctx->ssl);
-    if (ret < 0) {
+    if (ret <= 0) {
         ERR_print_errors_fp(stderr);
         return NULL;
     }
@@ -1912,8 +1929,11 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
             return NULL;
         }
         ws_ctx = alloc_ws_ctx();
-        ws_socket_ssl(ws_ctx, sock, settings.cert, settings.key);
-        if (! ws_ctx) { return NULL; }
+        if (!ws_socket_ssl(ws_ctx, sock, settings.cert, settings.key)) {
+            handler_emsg("SSL handshake failed\n");
+            free_ws_ctx(ws_ctx);
+            return NULL;
+        }
         scheme = "wss";
         handler_msg("using SSL socket\n");
     } else if (settings.ssl_only) {
@@ -1922,7 +1942,6 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
     } else {
         ws_ctx = alloc_ws_ctx();
         ws_socket(ws_ctx, sock);
-        if (! ws_ctx) { return NULL; }
         scheme = "ws";
         handler_msg("using plain (not SSL) socket\n");
     }
