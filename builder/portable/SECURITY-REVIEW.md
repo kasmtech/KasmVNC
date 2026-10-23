@@ -5,6 +5,9 @@ for portable glibc and musl packages on amd64 and arm64. The glibc reports
 contain 28 findings each; musl has the same set except the four systemd
 findings and the private GCC runtime finding (23 each).
 
+The machine-readable reviewed decisions live in `security-assessments.json`.
+Each pipeline reconciles them with the current scan and emits a lifecycle
+snapshot, CycloneDX VEX, OpenVEX and annotated GitLab/Grype findings; see README.
 Raw Grype results remain advisory and unfiltered. No findings are suppressed,
 no versions are invented to hide backports, and no GitLab findings are dismissed
 by this change. Host OS/driver packages require separate deployment scanning.

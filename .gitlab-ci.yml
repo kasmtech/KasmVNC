@@ -543,6 +543,7 @@ build_workspace_noble_arm64:
     - . .ci/helpers.sh
   script:
     - builder/build-portable
+    - builder/portable/test-security-reports
     - upload_portable_packages
     - mkdir -p output
     - cp -r builder/build/portable_* output/
@@ -575,6 +576,7 @@ build_portable_arm64:
   extends: .build_portable
   script:
     - builder/build-portable --libc musl
+    - builder/portable/test-security-reports
     - upload_portable_packages
     - mkdir -p output
     - cp -r builder/build/portable_musl_* output/

@@ -68,6 +68,17 @@ def convert(report, start, end):
             finding['solution'] = ('Fixed versions reported by Grype: ' + ', '.join(versions))[:7000]
         else:
             finding['solution'] = 'No fixed version reported by Grype (state: ' + (fix.get('state') or 'unknown') + ').'
+        assessment = match.get('kasmvncAssessment')
+        if assessment:
+            explanation = ('KasmVNC assessment: ' + assessment['state'] +
+                           ' (' + assessment['lifecycle'] + '). ' + assessment['detail'])
+            finding['description'] = explanation + '\n\n' + finding['description']
+            finding['solution'] = explanation + '\n\nUpstream scanner metadata: ' + finding['solution']
+            finding['details'] = {'kasmvnc_assessment': {'name': 'KasmVNC applicability assessment',
+                'type': 'text', 'value': json.dumps(assessment, indent=2)}}
+            if assessment['state'] in ('not_affected', 'false_positive'):
+                finding['flags'] = [{'type': 'flagged-as-likely-false-positive',
+                    'origin': 'KasmVNC reviewed assessment registry', 'description': explanation}]
         # Repeated identical match records are harmless; do not silently discard
         # conflicting metadata for an identical identity.
         if key in findings and findings[key] != finding:
@@ -83,7 +94,7 @@ def convert(report, start, end):
                         'vendor': {'name': 'Anchore'}, 'url': 'https://github.com/anchore/grype'},
             'type': 'dependency_scanning', 'start_time': start, 'end_time': end,
             'status': 'success',
-            'messages': [{'level': 'info', 'value': 'Advisory scan of embedded native and web dependencies. Host packages and drivers are excluded. Matches require review for backports, enabled features and reachability.'}],
+            'messages': [{'level': 'info', 'value': 'Advisory scan of embedded dependencies. Every detected match is retained; assessment details describe applicability, not GitLab dismissal state. Inactive review history is in the SBOM and assessments artifact. Host packages/drivers are excluded.'}],
         },
     }
 

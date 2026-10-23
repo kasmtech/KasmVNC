@@ -16,6 +16,16 @@ if command -v apk >/dev/null; then
   apk add --no-cache curl openssl procps python3 openbox xterm xdpyinfo \
     dbus-x11 runuser shadow binutils mesa-utils mesa-dri-gallium
 elif command -v apt-get >/dev/null; then
+  if [[ "$ID" = kali ]]; then
+    # The geographic redirector repeatedly selected an unreachable CI mirror.
+    # Use Kali's official CDN directly; keep the distribution's signed metadata.
+    # HTTP bootstraps ca-certificates; apt still verifies the Kali signing key.
+    for source in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+      [[ -f "$source" ]] || continue
+      sed -i -E 's!https?://http.kali.org/kali!http://kali.download/kali!g' "$source"
+    done
+  fi
+  printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80portable-test-network
   apt-get update
   if [[ "$stage" = bootstrap ]]; then
     apt-get install -y --no-install-recommends ca-certificates

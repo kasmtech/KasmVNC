@@ -77,8 +77,14 @@ packages under the same S3 commit directory:
   inventory applies to the DEB, RPM and tarball; packaging metadata differs.
 * `.sources.tar.gz` and `.sources.json`: exact source inputs and their hashes,
   native link evidence, build revision, host requirements and known limitations.
-* `.vulnerabilities.json` and `.vulnerability-summary.json`: Grype findings,
-  scanner/database metadata and advisory severity counts.
+* `.vulnerabilities.json` and `.vulnerability-summary.json`: every Grype finding,
+  scoped applicability assessments, scanner/database metadata and severity counts.
+* `.grype.raw.json`: unchanged scanner evidence; use the adjacent assessment
+  snapshot for applicability. This is an audit input, not an assessed report.
+* `.assessments.json`: regenerated review history and current lifecycle state.
+* `.openvex.json`: the same decisions in OpenVEX 0.2 format, bound to the exact
+  revision, architecture and libc. SBOM `vulnerabilities[].analysis` records
+  current CycloneDX VEX decisions; metadata also retains inactive review history.
 
 GitLab also receives `gl-sbom.cdx.json` (a byte-identical SBOM copy) and
 `gl-dependency-scanning-report.json` as typed CI reports for every glibc/musl
@@ -91,6 +97,43 @@ fail conversion. Findings remain advisory; scanner/conversion errors fail the jo
 GitLab Ultimate can display the reports in pipeline Security and MR security
 views; useful MR new/resolved comparisons also require reports on the target
 branch. Project vulnerability tracking uses default-branch results.
+
+### Persistent security assessments
+
+`builder/portable/security-assessments.json` is the committed review registry.
+Each entry names the CVE, exact component versions, architectures/libcs, rationale,
+reviewer/date, upstream references, and SHA256s of the reviewed source/recipes.
+Change those decisions through normal code review, together with their evidence.
+Never broaden a version or refresh an evidence hash without reviewing the claim.
+
+Every successful scan regenerates `.assessments.json`. Matching decisions become
+`active`; missing findings become `not_detected` and the previous decision becomes
+inactive. A version/scope/evidence change produces `needs_review` and `in_triage`,
+not an inherited exception. New findings are `unreviewed`. Absence alone is not
+proof of remediation. The registry preserves review history; pipeline snapshots
+update observations automatically without a CI bot rewriting Git or racing parallel
+architectures. A finding that returns can reuse a decision only within its exact
+reviewed scope and unchanged evidence. cJSON caller absence is rechecked for new
+source files as well as existing files. Snapshots are checksummed and published
+with each revision, so historical and current observations remain available.
+
+GitLab retains every detected finding with the identical assessment in its
+description, solution and structured details. `not_affected`/`false_positive`
+findings carry its standard informational false-positive flag. These are scanner
+assessments, **not GitLab dismissal state**: the dependency report schema cannot
+set dismissal state. Raw detection totals therefore remain equal across GitLab
+and the annotated Grype report, with applicability counts reported separately.
+Resolved/backported and unresolved findings retain their distinct assessments.
+No findings are removed or severities rewritten. Inactive records are carried in
+the SBOM/snapshot/OpenVEX, not fabricated as currently detected GitLab findings.
+
+Installed packages include the same SBOM, `security-assessments.json`,
+`security.openvex.json`, and `SECURITY-REVIEW.md` under
+`/usr/share/doc/kasmvncserver`. CI runs `builder/portable/test-security-reports`
+before publishing: pinned CycloneDX, OpenVEX and GitLab schema checks plus an
+assessment-by-assessment consistency check. `test-security-assessments.py`
+exercises disappearance, reappearance, changed versions/evidence, new callers,
+and unknown findings. The two unresolved Xorg issues are not exceptions.
 
 Validate the adapter in a dedicated container with
 `builder/portable/test-gitlab-dependency-report`. The test downloads the pinned

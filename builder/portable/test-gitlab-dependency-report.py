@@ -44,6 +44,11 @@ class Conversion(unittest.TestCase):
         self.assertEqual(f['location']['dependency']['package']['name'], 'example')
         self.assertEqual(f['links'], [{'url': 'https://example.com/advisory'}])
 
+    def test_assessment_schema(self):
+        data = fixture(); data['matches'][0]['kasmvncAssessment'] = {'state': 'not_affected', 'lifecycle': 'active', 'detail': 'Not shipped'}
+        report = self.convert(data)
+        self.assertEqual(report['vulnerabilities'][0]['flags'][0]['type'], 'flagged-as-likely-false-positive')
+
     def test_empty_success(self):
         data = fixture(); data['matches'] = []
         self.assertEqual(self.convert(data)['vulnerabilities'], [])
@@ -82,7 +87,7 @@ class Conversion(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             base = root / 'kasmvncserver_commit_arch'
-            Path(str(base) + '.cdx.json').write_text('{"bomFormat":"CycloneDX"}')
+            Path(str(base) + '.cdx.json').write_text(json.dumps({'bomFormat': 'CycloneDX', 'specVersion': '1.6', 'version': 1, 'metadata': {'component': {'name': 'KasmVNC', 'properties': [{'name': 'kasmvnc:architecture', 'value': 'amd64'}, {'name': 'kasmvnc:revision', 'value': 'test'}]}}, 'components': [{'name': 'example', 'version': '1.0', 'bom-ref': 'example@1.0'}]}))
             source = root / 'fixture.json'; source.write_text(json.dumps(fixture()))
             grype = root / 'grype'
             grype.write_text('#!/bin/sh\ncp "$FIXTURE" "$5"\n')

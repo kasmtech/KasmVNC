@@ -77,7 +77,24 @@ case "$action" in
     ldd /usr/bin/Xkasmvnc /usr/bin/kasmvncserver > /tmp/portable-ldd.txt
     ! grep -q 'not found' /tmp/portable-ldd.txt
     ;;
-  mark) printf '\n%s\n' "$marker" >> "$config" ;;
+  mark)
+    # Verify the installed assessment follows the package across every distro
+    # and format, not just the sidecar artifacts uploaded by the build job.
+    python3 - <<'PY'
+import json
+from pathlib import Path
+p = Path('/usr/share/doc/kasmvncserver')
+snapshot = json.loads((p / 'security-assessments.json').read_text())
+bom = json.loads((p / 'sbom.cdx.json').read_text())
+embedded = json.loads(next(v['value'] for v in bom['metadata']['properties']
+                          if v['name'] == 'kasmvnc:security-assessments'))
+assert embedded['assessments'] == snapshot['assessments']
+vex = json.loads((p / 'security.openvex.json').read_text())
+assert vex['statements']
+assert (p / 'SECURITY-REVIEW.md').is_file()
+print('Installed SBOM/VEX/assessment consistency PASS')
+PY
+    printf '\n%s\n' "$marker" >> "$config" ;;
   upgrade)
     if [[ "$format" = deb ]]; then
       before=$(dpkg-query -W -f='${Version}' kasmvncserver)

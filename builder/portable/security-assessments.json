@@ -1,0 +1,784 @@
+{
+  "schema_version": 1,
+  "description": "Reviewed decisions; pipelines regenerate active/not_detected/needs_review observations. Never use CVE-only blanket exceptions.",
+  "assessments": [
+    {
+      "cve": "CVE-2025-57052",
+      "package": "cjson",
+      "versions": [
+        "1.7.19"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "not_affected",
+      "detail": "cJSON 1.7.15 to 1.7.19; affected cJSON_Utils.c is not vendored or built.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/DaveGamble/cJSON/releases/tag/v1.7.19"
+      ],
+      "evidence": {
+        "common/network/CMakeLists.txt": "181f99132c435fa9726368b939deecd7ef47651c29809565471b238cb7c0e803",
+        "common/network/cJSON.c": "298581a04a36c0165da4b0aade235c23088cb2faa58651d720ea2f3706ed0b0d",
+        "common/network/cJSON.h": "25b0145150d500498e4d209cec69c18c42cf818bffcc54690be3b895a2a16dee"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2026-67215",
+      "package": "cjson",
+      "versions": [
+        "1.7.19"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "not_affected",
+      "detail": "cJSON JSON Patch utilities are not vendored or built.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/DaveGamble/cJSON/releases/tag/v1.7.19"
+      ],
+      "evidence": {
+        "common/network/CMakeLists.txt": "181f99132c435fa9726368b939deecd7ef47651c29809565471b238cb7c0e803",
+        "common/network/cJSON.c": "298581a04a36c0165da4b0aade235c23088cb2faa58651d720ea2f3706ed0b0d",
+        "common/network/cJSON.h": "25b0145150d500498e4d209cec69c18c42cf818bffcc54690be3b895a2a16dee"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2026-67216",
+      "package": "cjson",
+      "versions": [
+        "1.7.19"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "not_affected",
+      "detail": "cJSON_Compare remains in upstream 1.7.19, but KasmVNC has no callers; no suppression added.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/DaveGamble/cJSON/releases/tag/v1.7.19"
+      ],
+      "evidence": {
+        "common/network/CMakeLists.txt": "181f99132c435fa9726368b939deecd7ef47651c29809565471b238cb7c0e803",
+        "common/network/cJSON.c": "298581a04a36c0165da4b0aade235c23088cb2faa58651d720ea2f3706ed0b0d",
+        "common/network/cJSON.h": "25b0145150d500498e4d209cec69c18c42cf818bffcc54690be3b895a2a16dee"
+      },
+      "justification": "code_not_reachable",
+      "check": "no_cjson_compare_callers"
+    },
+    {
+      "cve": "CVE-2026-67217",
+      "package": "cjson",
+      "versions": [
+        "1.7.19"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "not_affected",
+      "detail": "cJSON JSON Patch utilities are not vendored or built.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/DaveGamble/cJSON/releases/tag/v1.7.19"
+      ],
+      "evidence": {
+        "common/network/CMakeLists.txt": "181f99132c435fa9726368b939deecd7ef47651c29809565471b238cb7c0e803",
+        "common/network/cJSON.c": "298581a04a36c0165da4b0aade235c23088cb2faa58651d720ea2f3706ed0b0d",
+        "common/network/cJSON.h": "25b0145150d500498e4d209cec69c18c42cf818bffcc54690be3b895a2a16dee"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2026-107675",
+      "package": "ffmpeg",
+      "versions": [
+        "9.0.2"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "not_affected",
+      "detail": "SFTP/libssh support is not enabled; network and autodetection disabled.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/FFmpeg/FFmpeg"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-ffmpeg": "ff5773004b8a34694fe10bf6d08604dd04c884580e79524cfac24312aa98c5fe",
+        "builder/scripts/portable-dependencies/patches/ffmpeg-CVE-2026-107676.patch": "fb9d5c7625495040858ef316396d10d8be62c514187d0e19cc455410dbce79a9",
+        "builder/scripts/portable-dependencies/patches/ffmpeg-CVE-2026-107678.patch": "5880c8f4c08a58eb8ced69264fe42cf4a545413adbf6641ce66f3a709d7ab15d"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2026-107676",
+      "package": "ffmpeg",
+      "versions": [
+        "9.0.2"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "resolved",
+      "detail": "Backport upstream FFmpeg 2c2f6e96 HDR serializer fix; version remains 9.0.2.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/FFmpeg/FFmpeg/commit/2c2f6e96e31795ae95a8f8323a493ffbc493111f"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-ffmpeg": "ff5773004b8a34694fe10bf6d08604dd04c884580e79524cfac24312aa98c5fe",
+        "builder/scripts/portable-dependencies/patches/ffmpeg-CVE-2026-107676.patch": "fb9d5c7625495040858ef316396d10d8be62c514187d0e19cc455410dbce79a9",
+        "builder/scripts/portable-dependencies/patches/ffmpeg-CVE-2026-107678.patch": "5880c8f4c08a58eb8ced69264fe42cf4a545413adbf6641ce66f3a709d7ab15d"
+      }
+    },
+    {
+      "cve": "CVE-2026-107677",
+      "package": "ffmpeg",
+      "versions": [
+        "9.0.2"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "not_affected",
+      "detail": "DASH demuxer requires libxml2, not enabled with autodetection disabled.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/FFmpeg/FFmpeg"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-ffmpeg": "ff5773004b8a34694fe10bf6d08604dd04c884580e79524cfac24312aa98c5fe",
+        "builder/scripts/portable-dependencies/patches/ffmpeg-CVE-2026-107676.patch": "fb9d5c7625495040858ef316396d10d8be62c514187d0e19cc455410dbce79a9",
+        "builder/scripts/portable-dependencies/patches/ffmpeg-CVE-2026-107678.patch": "5880c8f4c08a58eb8ced69264fe42cf4a545413adbf6641ce66f3a709d7ab15d"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2026-107678",
+      "package": "ffmpeg",
+      "versions": [
+        "9.0.2"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "resolved",
+      "detail": "Backport FFmpeg PR 24593: iterative free and linear MOV pssh append; version remains 9.0.2.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://code.ffmpeg.org/FFmpeg/FFmpeg/pulls/24593"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-ffmpeg": "ff5773004b8a34694fe10bf6d08604dd04c884580e79524cfac24312aa98c5fe",
+        "builder/scripts/portable-dependencies/patches/ffmpeg-CVE-2026-107676.patch": "fb9d5c7625495040858ef316396d10d8be62c514187d0e19cc455410dbce79a9",
+        "builder/scripts/portable-dependencies/patches/ffmpeg-CVE-2026-107678.patch": "5880c8f4c08a58eb8ced69264fe42cf4a545413adbf6641ce66f3a709d7ab15d"
+      }
+    },
+    {
+      "cve": "CVE-2026-107696",
+      "package": "ffmpeg",
+      "versions": [
+        "9.0.2"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "not_affected",
+      "detail": "RTSP requires network support, explicitly disabled.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/FFmpeg/FFmpeg"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-ffmpeg": "ff5773004b8a34694fe10bf6d08604dd04c884580e79524cfac24312aa98c5fe",
+        "builder/scripts/portable-dependencies/patches/ffmpeg-CVE-2026-107676.patch": "fb9d5c7625495040858ef316396d10d8be62c514187d0e19cc455410dbce79a9",
+        "builder/scripts/portable-dependencies/patches/ffmpeg-CVE-2026-107678.patch": "5880c8f4c08a58eb8ced69264fe42cf4a545413adbf6641ce66f3a709d7ab15d"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2026-23865",
+      "package": "freetype",
+      "versions": [
+        "2.14.3"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "resolved",
+      "detail": "FreeType 2.13.2 to 2.14.3, containing the 2.14.2 fix.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://gitlab.freedesktop.org/freetype/freetype/-/commit/fc85a255849229c024c8e65f536fe1875d84841c"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-desktop-el9": "50234159243be7f9776ed31b8c94e3f47687f4c3243174c77b533812e652a07a"
+      }
+    },
+    {
+      "cve": "CVE-2023-4039",
+      "package": "gcc",
+      "versions": [
+        "14.2.0"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc"
+      ],
+      "state": "not_affected",
+      "detail": "Compiler code-generation hardening issue, not embedded libgcc runtime. GCC 14.2 postdates the fix; no compiler shipped.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://security-tracker.debian.org/tracker/CVE-2023-4039"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-runtime": "4cac53e4f7b9d2299c5c3a9d548e3029690e82a98994bfe4bfad43723e50592e"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2026-56001",
+      "package": "libXfont2",
+      "versions": [
+        "2.0.9"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "resolved",
+      "detail": "libXfont2 2.0.6 to 2.0.9.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://www.x.org/Development/Security/"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-desktop-el9": "50234159243be7f9776ed31b8c94e3f47687f4c3243174c77b533812e652a07a"
+      }
+    },
+    {
+      "cve": "CVE-2026-56002",
+      "package": "libXfont2",
+      "versions": [
+        "2.0.9"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "resolved",
+      "detail": "libXfont2 2.0.6 to 2.0.9.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://www.x.org/Development/Security/"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-desktop-el9": "50234159243be7f9776ed31b8c94e3f47687f4c3243174c77b533812e652a07a"
+      }
+    },
+    {
+      "cve": "CVE-2026-56003",
+      "package": "libXfont2",
+      "versions": [
+        "2.0.9"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "resolved",
+      "detail": "libXfont2 2.0.6 to 2.0.9.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://www.x.org/Development/Security/"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-desktop-el9": "50234159243be7f9776ed31b8c94e3f47687f4c3243174c77b533812e652a07a"
+      }
+    },
+    {
+      "cve": "CVE-2023-37769",
+      "package": "pixman",
+      "versions": [
+        "0.42.2"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "not_affected",
+      "detail": "Pixman stress-test floating-point exception; test executable is not shipped. Debian classifies no security impact.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://security-tracker.debian.org/tracker/CVE-2023-37769"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-desktop-el9": "50234159243be7f9776ed31b8c94e3f47687f4c3243174c77b533812e652a07a"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2025-4598",
+      "package": "systemd",
+      "versions": [
+        "255.4"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc"
+      ],
+      "state": "not_affected",
+      "detail": "systemd-coredump is not built or shipped.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/systemd/systemd/tree/v255.4"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-desktop-el9": "50234159243be7f9776ed31b8c94e3f47687f4c3243174c77b533812e652a07a"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2026-29111",
+      "package": "systemd",
+      "versions": [
+        "255.4"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc"
+      ],
+      "state": "not_affected",
+      "detail": "systemd PID 1 is not shipped; only the static libsystemd client archive is built.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/systemd/systemd/tree/v255.4"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-desktop-el9": "50234159243be7f9776ed31b8c94e3f47687f4c3243174c77b533812e652a07a"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2026-40225",
+      "package": "systemd",
+      "versions": [
+        "255.4"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc"
+      ],
+      "state": "not_affected",
+      "detail": "systemd-udevd is not built or shipped.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/systemd/systemd/tree/v255.4"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-desktop-el9": "50234159243be7f9776ed31b8c94e3f47687f4c3243174c77b533812e652a07a"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2026-40226",
+      "package": "systemd",
+      "versions": [
+        "255.4"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc"
+      ],
+      "state": "not_affected",
+      "detail": "systemd-nspawn is not built or shipped.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/systemd/systemd/tree/v255.4"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-desktop-el9": "50234159243be7f9776ed31b8c94e3f47687f4c3243174c77b533812e652a07a"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2020-25697",
+      "package": "xorg-server",
+      "versions": [
+        "21.1.25"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "exploitable",
+      "detail": "X11 clients do not authenticate servers. No upstream fix; session isolation remains important.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://security-tracker.debian.org/tracker/CVE-2020-25697"
+      ],
+      "evidence": {
+        "builder/build.sh": "02443994f47629cb824c8db9247404b7b8c2a85893166bc10e4a878f582d8b7a",
+        "builder/musl/build-inside-docker": "dcfcda2d097d06313a954b56c0f71d02eb282e28e7e2400f5330bfa4e6642597",
+        "builder/portable/build-inside-docker": "06c28d799bcc010ff67985479abfbaa33d29932e5e9010dc706f336b6940ec43",
+        "unix/xserver21.patch": "fe18af06f7662052b28521ffa7e85c6a99b2175ea35337672cd5f87455c22b5a"
+      }
+    },
+    {
+      "cve": "CVE-2022-3553",
+      "package": "xorg-server",
+      "versions": [
+        "21.1.25"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "not_affected",
+      "detail": "macOS XQuartz component is not built; fixed upstream since 21.1.4.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://www.x.org/Development/Security/"
+      ],
+      "evidence": {
+        "builder/build.sh": "02443994f47629cb824c8db9247404b7b8c2a85893166bc10e4a878f582d8b7a",
+        "builder/musl/build-inside-docker": "dcfcda2d097d06313a954b56c0f71d02eb282e28e7e2400f5330bfa4e6642597",
+        "builder/portable/build-inside-docker": "06c28d799bcc010ff67985479abfbaa33d29932e5e9010dc706f336b6940ec43",
+        "unix/xserver21.patch": "fe18af06f7662052b28521ffa7e85c6a99b2175ea35337672cd5f87455c22b5a"
+      },
+      "justification": "code_not_present"
+    },
+    {
+      "cve": "CVE-2023-5574",
+      "package": "xorg-server",
+      "versions": [
+        "21.1.25"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "in_triage",
+      "detail": "Although Xvfb is disabled, KasmVNC inherits framebuffer code and exposes multiple protocol screens. Upstream MR 1189 changes shared screen teardown; cannot dismiss based on disabled Xvfb alone. Default launcher uses one screen.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://security-tracker.debian.org/tracker/CVE-2023-5574"
+      ],
+      "evidence": {
+        "builder/build.sh": "02443994f47629cb824c8db9247404b7b8c2a85893166bc10e4a878f582d8b7a",
+        "builder/musl/build-inside-docker": "dcfcda2d097d06313a954b56c0f71d02eb282e28e7e2400f5330bfa4e6642597",
+        "builder/portable/build-inside-docker": "06c28d799bcc010ff67985479abfbaa33d29932e5e9010dc706f336b6940ec43",
+        "unix/xserver21.patch": "fe18af06f7662052b28521ffa7e85c6a99b2175ea35337672cd5f87455c22b5a"
+      }
+    },
+    {
+      "cve": "CVE-2026-34000",
+      "package": "xorg-server",
+      "versions": [
+        "21.1.25"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "false_positive",
+      "detail": "Xorg 21.1.25 includes 21.1.22 XKB geometry fix.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://www.x.org/Development/Security/"
+      ],
+      "evidence": {
+        "builder/build.sh": "02443994f47629cb824c8db9247404b7b8c2a85893166bc10e4a878f582d8b7a",
+        "builder/musl/build-inside-docker": "dcfcda2d097d06313a954b56c0f71d02eb282e28e7e2400f5330bfa4e6642597",
+        "builder/portable/build-inside-docker": "06c28d799bcc010ff67985479abfbaa33d29932e5e9010dc706f336b6940ec43",
+        "unix/xserver21.patch": "fe18af06f7662052b28521ffa7e85c6a99b2175ea35337672cd5f87455c22b5a"
+      }
+    },
+    {
+      "cve": "CVE-2026-34002",
+      "package": "xorg-server",
+      "versions": [
+        "21.1.25"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "false_positive",
+      "detail": "Xorg 21.1.25 includes 21.1.22 XKB modifier fix.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://www.x.org/Development/Security/"
+      ],
+      "evidence": {
+        "builder/build.sh": "02443994f47629cb824c8db9247404b7b8c2a85893166bc10e4a878f582d8b7a",
+        "builder/musl/build-inside-docker": "dcfcda2d097d06313a954b56c0f71d02eb282e28e7e2400f5330bfa4e6642597",
+        "builder/portable/build-inside-docker": "06c28d799bcc010ff67985479abfbaa33d29932e5e9010dc706f336b6940ec43",
+        "unix/xserver21.patch": "fe18af06f7662052b28521ffa7e85c6a99b2175ea35337672cd5f87455c22b5a"
+      }
+    },
+    {
+      "cve": "CVE-2026-55999",
+      "package": "xorg-server",
+      "versions": [
+        "21.1.25"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "false_positive",
+      "detail": "Xorg 21.1.25 includes 21.1.24 fix; advisory incorrectly says 21.2.24.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://www.x.org/Development/Security/"
+      ],
+      "evidence": {
+        "builder/build.sh": "02443994f47629cb824c8db9247404b7b8c2a85893166bc10e4a878f582d8b7a",
+        "builder/musl/build-inside-docker": "dcfcda2d097d06313a954b56c0f71d02eb282e28e7e2400f5330bfa4e6642597",
+        "builder/portable/build-inside-docker": "06c28d799bcc010ff67985479abfbaa33d29932e5e9010dc706f336b6940ec43",
+        "unix/xserver21.patch": "fe18af06f7662052b28521ffa7e85c6a99b2175ea35337672cd5f87455c22b5a"
+      }
+    },
+    {
+      "cve": "CVE-2026-56000",
+      "package": "xorg-server",
+      "versions": [
+        "21.1.25"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "false_positive",
+      "detail": "Xorg 21.1.25 includes 21.1.24 GLX fix; advisory incorrectly says 21.2.24.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://www.x.org/Development/Security/"
+      ],
+      "evidence": {
+        "builder/build.sh": "02443994f47629cb824c8db9247404b7b8c2a85893166bc10e4a878f582d8b7a",
+        "builder/musl/build-inside-docker": "dcfcda2d097d06313a954b56c0f71d02eb282e28e7e2400f5330bfa4e6642597",
+        "builder/portable/build-inside-docker": "06c28d799bcc010ff67985479abfbaa33d29932e5e9010dc706f336b6940ec43",
+        "unix/xserver21.patch": "fe18af06f7662052b28521ffa7e85c6a99b2175ea35337672cd5f87455c22b5a"
+      }
+    },
+    {
+      "cve": "CVE-2026-34743",
+      "package": "xz",
+      "versions": [
+        "5.8.3"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "resolved",
+      "detail": "XZ 5.8.1 to 5.8.3.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/tukaani-project/xz/security/advisories/GHSA-x872-m794-cxhv"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-desktop-el9": "50234159243be7f9776ed31b8c94e3f47687f4c3243174c77b533812e652a07a"
+      }
+    },
+    {
+      "cve": "CVE-2026-85091",
+      "package": "zlib",
+      "versions": [
+        "1.3.2"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "resolved",
+      "detail": "Backport upstream zlib df84af25; version remains 1.3.2.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://github.com/madler/zlib/commit/df84af25dc1942490e1d1c899a07619152a46148"
+      ],
+      "evidence": {
+        "builder/scripts/portable-dependencies/build-static-runtime": "4cac53e4f7b9d2299c5c3a9d548e3029690e82a98994bfe4bfad43723e50592e",
+        "builder/scripts/portable-dependencies/patches/zlib-CVE-2026-85091.patch": "110ff14375733173d8aa54574473424fbd7dfe4b81f1ca34a759c6fe14b15b14"
+      }
+    },
+    {
+      "cve": "CVE-2026-16554",
+      "package": "cjson",
+      "versions": [
+        "1.7.19"
+      ],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "libcs": [
+        "glibc",
+        "musl"
+      ],
+      "state": "not_affected",
+      "detail": "32-bit size_t overflow; both supported portable targets are 64-bit amd64/aarch64.",
+      "author": "KasmVNC project security review",
+      "reviewed_at": "2026-10-23T18:40:00Z",
+      "references": [
+        "https://cert.pl/en/posts/2026/07/CVE-2026-16554/"
+      ],
+      "evidence": {
+        "common/network/CMakeLists.txt": "181f99132c435fa9726368b939deecd7ef47651c29809565471b238cb7c0e803",
+        "common/network/cJSON.c": "298581a04a36c0165da4b0aade235c23088cb2faa58651d720ea2f3706ed0b0d",
+        "common/network/cJSON.h": "25b0145150d500498e4d209cec69c18c42cf818bffcc54690be3b895a2a16dee"
+      },
+      "justification": "requires_environment"
+    }
+  ]
+}

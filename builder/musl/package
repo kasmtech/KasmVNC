@@ -48,7 +48,7 @@ python3 builder/portable/split-debug.py "$root" "$debugroot" "/artifacts/$basena
 python3 builder/musl/audit.py "$root" "$arch" "$doc/elf-audit.json"
 python3 builder/portable/provenance.py "$doc" "$arch"
 python3 builder/portable/supply-chain.py "$doc" "$arch" "/artifacts/$basename"
-builder/portable/scan "/artifacts/$basename"
+builder/portable/scan "/artifacts/$basename" "$doc"
 for pair in 'Xvnc Xkasmvnc' 'vncserver kasmvncserver' 'vncconfig kasmvncconfig' \
   'vncpasswd kasmvncpasswd' 'xproxy kasmxproxy'; do
   read -r generic kasm <<< "$pair"
@@ -116,4 +116,5 @@ cd /artifacts
 sha256sum "$basename.apk" "$basename.debug.apk" "$basename.debug.tar.gz" "$basename.debug.json" \
   "$basename.provenance.json" "$basename.elf-audit.json" "$basename.cdx.json" \
   "$basename.sources.json" "$basename.sources.tar.gz" "$basename.vulnerabilities.json" \
+  "$basename.grype.raw.json" "$basename.assessments.json" "$basename.openvex.json" \
   "$basename.vulnerability-summary.json" "$basename.rsa.pub" > "$basename.sha256"

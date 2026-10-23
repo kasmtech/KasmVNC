@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Schema and consistency validation in a dedicated container, before publication.
+set -euo pipefail
+root=$(git rev-parse --show-toplevel)
+docker run --rm -v "$root:/src:ro" -w /src python:3.12-slim sh -ec '
+  pip install --quiet --disable-pip-version-check jsonschema==4.26.0
+  python builder/portable/test-security-reports.py "$@"
+' sh "$@"

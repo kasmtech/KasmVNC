@@ -524,7 +524,7 @@ def main():
             'For exact input reproduction restore these archives and recorded Git revisions, rather than following floating branches.\n'
             'Read manifest.json limitations before claiming source-compliance completeness.\n')
         root = component('KasmVNC', os.environ['KASMVNC_PORTABLE_VERSION'], kind='application',
-                         properties=[prop('revision', os.environ['KASMVNC_COMMIT_ID']), prop('architecture', args.arch),
+                         properties=[prop('revision', os.environ['KASMVNC_COMMIT_ID']), prop('architecture', args.arch), prop('libc', 'musl' if inv.musl else 'glibc'),
                                      prop('host-requirements', json.dumps(host)), prop('limitations', json.dumps(inv.limitations))])
         bom = {'bomFormat': 'CycloneDX', 'specVersion': '1.6', 'version': 1,
                'metadata': {'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'component': root},
