@@ -78,6 +78,8 @@ case "$action" in
     ! grep -q 'not found' /tmp/portable-ldd.txt
     ;;
   mark)
+    printf '\n%s\n' "$marker" >> "$config" ;;
+  verify-security)
     # Verify the installed assessment follows the package across every distro
     # and format, not just the sidecar artifacts uploaded by the build job.
     python3 - <<'PY'
@@ -94,7 +96,7 @@ assert vex['statements']
 assert (p / 'SECURITY-REVIEW.md').is_file()
 print('Installed SBOM/VEX/assessment consistency PASS')
 PY
-    printf '\n%s\n' "$marker" >> "$config" ;;
+    ;;
   upgrade)
     if [[ "$format" = deb ]]; then
       before=$(dpkg-query -W -f='${Version}' kasmvncserver)

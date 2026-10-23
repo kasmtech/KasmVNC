@@ -16,6 +16,9 @@ if command -v apk >/dev/null; then
   apk add --no-cache curl openssl procps python3 openbox xterm xdpyinfo \
     dbus-x11 runuser shadow binutils mesa-utils mesa-dri-gallium
 elif command -v apt-get >/dev/null; then
+  # Minimal Debian/Ubuntu images discard documentation during dpkg install.
+  # Retain this package's SBOM/VEX so the installed-artifact check can run.
+  printf 'path-include=/usr/share/doc/kasmvncserver/\npath-include=/usr/share/doc/kasmvncserver/*\n' > /etc/dpkg/dpkg.cfg.d/zz-portable-test-docs
   if [[ "$ID" = kali ]]; then
     # The geographic redirector repeatedly selected an unreachable CI mirror.
     # Use Kali's official CDN directly; keep the distribution's signed metadata.

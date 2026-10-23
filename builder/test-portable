@@ -138,6 +138,7 @@ try:
                     + ('RUN bash /portable/prerequisites.sh '+fmt+' tools\n' if fmt != 'tar' else '') +
                     'RUN bash /portable/package.sh mark '+fmt+'\n'
                     'RUN bash /portable/package.sh '+replacement_action+' '+fmt+' /artifacts/'+artifact.name+'\n'
+                    'RUN bash /portable/package.sh verify-security '+fmt+'\n'
                     'COPY test/session.sh /portable/session.sh\n'
                     'COPY test/focus.py /portable/focus.py\n'
                     'RUN mkdir /probe && chmod 1777 /probe\n'
