@@ -46,7 +46,7 @@ fetch_git libwebp https://chromium.googlesource.com/webm/libwebp 4fa21912338357f
 (
     cd zlib-1.3.2
     # Check the source itself: re-extraction may overwrite a previous patch.
-    if ! patch --batch --dry-run -R -p1 < "$recipe_dir/patches/zlib-CVE-2026-85091.patch" >/dev/null 2>&1; then
+    if ! patch --batch --force --dry-run -R -p1 < "$recipe_dir/patches/zlib-CVE-2026-85091.patch" >/dev/null 2>&1; then
         patch --batch --forward -p1 < "$recipe_dir/patches/zlib-CVE-2026-85091.patch"
     fi
     CFLAGS="${CFLAGS:-} -O2 -fPIC" ./configure --prefix="$prefix" --static

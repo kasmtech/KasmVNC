@@ -53,11 +53,11 @@ make -C nv-codec-headers PREFIX="$prefix" install
 (
     cd ffmpeg-9.0.2
     # Check the source itself: re-extraction may overwrite a previous patch.
-    if ! patch --batch --dry-run -R -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107676.patch" >/dev/null 2>&1; then
+    if ! patch --batch --force --dry-run -R -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107676.patch" >/dev/null 2>&1; then
         patch --batch --forward -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107676.patch"
     fi
     # Check the source itself: re-extraction may overwrite a previous patch.
-    if ! patch --batch --dry-run -R -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107678.patch" >/dev/null 2>&1; then
+    if ! patch --batch --force --dry-run -R -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107678.patch" >/dev/null 2>&1; then
         patch --batch --forward -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107678.patch"
     fi
     ./configure --prefix="$prefix" --enable-static --disable-shared --enable-pic \
