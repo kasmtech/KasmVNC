@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Dedicated regression executable inside a portable packaging/build container.
+set -euo pipefail
+export PKG_CONFIG_PATH="/opt/kasm-codecs/lib/pkgconfig:/opt/kasm-desktop/lib/pkgconfig:/opt/kasm-runtime/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+test_dir=$(mktemp -d)
+trap 'rm -rf "$test_dir"' EXIT
+cc "$(dirname "$0")/test-security-backports.c" \
+  $(pkg-config --cflags --libs --static libavutil) -o "$test_dir/regression"
+"$test_dir/regression"
+"$test_dir/regression" encryption
