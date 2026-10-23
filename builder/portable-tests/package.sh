@@ -32,12 +32,12 @@ install_package() {
     deb) apt-get install -y --reinstall -o Dpkg::Options::=--force-confold "$package" ;;
     rpm)
       if command -v zypper >/dev/null; then
-        zypper --non-interactive --no-gpg-checks install --force "$package"
+        ZYPP_CONF=/portable/zypp-with-docs.conf zypper --non-interactive --no-gpg-checks install --force "$package"
       else
         if rpm -q kasmvncserver >/dev/null 2>&1 && [[ "$(rpm -qp --qf '%{VERSION}-%{RELEASE}' "$package")" = "$(rpm -q --qf '%{VERSION}-%{RELEASE}' kasmvncserver)" ]]; then
-          dnf reinstall -y "$package"
+          dnf --setopt=tsflags= reinstall -y "$package"
         else
-          dnf install -y "$package"
+          dnf --setopt=tsflags= install -y "$package"
         fi
       fi ;;
     tar)

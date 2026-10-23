@@ -41,6 +41,9 @@ elif command -v apt-get >/dev/null; then
       xkb-data libgl1 libgbm1
   fi
 elif command -v zypper >/dev/null; then
+  # Leap container defaults omit RPM documentation. Override only the test
+  # package transaction, leaving dependency installation policy unchanged.
+  sed 's/^[[:space:]]*rpm.install.excludedocs[[:space:]]*=.*/rpm.install.excludedocs = no/' /etc/zypp/zypp.conf > /portable/zypp-with-docs.conf
   zypper --non-interactive refresh
   if [[ "$stage" = bootstrap ]]; then
     zypper --non-interactive install --no-recommends ca-certificates
