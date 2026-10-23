@@ -29,10 +29,17 @@ WORKDIR $HOME
 
 ### REQUIRED STUFF ###
 
-RUN apt-get update && apt-get install -y supervisor xfce4 xfce4-terminal dbus-x11 xterm libnss-wrapper gettext wget
+ARG KALI_MIRROR=http://ftp.halifax.rwth-aachen.de/kali/
+RUN find /etc/apt/sources.list.d/ -name "*.sources" -exec \
+      sed -i "s@^URIs:.*@URIs: ${KALI_MIRROR}@" {} \;
+
+# Refresh the package index once; the installs below reuse it.
+RUN apt-get update
+
+RUN apt-get install -y supervisor xfce4 xfce4-terminal dbus-x11 xterm libnss-wrapper gettext wget
 RUN apt-get purge -y pm-utils xscreensaver*
-RUN apt-get update && apt-get install -y vim less
-RUN apt-get update && apt-get -y install lsb-release
+RUN apt-get install -y vim less
+RUN apt-get -y install lsb-release
 
 RUN echo 'source $STARTUPDIR/generate_container_user' >> $HOME/.bashrc
 
