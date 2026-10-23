@@ -347,8 +347,8 @@ upload_build_preview_html:
   image: $DEBIAN_STABLE_IMAGE
   variables:
     GIT_SUBMODULE_STRATEGY: none
-    WORKSPACE_CORE_REF: feature/touch-device-support
-    WORKSPACE_DESKTOP_REF: feature/touch-device-support
+    WORKSPACE_CORE_REF: develop
+    WORKSPACE_DESKTOP_REF: develop
   when: manual
   allow_failure: true
   timeout: 3h
