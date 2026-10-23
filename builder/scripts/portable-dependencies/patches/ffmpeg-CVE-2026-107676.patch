@@ -1,0 +1,43 @@
+From 2c2f6e96e31795ae95a8f8323a493ffbc493111f Mon Sep 17 00:00:00 2001
+From: Joshua Rogers <MegaManSec@users.noreply.github.com>
+Date: Mon, 31 Aug 2026 15:31:18 +0200
+Subject: [PATCH] avutil/hdr_dynamic_metadata: fix uninitialized bytes when
+ color saturation is set without tone mapping
+
+The write loop in av_dynamic_hdr_plus_to_t35() nested the
+color_saturation_mapping_flag and color_saturation_weight put_bits
+calls inside the tone_mapping_flag block, while the size calculation
+and the parser treat these fields as unconditional per window. When
+tone_mapping_flag is 0 and color_saturation_mapping_flag is 1, fewer
+bits than allocated were written, leaving uninitialized heap bytes in
+the returned buffer. Move the writes outside the tone_mapping_flag
+block to match.
+
+Fixes: read of uninitialized memory
+Fixes: Yy1uJcbmyeBp
+Fixes: AISLE-2026-0100-00011
+Found-by: Joshua Rogers <joshua.rogers@aisle.com>
+---
+ libavutil/hdr_dynamic_metadata.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/libavutil/hdr_dynamic_metadata.c b/libavutil/hdr_dynamic_metadata.c
+index 4c9ac25970765..9b4649934333c 100644
+--- a/libavutil/hdr_dynamic_metadata.c
++++ b/libavutil/hdr_dynamic_metadata.c
+@@ -379,11 +379,11 @@ int av_dynamic_hdr_plus_to_t35(const AVDynamicHDRPlus *s, uint8_t **data, size_t
+             for (int i = 0; i < s->params[w].num_bezier_curve_anchors; i++)
+                 put_bits(pb, 10, s->params[w].bezier_curve_anchors[i].num * bezier_anchor_den /
+                     s->params[w].bezier_curve_anchors[i].den);
+-            put_bits(pb, 1, s->params[w].color_saturation_mapping_flag);
+-            if (s->params[w].color_saturation_mapping_flag)
+-                put_bits(pb, 6, s->params[w].color_saturation_weight.num * saturation_weight_den /
+-                    s->params[w].color_saturation_weight.den);
+         }
++        put_bits(pb, 1, s->params[w].color_saturation_mapping_flag);
++        if (s->params[w].color_saturation_mapping_flag)
++            put_bits(pb, 6, s->params[w].color_saturation_weight.num * saturation_weight_den /
++                s->params[w].color_saturation_weight.den);
+     }
+ 
+     flush_put_bits(pb);

@@ -268,6 +268,12 @@ class Inventory:
             directory = dirs[0] if dirs else None
         c = component(name, version, purl=f'pkg:generic/{quote(name)}@{quote(version)}',
                       properties=properties + [prop('source-file', record['file']), prop('source-sha256', record['sha256'])])
+        # Backports keep the upstream version truthful. Preserve the exact patch
+        # bytes alongside upstream sources so consumers can reproduce/review them.
+        patch_dir = SRC / 'builder/scripts/portable-dependencies/patches'
+        for patch in sorted(patch_dir.glob(name + '-*.patch')):
+            patch_record = self.preserve(patch, 'upstream/' + patch.name)
+            c['properties'].append(prop('source-patch', json.dumps(patch_record, sort_keys=True)))
         if entry.get('cpe') and re.fullmatch(r'\d+(?:\.\d+)+', version):
             c['cpe'] = f'cpe:2.3:a:{entry["cpe"]}:{version}:*:*:*:*:*:*:*'
         if directory:

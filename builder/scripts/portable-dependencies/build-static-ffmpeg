@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run inside a build container. This prefix must precede distro pkg-config paths.
 set -euo pipefail
+recipe_dir=$(cd "$(dirname "$0")" && pwd)
 prefix=${KASMVNC_CODEC_PREFIX:-/opt/kasm-codecs}
 source_dir=${KASMVNC_CODEC_SOURCES:-/tmp/static-sources}
 jobs=${BUILD_JOBS:-8}
@@ -51,6 +52,14 @@ cmake --install svt-av1/build-static
 make -C nv-codec-headers PREFIX="$prefix" install
 (
     cd ffmpeg-9.0.2
+    # Check the source itself: re-extraction may overwrite a previous patch.
+    if ! patch --batch --dry-run -R -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107676.patch" >/dev/null 2>&1; then
+        patch --batch --forward -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107676.patch"
+    fi
+    # Check the source itself: re-extraction may overwrite a previous patch.
+    if ! patch --batch --dry-run -R -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107678.patch" >/dev/null 2>&1; then
+        patch --batch --forward -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107678.patch"
+    fi
     ./configure --prefix="$prefix" --enable-static --disable-shared --enable-pic \
         --disable-autodetect --disable-doc --disable-programs --disable-debug \
         --disable-avdevice --disable-avfilter --disable-network \
