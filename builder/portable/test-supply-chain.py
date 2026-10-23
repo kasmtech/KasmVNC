@@ -120,7 +120,11 @@ with tempfile.TemporaryDirectory() as tmp:
         rejects(lambda: m.link_inputs(binary), 'Missing link input')
     map_path.write_text(original_map)
     rejects(lambda: inv.archive(inputs[0]), 'Uncatalogued static archive')
-    (base / 'test.cdx.json').write_text('{}')
+    (base / 'test.cdx.json').write_text(json.dumps({
+        'metadata': {'component': {'name': 'KasmVNC', 'properties': [
+            {'name': 'kasmvnc:architecture', 'value': 'amd64'},
+            {'name': 'kasmvnc:revision', 'value': 'fixture'}]}},
+        'components': [{'name': 'fixture', 'version': '1.0', 'bom-ref': 'fixture@1.0'}]}))
     scanner = base / 'grype'
     scanner.write_text('#!/bin/sh\nexit 17\n'); scanner.chmod(0o755)
     env = dict(os.environ, PATH=tmp + ':' + os.environ['PATH'])
