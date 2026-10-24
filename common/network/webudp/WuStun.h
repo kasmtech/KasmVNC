@@ -1,12 +1,17 @@
 #pragma once
 
-#include "WuBufferOp.h"
+#include "WuCrypto.h"
 #include "WuString.h"
 
-const int32_t kMaxStunIdentifierLength = 128;
-const int32_t kStunTransactionIdLength = 12;
-const uint32_t kStunCookie = 0x2112a442;
-const uint16_t kStunXorMagic = 0x2112;
+constexpr int32_t kMaxStunIdentifierLength = 128;
+constexpr int32_t kStunTransactionIdLength = 12;
+constexpr uint32_t kStunCookie = 0x2112a442;
+constexpr uint16_t kStunXorMagic = 0x2112;
+constexpr int32_t kStunHeaderLength = 20;
+constexpr int32_t kStunAlignment = 4;
+constexpr int32_t kStunAttributeHeaderLength = 4;
+constexpr int32_t kMinIceUfragLength = 4;
+constexpr int32_t kMinStunUsernameLength = 2 * kMinIceUfragLength + 1;
 
 struct StunUserIdentifier {
   uint8_t identifier[kMaxStunIdentifierLength];
@@ -49,9 +54,15 @@ struct StunPacket {
   StunUserIdentifier serverUser;
 
   StunAddress xorMappedAddress;
+
+  int32_t integrityOffset{0};
+  uint8_t integrity[kSHA1Length];
 };
 
 bool ParseStun(const uint8_t* src, int32_t len, StunPacket* packet);
+
+bool VerifyStunIntegrity(const uint8_t *msg, int32_t len, const StunPacket *packet, const uint8_t *password,
+                         int32_t passwordLen);
 
 size_t SerializeStunPacket(const StunPacket* packet, const uint8_t* password,
                             int32_t passwordLen, uint8_t* dest, int32_t len);

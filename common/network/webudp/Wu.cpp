@@ -455,14 +455,19 @@ static void WuReceiveDTLSPacket(Wu* wu, const uint8_t* data, size_t length,
   }
 }
 
-static void WuHandleStun(Wu* wu, const StunPacket* packet,
-                         const WuAddress* remote) {
+static void WuHandleStun(Wu *wu, const StunPacket *packet, const uint8_t *data, int32_t length,
+                         const WuAddress *remote) {
   WuClient* client =
       WuFindClientByCreds(wu, &packet->serverUser, &packet->remoteUser);
 
   if (!client) {
     WuReportDebug(wu, "Stun: No client found");
     // TODO: Send unauthorized
+    return;
+  }
+
+  if (!VerifyStunIntegrity(data, length, packet, client->serverPassword.identifier, client->serverPassword.length)) {
+    WuReportDebug(wu, "Stun: Message integrity check failed");
     return;
   }
 
@@ -721,7 +726,7 @@ void WuHandleUDP(Wu* wu, const WuAddress* remote, const uint8_t* data,
   StunPacket stunPacket;
   if (ParseStun(data, length, &stunPacket)) {
     //WuReportDebug(wu, "Received stun packet");
-    WuHandleStun(wu, &stunPacket, remote);
+    WuHandleStun(wu, &stunPacket, data, length, remote);
   } else {
     //WuReportDebug(wu, "Received DTLS packet");
     WuReceiveDTLSPacket(wu, data, length, remote);

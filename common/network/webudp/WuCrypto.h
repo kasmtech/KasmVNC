@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-const size_t kSHA1Length = 20;
+constexpr size_t kSHA1Length = 20;
 
 struct WuSHA1Digest {
   uint8_t bytes[kSHA1Length];
