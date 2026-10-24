@@ -7,19 +7,23 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV CXXFLAGS="-Wno-stringop-overflow"
 ENV CFLAGS="-Wno-stringop-overflow"
 
+ARG KALI_MIRROR=http://ftp.halifax.rwth-aachen.de/kali/
+RUN find /etc/apt/sources.list.d/ -name "*.sources" -exec \
+      sed -i "s@^URIs:.*@URIs: ${KALI_MIRROR}@" {} \;
+
 RUN find /etc/apt/sources.list.d/ -name "*.sources" | xargs -r sed -i 's/^Types: deb$/Types: deb deb-src/'; \
     { [ -f /etc/apt/sources.list ] && grep '^deb ' /etc/apt/sources.list 2>/dev/null; \
       find /etc/apt/sources.list.d/ -name "*.list" -exec grep -h '^deb ' {} \; 2>/dev/null; } | \
     sed 's/^deb /deb-src /' >> /etc/apt/sources.list.d/kali-deb-src.list; true
 
-RUN apt-get update && \
-      apt-get -y install sudo
+RUN apt-get update
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
-RUN apt-get update && apt-get -y build-dep xorg-server libxfont-dev
-RUN apt-get update && apt-get -y install gcc g++ curl ca-certificates && update-ca-certificates
-RUN apt-get update && apt-get -y install ninja-build nasm git libgnutls28-dev vim wget tightvncserver
-RUN apt-get update && apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev \
+RUN apt-get -y install sudo
+RUN apt-get install -y --no-install-recommends tzdata
+RUN apt-get -y build-dep xorg-server libxfont-dev
+RUN apt-get -y install gcc g++ curl ca-certificates && update-ca-certificates
+RUN apt-get -y install ninja-build nasm git libgnutls28-dev vim wget tightvncserver
+RUN apt-get -y install libpng-dev libtiff-dev libgif-dev libavcodec-dev libssl-dev libxrandr-dev \
     libxcursor-dev libavformat-dev libswscale-dev libva-dev libatspi2.0-dev libdbus-1-dev libcrypt-dev
 
 RUN ARCH=$(arch) && \
