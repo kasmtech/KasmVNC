@@ -547,7 +547,7 @@ int vncIsAffectedByNumLock(KeyCode keycode)
 	return 1;
 }
 
-static void applyAddedKeysym(DeviceIntPtr dev, KeyCode key, KeySym keysym, KeySym lower, KeySym upper)
+static void vncApplyAddedKeysym(DeviceIntPtr dev, KeyCode key, KeySym keysym, KeySym lower, KeySym upper)
 {
 	XkbDescPtr xkb = dev->key->xkbInfo->desc;
 	XkbEventCauseRec cause;
@@ -595,6 +595,34 @@ static void applyAddedKeysym(DeviceIntPtr dev, KeyCode key, KeySym keysym, KeySy
 	changes.map.num_key_syms = 1;
 
 	XkbUpdateActions(dev, key, 1, &changes, &check, &cause);
+	if (check)
+		XkbCheckSecondaryEffects(dev->key->xkbInfo, 1, &changes, &cause);
+
+	XkbSendNotification(dev, &changes, &cause);
+}
+
+static void vncRemoveAppliedKeycode(DeviceIntPtr dev, unsigned keycode)
+{
+	XkbChangesRec changes;
+	XkbEventCauseRec cause;
+
+	memset(&changes, 0, sizeof(changes));
+	memset(&cause, 0, sizeof(cause));
+
+	XkbSetCauseUnknown(&cause);
+
+	KeySym ks = NoSymbol;
+
+	KeySymsRec keysyms;
+	keysyms.minKeyCode = keycode;
+	keysyms.maxKeyCode = keycode;
+	keysyms.mapWidth = 1;
+	keysyms.map = &ks;
+
+	unsigned check = 0;
+	XkbUpdateKeyTypesFromCore(dev, &keysyms, keycode, 1, &changes);
+	XkbUpdateActions(dev, keycode, 1, &changes, &check, &cause);
+
 	if (check)
 		XkbCheckSecondaryEffects(dev->key->xkbInfo, 1, &changes, &cause);
 
@@ -663,44 +691,21 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool
 	 */
 	XkbConvertCase(keysym, &lower, &upper);
 
-	applyAddedKeysym(master, key, keysym, lower, upper);
+	vncApplyAddedKeysym(master, key, keysym, lower, upper);
 	if (vncKeyboardDev->key && vncKeyboardDev->key->xkbInfo->desc != xkb)
-		applyAddedKeysym(vncKeyboardDev, key, keysym, lower, upper);
+		vncApplyAddedKeysym(vncKeyboardDev, key, keysym, lower, upper);
 
 	return key;
 }
 
 void vncRemoveKeycode(unsigned keycode)
 {
-	DeviceIntPtr master;
-
-	XkbEventCauseRec cause;
-	XkbChangesRec changes;
-
-	master = GetMaster(vncKeyboardDev, KEYBOARD_OR_FLOAT);
+	DeviceIntPtr master = GetMaster(vncKeyboardDev, KEYBOARD_OR_FLOAT);
 	XkbDescPtr xkb = master->key->xkbInfo->desc;
 
-	memset(&changes, 0, sizeof(changes));
-	memset(&cause, 0, sizeof(cause));
-
-	XkbSetCauseUnknown(&cause);
-
-	KeySym ks = NoSymbol;
-
-	KeySymsRec keysyms;
-	keysyms.minKeyCode = keycode;
-	keysyms.maxKeyCode = keycode;
-	keysyms.mapWidth = 1;
-	keysyms.map = &ks;
-
-	unsigned check = 0;
-	XkbUpdateKeyTypesFromCore(master, &keysyms, keycode, 1, &changes);
-	XkbUpdateActions(master, keycode, 1, &changes, &check, &cause);
-
-	if (check)
-		XkbCheckSecondaryEffects(master->key->xkbInfo, 1, &changes, &cause);
-
-	XkbSendNotification(master, &changes, &cause);
+	vncRemoveAppliedKeycode(master, keycode);
+	if (vncKeyboardDev->key && vncKeyboardDev->key->xkbInfo->desc != xkb)
+		vncRemoveAppliedKeycode(vncKeyboardDev, keycode);
 }
 
 static void vncXkbProcessDeviceEvent(int screenNum,
