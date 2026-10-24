@@ -360,6 +360,106 @@ CI is GitLab (`.gitlab-ci.yml`). `BUILD_DISTROS_REGEX` limits which distros
 build (use `"jammy"` for a fast loop; Jammy is required for the spec and
 functional test stages). See `BUILDING.md` for the CI fast-feedback knobs.
 
+## Security review and vulnerability triage (opt-in)
+
+Start vulnerability investigation, remediation, or triage only when explicitly
+requested, for example "address security findings" or "perform a security
+review". Do not start a new review for each ordinary development commit or
+pipeline. Existing build/CI scans and assessment validation continue normally;
+this opt-in rule does not disable them. A review request authorizes investigation,
+not automatically remediation, commits, pushes, or GitLab status changes: follow
+the scope and authorization already given by the developer.
+
+### Establish the review baseline
+
+1. Inspect the current branch, HEAD, staged/unstaged/untracked changes, and
+   submodule revisions. Preserve unfinished work; do not commit it just to obtain
+   a scan.
+2. Look for an existing GitLab pipeline for the exact HEAD commit. Reuse its
+   security artifacts when the relevant scan jobs completed successfully and
+   cover the requested architectures/libcs. A scan failure, missing artifact, or
+   missing profile is not a clean result. Record the pipeline/job IDs, source
+   revision, artifact hashes, scanner version, and database metadata.
+3. If local changes affect dependencies, build configuration, shipped code, or
+   assessment evidence, the pipeline describes only the committed baseline.
+   Build/scan the relevant local changes before making claims about the working
+   tree. Record that local evidence includes uncommitted changes.
+4. If suitable pipeline results are unavailable, start locally using the canonical
+   container workflow; do not create a commit/pipeline merely to begin a review.
+   A clean checkout and matching pipeline do not establish database freshness.
+   Distinguish exact reproduction with the same database from a fresh scan whose
+   advisory data may differ, and explain differences instead of forcing counts
+   to match.
+
+### Investigate and record decisions
+
+Read [the portable security workflow](builder/portable/README.md#persistent-security-assessments),
+[the review registry](builder/portable/security-assessments.json), and
+[the source-backed review](builder/portable/SECURITY-REVIEW.md) before assessing
+portable findings. Use upstream advisories, source fixes, build flags, shipped
+files, and actual call paths to establish applicability. A version match alone
+does not establish exploitability; failure to reproduce alone does not establish
+non-applicability. Disabled executables do not prove shared library code is
+unreachable. Scope conclusions to the reviewed artifact, architecture, and libc;
+embedded-dependency scans do not cover host OS packages or drivers.
+
+| Evidence | Project assessment | GitLab triage, when authorized |
+|---|---|---|
+| Applicability uncertain or evidence changed | `in_triage` | Needs Triage |
+| Vulnerability applies to the shipped build | `exploitable` | Confirmed |
+| Vulnerable functionality absent or demonstrably unreachable | `not_affected` | Dismiss with an accurate reason, scope, and evidence |
+| Incorrect scanner/advisory match | `false_positive` | Dismiss: False Positive |
+| Fix/backport verified in the shipped build | `resolved` | Resolve with fix and validation evidence |
+| Finding absent from the current successful scan | `not_detected` lifecycle | Investigate before declaring resolved |
+
+For authorized changes, update the committed registry and review document with
+the CVE, exact package/version/platform scope, rationale, reviewer/date, upstream
+references, and source/recipe fingerprints. Never broaden scope or refresh hashes
+just to keep an exception active. Keep real upstream versions and raw findings;
+do not delete matches, lower severity, or invent versions to hide a backport.
+Preserve review history: generated snapshots update `active`, `not_detected`,
+`needs_review`, and `unreviewed` observations without a CI bot rewriting Git.
+Accepting a valid risk is a separate decision requiring explicit developer
+authorization, not a false-positive classification.
+
+### Validate locally, then verify publication
+
+Use `builder/build-portable` and `builder/build-portable --libc musl` for the
+relevant profiles; these container builds invoke `builder/portable/scan` on the
+generated SBOM. Follow their documented version/signing configuration. Run
+targeted regression tests for fixes/backports (demonstrate failure before and
+success after the patch where practical), appropriate package/runtime tests, and
+`builder/portable/test-security-reports` against the current artifact directories.
+Keep tests in containers. Do not mix stale builds into the validation inputs.
+
+Verify schemas and agreement across the CycloneDX SBOM, assessment snapshot,
+OpenVEX, annotated Grype output, and GitLab report. Exercise the actual Grype VEX
+consumer: its remaining matches plus `ignoredMatches` must account for every raw
+finding, and only applicable reviewed exceptions may move to `ignoredMatches`.
+Test assessment invalidation/disappearance when changing reconciliation logic.
+Check installed SBOM/VEX records across affected package formats, including
+minimal images that omit documentation by default.
+
+When commit/push/CI monitoring is authorized, verify the final revision's CI
+artifacts, required platform coverage, and GitLab's ingested assessment details
+and flags. Follow the developer's retry limits; distinguish infrastructure errors
+from code failures. Local results can support research and remediation without
+waiting for CI, but do not claim untested platforms or GitLab ingestion verified
+until their evidence is available. Finish with a finding-by-finding status table,
+evidence links, validation results, and remaining limitations. A green pipeline
+or fewer raw findings does not mean every vulnerability is resolved.
+
+### Keep GitLab triage consistent with evidence
+
+Scanner false-positive flags and evidence are separate from GitLab's persistent
+triage status. UI/API decisions do not update the registry or SBOM. When status
+changes are authorized, apply evidence-backed decisions through the approved
+platform tooling and record the rationale and reviewed commit. Recheck existing
+dismissals when evidence/scope changes or an assessment becomes `needs_review`
+or `in_triage`; an old dismissal must not silently outlive its justification.
+Reopen stale decisions when authorized, otherwise report the discrepancy and
+required action. Do not assume a regenerated report resets a GitLab dismissal.
+
 ## Configuration
 
 YAML-based, layered:
