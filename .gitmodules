@@ -5,3 +5,6 @@
 [submodule "kasmvnc-functional-tests"]
 	path = kasmvnc-functional-tests
 	url = git@gitlab.com:kasm-technologies/internal/kasmvnc-functional-tests.git
+[submodule "kasmvnc-unit-tests"]
+	path = kasmvnc-unit-tests
+	url = git@gitlab.com:kasm-technologies/internal/kasmvnc-unit-tests.git

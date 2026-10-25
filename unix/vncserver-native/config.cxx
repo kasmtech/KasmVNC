@@ -205,7 +205,7 @@ namespace launcher {
         std::string errorFor(const Config &c, const Key &k, const std::string &value) {
             if (k.type == "INT" && !matches(value, "^-?[0-9]+$"))
                 return "must be an integer";
-            if (k.type == "BOOLEAN" && !matches(value, "^true|false$"))
+            if (k.type == "BOOLEAN" && !matches(value, "^(true|false)$"))
                 return "must be true or false";
             if (!k.allowed.empty() && std::find(k.allowed.begin(), k.allowed.end(), value) == k.allowed.end())
                 return "must be one of [" + join(k.allowed, ", ") + "]";
@@ -402,7 +402,7 @@ namespace launcher {
                     // Check only the primitive type here, without callback validation.
                     const auto &text = node.text;
                     if (composite ||
-                        (key.type == "INT" ? !matches(text, "^-?[0-9]+$") : !matches(text, "^true|false$")))
+                        (key.type == "INT" ? !matches(text, "^-?[0-9]+$") : !matches(text, "^(true|false)$")))
                         addError(key.type == "INT" ? "must be an integer" : "must be true or false");
                 }
                 for (const auto &value: values)

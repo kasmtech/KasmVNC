@@ -653,3 +653,52 @@ test_portable_musl_arm64:
   needs: [build_portable_musl_arm64]
   variables:
     PORTABLE_ARCH: arm64
+
+# Fast component tests use this checkout, never the standalone source overrides.
+.unit_test:
+  stage: test
+  image: node:22-bookworm@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384
+  services: []
+  needs: []
+  timeout: 20m
+  variables:
+    GIT_SUBMODULE_PATHS: "kasmweb kasmvnc-unit-tests"
+  before_script:
+    - sh kasmvnc-unit-tests/container/install-deps
+  script:
+    - UNIT_INSIDE_CONTAINER=1 kasmvnc-unit-tests/run-unit-tests "$CI_PROJECT_DIR" "$UNIT_SUITE"
+  allow_failure: false
+  retry:
+    max: 2
+    when: [runner_system_failure, api_failure]
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths: [kasmvnc-unit-tests/reports/]
+
+unit_test:
+  extends: .unit_test
+  variables: {UNIT_SUITE: cpp}
+  artifacts:
+    reports:
+      junit: kasmvnc-unit-tests/reports/cpp/cpp.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: kasmvnc-unit-tests/reports/cpp/cpp-coverage.xml
+
+unit_test_frontend:
+  extends: .unit_test
+  variables: {UNIT_SUITE: frontend}
+  artifacts:
+    reports:
+      junit: kasmvnc-unit-tests/reports/frontend/frontend.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: kasmvnc-unit-tests/reports/frontend/cobertura-coverage.xml
+
+unit_test_sanitizers:
+  extends: .unit_test
+  variables: {UNIT_SUITE: sanitizers}
+  artifacts:
+    reports:
+      junit: kasmvnc-unit-tests/reports/sanitizers/cpp.xml

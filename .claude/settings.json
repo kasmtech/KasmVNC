@@ -33,6 +33,7 @@
       "Bash(npx *)",
 
       "Bash(builder/test-vncserver*)",
+      "Bash(builder/test-unit*)",
       "Bash(./functional-test*)",
 
       "Bash(git status*)",

@@ -331,3 +331,34 @@ See the [builder/README.md](https://github.com/kasmtech/KasmVNC/blob/master/buil
 See the [LICENSE.TXT](https://github.com/kasmtech/KasmVNC/blob/master/LICENSE.TXT) and [ACKNOWLEDGEMENTS.md](https://github.com/kasmtech/KasmVNC/blob/master/ACKNOWLEDGEMENTS.md)
 
 This project is tested with BrowserStack.
+
+## Developing and running unit tests
+
+Initialize the committed test and frontend revisions, then run the local suites:
+
+```sh
+git submodule update --init kasmweb kasmvnc-unit-tests
+builder/test-unit
+builder/test-unit sanitizers
+```
+
+Docker is the only host dependency. The dedicated container tests C/C++ components
+(including the native launcher) and frontend browser modules without building a
+server package or running Xvnc. JUnit and coverage are saved beneath
+`kasmvnc-unit-tests/reports/` and published by the required `unit_test`,
+`unit_test_frontend`, and `unit_test_sanitizers` GitLab jobs. These jobs run without
+waiting for packaging. The current pipeline uses branch pipelines; it does not
+create separate merge-request-event pipelines.
+
+Run the full local suites before creating an MR. Add tests for new features and
+error/boundary behavior. For bugs, add a regression that fails before the fix and
+passes after whenever a unit test can catch the defect; otherwise explain why and
+add integration/functional coverage. Record any failed or blocked checks.
+
+The [unit-test project](https://gitlab.com/kasm-technologies/internal/kasmvnc-unit-tests)
+also runs independently: `KASMVNC_REF` selects a branch (default `master`), and
+`KASMWEB_COMMIT` optionally overrides the frontend with a full Git commit ID
+(default empty, preserving KasmVNC's gitlink). Reports record all resolved commits.
+See its README for filters, coverage scope and coordinated source/test changes.
+Commit/push tests first, then pin the tested revision in KasmVNC. Runtime specs and
+Minimal/Standard functional tests complement these unit checks.

@@ -315,6 +315,25 @@ In production the `vncserver` Perl wrapper starts/manages sessions
 
 ## Testing
 
+### Required unit tests before merge requests
+
+Run `builder/test-unit` and `builder/test-unit sanitizers` locally before creating
+a merge request. Both use the dedicated unit container, with no package or running
+Xvnc required. Record the commands/results; report blockers and failures honestly.
+Add unit tests for new behavior, including failure and boundary cases. For each bug
+fix, assess whether a unit test could have caught it; if so add a regression and
+verify failure before and success after the fix. Explain integration/E2E-only cases
+and cover them in the appropriate suite. Do not replace unit tests with a build
+smoke check. The runtime spec and functional suites retain their separate roles.
+
+Tests live in `kasmvnc-unit-tests`, a pinned Git submodule. Changes spanning source
+and tests require validating the exact pair, committing/pushing the test revision
+first, then updating the KasmVNC gitlink. Do not use `--remote` to initialize tests.
+See its README for filters, standalone source selection, coverage and reports.
+Native C++ launcher configuration is tested directly; legacy Perl is not part of
+this unit suite. Frontend browser-component tests run against the pinned kasmweb
+source without a KasmVNC server. Tests must exercise current Kasm interfaces.
+
 > **Run every check inside a container — never on the host.** The build and its
 > smoke check run inside the `kasmvnc:dev` container; each test suite runs inside
 > its **own** dedicated container that provisions that suite's dependencies

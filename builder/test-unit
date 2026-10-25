@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+if [[ ! -x "$root/kasmvnc-unit-tests/run-unit-tests" ]]; then
+  echo 'Initialize tests: git submodule update --init kasmweb kasmvnc-unit-tests' >&2
+  exit 2
+fi
+exec "$root/kasmvnc-unit-tests/run-unit-tests" "$root" "${1:-all}"
