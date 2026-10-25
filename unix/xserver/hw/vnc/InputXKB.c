@@ -547,75 +547,24 @@ int vncIsAffectedByNumLock(KeyCode keycode)
 	return 1;
 }
 
-KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool freeKeys)
+static void vncApplyAddedKeysym(DeviceIntPtr dev, KeyCode key, KeySym keysym, KeySym lower, KeySym upper)
 {
-	DeviceIntPtr master;
-	XkbDescPtr xkb;
-	unsigned int key = 0;
-	unsigned int i;
-	unsigned int newest_k = 0;
-	unsigned int oldest_k = 0;
-	unsigned int freeCnt = 0;
-	
+	XkbDescPtr xkb = dev->key->xkbInfo->desc;
 	XkbEventCauseRec cause;
 	XkbChangesRec changes;
-
 	int types[1];
 	KeySym *syms;
-	KeySym upper, lower;
-
-	master = GetMaster(vncKeyboardDev, KEYBOARD_OR_FLOAT);
-	xkb = master->key->xkbInfo->desc;
-
-	//find the first free key to map
-	for (i = xkb->max_key_code; i >= xkb->min_key_code; i--) {
-		if (XkbKeyNumGroups(xkb, i) == 0 && *(needFree + i) != UINT_MAX) {
-			if (++freeCnt == 1) 
-				key = i;
-		}
-	}
-
-	if (key < xkb->min_key_code)
-		return 0;
-
-	//find the oldest and newest keys that have been remapped
-	for (i = 1;i < 256;i++) {
-		//protect from uint rollover
-		if (*(needFree + i) == MAX_MAPPINGS)
-			*(needFree + i) = 1;
-		if (*(needFree + i) > *(needFree + newest_k) && *(needFree + i) != UINT_MAX)
-			newest_k = i;
-		if (*(needFree + i) < *(needFree + oldest_k) && *(needFree +i) > 0)
-			oldest_k = i;
-		//mark as free to use
-		if (*(needFree + i) == UINT_MAX)
-			*(needFree + i) = 0;
-	}
-	*(needFree + key) = ++(*(needFree + newest_k));
-	
-	//if running low on free keys, free the oldest key that was used
-	if (freeCnt < 3 && *(needFree + oldest_k) > 0 && freeKeys) {
-		vncRemoveKeycode(oldest_k);
-		LOG_DEBUG("Removed mapping for keycode %d", oldest_k);
-		//mark as free to use after one more cycle
-		*(needFree + oldest_k) = UINT_MAX;
-	} else if (freeCnt < 3 && freeKeys) {
-		//this should only happen if the system had fewer than 3 free keys to begin with
-		LOG_INFO("The system has fewer than 3 unmapped keys with no available keys to free.");
-		return 0;
-	}
-
-	memset(&changes, 0, sizeof(changes));
-	memset(&cause, 0, sizeof(cause));
-
-	XkbSetCauseUnknown(&cause);
+	unsigned int check = 0;
 
 	/*
 	 * Tools like xkbcomp get confused if there isn't a name
 	 * assigned to the keycode we're trying to use.
 	 */
-	if (xkb->names && xkb->names->keys &&
-	    (xkb->names->keys[key].name[0] == '\0')) {
+	memset(&changes, 0, sizeof(changes));
+	memset(&cause, 0, sizeof(cause));
+	XkbSetCauseUnknown(&cause);
+
+	if (xkb->names && xkb->names->keys) {
 		xkb->names->keys[key].name[0] = 'I';
 		xkb->names->keys[key].name[1] = '0' + (key / 100) % 10;
 		xkb->names->keys[key].name[2] = '0' + (key /  10) % 10;
@@ -626,14 +575,6 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool
 		changes.names.num_keys = 1;
 	}
 
-	/* FIXME: Verify that ONE_LEVEL/ALPHABETIC isn't screwed up */
-
-	/*
-	 * For keysyms that are affected by Lock, we are better off
-	 * using ALPHABETIC rather than ONE_LEVEL as the latter
-	 * generally cannot produce lower case when Lock is active.
-	 */
-	XkbConvertCase(keysym, &lower, &upper);
 	if (upper == lower)
 		types[XkbGroup1Index] = XkbOneLevelIndex;
 	else
@@ -641,7 +582,7 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool
 
 	XkbChangeTypesOfKey(xkb, key, 1, XkbGroup1Mask, types, &changes.map);
 
-	syms = XkbKeySymsPtr(xkb,key);
+	syms = XkbKeySymsPtr(xkb, key);
 	if (upper == lower)
 		syms[0] = keysym;
 	else {
@@ -653,20 +594,17 @@ KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool
 	changes.map.first_key_sym = key;
 	changes.map.num_key_syms = 1;
 
-	XkbSendNotification(master, &changes, &cause);
+	XkbUpdateActions(dev, key, 1, &changes, &check, &cause);
+	if (check)
+		XkbCheckSecondaryEffects(dev->key->xkbInfo, 1, &changes, &cause);
 
-	return key;
+	XkbSendNotification(dev, &changes, &cause);
 }
 
-void vncRemoveKeycode(unsigned keycode)
+static void vncRemoveAppliedKeycode(DeviceIntPtr dev, unsigned keycode)
 {
-	DeviceIntPtr master;
-
-	XkbEventCauseRec cause;
 	XkbChangesRec changes;
-
-	master = GetMaster(vncKeyboardDev, KEYBOARD_OR_FLOAT);
-	XkbDescPtr xkb = master->key->xkbInfo->desc;
+	XkbEventCauseRec cause;
 
 	memset(&changes, 0, sizeof(changes));
 	memset(&cause, 0, sizeof(cause));
@@ -682,13 +620,92 @@ void vncRemoveKeycode(unsigned keycode)
 	keysyms.map = &ks;
 
 	unsigned check = 0;
-	XkbUpdateKeyTypesFromCore(master, &keysyms, keycode, 1, &changes);
-	XkbUpdateActions(master, keycode, 1, &changes, &check, &cause);
+	XkbUpdateKeyTypesFromCore(dev, &keysyms, keycode, 1, &changes);
+	XkbUpdateActions(dev, keycode, 1, &changes, &check, &cause);
 
 	if (check)
-		XkbCheckSecondaryEffects(master->key->xkbInfo, 1, &changes, &cause);
+		XkbCheckSecondaryEffects(dev->key->xkbInfo, 1, &changes, &cause);
 
-	XkbSendNotification(master, &changes, &cause);
+	XkbSendNotification(dev, &changes, &cause);
+}
+
+KeyCode vncAddKeysym(KeySym keysym, unsigned state, unsigned int *needFree, bool freeKeys)
+{
+	DeviceIntPtr master;
+	XkbDescPtr xkb;
+	unsigned int key = 0;
+	unsigned int i;
+	unsigned int newest_k = 0;
+	unsigned int oldest_k = 0;
+	unsigned int freeCnt = 0;
+
+	KeySym upper, lower;
+
+	master = GetMaster(vncKeyboardDev, KEYBOARD_OR_FLOAT);
+	xkb = master->key->xkbInfo->desc;
+
+	//find the first free key to map
+	for (i = xkb->max_key_code; i >= xkb->min_key_code; i--) {
+		if (XkbKeyNumGroups(xkb, i) == 0 && *(needFree + i) != UINT_MAX) {
+			if (++freeCnt == 1)
+				key = i;
+		}
+	}
+
+	if (key < xkb->min_key_code)
+		return 0;
+
+	//find the oldest and newest keys that have been remapped
+	for (i = 1; i < 256; i++) {
+		//protect from uint rollover
+		if (*(needFree + i) == MAX_MAPPINGS)
+			*(needFree + i) = 1;
+		if (*(needFree + i) > *(needFree + newest_k) && *(needFree + i) != UINT_MAX)
+			newest_k = i;
+		if (*(needFree + i) < *(needFree + oldest_k) && *(needFree +i) > 0)
+			oldest_k = i;
+		//mark as free to use
+		if (*(needFree + i) == UINT_MAX)
+			*(needFree + i) = 0;
+	}
+	*(needFree + key) = ++(*(needFree + newest_k));
+
+	//if running low on free keys, free the oldest key that was used
+	if (freeCnt < 3 && *(needFree + oldest_k) > 0 && freeKeys) {
+		vncRemoveKeycode(oldest_k);
+		LOG_DEBUG("Removed mapping for keycode %d", oldest_k);
+		//mark as free to use after one more cycle
+		*(needFree + oldest_k) = UINT_MAX;
+	} else if (freeCnt < 3 && freeKeys) {
+		//this should only happen if the system had fewer than 3 free keys to begin with
+		LOG_INFO("The system has fewer than 3 unmapped keys with no available keys to free.");
+		return 0;
+	}
+
+	/* FIXME: Verify that ONE_LEVEL/ALPHABETIC isn't screwed up */
+
+	/*
+	 * For keysyms that are affected by Lock, we are better off
+	 * using ALPHABETIC rather than ONE_LEVEL as the latter
+	 * generally cannot produce lower case when Lock is active.
+	 */
+	XkbConvertCase(keysym, &lower, &upper);
+
+	vncApplyAddedKeysym(master, key, keysym, lower, upper);
+	if (vncKeyboardDev->key && vncKeyboardDev->key->xkbInfo->desc != xkb)
+		vncApplyAddedKeysym(vncKeyboardDev, key, keysym, lower, upper);
+
+	return key;
+}
+
+void vncRemoveKeycode(unsigned keycode)
+{
+	DeviceIntPtr master = GetMaster(vncKeyboardDev, KEYBOARD_OR_FLOAT);
+	XkbDescPtr xkb = master->key->xkbInfo->desc;
+
+	vncRemoveAppliedKeycode(master, keycode);
+	if (vncKeyboardDev->key && vncKeyboardDev->key->xkbInfo->desc != xkb)
+		vncRemoveAppliedKeycode(vncKeyboardDev, keycode);
 }
 
 static void vncXkbProcessDeviceEvent(int screenNum,
