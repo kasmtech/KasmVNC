@@ -134,7 +134,7 @@ size_t SerializeStunPacket(const StunPacket* packet, const uint8_t* password,
   // xor mapped address attribute ipv4
   offset += WriteScalar(dest + offset, htons(StunAttrib_XorMappedAddress));
   offset += WriteScalar(dest + offset, htons(8));
-  offset += WriteScalar(dest + offset, 0);  // reserved
+  offset += WriteScalar(dest + offset, uint8_t{0});  // reserved
   offset += WriteScalar(dest + offset, packet->xorMappedAddress.family);
   offset += WriteScalar(dest + offset, packet->xorMappedAddress.port);
   offset += WriteScalar(dest + offset, packet->xorMappedAddress.address.ipv4);

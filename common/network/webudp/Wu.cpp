@@ -5,6 +5,7 @@
 #include <openssl/ssl.h>
 #include <string.h>
 #include "WuArena.h"
+#include "WuBufferOp.h"
 #include "WuClock.h"
 #include "WuCrypto.h"
 #include "WuMath.h"
