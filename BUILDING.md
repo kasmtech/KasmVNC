@@ -507,3 +507,86 @@ to be defined:
 The debian folder used to create the nightly builds and releases
 can be found in the "contrib/deb/ubuntu-precise" directory of the
 KasmVNC subversion trunk.
+
+### Optional Noble workspace images
+
+Branch pipelines offer `build_workspace_noble_amd64` and
+`build_workspace_noble_arm64` as independent manual jobs. Once the matching
+`build_amd64` / `build_arm64` Noble matrix job succeeds, select **Run** on the
+workspace job in GitLab. There is no need to wait for other distro builds,
+tests, the S3 index, or a pipeline in either image repository. Leaving these
+jobs unplayed (or a workspace build failing) does not block the main pipeline.
+These development images do not replace the release test matrix.
+
+Each job builds Ubuntu 24.04 core and Noble Desktop on its native runner,
+installs the exact same-pipeline KasmVNC `.deb`, checks the installed server
+binary and startup, then publishes to the KasmVNC GitLab Container Registry:
+
+```
+$CI_REGISTRY_IMAGE/ubuntu-noble-desktop:${CI_COMMIT_REF_SLUG}_amd64
+$CI_REGISTRY_IMAGE/ubuntu-noble-desktop:${CI_COMMIT_REF_SLUG}_arm64
+```
+
+A build also publishes a reproducible tag ending in
+`${CI_COMMIT_REF_SLUG}-${CI_PIPELINE_ID}-${CI_JOB_ID}_amd64` (or `_arm64`). Use
+that reference or the reported digest when sharing a particular build.
+`workspace-image-report/image.json` records the image, digest, package hash,
+package producer job, architecture, and all three source commits. Registry
+digests are recorded after publishing; `--no-push` reports instead identify the
+local image ID and explicitly state that nothing was published. The report
+and startup log are retained for 30 days. Branch aliases are serialized per
+architecture; an older pipeline cannot replace a newer pipeline's alias.
+Sanitized branch-name collisions are rejected rather than overwriting another
+branch's image. Use distinct branch slugs if GitLab's normalization/truncation
+would produce identical names.
+
+Both image repositories must allow KasmVNC's `CI_JOB_TOKEN` to read their Git
+repositories, and the user starting the job must have access. Before fetching
+either source, the helper checks effective read access to both repositories
+with the job token and reports actionable allowlist/user-access diagnostics.
+This tests the permissions actually available to the job without requiring
+administrative access to inspect allowlist settings. The job uses the
+KasmVNC project's built-in registry credentials for publishing. A tester's
+Kasm Workspaces deployment needs its own registry credentials (for example, a
+GitLab deploy token with `read_registry`) and an agent matching the image's
+architecture. Configure a Workspace image with the reported reference and
+credentials, then launch a fresh session. Do not share the expiring CI job
+token. ARM64 Desktop has the applications supported by its existing installer;
+x86-only applications such as Chrome are skipped in favor of Chromium.
+
+`WORKSPACE_CORE_REF` and `WORKSPACE_DESKTOP_REF` default to `develop`; they can
+be overridden when starting the manual job with a compatible branch, tag, or
+commit SHA. Resolved SHAs are recorded. No commits or pipelines are created in
+those repositories: their tracked source is exported into temporary contexts.
+The package download line in the core installer is replaced in that temporary
+copy; the existing Dockerfile includes the local package. Runtime startup
+scripts and downstream CI files are not modified. The desktop's existing
+`BASE_IMAGE` / `BASE_TAG` interface selects the locally built core image.
+
+If Noble was filtered out by `BUILD_DISTROS_REGEX`, failed, or its artifacts
+expired, build/retry the matching Noble package job first. The workspace job
+requires a successful producer marker for this pipeline and commit; it never
+falls back to a released package. The native runner needs Docker-in-Docker,
+sufficient disk for both large images, and up to three hours. Infrastructure
+failures may retry twice; application build failures remain visible for
+investigation. Third-party package/download failures in the image repositories
+can still occur.
+
+For local validation, run the Python unit tests in a Debian container with
+Python 3 and `dpkg-deb`:
+
+```
+python3 -m unittest discover -s .ci/tests -v
+```
+
+The same build helper supports `--no-push`, `--core-source` and
+`--desktop-source` (local Git checkouts), and `--package-dir`. It still requires
+the package producer's `workspace-package.txt` and matching CI pipeline/commit
+identity, plus `CI_JOB_ID`, `CI_COMMIT_REF_NAME`, and `CI_COMMIT_REF_SLUG`.
+Run it inside a container with the Docker CLI/buildx, Python 3, Git, dpkg tools,
+and access to a native Docker daemon. `--no-push` performs both builds and the
+smoke checks without registry writes. These checks also verify the configured
+Workspaces entrypoint, executable scripts, and unchanged script contents
+relative to the freshly built core image. The shared Docker daemon's images remain
+available for inspection. Full interactive Workspaces testing is a separate
+validation step after publishing.

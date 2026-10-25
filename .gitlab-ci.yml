@@ -35,6 +35,7 @@ stages:
   - run_test
   - test
   - upload_build_preview
+  - workspace_image
 
 .prepare_build: &prepare_build
   - pwd
@@ -180,6 +181,7 @@ build_amd64:
       fi
     - builder/build-package $DISTRO
     - upload_packages $DISTRO
+    - bash .ci/record-workspace-package
   artifacts:
     paths:
       - output/
@@ -215,6 +217,7 @@ build_arm64:
       fi
     - builder/build-package $DISTRO
     - upload_packages $DISTRO
+    - bash .ci/record-workspace-package
   artifacts:
     paths:
       - output/
@@ -337,3 +340,61 @@ upload_build_preview_html:
     - preview_builds_dir=kasmvnc/preview-builds
     - upload_to_s3 "output/index.html" "$preview_builds_dir/index.html" "$S3_BUCKET"
     - show_file_link_in_ci "index.html" "$UPLOADED_FILE_S3_URL"
+
+# Optional end-to-end images; each job consumes only its native Noble package.
+.workspace_image:
+  stage: workspace_image
+  image: $DEBIAN_STABLE_IMAGE
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+    WORKSPACE_CORE_REF: develop
+    WORKSPACE_DESKTOP_REF: develop
+  when: manual
+  allow_failure: true
+  timeout: 3h
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - api_failure
+  resource_group: "workspace-$CI_COMMIT_REF_SLUG-$WORKSPACE_ARCH"
+  before_script:
+    # Trixie splits the CLI from docker.io; no daemon is needed in the job container.
+    - apt-get update && apt-get install -y --no-install-recommends docker-cli docker-buildx git python3 ca-certificates
+    - docker --version && docker buildx version
+    - echo "$DOCKER_HUB_PASSWORD" | docker login --username "$DOCKER_HUB_USERNAME" --password-stdin
+  script:
+    - python3 .ci/build-workspace-image.py --arch "$WORKSPACE_ARCH"
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - workspace-image-report/
+
+build_workspace_noble_amd64:
+  extends: .workspace_image
+  tags: [oci-fixed-amd]
+  variables:
+    WORKSPACE_ARCH: amd64
+  needs:
+    - job: build_amd64
+      parallel:
+        matrix:
+          - DISTRO: 'ubuntu noble'
+            DISTRO_SLUG: 'ubuntu_noble'
+            GROUP: 2
+      artifacts: true
+
+build_workspace_noble_arm64:
+  extends: .workspace_image
+  tags: [oci-fixed-arm]
+  variables:
+    WORKSPACE_ARCH: arm64
+  needs:
+    - job: build_arm64
+      parallel:
+        matrix:
+          - DISTRO: 'ubuntu noble'
+            DISTRO_SLUG: 'ubuntu_noble'
+            GROUP: 2
+      artifacts: true

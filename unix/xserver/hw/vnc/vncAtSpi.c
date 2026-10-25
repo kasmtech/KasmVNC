@@ -186,8 +186,7 @@ static enum TextControlType is_text_control(AtspiAccessible *acc) {
         gboolean has_text = text_iface != NULL;
         if (text_iface) g_object_unref(text_iface);
 
-        ATSPI_TRACE(
-            "vncAtSpi:   checks: states=%s editable=%d focusable=%d role=%d(%s) text_iface=%d\n",
+        ATSPI_TRACE("vncAtSpi:   checks: states=%s editable=%d focusable=%d role=%d(%s) text_iface=%d\n",
             has_states ? "yes" : "unavailable",
             editable,
             focusable,
@@ -645,8 +644,7 @@ static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
     ATSPI_DEBUG_BLOCK(gchar *win_name = atspi_accessible_get_name(win, NULL);
         gchar *name = atspi_accessible_get_name(target, NULL);
         gchar *role = atspi_accessible_get_role_name(target, NULL);
-        ATSPI_TRACE(
-            "vncAtSpi: tap (%d,%d) in window \"%s\" hit widget \"%s\" role=%s\n",
+        ATSPI_TRACE("vncAtSpi: tap (%d,%d) in window \"%s\" hit widget \"%s\" role=%s\n",
             x,
             y,
             win_name && win_name[0] ? win_name : "?",
@@ -676,12 +674,11 @@ static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
     ATSPI_DEBUG_BLOCK(const char *reason = info.focused    ? "text control"
                                            : target == win ? "tap did not hit a child widget"
                                                            : "not a text control";
-        ATSPI_TRACE(
-            "vncAtSpi:   tap verdict: %s (%s)",
+        ATSPI_TRACE("vncAtSpi:   tap verdict: %s (%s)",
             info.focused ? "TEXT INPUT -> show keyboard" : "not a text input",
             reason);
-        if (info.focused) ATSPI_TRACE(
-            " caret=%dx%d+%d+%d field=%dx%d+%d+%d",
+        if (info.focused)
+            ATSPI_TRACE(" caret=%dx%d+%d+%d field=%dx%d+%d+%d",
             info.caret.w,
             info.caret.h,
             info.caret.x,
@@ -695,8 +692,7 @@ static void hit_test_tap_impl(int x, int y, unsigned int touchId) {
     g_object_unref(target);
     g_object_unref(win);
 
-    if (info.focused)
-        report_state_full(&info, 1);
+    report_state_full(&info, 1);
 }
 
 static void hit_test_tap(int x, int y, unsigned int touchId) {
@@ -735,8 +731,7 @@ static void on_focus_event(AtspiEvent *event, void *data) {
             g_object_unref(app);
         }
 
-        ATSPI_TRACE(
-            "vncAtSpi: event=%s detail1=%d app=\"%s\" widget=\"%s\" role=%s\n",
+        ATSPI_TRACE("vncAtSpi: event=%s detail1=%d app=\"%s\" widget=\"%s\" role=%s\n",
             event->type,
             event->detail1,
             app_name && app_name[0] ? app_name : "?",
@@ -762,7 +757,15 @@ static void on_focus_event(AtspiEvent *event, void *data) {
                          g_tap_touch_y >= info.field.y && g_tap_touch_y < info.field.y + info.field.h;
 
         if (!tap_inside) {
-            ATSPI_TRACE("vncAtSpi: focus gain not from a tap inside the field (fresh=%d) - ignoring\n", tap_fresh);
+            ATSPI_TRACE("vncAtSpi: focus gain not from a tap inside the field (fresh=%d) tap=(%d,%d) field=%dx%d+%d+%d "
+                        "- ignoring\n",
+                tap_fresh,
+                g_tap_touch_x,
+                g_tap_touch_y,
+                info.field.w,
+                info.field.h,
+                info.field.x,
+                info.field.y);
             g_boxed_free(ATSPI_TYPE_EVENT, event);
             return;
         }
@@ -779,12 +782,9 @@ static void on_focus_event(AtspiEvent *event, void *data) {
 
     ATSPI_DEBUG_BLOCK(const char *reason = info.focused ? "text control" : "focus lost or not a text control";
         ATSPI_TRACE(
-            "vncAtSpi:   verdict: %s (%s)",
-            info.focused ? "TEXT INPUT -> show keyboard" : "not a text input",
-            reason);
+            "vncAtSpi:   verdict: %s (%s)", info.focused ? "TEXT INPUT -> show keyboard" : "not a text input", reason);
         if (info.focused)
-            ATSPI_TRACE(
-            " caret=%dx%d+%d+%d field=%dx%d+%d+%d",
+            ATSPI_TRACE(" caret=%dx%d+%d+%d field=%dx%d+%d+%d",
             info.caret.w,
             info.caret.h,
             info.caret.x,
