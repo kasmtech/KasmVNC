@@ -232,22 +232,6 @@ void CSecurityTLS::setParam()
     if (*cafile && gnutls_certificate_set_x509_trust_file(cert_cred,cafile,GNUTLS_X509_FMT_PEM) < 0)
       throw AuthFailureException("load of CA cert failed");
 
-    /* Load previously saved certs */
-    char *homeDir = NULL;
-    int err;
-    if (getvnchomedir(&homeDir) == -1)
-      vlog.error("Could not obtain VNC home directory path");
-    else {
-      CharArray caSave(strlen(homeDir) + 19 + 1);
-      sprintf(caSave.buf, "%sx509_savedcerts.pem", homeDir);
-      delete [] homeDir;
-
-      err = gnutls_certificate_set_x509_trust_file(cert_cred, caSave.buf,
-                                                   GNUTLS_X509_FMT_PEM);
-      if (err < 0)
-        vlog.debug("Failed to load saved server certificates from %s", caSave.buf);
-    }
-
     if (*crlfile && gnutls_certificate_set_x509_crl_file(cert_cred,crlfile,GNUTLS_X509_FMT_PEM) < 0)
       throw AuthFailureException("load of CRL failed");
 
@@ -272,7 +256,10 @@ void CSecurityTLS::checkSession()
   const gnutls_datum_t *cert_list;
   unsigned int cert_list_size = 0;
   int err;
+
+  char *homeDir;
   gnutls_datum_t info;
+  size_t len;
 
   if (anon)
     return;
@@ -315,13 +302,13 @@ void CSecurityTLS::checkSession()
     throw AuthFailureException("decoding of certificate failed");
 
   if (gnutls_x509_crt_check_hostname(crt, client->getServerName()) == 0) {
-    char buf[255];
+    CharArray text;
     vlog.debug("hostname mismatch");
-    snprintf(buf, sizeof(buf), "Hostname (%s) does not match any certificate, "
-			       "do you want to continue?", client->getServerName());
-    buf[sizeof(buf) - 1] = '\0';
-    if (!msg->showMsgBox(UserMsgBox::M_YESNO, "hostname mismatch", buf))
-      throw AuthFailureException("hostname mismatch");
+    text.format("Hostname (%s) does not match the server certificate, "
+                "do you want to continue?", client->getServerName());
+    if (!msg->showMsgBox(UserMsgBox::M_YESNO,
+                         "Certificate hostname mismatch", text.buf))
+      throw AuthFailureException("Certificate hostname mismatch");
   }
 
   if (status == 0) {
