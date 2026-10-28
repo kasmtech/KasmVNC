@@ -2,10 +2,9 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include "CRC32.h"
+#include <openssl/crypto.h>
+#include "WuBufferOp.h"
 #include "WuCrypto.h"
-
-constexpr int32_t kStunHeaderLength = 20;
-constexpr int32_t kStunAlignment = 4;
 
 bool ParseStun(const uint8_t* src, int32_t len, StunPacket* packet) {
   if (len < kStunHeaderLength || src[0] != 0 || src[1] != 1) {
@@ -33,58 +32,86 @@ bool ParseStun(const uint8_t* src, int32_t len, StunPacket* packet) {
 
   src += kStunTransactionIdLength;
 
-  int32_t maxOffset = packet->length - 1;
+  bool has_user = false;
+
   int32_t payloadOffset = 0;
-  while (payloadOffset < maxOffset) {
-    int32_t remain = len - kStunHeaderLength - payloadOffset;
-    if (remain >= 4) {
-      uint16_t payloadType = 0;
-      uint16_t payloadLength = 0;
+  while (payloadOffset + kStunAttributeHeaderLength <= packet->length) {
+    const int32_t attr_start = payloadOffset;
+    uint16_t payloadType = 0;
+    uint16_t payloadLength = 0;
 
-      payloadOffset += ReadScalarSwapped(src + payloadOffset, &payloadType);
-      payloadOffset += ReadScalarSwapped(src + payloadOffset, &payloadLength);
-      remain -= 4;
+    payloadOffset += ReadScalarSwapped(src + payloadOffset, &payloadType);
+    payloadOffset += ReadScalarSwapped(src + payloadOffset, &payloadLength);
 
-      int32_t paddedLength =
-          payloadLength + PadSize(payloadLength, kStunAlignment);
+    const int32_t paddedLength =
+        payloadLength + PadSize(payloadLength, kStunAlignment);
 
-      if (payloadType == StunAttrib_User) {
-        // fragment = min 4 chars
-        // username = fragment:fragment (at least 9 characters)
-        if (paddedLength <= remain && payloadLength >= 9) {
-          const char* uname = (const char*)src + payloadOffset;
-          int32_t colonIndex = FindTokenIndex(uname, payloadLength, ':');
-          if (colonIndex >= 4) {
-            int32_t serverUserLength = colonIndex;
-            int32_t remoteUserLength = payloadLength - colonIndex - 1;
-            if (serverUserLength > kMaxStunIdentifierLength ||
-                remoteUserLength > kMaxStunIdentifierLength) {
-              return false;
-            } else {
-              packet->serverUser.length = serverUserLength;
-              packet->remoteUser.length = remoteUserLength;
-              memcpy(packet->serverUser.identifier, uname, serverUserLength);
-              memcpy(packet->remoteUser.identifier, uname + colonIndex + 1,
-                     remoteUserLength);
-              return true;
-            }
-
-          } else {
-            return false;
-          }
-        } else {
-          // Actual length > reported length
-          return false;
-        }
-      }
-
-      payloadOffset += paddedLength;
-    } else {
+    if (paddedLength > packet->length - payloadOffset)
       return false;
+
+    if (payloadType == StunAttrib_User) {
+      // fragment = min 4 chars
+      // username = fragment:fragment (at least 9 characters)
+      if (payloadLength < kMinStunUsernameLength)
+        return false;
+
+      const char* uname = reinterpret_cast<const char*>(src + payloadOffset);
+      const int32_t colonIndex = FindTokenIndex(uname, payloadLength, ':');
+      if (colonIndex < kMinIceUfragLength)
+        return false;
+
+      const int32_t serverUserLength = colonIndex;
+      const int32_t remoteUserLength = payloadLength - colonIndex - 1;
+      if (serverUserLength > kMaxStunIdentifierLength || remoteUserLength > kMaxStunIdentifierLength)
+        return false;
+
+      packet->serverUser.length = serverUserLength;
+      packet->remoteUser.length = remoteUserLength;
+      memcpy(packet->serverUser.identifier, uname, serverUserLength);
+      memcpy(packet->remoteUser.identifier, uname + colonIndex + 1, remoteUserLength);
+
+      has_user = true;
+    } else if (payloadType == StunAttrib_MessageIntegrity) {
+      if (payloadLength != kSHA1Length)
+        return false;
+
+      memcpy(packet->integrity, src + payloadOffset, kSHA1Length);
+      packet->integrityOffset = attr_start + kStunHeaderLength;
+
+      break;
     }
+
+    payloadOffset += paddedLength;
   }
 
-  return true;
+  return has_user && packet->integrityOffset;
+}
+
+bool VerifyStunIntegrity(const uint8_t *msg, int32_t len, const StunPacket *packet, const uint8_t *password, int32_t passwordLen) {
+  if (!packet->integrityOffset)
+    return false;
+
+  const int32_t mac_end = packet->integrityOffset + kStunAttributeHeaderLength + static_cast<int32_t>(kSHA1Length);
+  if (packet->integrityOffset < kStunHeaderLength || mac_end > len)
+    return false;
+
+  // RFC 5389 15.4: the HMAC covers the message up to (excluding) the
+  // MESSAGE-INTEGRITY attribute, with the header length field adjusted to
+  // point at the end of that attribute.
+  constexpr int32_t buf_size = 512;
+
+  if (packet->integrityOffset > buf_size)
+    return false;
+
+  uint8_t buf[buf_size];
+
+  memcpy(buf, msg, packet->integrityOffset);
+  const uint16_t adjusted = htons(mac_end - kStunHeaderLength);
+  memcpy(buf + 2, &adjusted, sizeof(adjusted));
+
+  auto [bytes] = WuSHA1(buf, packet->integrityOffset, password, passwordLen);
+
+  return CRYPTO_memcmp(bytes, packet->integrity, kSHA1Length) == 0;
 }
 
 size_t SerializeStunPacket(const StunPacket* packet, const uint8_t* password,
@@ -107,7 +134,7 @@ size_t SerializeStunPacket(const StunPacket* packet, const uint8_t* password,
   // xor mapped address attribute ipv4
   offset += WriteScalar(dest + offset, htons(StunAttrib_XorMappedAddress));
   offset += WriteScalar(dest + offset, htons(8));
-  offset += WriteScalar(dest + offset, 0);  // reserved
+  offset += WriteScalar(dest + offset, uint8_t{0});  // reserved
   offset += WriteScalar(dest + offset, packet->xorMappedAddress.family);
   offset += WriteScalar(dest + offset, packet->xorMappedAddress.port);
   offset += WriteScalar(dest + offset, packet->xorMappedAddress.address.ipv4);
