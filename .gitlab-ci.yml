@@ -18,6 +18,16 @@ variables:
   # To debug upload stage, you can limit BUILD_DISTROS_REGEX to jammy and allow
   # run_test distros to fail, by setting ALLOW_RUN_TESTS_TO_FAIL to true.
   ALLOW_RUN_TESTS_TO_FAIL: false
+  # "auto" uses Kali's stock mirror (http.kali.org). If a Kali job fails with
+  # "APT mirror failed", rerun the pipeline from the UI with another mirror.
+  # A project CI/CD variable can set any URL.
+  KALI_MIRROR:
+    value: "auto"
+    options:
+      - "auto"
+      - "http://kali.download/kali"
+      - "http://ftp.halifax.rwth-aachen.de/kali/"
+    description: "Kali APT mirror. auto = stock http.kali.org. Pick another if a Kali job reports an APT mirror failure."
   DEBIAN_STABLE_IMAGE: debian:trixie-slim
   DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
@@ -42,6 +52,10 @@ stages:
   - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
   - apt-get update && apt-get install -y docker.io sudo
   - echo "$DOCKER_HUB_PASSWORD" | docker login --username $DOCKER_HUB_USERNAME --password-stdin
+  # DISTRO_MIRROR is passed to the distro's Dockerfiles; empty = stock mirror.
+  - if [ "$DISTRO_SLUG" = kali_kali-rolling ] && [ "$KALI_MIRROR" != auto ]; then
+      export DISTRO_MIRROR="$KALI_MIRROR";
+    fi
 
 .prepare_www: &prepare_www
   - tar -zxf output/www/kasm_www.tar.gz -C builder/

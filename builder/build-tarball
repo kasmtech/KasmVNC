@@ -6,6 +6,7 @@ build_tarball_builder_image() {
   builder_image=kasmvncbuilder:$os_codename${build_tag_for_images}
   docker build -t "$builder_image" \
     --build-arg OUTPUT_OWNER_UID="$output_owner_uid" \
+    ${DISTRO_MIRROR:+--build-arg DISTRO_MIRROR="$DISTRO_MIRROR"} \
     -f builder/dockerfile.${os}_${os_codename}${build_tag}.build .
 }
 

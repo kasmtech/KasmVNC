@@ -7,16 +7,18 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV CXXFLAGS="-Wno-stringop-overflow"
 ENV CFLAGS="-Wno-stringop-overflow"
 
-ARG KALI_MIRROR=http://ftp.halifax.rwth-aachen.de/kali/
-RUN find /etc/apt/sources.list.d/ -name "*.sources" -exec \
-      sed -i "s@^URIs:.*@URIs: ${KALI_MIRROR}@" {} \;
+ARG DISTRO_MIRROR=
+RUN if [ -n "$DISTRO_MIRROR" ]; then \
+      find /etc/apt/sources.list.d/ -name "*.sources" -exec \
+        sed -i "s@^URIs:.*@URIs: ${DISTRO_MIRROR}@" {} \; ; \
+    fi
 
 RUN find /etc/apt/sources.list.d/ -name "*.sources" | xargs -r sed -i 's/^Types: deb$/Types: deb deb-src/'; \
     { [ -f /etc/apt/sources.list ] && grep '^deb ' /etc/apt/sources.list 2>/dev/null; \
       find /etc/apt/sources.list.d/ -name "*.list" -exec grep -h '^deb ' {} \; 2>/dev/null; } | \
     sed 's/^deb /deb-src /' >> /etc/apt/sources.list.d/kali-deb-src.list; true
 
-RUN apt-get update
+RUN apt-get update -o APT::Update::Error-Mode=any || { echo >&2 "APT mirror failed: apt-get update couldn't reach ${DISTRO_MIRROR:-the stock mirror}. Rerun with another KALI_MIRROR (GitLab) or DISTRO_MIRROR (local)."; exit 1; }
 
 RUN apt-get -y install sudo
 RUN apt-get install -y --no-install-recommends tzdata

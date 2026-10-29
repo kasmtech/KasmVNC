@@ -10,6 +10,7 @@ select_consistent_output_owner_uid_and_gid
 
 builder_image=debbuilder_${os}:${os_codename}${build_tag_for_images}
 docker build --build-arg OUTPUT_OWNER_UID="$output_owner_uid" \
+  ${DISTRO_MIRROR:+--build-arg DISTRO_MIRROR="$DISTRO_MIRROR"} \
   -t "$builder_image" -f \
   builder/dockerfile.${os}_${os_codename}${build_tag}.deb.build .
 
