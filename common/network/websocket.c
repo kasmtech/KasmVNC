@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <fcntl.h>  // daemonizing
@@ -2229,6 +2230,12 @@ void *start_server(void *unused) {
             error("ERROR on accept");
             continue;
         }
+
+        // Disable Nagle's algorithm, to reduce latency
+        const int one = 1;
+        if (setsockopt(csock, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)) < 0)
+            error("unable to setsockopt TCP_NODELAY");
+
         struct wspass_t *pass = calloc(1, sizeof(struct wspass_t));
         inet_ntop(cli_addr.sin_family, &cli_addr.sin_addr, pass->ip, sizeof(pass->ip));
 
