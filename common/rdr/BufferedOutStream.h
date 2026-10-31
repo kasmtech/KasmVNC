@@ -38,6 +38,11 @@ namespace rdr {
 
     size_t bufferUsage();
 
+    // cork() makes flush() keep the data until there is at least 1 KiB
+    // of it, so that many small writes go out together. Uncorking
+    // flushes everything.
+    void cork(bool enable);
+
   private:
     // flushBuffer() requests that the stream be flushed. Returns true if it is
     // able to progress the output (which might still not mean any bytes
@@ -52,6 +57,7 @@ namespace rdr {
     size_t bufSize;
     size_t offset;
     U8* start;
+    bool corked;
 
   protected:
     U8* sentUpTo;
