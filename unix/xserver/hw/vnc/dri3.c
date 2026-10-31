@@ -38,6 +38,7 @@
 #include <fb.h>
 #include <gcstruct.h>
 #include <gbm.h>
+#include "damage.h"
 
 extern const char *driNode;
 
@@ -57,6 +58,7 @@ static struct timeval start;
 
 struct texpixmap {
     PixmapPtr pixmap;
+    DamagePtr damage;
     struct xorg_list entry;
 };
 
@@ -111,23 +113,84 @@ static gbm_pixmap *gbm_pixmap_get(PixmapPtr pixmap)
     return dixLookupPrivate(&pixmap->devPrivates, &dri3_pixmap_private_key);
 }
 
-static void add_texpixmap(PixmapPtr pix)
+// Copy the pixels of a pixmap in the given box to its bo. Every pixel of the
+// box is written: a map without GBM_BO_TRANSFER_READ may return a staging
+// buffer that is not filled from the bo but is written back to it whole.
+static Bool copy_box_to_bo(PixmapPtr pixmap, const BoxRec *box)
+{
+    gbm_pixmap *gp = gbm_pixmap_get(pixmap);
+    const uint32_t cpp = pixmap->drawable.bitsPerPixel / 8;
+    const uint32_t srcstride = pixmap->devKind;
+    const uint32_t rowbytes = (box->x2 - box->x1) * cpp;
+    const uint8_t *src = pixmap->devPrivate.ptr;
+    uint32_t dststride, y;
+    void *opaque = NULL;
+    uint8_t *dst;
+
+    dst = gbm_bo_map(gp->bo, box->x1, box->y1, box->x2 - box->x1, box->y2 - box->y1,
+                     GBM_BO_TRANSFER_WRITE, &dststride, &opaque);
+    if (!dst) {
+        ErrorF("gbm map failed, errno %d\n", errno);
+        return FALSE;
+    }
+
+    for (y = box->y1; y < box->y2; y++)
+        memcpy(dst + (y - box->y1) * dststride,
+               src + y * srcstride + box->x1 * cpp, rowbytes);
+
+    gbm_bo_unmap(gp->bo, opaque);
+    return TRUE;
+}
+
+// Copy what was drawn to a tracked pixmap since its last sync to its bo, as
+// the rectangle that bounds it. If the copy fails, the next sync retries it.
+static void sync_texpixmap(struct texpixmap *ptr)
+{
+    RegionPtr drawn = DamageRegion(ptr->damage);
+
+    if (RegionNotEmpty(drawn) && copy_box_to_bo(ptr->pixmap, RegionExtents(drawn)))
+        DamageEmpty(ptr->damage);
+}
+
+static Bool add_texpixmap(PixmapPtr pix)
 {
     struct texpixmap *ptr;
+    BoxRec whole = { 0, 0, pix->drawable.width, pix->drawable.height };
+    RegionRec region;
 
     xorg_list_for_each_entry(ptr, &texpixmaps, entry) {
         if (ptr->pixmap == pix)
-            return;
+            return TRUE;
     }
 
     ptr = calloc(1, sizeof(struct texpixmap));
+    if (!ptr)
+        return FALSE;
+
+    // Record what is drawn to the pixmap from now on
+    ptr->damage = DamageCreate(NULL, NULL, DamageReportNone, TRUE,
+                               pix->drawable.pScreen, NULL);
+    if (!ptr->damage) {
+        free(ptr);
+        return FALSE;
+    }
+    DamageRegister(&pix->drawable, ptr->damage);
+
     ptr->pixmap = pix;
     pix->refcnt++;
     xorg_list_append(&ptr->entry, &texpixmaps);
 
+    // Give the bo the current contents before the client can read it
+    RegionInit(&region, &whole, 1);
+    DamageReportDamage(ptr->damage, &region);
+    RegionUninit(&region);
+    sync_texpixmap(ptr);
+
     // start if not running
     if (!texpixmaptimer)
         texpixmaptimer = TimerSet(NULL, 0, 16, update_texpixmaps, NULL);
+
+    return TRUE;
 }
 
 static PixmapPtr
@@ -215,12 +278,13 @@ xvnc_fds_from_pixmap(ScreenPtr screen, PixmapPtr pixmap, int *fds,
         dri3_pixmap_set_private(pixmap, gp);
     }
 
+    if (!add_texpixmap(pixmap))
+        return 0;
+
     fds[0] = gbm_bo_get_fd(gp->bo);
     strides[0] = gbm_bo_get_stride(gp->bo);
     offsets[0] = 0;
     *modifier = DRM_FORMAT_MOD_INVALID;
-
-    add_texpixmap(pixmap);
 
     return 1;
 }
@@ -306,17 +370,13 @@ void xvnc_sync_dri3_pixmap(PixmapPtr pixmap)
 void xvnc_sync_dri3_textures(void)
 {
     // Sync the tracked pixmaps into their textures (bos)
-    // This is a bit of an ugly solution, but we don't know
-    // when the pixmaps have changed nor when the textures are read.
+    // This is a bit of an ugly solution, but we don't know when the
+    // textures are read, so what was drawn to the pixmaps since the last
+    // sync is copied here.
     //
     // This is called both from the global damage report and the timer,
     // to account for cases that do not use the damage report.
 
-    uint32_t y;
-    gbm_pixmap *gp;
-    uint8_t *src, *dst;
-    uint32_t srcstride, dststride;
-    void *opaque = NULL;
     struct texpixmap *ptr, *tmpptr;
 
     // We may not be running on hw if there's a compositor using PRESENT on llvmpipe
@@ -326,33 +386,14 @@ void xvnc_sync_dri3_textures(void)
     xorg_list_for_each_entry_safe(ptr, tmpptr, &texpixmaps, entry) {
         if (ptr->pixmap->refcnt == 1) {
             // We are the only user left, delete it
+            DamageDestroy(ptr->damage);
             ptr->pixmap->drawable.pScreen->DestroyPixmap(ptr->pixmap);
             xorg_list_del(&ptr->entry);
             free(ptr);
             continue;
         }
 
-        gp = gbm_pixmap_get(ptr->pixmap);
-        opaque = NULL;
-        dst = gbm_bo_map(gp->bo, 0, 0,
-                         ptr->pixmap->drawable.width,
-                         ptr->pixmap->drawable.height,
-                         GBM_BO_TRANSFER_WRITE, &dststride, &opaque);
-        if (!dst) {
-            ErrorF("gbm map failed, errno %d\n", errno);
-            continue;
-        }
-
-        srcstride = ptr->pixmap->devKind;
-        src = ptr->pixmap->devPrivate.ptr;
-
-        for (y = 0; y < ptr->pixmap->drawable.height; y++) {
-            memcpy(dst, src, srcstride);
-            dst += dststride;
-            src += srcstride;
-        }
-
-        gbm_bo_unmap(gp->bo, opaque);
+        sync_texpixmap(ptr);
     }
 }
 
