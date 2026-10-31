@@ -29,12 +29,14 @@ WORKDIR $HOME
 
 ### REQUIRED STUFF ###
 
-ARG KALI_MIRROR=http://ftp.halifax.rwth-aachen.de/kali/
-RUN find /etc/apt/sources.list.d/ -name "*.sources" -exec \
-      sed -i "s@^URIs:.*@URIs: ${KALI_MIRROR}@" {} \;
+ARG DISTRO_MIRROR=
+RUN if [ -n "$DISTRO_MIRROR" ]; then \
+      find /etc/apt/sources.list.d/ -name "*.sources" -exec \
+        sed -i "s@^URIs:.*@URIs: ${DISTRO_MIRROR}@" {} \; ; \
+    fi
 
 # Refresh the package index once; the installs below reuse it.
-RUN apt-get update
+RUN apt-get update -o APT::Update::Error-Mode=any || { echo >&2 "APT mirror failed: apt-get update couldn't reach ${DISTRO_MIRROR:-the stock mirror}. Rerun with another KALI_MIRROR (GitLab) or DISTRO_MIRROR (local)."; exit 1; }
 
 RUN apt-get install -y supervisor xfce4 xfce4-terminal dbus-x11 xterm libnss-wrapper gettext wget
 RUN apt-get purge -y pm-utils xscreensaver*

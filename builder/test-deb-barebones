@@ -3,10 +3,8 @@
 set -e
 
 detect_base_image() {
-  APT_MIRROR=
   if [ "$os" = kali ]; then
     BASE_IMAGE=kalilinux/kali-rolling:latest
-    APT_MIRROR="${KALI_MIRROR:-http://ftp.halifax.rwth-aachen.de/kali/}"
     return
   fi
   BASE_IMAGE="${os}:${os_codename}"
@@ -24,7 +22,7 @@ detect_base_image
 docker build --build-arg KASMVNC_PACKAGE_DIR="${build_dir}/${distro}" \
   --build-arg RUN_TEST="$run_test" \
   --build-arg BASE_IMAGE="$BASE_IMAGE" \
-  --build-arg APT_MIRROR="$APT_MIRROR" \
+  --build-arg APT_MIRROR="$DISTRO_MIRROR" \
   -t kasmvnctester_barebones_${os}:$os_codename \
   -f builder/dockerfile.${distro}.barebones.deb.test .
 echo
