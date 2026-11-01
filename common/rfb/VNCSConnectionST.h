@@ -298,6 +298,8 @@ namespace rfb {
     void writeRTTPing();
     bool isCongested();
 
+    void addBottleneckStat(int stat, const struct timespec &when, unsigned count = 1);
+
     // writeFramebufferUpdate() attempts to write a framebuffer update to the
     // client.
 
@@ -350,7 +352,8 @@ namespace rfb {
 
         BS_NUM
     };
-    std::list<struct timeval> bstats[BS_NUM]; // Bottleneck stats
+    // Bottleneck stats: when each event happened (CLOCK_MONOTONIC), oldest first
+    std::list<struct timespec> bstats[BS_NUM];
     rdr::U64 bstats_total[BS_NUM];
     struct timeval connStart;
 
