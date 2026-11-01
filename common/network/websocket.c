@@ -2210,7 +2210,7 @@ out:
 
 void *start_server(void *unused) {
     int csock;
-    struct sockaddr_in cli_addr;
+    struct sockaddr_storage cli_addr;
     socklen_t clilen;
 
 //    printf("Waiting for connections on %s:%d\n",
@@ -2230,7 +2230,8 @@ void *start_server(void *unused) {
             continue;
         }
         struct wspass_t *pass = calloc(1, sizeof(struct wspass_t));
-        inet_ntop(cli_addr.sin_family, &cli_addr.sin_addr, pass->ip, sizeof(pass->ip));
+        getnameinfo((struct sockaddr *) &cli_addr, clilen, pass->ip, sizeof(pass->ip),
+                    NULL, 0, NI_NUMERICHOST);
 
         char logbuf[2][1024];
         wslog(logbuf[0], settings.handler_id, 0);
