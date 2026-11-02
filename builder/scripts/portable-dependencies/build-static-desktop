@@ -19,13 +19,8 @@ el9=false
 private_desktop=false
 if [[ -f /etc/redhat-release ]] && grep -q 'release 9\.' /etc/redhat-release; then
     el9=true
-    private_desktop=true
-    "$script_dir/build-static-desktop-el9"
-    export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$prefix/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
-    export CPPFLAGS="-I$prefix/include ${CPPFLAGS:-}"
-    export LDFLAGS="-L$prefix/lib ${LDFLAGS:-}"
 fi
-if [[ ${KASMVNC_LIBC:-} == musl ]]; then
+if "$el9" || [[ ${KASMVNC_LIBC:-} == musl ]]; then
     private_desktop=true
     "$script_dir/build-static-desktop-el9"
     export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$prefix/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"

@@ -16,6 +16,9 @@ set(KASMVNC_FFMPEG_ARCHIVES "")
 foreach(dependency IN LISTS STATIC_FFMPEG_STATIC_LIBRARIES)
     # OS and hardware-driver interfaces remain dynamic. Never bundle a vendor
     # driver into the server; it must match the host kernel driver.
+    # Static FFmpeg alone does not select a static compiler runtime. In portable
+    # builds link-static-desktop replaces gcc_s with the audited private unwind
+    # archive; do not substitute an arbitrary host libgcc_eh archive here.
     if(dependency MATCHES "^(m|dl|pthread|rt|atomic|gcc_s|va|va-drm|drm)$")
         list(APPEND KASMVNC_FFMPEG_ARCHIVES "-l${dependency}")
     else()

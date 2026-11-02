@@ -187,7 +187,10 @@ namespace launcher {
                 out.push_back(path);
         }
         bool matches(const std::string &text, const std::string &pattern) {
-            return std::regex_search(text, std::regex(pattern));
+            // Patterns come only from settings metadata and fixed validators,
+            // never from configuration values. Reuse them without shared mutation.
+            static thread_local std::map<std::string, std::regex> patterns;
+            return std::regex_search(text, patterns.try_emplace(pattern, pattern).first->second);
         }
         std::string scalar(const Config &config, const std::string &key) {
             return join(config.get(key).values(), ",");
@@ -300,7 +303,7 @@ namespace launcher {
         return value == "true" ? "1" : value == "false" ? "0" : value;
     }
     std::string interpolate(std::string text) {
-        const std::regex pattern(R"(\$\{(\w+)\})");
+        static const std::regex pattern(R"(\$\{(\w+)\})");
         std::set<std::string> seen;
         std::smatch match;
         for (unsigned i = 0; std::regex_search(text, match, pattern); ++i) {
