@@ -92,3 +92,16 @@ proprietary NVIDIA userspace libraries compatible with Alpine.
 Baseline references: [Alpine releases](https://alpinelinux.org/releases/),
 [musl distribution ABI guidance](https://wiki.musl-libc.org/guidelines-for-distributions.html),
 and [musl loader/threading differences](https://wiki.musl-libc.org/functional-differences-from-glibc.html).
+
+### ELF audit baseline
+
+`audit.py` declares `MUSL_BASELINE` and verifies the audit environment's actual
+musl loader version before accepting any ELF files. It also checks architecture,
+PIE, interpreter, the direct host-library allowlist, and forbidden relocation,
+search-path and glibc symbol-version dependencies. The dependency and application
+builders independently require musl 1.2.5.
+
+Musl does not version its public symbols like glibc. This is a controlled-build
+and runtime qualification guarantee, not a claim that ELF metadata alone proves
+an arbitrary binary's minimum musl version. Do not audit newer-built binaries in
+a baseline container as a substitute for rebuilding and runtime testing them.

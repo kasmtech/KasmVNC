@@ -641,3 +641,17 @@ all files in `builder/scripts/portable-dependencies/`. Ordinary KasmVNC changes
 rebuild the server and Xorg integration, not the toolchain and dependencies.
 See [dependency cache maintenance](builder/portable/README.md#reusing-compiled-dependencies)
 for deliberate security refreshes, provenance and registry cleanup.
+
+### Functional tests and merge qualification
+
+Branch pipelines retain the full build/test matrix. Minimal functional tests and
+opt-in Standard functional tests may fail without failing that build pipeline.
+`RUN_STANDARD=true` runs the optional Standard job automatically on a branch.
+
+Merge-request pipelines use `.ci/merge-qualification.yml`: they build frontend,
+glibc AMD64 and musl AMD64 artifacts from the MR commit and then run Standard
+functional tests automatically with `allow_failure: false`. Build-selection
+shortcuts cannot skip this qualification. The project must enable **Pipelines
+must succeed**, with skipped pipelines not accepted, for this to block merging.
+GitLab evaluates MR pipelines for that check independently of branch build
+results. Retry unreliable Standard runs; do not waive their merge requirement.

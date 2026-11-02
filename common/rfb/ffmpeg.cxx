@@ -19,10 +19,6 @@
 #include "config.h"
 #include "ffmpeg.h"
 
-#ifdef KASMVNC_STATIC_FFMPEG
-#undef D_LOOKUP_SYM
-#define D_LOOKUP_SYM(handle, name) (&::name)
-#endif
 #include <array>
 #include <filesystem>
 #include "LogWriter.h"

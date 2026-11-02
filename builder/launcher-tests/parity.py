@@ -304,6 +304,11 @@ def setup_helpers():
     path.chmod(0o755)
 
 
+def require_container(parser):
+    if not Path('/.dockerenv').exists():
+        parser.error('run only in the dedicated disposable Docker container')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--candidate', default='/src/unix/vncserver-native/vncserver-native')
@@ -315,8 +320,7 @@ def main():
     parser.add_argument('--list', action='store_true')
     parser.add_argument('--oracle-only', action='store_true', help='characterize corpus without claiming parity')
     args = parser.parse_args()
-    if not Path('/.dockerenv').exists():
-        parser.error('run only in the dedicated disposable Docker container')
+    require_container(parser)
     inventory = json.loads((HERE / 'inventory.json').read_text())['keys']
     source_keys = set(re.findall(r'KasmVNC::ConfigKey->new\(\{\s*name\s*=>\s*[\'"]([^\'"]+)', Path(args.oracle).read_text()))
     frozen_keys = {row['key'] for row in inventory}

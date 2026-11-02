@@ -212,6 +212,7 @@ endif()
 set(HAVE_PAM ${ENABLE_PAM})
 
 option(DEBUG_FFMPEG "Debug ffmpeg" OFF)
+option(KASMVNC_NATIVE_LAUNCHER "Build the native launcher for portable packages" OFF)
 option(KASMVNC_STATIC_FFMPEG "Link FFmpeg archives instead of loading FFmpeg with dlopen" OFF)
 option(ENABLE_DEBUG_ENCODERS "Extended Debug output for encoders" ON)
 option(ENABLE_XDAMAGE "Enable XDamage" OFF)

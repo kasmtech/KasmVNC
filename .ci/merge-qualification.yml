@@ -1,0 +1,80 @@
+# MR qualification builds the exact commit and requires the Standard suite.
+# Branch build pipelines retain their full matrix and optional functional jobs.
+functional_test:
+  rules:
+    - when: never
+functional_test_standard:
+  rules:
+    - when: on_success
+  allow_failure: false
+  needs: [build_portable_amd64, build_portable_musl_amd64]
+build_www:
+  rules:
+    - when: on_success
+  allow_failure: false
+build_amd64:
+  rules:
+    - when: never
+build_arm64:
+  rules:
+    - when: never
+run_test_amd64:
+  rules:
+    - when: never
+run_test_arm64:
+  rules:
+    - when: never
+spec_dependencies:
+  rules:
+    - when: never
+spec_test:
+  rules:
+    - when: never
+make_build_preview_html:
+  rules:
+    - when: never
+upload_build_preview_html:
+  only: null
+  rules:
+    - when: never
+build_workspace_noble_amd64:
+  rules:
+    - when: never
+build_workspace_noble_arm64:
+  rules:
+    - when: never
+build_portable_amd64:
+  rules:
+    - when: on_success
+  allow_failure: false
+build_portable_arm64:
+  rules:
+    - when: never
+build_portable_musl_amd64:
+  rules:
+    - when: on_success
+  allow_failure: false
+build_portable_musl_arm64:
+  rules:
+    - when: never
+test_portable_amd64:
+  rules:
+    - when: never
+test_portable_arm64:
+  rules:
+    - when: never
+test_portable_musl_amd64:
+  rules:
+    - when: never
+test_portable_musl_arm64:
+  rules:
+    - when: never
+unit_test:
+  rules:
+    - when: never
+unit_test_frontend:
+  rules:
+    - when: never
+unit_test_sanitizers:
+  rules:
+    - when: never

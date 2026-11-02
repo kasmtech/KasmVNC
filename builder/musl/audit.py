@@ -7,12 +7,28 @@ import subprocess
 import sys
 
 
+MUSL_BASELINE = '1.2.5'
+
+
+def require_baseline(interpreter):
+    # musl has no GLIBC-style versioned symbols. Qualify in the baseline runtime,
+    # rather than label an arbitrary builder's binaries as baseline-compatible.
+    try:
+        result = subprocess.run([interpreter], capture_output=True, text=True)
+    except OSError as error:
+        raise RuntimeError("Baseline musl loader unavailable: " + interpreter) from error
+    match = re.search(r'^Version (\S+)$', result.stdout + result.stderr, re.MULTILINE)
+    if not match or match[1] != MUSL_BASELINE:
+        raise RuntimeError('ELF audit requires musl ' + MUSL_BASELINE + ': ' + interpreter)
+
+
 def audit(root, arch):
     machine, native = {'amd64': ('Advanced Micro Devices X86-64', 'x86_64'),
                        'arm64': ('AArch64', 'aarch64')}[arch]
     libc = 'libc.musl-' + native + '.so.1'
     allowed = {libc, 'libGL.so.1', 'libgbm.so.1'}
     expected_interpreter = '/lib/ld-musl-' + native + '.so.1'
+    require_baseline(expected_interpreter)
     records = []
     for path in sorted(root.rglob('*')):
         if not path.is_file() or path.is_symlink():
@@ -33,7 +49,7 @@ def audit(root, arch):
         if any(x in dynamic for x in ('TEXTREL', 'RPATH', 'RUNPATH')) or 'GLIBC_' in symbols:
             raise RuntimeError('Nonportable relocations/search path/glibc symbols: ' + str(path))
         records.append({'path': '/' + str(path.relative_to(root)), 'needed': needed,
-                        'musl_minimum': '1.2.5', 'interpreter': expected_interpreter, 'pie': True})
+                        'musl_minimum': MUSL_BASELINE, 'interpreter': expected_interpreter, 'pie': True})
     if len(records) != 5:
         raise RuntimeError('Expected five ELF executables, found ' + str(len(records)))
     return records

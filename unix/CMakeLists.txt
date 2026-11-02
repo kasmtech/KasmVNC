@@ -5,7 +5,6 @@ add_subdirectory(vncpasswd)
 add_subdirectory(kasmvncpasswd)
 add_subdirectory(kasmxproxy)
 
-option(KASMVNC_NATIVE_LAUNCHER "Build the native launcher for portable packages" OFF)
 if(KASMVNC_NATIVE_LAUNCHER)
   add_subdirectory(vncserver-native)
 else()

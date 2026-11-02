@@ -31,8 +31,13 @@ namespace launcher {
         std::vector<std::string> values() const;
     };
     struct Key {
+        enum class Rule {
+            None, IpAddress, OptionKeys, ExcludesWatermarkImage,
+            FontSize, TextAngle, TimezoneName, NeedsVerticalScroll
+        };
         std::string name, type, pattern, error;
         std::vector<std::string> allowed;
+        Rule rule = Rule::None;
     };
     struct Option {
         std::string name;

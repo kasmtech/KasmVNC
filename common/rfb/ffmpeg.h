@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "config.h"
 #include <dlfcn.h>
 #include <memory>
 #include <string>
@@ -34,6 +35,9 @@ extern "C" {
 #define STR(x) STR_HELPER(x)
 #define CONCAT_STR(a, b) a b
 
+#ifdef KASMVNC_STATIC_FFMPEG
+#define D_LOOKUP_SYM(handle, name) (&::name)
+#else
 #define D_LOOKUP_SYM(handle, name)                                                                                     \
     [](auto handle, auto *sym_name) -> auto {                                                                          \
         auto *sym = reinterpret_cast<name##_func>(dlsym(handle, sym_name));                                            \
@@ -41,6 +45,7 @@ extern "C" {
             throw std::runtime_error("Failed to load symbol "s + sym_name);                                            \
         return sym;                                                                                                    \
     }(handle, STR(name))
+#endif
 
 
 // using SwsContextGuard = std::unique_ptr<SwsContext, SwsContextDeleter>;

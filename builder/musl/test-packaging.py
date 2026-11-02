@@ -65,6 +65,16 @@ class PackagingTests(unittest.TestCase):
                     'KASMVNC_ALPINE_PUBLIC_KEY':(root / 'other/kasmvnc_signing_key.rsa.pub').read_text()}, clear=True):
                 with self.assertRaises(RuntimeError): keys.materialize(root / 'mismatch')
 
+    def test_audit_rejects_unqualified_baseline(self):
+        for version in ('1.2.4', '1.2.6', 'unknown'):
+            result = subprocess.CompletedProcess([], 1, '', 'musl libc\nVersion ' + version + '\n')
+            with patch.object(audit.subprocess, 'run', return_value=result):
+                with self.assertRaisesRegex(RuntimeError, 'requires musl 1.2.5'):
+                    audit.require_baseline('/lib/ld-musl-test.so.1')
+        with patch.object(audit.subprocess, 'run', side_effect=FileNotFoundError):
+            with self.assertRaisesRegex(RuntimeError, 'unavailable'):
+                audit.require_baseline('/missing')
+
     def test_real_musl_elf_audit(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

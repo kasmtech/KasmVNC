@@ -3,14 +3,13 @@
 import argparse
 import json
 from pathlib import Path
-from parity import compare
+from parity import compare, require_container
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('report')
 parser.add_argument('output')
 args = parser.parse_args()
-if not Path('/.dockerenv').exists():
-    parser.error('run in the disposable launcher container')
+require_container(parser)
 source, destination = Path(args.report), Path(args.output)
 if source.resolve() == destination.resolve() or (destination.exists() and source.samefile(destination)):
     parser.error('output must not overwrite the original report')

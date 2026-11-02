@@ -213,10 +213,17 @@ namespace launcher {
                 return "must be true or false";
             if (!k.allowed.empty() && std::find(k.allowed.begin(), k.allowed.end(), value) == k.allowed.end())
                 return "must be one of [" + join(k.allowed, ", ") + "]";
-            if (k.pattern == "@ip") {
+            if (!k.pattern.empty() && !matches(value, k.pattern))
+                return k.error;
+            switch (k.rule) {
+            case Key::Rule::None:
+                break;
+            case Key::Rule::IpAddress: {
                 if (!validIp(value))
                     return k.error;
-            } else if (k.pattern == "@keys") {
+                break;
+            }
+            case Key::Rule::OptionKeys: {
                 bool found = false;
                 for (const auto &option: options())
                     for (const auto &key: option.keys)
@@ -228,14 +235,15 @@ namespace launcher {
                             names.push_back(key.name);
                     return "must be one of [" + join(names, ", ") + "]";
                 }
-            } else if (!k.pattern.empty() && !matches(value, k.pattern))
-                return k.error;
-            if (k.name == "data_loss_prevention.watermark.text.template" &&
-                c.get("data_loss_prevention.watermark.image").present())
-                return k.error;
-            if (k.name == "data_loss_prevention.watermark.text.font_size" ||
-                k.name == "data_loss_prevention.watermark.text.angle") {
-                bool size = k.name.ends_with("font_size");
+                break;
+            }
+            case Key::Rule::ExcludesWatermarkImage:
+                if (c.get("data_loss_prevention.watermark.image").present())
+                    return k.error;
+                break;
+            case Key::Rule::FontSize:
+            case Key::Rule::TextAngle: {
+                bool size = k.rule == Key::Rule::FontSize;
                 if (!matches(value, size ? "^[0-9]+$" : "^-?[0-9]+$"))
                     return k.error;
                 try {
@@ -245,17 +253,21 @@ namespace launcher {
                 } catch (...) {
                     return k.error;
                 }
+                break;
             }
-            if (k.name == "data_loss_prevention.watermark.text.timezone_name") {
+            case Key::Rule::TimezoneName: {
                 try {
                     timezoneOffset(value);
                 } catch (...) {
                     return k.error;
                 }
+                break;
             }
-            if (k.name == "encoding.scrolling.detect_horizontal_scrolling" && value != "false" &&
-                scalar(c, "encoding.scrolling.detect_vertical_scrolling") != "true")
-                return k.error;
+            case Key::Rule::NeedsVerticalScroll:
+                if (value != "false" && scalar(c, "encoding.scrolling.detect_vertical_scrolling") != "true")
+                    return k.error;
+                break;
+            }
             return {};
         }
     } // namespace
