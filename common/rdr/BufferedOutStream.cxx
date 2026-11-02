@@ -31,7 +31,7 @@ using namespace rdr;
 static const size_t DEFAULT_BUF_SIZE = 16384;
 
 BufferedOutStream::BufferedOutStream()
-  : bufSize(DEFAULT_BUF_SIZE), offset(0)
+  : bufSize(DEFAULT_BUF_SIZE), offset(0), corked(false)
 {
   ptr = start = sentUpTo = new U8[bufSize];
   end = start + bufSize;
@@ -53,8 +53,18 @@ size_t BufferedOutStream::bufferUsage()
   return ptr - sentUpTo;
 }
 
+void BufferedOutStream::cork(bool enable)
+{
+  corked = enable;
+  if (!enable)
+    flush();
+}
+
 void BufferedOutStream::flush()
 {
+  if (corked && bufferUsage() < 1024)
+    return;
+
   while (sentUpTo < ptr) {
     size_t len;
 
