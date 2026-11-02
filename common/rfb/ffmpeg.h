@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include "config.h"
 #include <dlfcn.h>
 #include <memory>
 #include <string>
@@ -35,6 +34,8 @@ extern "C" {
 #define STR(x) STR_HELPER(x)
 #define CONCAT_STR(a, b) a b
 
+// Used by ffmpeg.cxx, which includes generated config.h before this header.
+// Xorg also consumes this header but does not have that config header on its path.
 #ifdef KASMVNC_STATIC_FFMPEG
 #define D_LOOKUP_SYM(handle, name) (&::name)
 #else
