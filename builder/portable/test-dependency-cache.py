@@ -106,6 +106,36 @@ class Tests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'Untrusted'):
             cache.registry_digest('registry.gitlab.com/project/deps:key', opener)
 
+    def test_realm_boundaries_and_diagnostics(self):
+        for realm in ('https://gitlab.com:8443/token', 'https://gitlab.com:abc/token',
+                      'http://gitlab.com/token', 'https://user@gitlab.com/token',
+                      'https://gitlab.com/token#fragment', 'https://evil.example/token'):
+            def opener(request, timeout):
+                raise urllib.error.HTTPError(request.full_url, 401, 'auth', {
+                    'WWW-Authenticate': 'Bearer realm="' + realm + '"'}, None)
+            with self.subTest(realm=realm), self.assertRaisesRegex(RuntimeError, 'Untrusted'):
+                cache.registry_digest('registry.gitlab.com/project/deps:key', opener)
+        def no_realm(request, timeout):
+            raise urllib.error.HTTPError(request.full_url, 401, 'auth', {
+                'WWW-Authenticate': 'Bearer service="x"'}, None)
+        with self.assertRaisesRegex(RuntimeError, 'no realm'):
+            cache.registry_digest('registry.example/p/r:key', no_realm)
+        def valid(request, timeout):
+            raise urllib.error.HTTPError(request.full_url, 401, 'auth', {
+                'WWW-Authenticate': 'Bearer realm="https://registry.example/token"'}, None)
+        for present, missing in (({}, 'CI_REGISTRY_USER'), ({'CI_REGISTRY_USER': 'dummy'}, 'CI_REGISTRY_PASSWORD')):
+            with patch.dict(cache.os.environ, present, clear=True), self.assertRaisesRegex(RuntimeError, missing):
+                cache.registry_digest('registry.example/p/r:key', valid)
+
+    def test_redirects_cannot_forward_credentials_or_become_misses(self):
+        handler = cache.NoRegistryRedirects()
+        for method in ('GET', 'HEAD'):
+            request = cache.urllib.request.Request('https://registry.example/v2/p/manifests/tag',
+                headers={'Authorization': 'Bearer dummy'}, method=method)
+            for code in (301, 302, 303, 307, 308):
+                with self.subTest(method=method, code=code), self.assertRaisesRegex(RuntimeError, 'redirects'):
+                    handler.redirect_request(request, None, code, 'redirect', {}, 'https://elsewhere.example/missing')
+
     def test_hit_is_immutable(self):
         digest = 'sha256:' + 'a' * 64
         self.assertEqual(self.lookup(200, digest), 'registry.example/project/portable-deps@' + digest)

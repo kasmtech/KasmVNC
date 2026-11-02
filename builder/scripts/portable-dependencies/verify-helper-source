@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Reject unreviewed version overrides and changed release archives before extraction.
+set -euo pipefail
+archive=${1:?archive required}
+name=$(basename "$archive")
+manifest=$(dirname "$0")/helper-sources.sha256
+expected=$(awk -v name="$name" '$2 == name {print $1}' "$manifest")
+[[ $expected =~ ^[a-f0-9]{64}$ ]] || { echo "Unpinned helper source: $name" >&2; exit 1; }
+printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -

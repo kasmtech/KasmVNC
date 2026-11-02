@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+recipe_dir=$(cd "$(dirname "$0")" && pwd)
 
 build_and_install() {
   cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/.local \
@@ -14,6 +15,7 @@ prepare_libjpeg_source() {
   [ -d ./libjpeg-turbo ] && rm -rf ./libjpeg-turbo
   mkdir libjpeg-turbo
   curl --connect-timeout 30 --max-time 900 -fLsS --retry 3 "https://github.com/libjpeg-turbo/libjpeg-turbo/archive/${JPEG_TURBO_RELEASE}.tar.gz" -o "/tmp/libjpeg-turbo-${JPEG_TURBO_RELEASE}.tar.gz"
+  "$recipe_dir/verify-helper-source" "/tmp/libjpeg-turbo-${JPEG_TURBO_RELEASE}.tar.gz"
   tar xzvf "/tmp/libjpeg-turbo-${JPEG_TURBO_RELEASE}.tar.gz" -C libjpeg-turbo/ --strip-components=1
   cd libjpeg-turbo
 }

@@ -64,6 +64,17 @@ class Assessments(unittest.TestCase):
         self.raw['matches'].append(match)
         self.assertEqual(self.reconcile()[3]['assessments'][0]['lifecycle'], 'active')
 
+    def test_absent_out_of_scope_rules_are_not_lapsed(self):
+        self.raw['matches'] = []
+        for field, scope in [('libcs', ['musl']), ('architectures', ['arm64'])]:
+            with self.subTest(field=field):
+                original = self.rule[field]
+                self.rule[field] = scope
+                cdx, report, vex, snapshot = self.reconcile()
+                self.assertEqual(snapshot['assessments'], [])
+                self.assertEqual(vex['statements'], [])
+                self.rule[field] = original
+
     def test_changed_version_cannot_reuse_exception(self):
         self.raw['matches'][0]['artifact']['version'] = '2.0'
         self.bom['components'][0].update(version='2.0', **{'bom-ref': 'example@2.0'})

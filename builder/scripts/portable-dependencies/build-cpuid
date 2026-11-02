@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+recipe_dir=$(cd "$(dirname "$0")" && pwd)
 
 build_and_install() {
     cmake -S . -B build -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
@@ -19,6 +20,7 @@ prepare_source() {
     LIBCPUID_RELEASE="${LIBCPUID_RELEASE:-v0.8.1}"
 
     curl --connect-timeout 30 --max-time 900 -fLsS --retry 3 "https://github.com/anrieff/libcpuid/archive/${LIBCPUID_RELEASE}.tar.gz" -o "/tmp/cpuid-${LIBCPUID_RELEASE}.tar.gz"
+  "$recipe_dir/verify-helper-source" "/tmp/cpuid-${LIBCPUID_RELEASE}.tar.gz"
     tar xzvf "/tmp/cpuid-${LIBCPUID_RELEASE}.tar.gz" -C ${DIR}/ --strip-components=1
     cd ${DIR}
 }

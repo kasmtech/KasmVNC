@@ -14,6 +14,10 @@ from parity import HOME, WORK, reset_fixture, setup_helpers
 from startup import install_fake, live
 
 
+def rejected(status):
+    return type(status) is int and status > 0
+
+
 def prepare(config=None):
     files = reset_fixture({'config': config or {'command_line': {'prompt': 'false'},
                                                'network': {'interface': '127.0.0.1', 'websocket_port': '8534'}}})
@@ -99,7 +103,7 @@ def main():
         elif which.endswith('-kill'):
             options = ['-kill', ':91']
         result = invoke(args.candidate, options)
-        checks = {'rejected': isinstance(result['status'], int) and result['status'] != 0,
+        checks = {'rejected': rejected(result['status']),
                   'target_untouched': target.read_bytes() == before,
                   'bounded': result['status'] != 'timeout'}
         if which.startswith('directory-symlink'):
@@ -120,7 +124,7 @@ def main():
         try:
             result = invoke(args.candidate, ['-kill', ':91'])
             record('pid-read-' + kind, result,
-                   {'rejected': isinstance(result['status'], int) and result['status'] != 0,
+                   {'rejected': rejected(result['status']),
                     'target_untouched': target.read_bytes() == before,
                     'process_unsignaled': child.poll() is None,
                     'bounded': result['status'] != 'timeout'})
@@ -133,7 +137,7 @@ def main():
     try:
         pidfile.write_text(str(unrelated.pid) + '\n')
         result = invoke(args.candidate, ['-kill', ':91'])
-        record('unrelated-process', result, {'rejected': result['status'] != 0,
+        record('unrelated-process', result, {'rejected': rejected(result['status']),
                                             'process_unsignaled': unrelated.poll() is None,
                                             'bounded': result['status'] != 'timeout'})
     finally:
@@ -146,7 +150,7 @@ def main():
         if name == 'yaml-depth':
             Path(config).write_text(''.join('  ' * n + 'nested:\n' for n in range(70)))
         result = invoke(args.candidate, [':91', '-config', config, '-dry-run'], {'CYCLE': '${CYCLE}'})
-        record(name, result, {'rejected': isinstance(result['status'], int) and result['status'] != 0,
+        record(name, result, {'rejected': rejected(result['status']),
                               'bounded': result['status'] != 'timeout'})
         cleanup(pidfile)
     marker = WORK / 'shell-was-executed'

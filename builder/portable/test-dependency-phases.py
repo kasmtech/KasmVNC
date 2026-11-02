@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('phases', Path(__file__).resolve().parents[1] / 'scripts/portable-dependencies/run-phase.py')
 phases = importlib.util.module_from_spec(spec)
@@ -18,6 +19,13 @@ class Tests(unittest.TestCase):
         with contextlib.redirect_stdout(output):
             status = phases.run_phase(name, [sys.executable, '-c', script], Path(directory), interval=0.05)
         return status, output.getvalue()
+
+    def test_disappeared_group_preserves_original_exception(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(phases.subprocess, 'Popen') as spawn, \
+                patch.object(phases.os, 'killpg', side_effect=ProcessLookupError):
+            spawn.return_value.wait.side_effect = [KeyboardInterrupt(), 0]
+            with self.assertRaises(KeyboardInterrupt):
+                phases.run_phase('interrupted', ['unused'], Path(directory))
 
     def test_silent_heartbeat(self):
         with tempfile.TemporaryDirectory() as directory:

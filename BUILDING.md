@@ -523,7 +523,8 @@ KasmVNC subversion trunk.
 
 ### Optional Noble workspace images
 
-Branch pipelines offer `build_workspace_noble_amd64` and
+With `BUILD_FULL_LEGACY=true` or `BUILD_PORTABLE=false` and Noble included in
+`BUILD_DISTROS_REGEX`, branch pipelines offer `build_workspace_noble_amd64` and
 `build_workspace_noble_arm64` as independent manual jobs. Once the matching
 `build_amd64` / `build_arm64` Noble matrix job succeeds, select **Run** on the
 workspace job in GitLab. There is no need to wait for other distro builds,

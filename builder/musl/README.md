@@ -73,10 +73,10 @@ bit-reproducible: exact installed package and source evidence is recorded too.
 
 ## Baseline maintenance and limits
 
-Alpine 3.21 is the oldest current supported stable release at implementation
-time, and avoids introducing musl 1.2.6-only symbols. Older EOL releases add no
-current coverage. Alpine 3.21 community support has already ended and its main
-support is scheduled to end on November 1, 2026. The ABI baseline is useful,
+Alpine 3.21 was the oldest supported stable release at implementation time
+and avoids introducing musl 1.2.6-only symbols. Its main support ended on
+November 1, 2026; this is now an EOL build baseline, not a supported distro.
+The runtime matrix retains it as an ABI compatibility check. The ABI baseline is useful,
 but refreshing a cache against an old repository does not provide security
 maintenance. Embedded source pins and any distro-supplied static archives must
 be maintained explicitly, as with the glibc portable build. Review moving the

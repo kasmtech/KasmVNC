@@ -21,6 +21,13 @@ def tail(path, lines, maximum_bytes=65536):
                      for line in data.decode('utf-8', errors='replace').splitlines()[-lines:])
 
 
+def signal_group(process, number):
+    try:
+        os.killpg(process.pid, number)
+    except ProcessLookupError:
+        pass  # The child exiting must not mask the original exception.
+
+
 def run_phase(name, command, log_dir=Path('/opt/kasm-dependency-logs'), interval=60):
     if not re.fullmatch(r'[a-z0-9-]+', name):
         raise ValueError('Unsafe phase name')
@@ -43,11 +50,11 @@ def run_phase(name, command, log_dir=Path('/opt/kasm-dependency-logs'), interval
                     if sample:
                         print(sample, flush=True)
         except BaseException:
-            os.killpg(process.pid, signal.SIGTERM)
+            signal_group(process, signal.SIGTERM)
             try:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGKILL)
+                signal_group(process, signal.SIGKILL)
                 process.wait()
             raise
     elapsed = int(time.monotonic() - started)

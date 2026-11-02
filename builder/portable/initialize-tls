@@ -6,8 +6,14 @@ getent group kasmvnc-cert >/dev/null || groupadd --system kasmvnc-cert
 if [ ! -e "$cert" ]; then
     install -d -m 755 /etc/pki/tls/private
     umask 077
+    tmp=$(mktemp "$cert.XXXXXX")
+    trap 'rm -f "$tmp"' EXIT HUP INT TERM
     openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-        -keyout "$cert" -out "$cert" -subj /CN=KasmVNC
-    chgrp kasmvnc-cert "$cert"
-    chmod 640 "$cert"
+        -keyout "$tmp" -out "$tmp" -subj /CN=KasmVNC
+    openssl x509 -in "$tmp" -noout
+    openssl pkey -in "$tmp" -noout
+    chgrp kasmvnc-cert "$tmp"
+    chmod 640 "$tmp"
+    mv -f "$tmp" "$cert"
+    trap - EXIT HUP INT TERM
 fi

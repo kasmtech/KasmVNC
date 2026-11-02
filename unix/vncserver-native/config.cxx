@@ -20,6 +20,7 @@
 extern char **environ;
 namespace launcher {
 #include "settings.inc"
+#include "timezone-links.inc"
     namespace {
         constexpr std::size_t maxConfigBytes = 4 * 1024 * 1024;
         constexpr const char *envGate = "server.allow_environment_variables_to_override_config_settings";
@@ -195,7 +196,10 @@ namespace launcher {
             if (value == "auto")
                 return true;
             unsigned char address[16];
-            if (inet_pton(AF_INET, value.c_str(), address) == 1)
+            // Preserve the Perl launcher's decimal IPv4 grammar, including
+            // leading zeroes and its optional final dot (not inet_pton's grammar).
+            static const std::regex ipv4(R"(^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}$)");
+            if (std::regex_match(value, ipv4))
                 return true;
             auto scope = value.find('%');
             if (scope != std::string::npos)
@@ -443,24 +447,37 @@ namespace launcher {
         // The launcher is single threaded. Always restore TZ before spawning helpers.
         if (name == "floating" || name == "UTC")
             return 0;
-        if (matches(name, "^[+-][0-9]{4}(?:[0-9]{2})?$")) {
-            int hours = std::stoi(name.substr(1, 2)), minutes = std::stoi(name.substr(3, 2));
-            int seconds = name.size() == 7 ? std::stoi(name.substr(5, 2)) : 0;
+        static const std::regex offsetPattern(R"(^[+-]?([0-9]{4}([0-9]{2})?|[0-9]{2}:[0-9]{2}(:[0-9]{2})?)$)");
+        if (std::regex_match(name, offsetPattern)) {
+            std::string digits;
+            for (unsigned char c : name)
+                if (std::isdigit(c)) digits += c;
+            int hours = std::stoi(digits.substr(0, 2)), minutes = std::stoi(digits.substr(2, 2));
+            int seconds = digits.size() == 6 ? std::stoi(digits.substr(4, 2)) : 0;
             if (hours > 23 || minutes > 59 || seconds > 59)
                 throw std::runtime_error("Invalid timezone");
             return (name[0] == '-' ? -1 : 1) * (hours * 3600 + minutes * 60 + seconds);
         }
-        if (name != "local" && (name.empty() || name.front() == '/' || name.find("..") != std::string::npos ||
-                                   !std::filesystem::is_regular_file("/usr/share/zoneinfo/" + name)))
-            throw std::runtime_error("Invalid timezone");
+        std::string zone = name;
+        if (auto alias = timezoneLinks.find(zone); alias != timezoneLinks.end())
+            zone = alias->second;
+        if (zone != "local") {
+            if (zone.empty() || zone.front() == '/' || zone.find("..") != std::string::npos ||
+                zone.starts_with("posix/") || zone.starts_with("right/"))
+                throw std::runtime_error("Invalid timezone");
+            // A regular file alone is insufficient: zone.tab and leapseconds
+            // are metadata, not timezones. Require the actual TZif file magic.
+            std::ifstream file("/usr/share/zoneinfo/" + zone, std::ios::binary);
+            char magic[4]{};
+            if (!file.read(magic, sizeof magic) || std::string(magic, 4) != "TZif")
+                throw std::runtime_error("Invalid timezone");
+        }
         const char *old = std::getenv("TZ");
         std::optional<std::string> saved;
         if (old)
             saved = old;
-        if (name == "local")
-            unsetenv("TZ");
-        else
-            setenv("TZ", (":" + name).c_str(), 1);
+        if (zone != "local")
+            setenv("TZ", (":" + zone).c_str(), 1);
         tzset();
         std::time_t now = std::time(nullptr);
         std::tm result{};

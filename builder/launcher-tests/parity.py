@@ -252,7 +252,9 @@ def parse_command(stdout, prefix):
         option = words[i]
         if not option.startswith('-'):
             raise ValueError('unrecognized option boundary: ' + repr(words[i:]))
-        if option in flag_only or i + 1 == len(words) or words[i + 1] in known:
+        if option not in known:
+            raise ValueError('unknown generated option: ' + option)
+        if option in flag_only:
             value = None
             i += 1
         else:

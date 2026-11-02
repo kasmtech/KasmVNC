@@ -1,6 +1,17 @@
 # Resolve the complete pkg-config private link closure. Absolute archive paths
 # are intentional: Xvnc also consumes these through librfb.la, outside CMake.
 pkg_check_modules(STATIC_FFMPEG REQUIRED libavformat libavcodec libswscale libavutil)
+set(KASMVNC_CODEC_PREFIX "" CACHE PATH "Required FFmpeg prefix for portable builds")
+if(KASMVNC_CODEC_PREFIX)
+    get_filename_component(expected_libdir "${KASMVNC_CODEC_PREFIX}/lib" REALPATH)
+    foreach(module libavformat libavcodec libswscale libavutil)
+        pkg_get_variable(selected_libdir "${module}" libdir)
+        get_filename_component(selected_libdir "${selected_libdir}" REALPATH)
+        if(NOT selected_libdir STREQUAL expected_libdir)
+            message(FATAL_ERROR "${module} selected ${selected_libdir}; expected portable prefix ${expected_libdir}. Check PKG_CONFIG_PATH.")
+        endif()
+    endforeach()
+endif()
 set(KASMVNC_FFMPEG_ARCHIVES "")
 foreach(dependency IN LISTS STATIC_FFMPEG_STATIC_LIBRARIES)
     # OS and hardware-driver interfaces remain dynamic. Never bundle a vendor
@@ -24,3 +35,4 @@ foreach(dependency IN LISTS STATIC_FFMPEG_STATIC_LIBRARIES)
         list(APPEND KASMVNC_FFMPEG_ARCHIVES "${ffmpeg_archive}")
     endif()
 endforeach()
+message(STATUS "Static FFmpeg archives: ${KASMVNC_FFMPEG_ARCHIVES}")

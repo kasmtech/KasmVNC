@@ -73,6 +73,7 @@ for flavor in runtime debug; do
     # The baseline package hook assumes this directory exists; ensure clean
     # minimal containers work as well as desktop images.
     sed -i '/local cert_file=/a\  mkdir -p /etc/ssl/private' "$recipe/kasmvncserver.post-install"
+    grep -Fqx "  mkdir -p /etc/ssl/private" "$recipe/kasmvncserver.post-install"
     cp "$recipe/kasmvncserver.post-install" "$recipe/kasmvncserver.post-upgrade"
     hooks='kasmvncserver.post-install kasmvncserver.post-upgrade kasmvncserver.post-deinstall'
     suffix=apk

@@ -483,6 +483,14 @@ upload_build_preview_html:
     when:
       - runner_system_failure
       - api_failure
+  rules:
+    - if: '$BUILD_DISTROS_REGEX == "none"'
+      when: never
+    - if: '$BUILD_PORTABLE != "false" && $BUILD_FULL_LEGACY != "true"'
+      when: never
+    - if: '$BUILD_DISTROS_REGEX == "all" || "ubuntu noble" =~ $BUILD_DISTROS_REGEX'
+      when: manual
+    - when: never
   resource_group: "workspace-$CI_COMMIT_REF_SLUG-$WORKSPACE_ARCH"
   before_script:
     # Trixie splits the CLI from docker.io; no daemon is needed in the job container.
@@ -508,6 +516,7 @@ build_workspace_noble_amd64:
         matrix:
           - DISTRO: 'ubuntu noble'
             DISTRO_SLUG: 'ubuntu_noble'
+            LEGACY_REQUIRED: "false"
             GROUP: 2
       artifacts: true
 
@@ -522,6 +531,7 @@ build_workspace_noble_arm64:
         matrix:
           - DISTRO: 'ubuntu noble'
             DISTRO_SLUG: 'ubuntu_noble'
+            LEGACY_REQUIRED: "false"
             GROUP: 2
       artifacts: true
 

@@ -11,7 +11,10 @@ parser.add_argument('output')
 args = parser.parse_args()
 if not Path('/.dockerenv').exists():
     parser.error('run in the disposable launcher container')
-report = json.loads(Path(args.report).read_text())
+source, destination = Path(args.report), Path(args.output)
+if source.resolve() == destination.resolve() or (destination.exists() and source.samefile(destination)):
+    parser.error('output must not overwrite the original report')
+report = json.loads(source.read_text())
 for row in report['results']:
     if row.get('candidate') is None:
         parser.error('oracle-only reports cannot be compared')

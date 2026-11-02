@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+recipe_dir=$(cd "$(dirname "$0")" && pwd)
 
 build_and_install() {
     ./autogen.sh
@@ -18,6 +19,7 @@ prepare_source() {
     LIBSTATGRAB_RELEASE="${LIBSTATGRAB_RELEASE:-LIBSTATGRAB_0_92_1}"
 
     curl --connect-timeout 30 --max-time 900 -fLsS --retry 3 "https://github.com/libstatgrab/libstatgrab/archive/${LIBSTATGRAB_RELEASE}.tar.gz" -o "/tmp/libstatgrab-${LIBSTATGRAB_RELEASE}.tar.gz"
+  "$recipe_dir/verify-helper-source" "/tmp/libstatgrab-${LIBSTATGRAB_RELEASE}.tar.gz"
     tar xzvf "/tmp/libstatgrab-${LIBSTATGRAB_RELEASE}.tar.gz" -C ${DIR}/ --strip-components=1
     cd ${DIR}
 }

@@ -165,7 +165,9 @@ show_file_link_in_ci() {
     return
   fi
 
-  curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" -w '\n' "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=${link_name}&target_url=${file_url}"
+  curl --request POST --header @- -w '\n' "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=${link_name}&target_url=${file_url}" <<EOF
+PRIVATE-TOKEN:${GITLAB_API_TOKEN}
+EOF
 }
 
 show_package_download_link_in_ci() {
@@ -216,7 +218,14 @@ upload_portable_packages() {
   local package
   local count=0
   while IFS= read -r -d '' package; do
-    upload_regular_package_to_build_dir "$package"
+    prepare_package_in_build_dir_s3_path "$package"
+    upload_to_s3 "$package" "$package_in_build_dir_s3_path" "$S3_BUCKET"
+    save_package_s3_path_for_index_html "$package_in_build_dir_s3_path"
+    case "$package" in
+      *.dbgsym.deb|*.debuginfo.rpm|*.debug.apk|*.debug.tar.gz|*.sources.tar.gz) ;;
+      *.deb|*.rpm|*.apk|*.tar.gz)
+        show_file_link_in_ci "$(basename "$package")" "$UPLOADED_FILE_S3_URL" ;;
+    esac
     count=$((count + 1))
   done < <(find builder/build -path '*/portable_*/*' -type f -name 'kasmvncserver_portable_*' -print0)
   check_regular_packages_were_uploaded "$count"
@@ -313,10 +322,12 @@ put_report_into_ci_pipeline() {
   if [ "$functional_tests_exit_code" -ne 0 ]; then
     state="failed"
   fi
-  curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" -w '\n' "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=${state}&name=${report_name}&target_url=${report_url}"
+  curl --request POST --header @- -w '\n' "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=${state}&name=${report_name}&target_url=${report_url}" <<EOF
+PRIVATE-TOKEN:${GITLAB_API_TOKEN}
+EOF
 }
 
-prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages() {
+select_functional_test_package() {
   local package_dir
   local -a candidates
   if [[ "${BUILD_PORTABLE:-false}" != false ]]; then
@@ -326,7 +337,7 @@ prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages() {
   fi
   # Do not fall back to a previously published artifact when this pipeline's
   # package is missing or ambiguous.
-  mapfile -t candidates < <(find "$package_dir" -maxdepth 1 -type f -name '*_amd64.deb' -print)
+  mapfile -t candidates < <(find "$package_dir" -maxdepth 1 -type f -name '*_amd64.deb' ! -name '*dbgsym*' -print)
   if [[ ${#candidates[@]} != 1 ]]; then
     echo "Expected exactly one pipeline AMD64 runtime DEB in $package_dir" >&2
     return 1
@@ -341,7 +352,7 @@ prepare_standard_functional_tests() {
   export KASMVNC_ARTIFACT_COMMIT="$CI_COMMIT_SHA"
   export KASMVNC_ARTIFACT_BRANCH="$CI_COMMIT_REF_NAME"
   local -a deb_packages rpm_packages
-  mapfile -t deb_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*_amd64.deb' -print)
+  mapfile -t deb_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*_amd64.deb' ! -name '*dbgsym*' -print)
   mapfile -t rpm_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*_amd64.rpm' -print)
   if [[ ${#deb_packages[@]} != 1 || ${#rpm_packages[@]} != 1 ]]; then
     echo 'Standard requires exactly one pipeline AMD64 portable DEB and RPM' >&2
@@ -361,7 +372,7 @@ prepare_standard_functional_tests() {
 prepare_to_run_functional_tests() {
   install_packages_needed_for_functional_tests
   prepare_functional_tests_source_and_cd_into_it
-  prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages
+  select_functional_test_package
   heed_debug_variable_and_toggle_debug_in_functional_tests
 }
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+recipe_dir=$(cd "$(dirname "$0")" && pwd)
 
 build_and_install() {
     if [ $older_release -eq 1 ]; then
@@ -43,6 +44,7 @@ prepare_source() {
     fi
 
     curl --connect-timeout 30 --max-time 900 -fLsS --retry 3 "https://github.com/uxlfoundation/oneTBB/archive/${TBB_RELEASE}.tar.gz" -o "/tmp/tbb-${TBB_RELEASE}.tar.gz"
+  "$recipe_dir/verify-helper-source" "/tmp/tbb-${TBB_RELEASE}.tar.gz"
     tar xzvf "/tmp/tbb-${TBB_RELEASE}.tar.gz" -C ${DIR}/ --strip-components=1
 
     cd ${DIR}

@@ -20,7 +20,9 @@ def materialize(directory):
             value = value.replace('\\n', '\n').strip()
             if not value.startswith('-----BEGIN '):
                 value = '-----BEGIN ' + kind + ' KEY-----\n' + value + '\n-----END ' + kind + ' KEY-----'
-            path.write_text(value + '\n')
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+            with os.fdopen(os.open(path, flags, 0o600 if kind == 'PRIVATE' else 0o644), 'w') as stream:
+                stream.write(value + '\n')
     else:
         raise RuntimeError('Both Alpine signing keys are required; local test key requires explicit non-CI opt-in')
     private.chmod(0o600)

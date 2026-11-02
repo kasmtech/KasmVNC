@@ -153,6 +153,8 @@ def reconcile(bom, raw, registry, root, now):
             statement['action_statement'] = a['detail']
         vex['statements'].append(statement)
     for r in registry['assessments']:
+        if arch not in r['architectures'] or libc not in r['libcs']:
+            continue  # This decision never applied to this build.
         if (r['cve'], r['package']) not in observed:
             records.append({**copy.deepcopy(r), 'lifecycle': 'not_detected',
                 'state': 'in_triage', 'reviewed_state': r['state'], 'observed_at': now,

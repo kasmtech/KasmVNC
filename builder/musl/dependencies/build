@@ -11,7 +11,8 @@ export KASMVNC_STATIC_RUNTIME_PREFIX=/opt/kasm-runtime
 export KASMVNC_CODEC_PREFIX=/opt/kasm-codecs
 export KASMVNC_STATIC_DESKTOP_PREFIX=/opt/kasm-desktop
 export LIBYUV_COMMIT=eb6e7bb63738e29efd82ea3cf2a115238a89fa51
-export KASMVNC_PORTABLE_DRIVER_PATH=$(/opt/kasm-dependency-recipes/portable-driver-path)
+KASMVNC_PORTABLE_DRIVER_PATH=$(/opt/kasm-dependency-recipes/portable-driver-path)
+export KASMVNC_PORTABLE_DRIVER_PATH
 cd /tmp
 recipes=/opt/kasm-dependency-recipes
 python3 "$recipes/run-phase.py" runtime "$recipes/build-static-runtime"
@@ -25,7 +26,7 @@ python3 "$recipes/run-phase.py" helpers "$recipes/build-deps.sh"
 python3 "$recipes/run-phase.py" apk-sources python3 /opt/kasm-musl-profile/cache-apk-sources.py
 # Sources and build logs are retained for corresponding-source artifacts.
 test -s /opt/kasm-codecs/lib/libavcodec.a
-test -s /root/.local/lib/libyuv.a
+test -s "$HOME/.local/lib/libyuv.a"
 apk info -v | sort > /opt/kasm-dependency-apks.txt
 cp /lib/apk/db/installed /opt/kasm-apk-installed
 printf 'kasmvnc-portable-musl-dependencies-v1\n' > /opt/kasm-dependencies-ready

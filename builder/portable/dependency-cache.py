@@ -57,9 +57,33 @@ def context_key(context, architecture):
     return digest.hexdigest()
 
 
-def registry_digest(reference, opener=urllib.request.urlopen):
+class NoRegistryRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Neither Basic nor Bearer credentials may leave the validated endpoint.
+        # Reject even same-origin redirects: a redirected 404 is not a cache miss.
+        raise RuntimeError('Registry redirects are not supported')
+
+
+def endpoint(url):
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        if (parsed.scheme != 'https' or not parsed.hostname or parsed.username is not None
+                or parsed.password is not None or parsed.fragment):
+            raise ValueError('invalid endpoint')
+        port = parsed.port if parsed.port is not None else 443
+        if port < 1:
+            raise ValueError('invalid port')
+        return parsed.hostname.lower(), port
+    except ValueError as error:
+        raise RuntimeError('Untrusted registry authentication realm') from error
+
+
+def registry_digest(reference, opener=None):
+    if opener is None:
+        opener = urllib.request.build_opener(NoRegistryRedirects()).open
     host, rest = reference.split('/', 1)
     repository, tag = rest.rsplit(':', 1)
+    registry_endpoint = endpoint('https://' + host)
     url = f'https://{host}/v2/{repository}/manifests/{tag}'
     headers = {'Accept': ', '.join(('application/vnd.oci.image.manifest.v1+json',
                 'application/vnd.docker.distribution.manifest.v2+json',
@@ -76,12 +100,17 @@ def registry_digest(reference, opener=urllib.request.urlopen):
         if not challenge.startswith('Bearer '):
             raise RuntimeError('Expected Bearer registry authentication') from error
         fields = dict(re.findall(r'(\w+)="([^"]*)"', challenge))
-        realm = fields['realm']
-        parsed = urllib.parse.urlparse(realm)
-        if parsed.scheme != 'https' or parsed.hostname != host:
-            # GitLab.com registry delegates to GitLab.com, not arbitrary hosts.
-            if not (host == 'registry.gitlab.com' and parsed.scheme == 'https' and parsed.hostname == 'gitlab.com'):
-                raise RuntimeError('Untrusted registry authentication realm')
+        realm = fields.get('realm')
+        if not realm:
+            raise RuntimeError('Registry challenge has no realm')
+        trusted = {registry_endpoint}
+        if registry_endpoint == ('registry.gitlab.com', 443):
+            trusted.add(('gitlab.com', 443))
+        if endpoint(realm) not in trusted:
+            raise RuntimeError('Untrusted registry authentication realm')
+        for variable in ('CI_REGISTRY_USER', 'CI_REGISTRY_PASSWORD'):
+            if not os.environ.get(variable):
+                raise RuntimeError('Missing registry credential: ' + variable)
         query = urllib.parse.urlencode({'service': fields.get('service', ''), 'scope': f'repository:{repository}:pull'})
         credentials = base64.b64encode((os.environ['CI_REGISTRY_USER'] + ':' + os.environ['CI_REGISTRY_PASSWORD']).encode()).decode()
         request = urllib.request.Request(realm + ('&' if '?' in realm else '?') + query,
@@ -118,7 +147,13 @@ if __name__ == '__main__':
     elif args.command == 'archive':
         context_archive(args.context, args.output)
     else:
-        result = registry_digest(args.reference)
+        try:
+            result = registry_digest(args.reference)
+        except (RuntimeError, ValueError, KeyError, urllib.error.URLError, OSError) as error:
+            # Only the original manifest's HTTP 404 below may return miss code 3.
+            # Avoid exception URLs/headers, which may contain authentication data.
+            message = str(error) if isinstance(error, RuntimeError) else type(error).__name__
+            raise SystemExit('Registry lookup failed: ' + message)
         if result is None:
             raise SystemExit(3)  # Only a manifest HTTP 404 permits a build.
         print(result)
