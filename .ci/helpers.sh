@@ -316,16 +316,17 @@ upload_report_to_s3() {
 
 put_report_into_ci_pipeline() {
   local functional_tests_exit_code="$1"
-  local report_name="${FUNCTIONAL_TEST_TIER:-minimal}%20functional%20test%20report"
   local report_url="https://${S3_BUCKET}.s3.amazonaws.com/${s3_tests_directory}/report/index.html"
-  local state="success"
+  local state="passed"
   if [ "$functional_tests_exit_code" -ne 0 ]; then
     state="failed"
   fi
-  curl --request POST --header @- -w '\n' "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=${state}&name=${report_name}&target_url=${report_url}" <<EOF
-PRIVATE-TOKEN:${GITLAB_API_TOKEN}
-EOF
+  # The real CI job owns its status and allow_failure policy. Posting another
+  # commit status creates a separate failing job and can attach to the other
+  # pipeline when branch and MR qualification run for the same commit.
+  printf '%s functional tests %s: %s\n' "${FUNCTIONAL_TEST_TIER:-minimal}" "$state" "$report_url"
 }
+
 
 select_functional_test_package() {
   local package_dir

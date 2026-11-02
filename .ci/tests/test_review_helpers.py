@@ -41,6 +41,20 @@ upload_portable_packages
             self.assertEqual(actual, sorted(base+'.'+suffix for suffix in ['deb','rpm','tar.gz']))
             self.assertEqual(len(list((root/'output/uploaded_s3_paths').iterdir())), len(suffixes)+1)
 
+    def test_functional_report_does_not_create_external_commit_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for code, state in [(0, 'passed'), (1, 'failed')]:
+                result = self.shell(f'''source "{ROOT}/.ci/helpers.sh"
+CI_API_V4_URL=unused; CI_PROJECT_ID=1; GITLAB_API_TOKEN=fixture
+s3_tests_directory=tests/exact-commit; FUNCTIONAL_TEST_TIER=standard
+curl() {{ echo UNEXPECTED_COMMIT_STATUS; }}
+put_report_into_ci_pipeline {code}
+''', Path(tmp))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn('UNEXPECTED_COMMIT_STATUS', result.stdout)
+                self.assertIn('standard functional tests ' + state, result.stdout)
+                self.assertIn('/tests/exact-commit/report/index.html', result.stdout)
+
     def test_failed_certificate_generation_does_not_publish_partial_file(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); cert = root/'private/server.pem'; cert.parent.mkdir()
