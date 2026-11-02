@@ -488,9 +488,9 @@ upload_build_preview_html:
       when: never
     - if: '$BUILD_PORTABLE != "false" && $BUILD_FULL_LEGACY != "true"'
       when: never
-    - if: '$BUILD_DISTROS_REGEX == "all" || "ubuntu noble" =~ $BUILD_DISTROS_REGEX'
-      when: manual
-    - when: never
+    # BUILD_DISTROS_REGEX is a shell regex, not a GitLab /regex/ value.
+    # Keep the optional action available; it validates the Noble artifact.
+    - when: manual
   resource_group: "workspace-$CI_COMMIT_REF_SLUG-$WORKSPACE_ARCH"
   before_script:
     # Trixie splits the CLI from docker.io; no daemon is needed in the job container.
