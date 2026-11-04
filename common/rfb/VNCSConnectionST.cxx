@@ -1412,11 +1412,9 @@ bool VNCSConnectionST::isCongested()
     congestionTimer.start(eta);
 
   if (eta > 1000 / rfb::Server::frameRate) {
-    struct timeval now;
-    gettimeofday(&now, nullptr);
-
-    bstats[BS_NET_SLOW].push_back(now);
-    bstats_total[BS_NET_SLOW]++;
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    addBottleneckStat(BS_NET_SLOW, now);
   }
 
   return true;
@@ -1508,10 +1506,9 @@ void VNCSConnectionST::writeFramebufferUpdate()
 
   congestion.updatePosition(sock->outStream().length());
 
-  struct timeval now;
-  gettimeofday(&now, nullptr);
-  bstats[BS_FRAME].push_back(now);
-  bstats_total[BS_FRAME]++;
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  addBottleneckStat(BS_FRAME, now);
 }
 
 void VNCSConnectionST::writeNoDataUpdate()
@@ -1679,23 +1676,15 @@ void VNCSConnectionST::writeDataUpdate()
 
     const unsigned ms = encodeManager.getEncodingTime();
     const unsigned limit = 1000 / rfb::Server::frameRate;
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
     if (ms >= limit) {
-        bstats[BS_CPU_SLOW].push_back(lastRealUpdate);
-        bstats_total[BS_CPU_SLOW]++;
-
         // If it was several frames' worth, add several so as to react faster
-        int i = ms / limit;
-        i--;
-        for (; i > 0; i--) {
-            bstats[BS_CPU_SLOW].push_back(lastRealUpdate);
-            bstats_total[BS_CPU_SLOW]++;
-
-            bstats[BS_FRAME].push_back(lastRealUpdate);
-            bstats_total[BS_FRAME]++;
-        }
+        const unsigned frames = ms / limit;
+        addBottleneckStat(BS_CPU_SLOW, now, frames);
+        addBottleneckStat(BS_FRAME, now, frames - 1);
     } else if (ms >= limit * 0.8f) {
-        bstats[BS_CPU_CLOSE].push_back(lastRealUpdate);
-        bstats_total[BS_CPU_CLOSE]++;
+        addBottleneckStat(BS_CPU_CLOSE, now);
     }
 
     writeRTTPing();
@@ -1743,22 +1732,23 @@ void VNCSConnectionST::screenLayoutChange(rdr::U16 reason)
 
 static const unsigned recentSecs = 10;
 
-static void pruneStatList(std::list<struct timeval> &list, const struct timeval &now) {
-  std::list<struct timeval>::iterator it;
-  for (it = list.begin(); it != list.end(); ) {
-    if ((*it).tv_sec + recentSecs < now.tv_sec)
-      it = list.erase(it);
-    else
-      it++;
-  }
+static void pruneStatList(std::list<struct timespec> &list, const struct timespec &now) {
+  while (!list.empty() && msBetween(&list.front(), &now) > recentSecs * 1000)
+    list.pop_front();
+}
+
+void VNCSConnectionST::addBottleneckStat(int stat, const struct timespec &when, unsigned count) {
+  for (unsigned i = 0; i < count; i++)
+    bstats[stat].push_back(when);
+  bstats_total[stat] += count;
 }
 
 void VNCSConnectionST::sendStats(const bool toClient) {
   char buf[1024];
-  struct timeval now;
+  struct timespec now;
 
   // Prune too old stats from the recent lists
-  gettimeofday(&now, nullptr);
+  clock_gettime(CLOCK_MONOTONIC, &now);
 
   pruneStatList(bstats[BS_CPU_CLOSE], now);
   pruneStatList(bstats[BS_CPU_SLOW], now);
