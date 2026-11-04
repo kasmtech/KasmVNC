@@ -1,5 +1,12 @@
 # Experimental static application libraries
 
+The portable packages now dynamically link system OpenSSL 3 using a pinned
+OpenSSL 3.0 build-only SDK. They do not embed the OpenSSL 4 runtime described in
+the older standalone static experiments below. See the
+[portable OpenSSL boundary](portable/README.md#system-openssl-3) for packaging,
+ABI auditing, provenance and security-update behavior. This change applies to
+both glibc and musl portable profiles, independently of FFmpeg linking mode.
+
 `KASMVNC_STATIC_FFMPEG` is a CMake option, OFF by default. OFF preserves the
 soname-based `dlopen` path and first-use loading of libavformat. ON resolves
 FFmpeg functions directly and links the archives, including pkg-config's private
@@ -52,7 +59,7 @@ The opt-in scripts pin source hashes or commits; they do not follow moving heads
 | x265 | 4.3 | Server supports HEVC; browser decoding support is separate. |
 | SVT-AV1 | 4.2.0 | Included, but KasmVNC currently disables software AV1 probing. |
 | NVIDIA codec headers | 13.0.19.1 | Requires driver >=570. Latest 13.1 requires >=610, so is deliberately not selected. |
-| OpenSSL | 4.0.3 | Major upgrade; HTTPS, authentication and UDP/WebRTC need regression coverage. |
+| OpenSSL | 4.0.3 (standalone static experiment) | Portable packages instead use a build-only 3.0 SDK and dynamically link the host's OpenSSL 3.x runtime. |
 | libpng | 1.6.59 | Static copy must not interpose on graphics-driver dependencies. |
 | zlib | 1.3.2 | Same symbol-isolation requirement. |
 | WebP | 1.6.0 | Same symbol-isolation requirement. |

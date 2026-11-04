@@ -67,7 +67,7 @@ for flavor in runtime debug; do
   if [[ $flavor == runtime ]]; then
     pkgname=kasmvncserver
     stage=$root
-    dependencies='musl>=1.2.5 mesa-gl mesa-gbm at-spi2-core xterm setxkbmap bash openssl tzdata xauth xdpyinfo xkbcomp xkeyboard-config busybox'
+    dependencies='musl>=1.2.5 libssl3>=3.0.0 libcrypto3>=3.0.0 mesa-gl mesa-gbm at-spi2-core xterm setxkbmap bash openssl tzdata xauth xdpyinfo xkbcomp xkeyboard-config busybox'
     cp alpine/kasmvncserver/kasmvncserver.post-install "$recipe/"
     cp alpine/kasmvncserver/kasmvncserver.post-deinstall "$recipe/"
     # The baseline package hook assumes this directory exists; ensure clean

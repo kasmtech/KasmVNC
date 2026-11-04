@@ -4,7 +4,7 @@ These packages contain the same native application build in DEB, RPM and tar
 formats. They require glibc 2.34 or newer; these files do not run on musl or EL8.
 Alpine uses the separate [portable musl APK profile](../musl/README.md).
 The x86_64 build uses EL9 distro archives, so its supported CPU baseline is
-x86-64-v2. ARM64 is built natively. GPU loaders and drivers, timezone data,
+x86-64-v2. ARM64 is built natively. OpenSSL 3, GPU loaders and drivers, timezone data,
 XKB tools/data, and the desktop remain host dependencies.
 
 Install the DEB/RPM with the distro package manager, allowing it to resolve
@@ -24,7 +24,8 @@ with the tar archive; use its DEB/RPM instead. Tar installation has no package
 manager tracking or automatic uninstaller; retain its file listing.
 
 Tar dependencies include glibc, libGL, libgbm, bash, tzdata, xauth, xdpyinfo,
-xkbcomp, XKB data and openssl. Group creation uses groupadd/getent. Mesa DRI and VAAPI
+xkbcomp, XKB data, the openssl command, and the system `libssl.so.3` and
+`libcrypto.so.3` libraries. Group creation uses groupadd/getent. Mesa DRI and VAAPI
 drivers are supplied by the host. Their default search checks the native Debian
 multiarch directory (`/usr/lib/x86_64-linux-gnu/dri` or
 `/usr/lib/aarch64-linux-gnu/dri`), then `/usr/lib64/dri` and `/usr/lib/dri`.
@@ -41,6 +42,49 @@ and advisory scan reports are described below. Embedded dependencies require reb
 host package updates do not patch them. The optional FFmpeg adapter mode below
 uses host FFmpeg and encoder libraries instead. A public release still requires review
 of corresponding-source distribution and all embedded dependency licenses.
+
+## System OpenSSL 3
+
+Both portable profiles dynamically link the distribution's OpenSSL 3 runtime.
+The same application binary can use supported OpenSSL 3.x minor releases;
+there is no per-minor adapter and no bundled TLS fallback. The four existing
+libc/architecture builds remain separate. OpenSSL 1.1 and 4 are different ABIs
+and cannot substitute for the required `.so.3` libraries.
+
+Compilation uses the pinned OpenSSL 3.0 SDK in `builder/openssl3/`, independently
+of the cached static dependencies. That SDK is a build input only. All five
+packaged executables are audited for OpenSSL dependencies, imported symbols and
+library search paths. Xkasmvnc must use `libssl.so.3` and `libcrypto.so.3`;
+kasmvncpasswd must use `libcrypto.so.3`. Helpers without OpenSSL calls need no
+extra dependency. Imports must belong to the original `OPENSSL_3.0.0` ABI;
+unversioned imports are compared with the verified SDK's baseline exports.
+Final link maps and unstripped symbols also reject embedded OpenSSL code,
+including hidden definitions from renamed archives.
+
+DEB requires `libssl3` or `libssl3t64`. RPM uses ELF capabilities, satisfied by
+EL/Fedora `openssl-libs` and openSUSE `libopenssl3`. Alpine explicitly requires
+`libssl3` and `libcrypto3`. Package managers resolve these dependencies; tar
+installations must supply them first. The openssl command remains necessary
+for certificate setup.
+
+The host library supplies its providers, configuration and crypto policy.
+Do not set module paths to the build SDK or weaken host policy. OpenSSL ABI
+compatibility does not freeze allowed algorithms: UDP/WebRTC certificate signing
+uses SHA-256 and propagates signing failures, including policy rejections.
+Using a system FIPS provider is not a certification of KasmVNC.
+
+Update the distro's OpenSSL packages and restart Xvnc sessions to apply TLS
+security fixes. Immutable Workspaces images still need package refresh and
+container recreation. This removes the embedded OpenSSL update obligation;
+other static libraries still need a KasmVNC rebuild. Follow distro advisories
+and support lifecycles, including backports. The SDK's older ABI baseline is
+not a recommendation to deploy an unsupported upstream runtime.
+
+The source bundle records the SDK's exact source and manifest under `build-only/`
+and `openssl-build-sdk.json`. Provenance identifies the build SDK; the SBOM
+records OpenSSL as a required host dependency without assigning the builder's
+version to the installed runtime. Scan the deployed image to assess its actual
+OpenSSL package. See [OpenSSL's ABI policy](https://openssl-library.org/policies/general/versioning-policy/).
 
 ## FFmpeg runtime adapters
 
@@ -112,7 +156,8 @@ and the existing crashpad lookup.
 Each architecture publishes the following alongside its runtime and debug
 packages under the same S3 commit directory:
 
-* `.cdx.json`: CycloneDX 1.6 JSON for embedded native components, vendored code
+* `.cdx.json`: CycloneDX 1.6 JSON for embedded native components, required host
+  OpenSSL (with no invented installed version), vendored code
   and the web client's actually bundled npm dependencies and identified vendored
   DES/base64 code. The same application
   inventory applies to the DEB, RPM and tarball; packaging metadata differs.
@@ -213,7 +258,7 @@ handoff before publishing. Runtime packages install notices under
 `/usr/share/doc/kasmvncserver/third-party-licenses`, including vendored license
 headers and source files when upstream has no standalone license text.
 
-Host glibc, Bash, timezone data, desktop tools/data and GPU loaders/drivers remain host
+Host OpenSSL 3, glibc, Bash, timezone data, desktop tools/data and GPU loaders/drivers remain host
 requirements, not builder-versioned runtime components in this SBOM. Scan the
 final deployed image separately to cover them. A linked library entry does not
 mean every upstream feature is enabled; archive/member selection and compiler

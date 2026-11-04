@@ -84,10 +84,15 @@ class PackagingTests(unittest.TestCase):
                 subprocess.run(['gcc','-g','-fPIE','-pie',str(source),'-o',str(root/name)],check=True)
             arch = {'x86_64':'amd64', 'aarch64':'arm64'}[platform.machine()]
             wrong = 'arm64' if arch == 'amd64' else 'amd64'
-            self.assertEqual(len(audit.audit(root, arch)),5)
-            with self.assertRaises(RuntimeError): audit.audit(root, wrong)
-            subprocess.run(['gcc','-static',str(source),'-o',str(root/'one')],check=True)
-            with self.assertRaises(RuntimeError): audit.audit(root, arch)
+            # This test isolates the musl/architecture boundary. The shared
+            # test-openssl-boundary.py compiles actual OpenSSL-shaped DSOs and
+            # exercises SDK integrity, ABI floors and all five executables.
+            with patch.object(audit, 'read_sdk', return_value={}), patch.object(
+                    audit, 'sdk_exports', return_value={'libssl.so.3': set(), 'libcrypto.so.3': set()}):
+                self.assertEqual(len(audit.audit(root, arch)),5)
+                with self.assertRaises(RuntimeError): audit.audit(root, wrong)
+                subprocess.run(['gcc','-static',str(source),'-o',str(root/'one')],check=True)
+                with self.assertRaises(RuntimeError): audit.audit(root, arch)
 
 if __name__ == '__main__':
     unittest.main()

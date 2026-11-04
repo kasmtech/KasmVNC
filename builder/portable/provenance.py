@@ -10,6 +10,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from openssl_boundary import read_sdk, sdk_path
 
 doc = Path(sys.argv[1])
 licenses = doc / "third-party-licenses"
@@ -61,6 +62,9 @@ manifest["dependency_builder"] = {
     "rpm_resolution": "Pinned base; RPM repositories resolved at image creation. Image digest identifies exact build environment; cold rebuild may resolve newer RPMs.",
 }
 manifest['ffmpeg_mode'] = os.environ.get('KASMVNC_FFMPEG_MODE', 'static')
+manifest['openssl_mode'] = 'host-shared-3'
+manifest['openssl_build_sdk'] = read_sdk()
+shutil.copy2(sdk_path() / 'share/kasmvnc/openssl-sdk.json', doc / 'openssl-build-sdk.json')
 manifest['sources_scope'] = 'Builder source inventory, including cached inputs not linked into this artifact; consult sources.json and sbom.cdx.json for shipped components.'
 if manifest['ffmpeg_mode'] == 'adapters':
     header_root = Path(os.environ.get('KASMVNC_FFMPEG_HEADERS_ROOT', '/opt/kasm-ffmpeg-headers'))
@@ -76,6 +80,10 @@ if musl:
 if manifest['ffmpeg_mode'] == 'adapters':
     families = ', '.join(str(item['avcodec_major']) for item in manifest['ffmpeg_adapter_headers']['families'])
     manifest['runtime_boundary'] += f' FFmpeg families {families} and their encoder libraries are host dependencies for video; no FFmpeg runtime is embedded.'
+manifest['runtime_boundary'] += (' OpenSSL libssl.so.3 and libcrypto.so.3, providers and security configuration '
+                                 'are supplied and patched by the host. The 3.0 SDK is a build input only; '
+                                 'its runtime libraries are not shipped.')
+shutil.copytree('/src/builder/openssl3', doc / 'openssl-sdk-recipes', dirs_exist_ok=True)
 shutil.copytree("/src/builder/scripts/portable-dependencies", doc / "dependency-recipes", dirs_exist_ok=True)
 gcc_manifest = Path(os.environ.get("KASMVNC_GCC_RUNTIME_PREFIX", "/opt/kasm-gcc-runtime")) / "share/gcc-runtime"
 if musl:

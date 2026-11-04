@@ -18,29 +18,49 @@ def run(*args, cwd=None):
 
 
 class Profiles(unittest.TestCase):
-    def test_runtime_system_closure_with_and_without_dl(self):
-        for libraries in ('dl;rt', ''):
-            with self.subTest(libraries=libraries), tempfile.TemporaryDirectory() as tmp:
-                root = Path(tmp)
-                prefix = root / 'runtime'
-                (prefix / 'lib').mkdir(parents=True)
-                for name in ('ssl', 'crypto', 'png16', 'z', 'webp', 'sharpyuv'):
-                    (prefix / 'lib' / ('lib' + name + '.a')).touch()
-                (root / 'CMakeLists.txt').write_text(f'''cmake_minimum_required(VERSION 3.10)
+    def test_runtime_images_do_not_require_static_openssl(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            prefix = root / 'runtime'
+            (prefix / 'lib').mkdir(parents=True)
+            for name in ('png16', 'z', 'webp', 'sharpyuv'):
+                (prefix / 'lib' / ('lib' + name + '.a')).touch()
+            (root / 'CMakeLists.txt').write_text(f'''cmake_minimum_required(VERSION 3.10)
 project(profile NONE)
-set(CMAKE_DL_LIBS "{libraries}")
 set(KASMVNC_STATIC_RUNTIME_PREFIX "{prefix}" CACHE PATH "" FORCE)
 include("{ROOT}/cmake/StaticRuntime.cmake")
-get_target_property(closure kasmvnc_static_crypto INTERFACE_LINK_LIBRARIES)
-file(WRITE "${{CMAKE_BINARY_DIR}}/closure.txt" "${{closure}}")
 ''')
-                build = root / 'build'
-                run('cmake', '-S', str(root), '-B', str(build))
-                expected = (libraries.split(';') if libraries else []) + ['-pthread']
-                self.assertEqual((build / 'closure.txt').read_text().split(';'), expected)
-                line = (build / 'kasmvnc-static-runtime.mk').read_text().splitlines()[0]
-                flags = shlex.split(line.split('=', 1)[1])[2:]
-                self.assertEqual(flags, ['-l' + x if not x.startswith('-') else x for x in expected])
+            build = root / 'build'
+            run('cmake', '-S', str(root), '-B', str(build))
+            flags = (build / 'kasmvnc-static-runtime.mk').read_text()
+            self.assertNotIn('libssl.a', flags)
+            self.assertNotIn('libcrypto.a', flags)
+            (prefix / 'lib/libcrypto.a').touch()
+            result = subprocess.run(['cmake', '-S', str(root), '-B', str(build)], capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('Obsolete static OpenSSL', result.stderr)
+
+    def test_openssl_sdk_headers_require_30(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            prefix = root / 'sdk'
+            (prefix / 'lib').mkdir(parents=True)
+            (prefix / 'include/openssl').mkdir(parents=True)
+            for name in ('ssl', 'crypto'):
+                (prefix / 'lib' / ('lib' + name + '.so.3')).touch()
+            header = prefix / 'include/openssl/opensslv.h'
+            (root / 'CMakeLists.txt').write_text(f'''cmake_minimum_required(VERSION 3.10)
+project(profile NONE)
+set(KASMVNC_OPENSSL_PREFIX "{prefix}" CACHE PATH "" FORCE)
+include("{ROOT}/cmake/StaticRuntime.cmake")
+if(NOT CMAKE_SKIP_RPATH)
+  message(FATAL_ERROR "SDK must not become a runtime search path")
+endif()
+''')
+            for major, minor, valid in [(3, 0, True), (3, 5, False), (4, 0, False)]:
+                header.write_text(f'# define OPENSSL_VERSION_MAJOR  {major}\n# define OPENSSL_VERSION_MINOR  {minor}\n')
+                result = subprocess.run(['cmake', '-S', str(root), '-B', str(root / 'build')], capture_output=True, text=True)
+                self.assertEqual(result.returncode == 0, valid, result.stderr)
 
     def test_both_wrapper_consumers_preserve_spaces_and_empty_prefix(self):
         for runtime in ('', 'runtime with spaces'):
@@ -82,7 +102,7 @@ manual:
                 run('make', '-f', 'manual.mk', cwd=build)
                 rows = [json.loads(line) for line in log.read_text().splitlines()]
                 self.assertEqual(len(rows), 2)
-                expected = ['--prefix', desktop, '--runtime-prefix=' + runtime,
+                expected = ['--prefix', desktop, '--runtime-prefix=' + runtime, '--openssl-prefix=',
                             '--source-root', str(root), '--']
                 for row in rows:
                     self.assertEqual(row[:len(expected)], expected)

@@ -18,6 +18,8 @@ import subprocess
 import tarfile
 import tempfile
 from urllib.parse import quote
+from openssl_boundary import (read_sdk, sdk_path, sdk_exports, reject_static_openssl,
+                              reject_embedded_symbols, audit_openssl)
 
 SRC = Path('/src')
 BINARIES = ['unix/xserver/hw/vnc/Xvnc', 'unix/vncconfig/vncconfig',
@@ -127,10 +129,12 @@ def link_inputs(binary):
     result = []
     for name in sorted(paths):
         path = Path(name)
+        reject_static_openssl(path)
         if not path.is_absolute():
             path = Path(metadata['cwd']) / path
         path = path.resolve()
         path = Path(reverse.get(str(path), str(path)))
+        reject_static_openssl(path)
         # GCC's LTO code/debug objects derive from already catalogued inputs.
         # lto-wrapper.cc debug_objcopy copies .gnu.debuglto sections into
         # make_temp_file(".debug.temp.o"); it is not another source dependency.
@@ -240,6 +244,7 @@ class Inventory:
 
     def preserve(self, path, dest):
         target = self.bundle / dest
+        target.parent.mkdir(parents=True, exist_ok=True)
         if not target.exists():
             shutil.copy2(path, target)
         record = {'file': dest, 'sha256': sha(target)}
@@ -406,6 +411,7 @@ class Inventory:
         return self.components[key]
 
     def archive(self, path):
+        reject_static_openssl(path)
         # Package ownership wins over an upstream name (EL backports matter).
         package = self.apk_sources.owner(path, self.apk_packages) if self.musl else None
         if package:
@@ -441,8 +447,14 @@ def main():
         inv.sources['kasmvnc-source.tar'] = {'file': 'kasmvnc-source.tar', 'sha256': sha(bundle / 'kasmvnc-source.tar'),
                                            'revision': os.environ['KASMVNC_COMMIT_ID']}
         deps = set()
+        openssl_root = sdk_path()
+        openssl_sdk = read_sdk(openssl_root)
+        openssl_exports = sdk_exports(openssl_root, openssl_sdk)
         for name in BINARIES:
             binary = SRC / name
+            reject_embedded_symbols(binary, openssl_exports)
+            needed = re.findall(r'\(NEEDED\).*?\[(.*?)\]', run('readelf', '-dW', binary))
+            audit_openssl(binary, needed, openssl_exports)
             for path in link_inputs(binary):
                 deps.add(inv.archive(path))
             for suffix in ['.static-link.json', '.link-map']:
@@ -452,6 +464,19 @@ def main():
         deps.add(xorg['bom-ref'])
         # Header inputs/generators are supplied for rebuilding, but aren't
         # represented as shipped static libraries merely because they were used.
+        inv.preserve(openssl_root / 'share/kasmvnc/openssl-sdk.json', 'openssl-build-sdk.json')
+        sdk_source = openssl_root / openssl_sdk['source_archive']
+        sdk_record = inv.preserve(sdk_source, 'build-only/' + sdk_source.name)
+        sdk_record.update({'url': openssl_sdk['source_url'],
+                           'purpose': 'Build-only OpenSSL 3.0 SDK; runtime libraries supplied by host'})
+        archived_notices(bundle / sdk_record['file'], args.doc / 'third-party-licenses/build-only/openssl-sdk')
+        host_openssl = {'type': 'library', 'bom-ref': 'host:openssl3', 'name': 'OpenSSL',
+                        'scope': 'required', 'properties': [prop('delivery', 'host-runtime'),
+                            prop('required-sonames', 'libssl.so.3,libcrypto.so.3'),
+                            prop('symbol-version-maximum', 'OPENSSL_3.0.0'),
+                            prop('version-source', 'Installed host package; no runtime version assigned from builder SDK')]}
+        inv.components['host:openssl3'] = host_openssl
+        deps.add(host_openssl['bom-ref'])
         for pattern in ['xcb-proto-*.tar.*']:
             for base in inv.bases:
                 for p in base.glob(pattern):
@@ -566,6 +591,12 @@ def main():
                 'other_requirements': ['musl >= 1.2.5' if inv.musl else 'glibc >= 2.34', 'Bash and host timezone data',
                     'XKB tools/data', 'desktop/session applications', 'GPU vendor drivers/loaders when enabled'],
                 'versions': 'Supplied and patched by the host; deliberately not assigned builder versions.'}
+        host['runtime_openssl'] = {
+            'sonames': ['libssl.so.3', 'libcrypto.so.3'], 'abi_baseline': 'OPENSSL_3.0.0',
+            'selection': 'Required system shared libraries; no embedded runtime or private shared-library fallback.',
+            'configuration': 'Host providers, OpenSSL configuration and distribution crypto policy.',
+            'updates': 'Update host packages and restart Xvnc sessions; refresh/recreate immutable containers.',
+        }
         if adapter_headers:
             host['runtime_ffmpeg'] = {
                 'selection': 'Optional runtime loading; video unavailable without a supported FFmpeg family and encoder.',
@@ -580,18 +611,22 @@ def main():
         manifest = {'format': 'kasmvnc-corresponding-sources-v1', 'revision': os.environ['KASMVNC_COMMIT_ID'],
                     'architecture': args.arch, 'sources': list(inv.sources.values()), 'link_inputs': inv.records,
                     'source_binary_sha256': {name: sha(SRC / name) for name in BINARIES},
-                    'ffmpeg_mode': ffmpeg_mode, 'host_requirements': host, 'limitations': inv.limitations}
+                    'ffmpeg_mode': ffmpeg_mode, 'openssl_mode': 'host-shared-3',
+                    'build_dependencies': {'openssl_sdk': openssl_sdk},
+                    'host_requirements': host, 'limitations': inv.limitations}
         write(bundle / 'manifest.json', manifest)
         (bundle / 'README.txt').write_text('KasmVNC portable source inputs\n\nExtract kasmvnc-source.tar for source, patches and builder scripts.\n'
             'upstream/ contains exact release archives and Git snapshots; rpm/ contains signed exact source RPMs; apk/ contains exact aports recipes/patches and checksum-verified upstream inputs.\n'
             'frontend-sources.tar.gz contains the web client source inventory.\n'
+            'build-only/ contains the OpenSSL SDK source used to compile/link; its runtime is not bundled.\n'
             f'Build entry point: builder/build-portable{" --libc musl" if inv.musl else ""} --ffmpeg-mode {ffmpeg_mode}; see builder documentation.\n'
             'It downloads dependencies and is not an offline or bit-reproducible rebuild command.\n'
             'For exact input reproduction restore these archives and recorded Git revisions, rather than following floating branches.\n'
             'Read manifest.json limitations before claiming source-compliance completeness.\n')
         root = component('KasmVNC', os.environ['KASMVNC_PORTABLE_VERSION'], kind='application',
                          properties=[prop('revision', os.environ['KASMVNC_COMMIT_ID']), prop('architecture', args.arch), prop('libc', 'musl' if inv.musl else 'glibc'),
-                                     prop('ffmpeg-mode', ffmpeg_mode), prop('host-requirements', json.dumps(host)), prop('limitations', json.dumps(inv.limitations))])
+                                     prop('ffmpeg-mode', ffmpeg_mode), prop('openssl-mode', 'host-shared-3'),
+                                     prop('host-requirements', json.dumps(host)), prop('limitations', json.dumps(inv.limitations))])
         bom = {'bomFormat': 'CycloneDX', 'specVersion': '1.6', 'version': 1,
                'metadata': {'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'component': root},
                'components': sorted(inv.components.values(), key=lambda c: c['bom-ref']),

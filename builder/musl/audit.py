@@ -6,6 +6,8 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'portable'))
+from openssl_boundary import SONAMES, read_sdk, sdk_path, sdk_exports, audit_openssl
 
 MUSL_BASELINE = '1.2.5'
 
@@ -26,7 +28,8 @@ def audit(root, arch):
     machine, native = {'amd64': ('Advanced Micro Devices X86-64', 'x86_64'),
                        'arm64': ('AArch64', 'aarch64')}[arch]
     libc = 'libc.musl-' + native + '.so.1'
-    allowed = {libc, 'libGL.so.1', 'libgbm.so.1'}
+    allowed = {libc, 'libGL.so.1', 'libgbm.so.1'} | SONAMES
+    exports = sdk_exports(sdk_path(), read_sdk())
     expected_interpreter = '/lib/ld-musl-' + native + '.so.1'
     require_baseline(expected_interpreter)
     records = []
@@ -38,7 +41,7 @@ def audit(root, arch):
                 continue
         def readelf(option):
             return subprocess.check_output(['readelf', option, str(path)], text=True)
-        header, segments, dynamic, symbols = [readelf(x) for x in ('-hW', '-lW', '-dW', '--dyn-syms')]
+        header, segments, dynamic, symbols = [readelf(x) for x in ('-hW', '-lW', '-dW', '-sDW')]
         if machine not in header or not re.search(r'Type:\s+DYN', header):
             raise RuntimeError('Expected native PIE: ' + str(path))
         if '[Requesting program interpreter: ' + expected_interpreter + ']' not in segments:
@@ -48,8 +51,10 @@ def audit(root, arch):
             raise RuntimeError('Unexpected host library boundary: ' + str(path) + ': ' + repr(needed))
         if any(x in dynamic for x in ('TEXTREL', 'RPATH', 'RUNPATH')) or 'GLIBC_' in symbols:
             raise RuntimeError('Nonportable relocations/search path/glibc symbols: ' + str(path))
+        openssl = audit_openssl(path, needed, exports)
         records.append({'path': '/' + str(path.relative_to(root)), 'needed': needed,
-                        'musl_minimum': MUSL_BASELINE, 'interpreter': expected_interpreter, 'pie': True})
+                        'musl_minimum': MUSL_BASELINE, 'interpreter': expected_interpreter,
+                        'pie': True, 'openssl': openssl})
     if len(records) != 5:
         raise RuntimeError('Expected five ELF executables, found ' + str(len(records)))
     return records

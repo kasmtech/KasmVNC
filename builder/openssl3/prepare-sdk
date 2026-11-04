@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Build a native OpenSSL 3.0 SDK; its runtime libraries are never packaged."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import platform
+import shutil
+import subprocess
+import tarfile
+
+
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def main():
+    source = json.loads((Path(__file__).resolve().parent / 'sources.json').read_text())
+    prefix = Path(os.environ.get('KASMVNC_OPENSSL_PREFIX', '/opt/kasm-openssl3'))
+    if prefix.exists():
+        raise RuntimeError('OpenSSL SDK prefix must be empty: ' + str(prefix))
+    architecture = platform.machine()
+    target, baseline = {'x86_64': ('linux-x86_64', '-march=x86-64 -mtune=generic'),
+                        'aarch64': ('linux-aarch64', '-march=armv8-a -mtune=generic')}[architecture]
+    work = Path('/tmp/kasm-openssl-sdk')
+    work.mkdir(parents=True, exist_ok=True)
+    archive = work / ('openssl-' + source['version'] + '.tar.gz')
+    subprocess.run(['curl', '--connect-timeout', '30', '--max-time', '900', '-fL',
+                    '--retry', '3', source['url'], '-o', str(archive)], check=True)
+    if digest(archive) != source['sha256']:
+        raise RuntimeError('OpenSSL source checksum mismatch')
+    # Only the pinned, checksum-verified upstream release is extracted.
+    with tarfile.open(archive) as stream:
+        stream.extractall(work)
+    build = work / ('openssl-' + source['version'])
+    configure = ['./Configure', target, '--prefix=' + str(prefix), '--libdir=lib',
+                 'shared', 'no-tests']
+    env = os.environ.copy()
+    env['CFLAGS'] = '-O2 -fPIC ' + baseline
+    subprocess.run(configure, cwd=build, env=env, check=True)
+    subprocess.run(['make', '-j' + os.environ.get('BUILD_JOBS', '8'), 'build_libs'],
+                   cwd=build, env=env, check=True)
+    headers, libraries = prefix / 'include/openssl', prefix / 'lib'
+    headers.mkdir(parents=True)
+    libraries.mkdir()
+    # install_dev also installs archives. Copy only the intended SDK boundary.
+    for header in (build / 'include/openssl').glob('*.h'):
+        shutil.copy2(header, headers / header.name)
+    exports = {}
+    sonames = ['libssl.so.3', 'libcrypto.so.3']
+    for soname in sonames:
+        library = libraries / soname
+        shutil.copy2(build / soname, library)
+        dynamic = subprocess.check_output(['readelf', '-dW', str(library)], text=True)
+        if '(SONAME)' not in dynamic or '[' + soname + ']' not in dynamic:
+            raise RuntimeError('Incorrect OpenSSL SDK SONAME: ' + soname)
+        (libraries / soname.removesuffix('.3')).symlink_to(soname)
+        symbols = subprocess.check_output(['readelf', '--dyn-syms', '-W', str(library)], text=True)
+        exports[soname] = sorted({line.split()[-1].split('@')[0] for line in symbols.splitlines()
+                                 if '@@OPENSSL_3.0.0' in line and ' UND ' not in line})
+    pcdir = libraries / 'pkgconfig'
+    pcdir.mkdir()
+    for module, libs in [('libcrypto', '-lcrypto'), ('libssl', '-lssl -lcrypto'),
+                         ('openssl', '-lssl -lcrypto')]:
+        (pcdir / (module + '.pc')).write_text(
+            f'prefix={prefix}\nlibdir=${{prefix}}/lib\nincludedir=${{prefix}}/include\n'
+            f'Name: {module}\nDescription: OpenSSL 3.0 build-only SDK\nVersion: {source["version"]}\n'
+            f'Libs: -L${{libdir}} {libs}\nCflags: -I${{includedir}}\n')
+    metadata = prefix / 'share/kasmvnc'
+    (metadata / 'sources').mkdir(parents=True)
+    shutil.copy2(archive, metadata / 'sources' / archive.name)
+    manifest = {'format': 'kasmvnc-openssl-sdk-v1', 'version': source['version'],
+                'source_url': source['url'], 'source_sha256': source['sha256'],
+                'source_archive': 'share/kasmvnc/sources/' + archive.name,
+                'sonames': sonames, 'symbol_version_maximum': 'OPENSSL_3.0.0',
+                'scope': 'build-only SDK; host OpenSSL runtime is not bundled',
+                'architecture': architecture, 'libc': os.environ.get('KASMVNC_LIBC', 'glibc'),
+                'configure': configure, 'cflags': env['CFLAGS'], 'baseline_exports': exports,
+                'files': {str(p.relative_to(prefix)): digest(p) for p in sorted(
+                    list(headers.glob('*.h')) + [libraries / name for name in sonames])}}
+    (metadata / 'openssl-sdk.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    shutil.rmtree(work)
+
+
+if __name__ == '__main__':
+    main()

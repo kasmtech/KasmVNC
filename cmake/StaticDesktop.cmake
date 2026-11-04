@@ -7,7 +7,7 @@ if(KASMVNC_STATIC_DESKTOP_PREFIX)
   # Both consumers execute through a shell; quote each path, including an empty
   # runtime prefix, once here rather than maintaining two command variants.
   set(KASMVNC_STATIC_LINK_WRAPPER
-    "\"${PYTHON_EXECUTABLE}\" \"${CMAKE_SOURCE_DIR}/builder/scripts/link-static-desktop\" --prefix \"${KASMVNC_STATIC_DESKTOP_PREFIX}\" --runtime-prefix=\"${KASMVNC_STATIC_RUNTIME_PREFIX}\" --source-root \"${CMAKE_SOURCE_DIR}\" --")
+    "\"${PYTHON_EXECUTABLE}\" \"${CMAKE_SOURCE_DIR}/builder/scripts/link-static-desktop\" --prefix \"${KASMVNC_STATIC_DESKTOP_PREFIX}\" --runtime-prefix=\"${KASMVNC_STATIC_RUNTIME_PREFIX}\" --openssl-prefix=\"${KASMVNC_OPENSSL_PREFIX}\" --source-root \"${CMAKE_SOURCE_DIR}\" --")
   set(KASMVNC_DESKTOP_MAKE
 "# Run after libtool has expanded dependency_libs from .la files.
 Xvnc_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link ${KASMVNC_STATIC_LINK_WRAPPER} $(CXX) $(AM_CXXFLAGS) $(CXXFLAGS) $(Xvnc_LDFLAGS) $(LDFLAGS) -o $@

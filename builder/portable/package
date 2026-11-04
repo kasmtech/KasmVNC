@@ -6,9 +6,9 @@ cd /src
 : "${KASMVNC_PORTABLE_VERSION:?}" "${KASMVNC_PORTABLE_BASENAME:?}" "${KASMVNC_COMMIT_ID:?}"
 version=$KASMVNC_PORTABLE_VERSION
 basename=$KASMVNC_PORTABLE_BASENAME
-runtime_description='Application dependencies are embedded; glibc and GPU drivers remain external.'
+runtime_description='OpenSSL 3, glibc and GPU drivers are supplied by the host; other application dependencies are embedded.'
 if [[ ${KASMVNC_FFMPEG_MODE:-static} == adapters ]]; then
-  runtime_description='Video uses host FFmpeg libavcodec families 58-63 and encoder libraries; other application dependencies are embedded.'
+  runtime_description='TLS uses host OpenSSL 3; video uses host FFmpeg libavcodec families 58-63 and encoder libraries.'
 fi
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$basename" =~ ^[a-zA-Z0-9_.+-]+$ ]]
 case $(uname -m) in
@@ -83,7 +83,7 @@ Architecture: $arch
 Maintainer: Kasm Technologies LLC <info@kasmweb.com>
 Section: x11
 Priority: optional
-Depends: libc6 (>= 2.34), libgl1, libgbm1, bash, tzdata, ssl-cert, xauth, x11-utils, x11-xkb-utils, xkb-data, openssl
+Depends: libc6 (>= 2.34), libssl3 (>= 3.0.0) | libssl3t64 (>= 3.0.0), libgl1, libgbm1, bash, tzdata, ssl-cert, xauth, x11-utils, x11-xkb-utils, xkb-data, openssl
 Provides: vnc-server
 Description: KasmVNC browser desktop server (portable application build)
  $runtime_description
@@ -116,6 +116,8 @@ License: GPL-2.0-or-later
 URL: https://github.com/kasmtech/KasmVNC
 BuildArch: $rpmarch
 # Use file capabilities across EL, Fedora and openSUSE naming schemes.
+# ELF automatic requirements add the exact OpenSSL 3 SONAME/symbol capabilities;
+# openssl-libs and libopenssl3 both provide them across these distributions.
 Requires: bash, (tzdata or timezone), /usr/bin/xauth, /usr/bin/xkbcomp, /usr/bin/openssl
 Requires: /usr/bin/xdpyinfo
 Requires: /usr/sbin/groupadd, /usr/bin/getent
@@ -125,7 +127,7 @@ Conflicts: tigervnc-server, tigervnc-server-minimal
 Provides: vnc-server
 %description
 Portable KasmVNC application. $runtime_description
-Host glibc and GPU drivers remain external. Requires glibc 2.34 or newer.
+Host OpenSSL 3, glibc and GPU drivers remain external. Requires glibc 2.34 or newer.
 %install
 mkdir -p %{buildroot}
 cp -a $root/. %{buildroot}/

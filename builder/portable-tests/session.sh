@@ -40,6 +40,11 @@ curl -kfsS --retry 30 --retry-delay 1 --retry-connrefused \
 [[ -s "$HOME/index.html" ]]
 [[ $(curl -ks -o /dev/null -w '%{http_code}' https://127.0.0.1:6901/) = 401 ]]
 [[ $(curl -ks -u kasm_test:wrong -o /dev/null -w '%{http_code}' https://127.0.0.1:6901/) = 401 ]]
+for tls in 1.2 1.3; do
+  curl -kfsS --tlsv"$tls" --tls-max "$tls" -u kasm_test:portableTest42 \
+    https://127.0.0.1:6901/ -o /dev/null
+done
+python3 /portable/openssl-runtime.py "$(pgrep -u "$(id -u)" -x 'Xvnc|Xkasmvnc')" > "$HOME/openssl-runtime.json"
 xdpyinfo > "$HOME/xdpyinfo.txt"
 # glxinfo can exit zero on missing GLX visuals: require an actual Mesa renderer.
 LIBGL_ALWAYS_SOFTWARE=1 glxinfo -B > "$HOME/glxinfo.txt" 2>&1

@@ -4,6 +4,32 @@ const fs = require('fs');
   const browser = await chromium.launch({executablePath: '/usr/bin/chromium', args: ['--no-sandbox']});
   const page = await browser.newPage({viewport: {width: 1280, height: 900}, ignoreHTTPSErrors: true,
     httpCredentials: {username: 'kasm_test', password: 'portableTest42'}});
+  // Observe the browser's real DTLS/data-channel connection without reading
+  // private noVNC state or replacing its transport implementation.
+  await page.addInitScript(() => {
+    const OriginalPeer = window.RTCPeerConnection;
+    window.portableRTC = {states: [], messages: 0, bytes: 0, channels: []};
+    window.RTCPeerConnection = class extends OriginalPeer {
+      constructor(...args) {
+        super(...args);
+        this.addEventListener('connectionstatechange', () => {
+          window.portableRTC.states.push(this.connectionState);
+        });
+      }
+      createDataChannel(...args) {
+        const channel = super.createDataChannel(...args);
+        const record = {label: channel.label, state: channel.readyState};
+        window.portableRTC.channels.push(record);
+        channel.addEventListener('open', () => {record.state = channel.readyState;});
+        channel.addEventListener('close', () => {record.state = channel.readyState;});
+        channel.addEventListener('message', event => {
+          window.portableRTC.messages++;
+          window.portableRTC.bytes += event.data.byteLength ?? event.data.size ?? event.data.length;
+        });
+        return channel;
+      }
+    };
+  });
   const messages = [];
   let frames = 0, bytes = 0;
   page.on('console', m => messages.push(m.text()));
@@ -40,13 +66,26 @@ const fs = require('fs');
     await page.keyboard.type('printf portable-input-ok > /home/kasm_test/input-proof', {delay: 20});
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
+    const imageCodec = labels.find(s => s.includes('JPEG/WEBP'));
+    if (!imageCodec) throw new Error('Image mode unavailable for the UDP transport check');
+    await page.locator('#noVNC_setting_stream_mode').selectOption({label: imageCodec}, {force: true});
+    // Use the same public integration message that Workspaces sends.
+    await page.evaluate(() => window.postMessage({action: 'enable_webrtc'}, window.location.origin));
+    await page.waitForFunction(() => window.portableRTC.states.includes('connected') &&
+      window.portableRTC.channels.some(c => c.label === 'webudp' && c.state === 'open') &&
+      window.portableRTC.messages >= 3 && window.portableRTC.bytes > 1000, null, {timeout: 30000});
+    const udp = await page.evaluate(() => window.portableRTC);
+    fs.writeFileSync('/results/udp.json', JSON.stringify(udp, null, 2));
+    await page.locator('html.noVNC_connected').waitFor({timeout: 5000});
     await page.screenshot({path: '/results/browser.png'});
-    fs.writeFileSync('/results/browser.json', JSON.stringify({pass: true, codec, frames, bytes, bytesAfterSelection: bytes-before}, null, 2));
+    fs.writeFileSync('/results/browser.json', JSON.stringify({pass: true, codec, frames, bytes, bytesAfterSelection: bytes-before, udp}, null, 2));
   } catch (e) {
     fs.writeFileSync('/results/browser.json', JSON.stringify({pass: false, error: String(e), frames, bytes}, null, 2));
     await page.screenshot({path: '/results/browser-failed.png'}).catch(() => {});
     process.exitCode = 1;
   } finally {
+    const udp = await page.evaluate(() => window.portableRTC).catch(() => null);
+    fs.writeFileSync('/results/udp.json', JSON.stringify(udp, null, 2));
     fs.writeFileSync('/results/browser.log', messages.join('\n'));
     await browser.close();
   }

@@ -143,7 +143,9 @@ static void WuClientStart(const Wu* wu, WuClient* client) {
   SSL_set_bio(client->ssl, client->inBio, client->outBio);
   SSL_set_options(client->ssl, SSL_OP_SINGLE_ECDH_USE);
   SSL_set_options(client->ssl, SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-  SSL_set_tmp_ecdh(client->ssl, EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  EC_KEY* curve = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+  SSL_set_tmp_ecdh(client->ssl, curve);
+  EC_KEY_free(curve);
   SSL_set_accept_state(client->ssl);
   SSL_set_mtu(client->ssl, kDefaultMTU);
 }
@@ -528,6 +530,10 @@ static int32_t WuCryptoInit(Wu* wu) {
   SSL_CTX_set_verify(wu->sslCtx, SSL_VERIFY_NONE, NULL);
 
   WuCert cert;
+  if (!cert.isValid()) {
+    ERR_print_errors_fp(stderr);
+    return 0;
+  }
 
   sslStatus = SSL_CTX_use_PrivateKey(wu->sslCtx, cert.key);
 
@@ -761,6 +767,20 @@ void WuDestroy(Wu* wu) {
     return;
   }
 
+  for (int32_t i = 0; i < wu->numClients; i++)
+    WuClientFinish(wu->clients[i]);
+  free(wu->clients);
+  if (wu->clientPool)
+    WuPoolDestroy(wu->clientPool);
+  if (wu->pendingEvents) {
+    free(wu->pendingEvents->items);
+    free(wu->pendingEvents);
+  }
+  if (wu->arena) {
+    WuArenaDestroy(wu->arena);
+    free(wu->arena);
+  }
+  SSL_CTX_free(wu->sslCtx);
   free(wu);
 }
 

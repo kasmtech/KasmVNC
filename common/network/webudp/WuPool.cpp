@@ -1,8 +1,9 @@
 #include "WuPool.h"
 #include <assert.h>
+#include <cstddef>
 #include <stdlib.h>
 
-struct BlockHeader {
+struct alignas(std::max_align_t) BlockHeader {
   int32_t index;
 };
 
@@ -18,7 +19,9 @@ struct WuPool {
 WuPool* WuPoolCreate(int32_t blockSize, int32_t numBlocks) {
   WuPool* pool = (WuPool*)calloc(1, sizeof(WuPool));
 
-  pool->slotSize = blockSize + sizeof(BlockHeader);
+  const int32_t alignment = alignof(std::max_align_t);
+  pool->slotSize = ((blockSize + sizeof(BlockHeader) + alignment - 1) /
+                   alignment) * alignment;
   pool->numBytes = pool->slotSize * numBlocks;
   pool->numBlocks = numBlocks;
   pool->memory = (uint8_t*)calloc(pool->numBytes, 1);

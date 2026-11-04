@@ -6,10 +6,10 @@ The baseline is Alpine 3.21 / musl 1.2.5; the runtime matrix covers Alpine
 and apk-tools 3. The glibc DEB/RPM/tar files are a different build and cannot
 be used as substitutes on Alpine.
 
-Portable CI uses runtime FFmpeg adapters for libavcodec families 58–63 while
-other application libraries are linked statically where possible. musl remains
+Portable CI uses runtime FFmpeg adapters for libavcodec families 58–63 and
+system OpenSSL 3; other application libraries are linked statically where possible. musl remains
 dynamic, preserving runtime loading of graphics drivers. The host provides
-FFmpeg and its encoder libraries, musl, Mesa/graphics drivers, timezone data, desktop tools and
+FFmpeg and its encoder libraries, OpenSSL 3, musl, Mesa/graphics drivers, timezone data, desktop tools and
 keyboard data. The package installs the C++20 launcher and has no Perl runtime
 requirement. The certificate stays at `/etc/ssl/private/kasmvnc.pem`.
 
@@ -29,6 +29,15 @@ FFmpeg security fixes; restart sessions after updates. The explicit
 `--ffmpeg-mode static` fallback embeds the existing FFmpeg/encoder dependency
 closure and remains the local command's default when no mode is supplied.
 See [the ABI-family table](../portable/README.md#ffmpeg-runtime-adapters).
+
+OpenSSL is dynamically linked in both FFmpeg modes. The APK explicitly requires
+`libssl3` and `libcrypto3`; no TLS library or provider is bundled. Compilation
+uses a verified OpenSSL 3.0 SDK and the ELF audit limits imports to its original
+3.0.0 ABI, allowing the distro's newer 3.x runtime to supply security fixes.
+The host owns provider paths and crypto policy. Restart sessions after updating
+OpenSSL, and refresh immutable container images. The SDK version is recorded as
+build provenance, never as the installed host version. See
+[the OpenSSL runtime boundary](../portable/README.md#system-openssl-3).
 
 Commit source changes before packaging so the source archive and recorded
 revision identify the actual code. Output is in
@@ -109,6 +118,12 @@ musl loader version before accepting any ELF files. It also checks architecture,
 PIE, interpreter, the direct host-library allowlist, and forbidden relocation,
 search-path and glibc symbol-version dependencies. The dependency and application
 builders independently require musl 1.2.5.
+
+OpenSSL has a separate symbol boundary: `.so.3` only and the `OPENSSL_3.0.0`
+imports available in the verified SDK. If an ELF omits symbol-version metadata,
+the audit compares its OpenSSL imports with the SDK's original-ABI exports.
+The final source inventory rejects static OpenSSL archive members and hidden
+OpenSSL definitions in the unstripped binaries.
 
 Musl does not version its public symbols like glibc. This is a controlled-build
 and runtime qualification guarantee, not a claim that ELF metadata alone proves

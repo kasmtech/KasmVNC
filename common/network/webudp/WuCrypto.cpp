@@ -1,7 +1,8 @@
 #include "WuCrypto.h"
-#include <assert.h>
-#include <stdlib.h>
+#include <memory>
+#include <openssl/bn.h>
 #include <openssl/hmac.h>
+#include <openssl/rsa.h>
 
 WuSHA1Digest WuSHA1(const uint8_t* src, size_t len, const void* key,
                     size_t keyLen) {
@@ -11,34 +12,46 @@ WuSHA1Digest WuSHA1(const uint8_t* src, size_t len, const void* key,
   return digest;
 }
 
-WuCert::WuCert() : key(EVP_PKEY_new()), x509(X509_new()) {
-  RSA* rsa = RSA_new();
-  BIGNUM* n = BN_new();
-  BN_set_word(n, RSA_F4);
+WuCert::WuCert() : key(nullptr), x509(nullptr), fingerprint{} {
+  std::unique_ptr<EVP_PKEY_CTX, decltype(&EVP_PKEY_CTX_free)> context(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr), EVP_PKEY_CTX_free);
+  if (!context || EVP_PKEY_keygen_init(context.get()) <= 0 ||
+      EVP_PKEY_CTX_set_rsa_keygen_bits(context.get(), 2048) <= 0)
+    return;
 
-  RSA_generate_key_ex(rsa, 2048, n, NULL);
-  EVP_PKEY_assign_RSA(key, rsa);
+  EVP_PKEY* generatedKey = nullptr;
+  const int keyResult = EVP_PKEY_keygen(context.get(), &generatedKey);
+  std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)> privateKey(
+      generatedKey, EVP_PKEY_free);
+  if (keyResult <= 0 || !privateKey)
+    return;
 
-  BIGNUM* serial = BN_new();
-  X509_NAME* name = X509_NAME_new();
-  X509_set_pubkey(x509, key);
-  if (BN_rand(serial, 64, 0, 0) != 1 || !BN_to_ASN1_INTEGER(serial, X509_get_serialNumber(x509)))
-      abort();
+  std::unique_ptr<X509, decltype(&X509_free)> certificate(X509_new(), X509_free);
+  if (!certificate)
+    return;
 
-  X509_set_version(x509, 0L);
-  X509_NAME_add_entry_by_NID(name, NID_commonName, MBSTRING_UTF8,
-                             (unsigned char*)"wusocket", -1, -1, 0);
-  X509_set_subject_name(x509, name);
-  X509_set_issuer_name(x509, name);
-  X509_gmtime_adj(X509_get_notBefore(x509), 0);
-  X509_gmtime_adj(X509_get_notAfter(x509), 365 * 24 * 3600);
-  X509_sign(x509, key, EVP_sha1());
+  std::unique_ptr<BIGNUM, decltype(&BN_free)> serial(BN_new(), BN_free);
+  if (!serial || BN_rand(serial.get(), 64, 0, 0) != 1 ||
+      !BN_to_ASN1_INTEGER(serial.get(), X509_get_serialNumber(certificate.get())))
+    return;
 
-  unsigned int len = 32;
+  X509_NAME* name = X509_get_subject_name(certificate.get());
+  if (!name || X509_set_version(certificate.get(), 0L) != 1 ||
+      X509_set_pubkey(certificate.get(), privateKey.get()) != 1 ||
+      X509_NAME_add_entry_by_NID(name, NID_commonName, MBSTRING_UTF8,
+                               (const unsigned char*)"wusocket", -1, -1, 0) != 1 ||
+      X509_set_issuer_name(certificate.get(), name) != 1 ||
+      !X509_gmtime_adj(X509_getm_notBefore(certificate.get()), 0) ||
+      !X509_gmtime_adj(X509_getm_notAfter(certificate.get()), 365 * 24 * 3600) ||
+      X509_sign(certificate.get(), privateKey.get(), EVP_sha256()) <= 0)
+    return;
+
+  unsigned int len = 0;
   uint8_t buf[32] = {0};
-  X509_digest(x509, EVP_sha256(), buf, &len);
+  if (X509_digest(certificate.get(), EVP_sha256(), buf, &len) != 1 ||
+      len != sizeof(buf))
+    return;
 
-  assert(len == 32);
   for (unsigned int i = 0; i < len; i++) {
     if (i < 31) {
       snprintf(fingerprint + i * 3, 4, "%02X:", buf[i]);
@@ -49,9 +62,8 @@ WuCert::WuCert() : key(EVP_PKEY_new()), x509(X509_new()) {
 
   fingerprint[95] = '\0';
 
-  BN_free(n);
-  BN_free(serial);
-  X509_NAME_free(name);
+  key = privateKey.release();
+  x509 = certificate.release();
 }
 
 WuCert::~WuCert() {

@@ -16,11 +16,34 @@ import sys
 import time
 
 
+def openssl_shared_input(arg, prefix):
+    """Keep every spelling of an OpenSSL input inside the audited SDK boundary."""
+    if not prefix:
+        return None
+    name = None
+    if arg in ('-lssl', '-lcrypto'):
+        name = arg[2:]
+    else:
+        basename = arg[3:] if arg.startswith('-l:') else Path(arg).name
+        match = re.fullmatch(r'lib(ssl|crypto)\.(a|so(?:\.[0-9.]+)?)', basename)
+        if match:
+            name, kind = match.groups()
+            if kind not in ('so', 'so.3'):
+                raise RuntimeError('Portable OpenSSL requires shared .so.3, not ' + arg)
+    if name:
+        shared = Path(prefix) / 'lib' / ('lib' + name + '.so.3')
+        if not shared.is_file():
+            raise RuntimeError('Missing OpenSSL SDK shared library: ' + str(shared))
+        return str(shared)
+    return None
+
+
 def main():
     split = sys.argv.index('--')
     parser = argparse.ArgumentParser()
     parser.add_argument('--prefix', required=True)
     parser.add_argument('--runtime-prefix', default='')
+    parser.add_argument('--openssl-prefix', default='')
     parser.add_argument('--source-root', required=True)
     options = parser.parse_args(sys.argv[1:split])
     command = sys.argv[split + 1:]
@@ -94,6 +117,10 @@ def main():
         raise RuntimeError('Missing static archive for ' + name)
 
     def resolve(arg):
+        openssl = openssl_shared_input(arg, options.openssl_prefix)
+        if openssl:
+            shared.add(Path(openssl).name)
+            return openssl
         name = None
         if arg.startswith('-l:'):
             match = re.fullmatch(r'lib(.+)\.so(?:\.[0-9.]+)?', arg[3:])

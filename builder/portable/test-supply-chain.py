@@ -159,6 +159,19 @@ with tempfile.TemporaryDirectory() as tmp:
         rejects(lambda: m.link_inputs(binary), 'Missing link input')
     map_path.write_text(original_map)
     rejects(lambda: inv.archive(inputs[0]), 'Uncatalogued static archive')
+    # Reject a TLS archive even when a cached builder has it available, and
+    # before treating archive ownership as a legitimate embedded component.
+    for name in ('libssl.a', 'libcrypto.a'):
+        tls = base / name
+        tls.write_bytes(b'cached static OpenSSL')
+        map_path.write_text(f'{tls}(tls.o)\nDiscarded input sections\n')
+        rejects(lambda: m.link_inputs(binary), 'static OpenSSL')
+        rejects(lambda: inv.archive(tls), 'static OpenSSL')
+    # The private-copy metadata must not conceal the original archive name.
+    Path(str(binary) + '.static-link.json').write_text(json.dumps({
+        'cwd': tmp, 'private_archive_copies': {str(tls): str(unknown)}}))
+    map_path.write_text(original_map)
+    rejects(lambda: m.link_inputs(binary), 'static OpenSSL')
     (base / 'test.cdx.json').write_text(json.dumps({
         'metadata': {'component': {'name': 'KasmVNC', 'properties': [
             {'name': 'kasmvnc:architecture', 'value': 'amd64'},

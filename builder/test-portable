@@ -146,6 +146,7 @@ try:
                     'RUN bash /portable/package.sh '+replacement_action+' '+fmt+' /artifacts/'+artifact.name+'\n'
                     'RUN bash /portable/package.sh verify-security '+fmt+'\n'
                     'COPY test/session.sh /portable/session.sh\n'
+                    'COPY test/openssl-runtime.py /portable/openssl-runtime.py\n'
                     'COPY test/focus.py /portable/focus.py\n'
                     'RUN mkdir /probe && chmod 1777 /probe\n'
                     'ENTRYPOINT ["runuser", "-u", "kasm_test", "--", "bash", "/portable/session.sh"]\n')
@@ -165,6 +166,10 @@ try:
                 raise RuntimeError('Packaged session did not pass launcher/GLX readiness checks')
             glx = run(['docker','exec',container,'cat','/home/kasm_test/glxinfo.txt']).stdout
             item['software_glx_renderer'] = next(line for line in glx.splitlines() if line.startswith('OpenGL renderer string:'))
+            openssl_runtime = run(['docker','exec',container,'cat','/home/kasm_test/openssl-runtime.json']).stdout
+            (out/'openssl-runtime.json').write_text(openssl_runtime)
+            item['openssl_runtime'] = json.loads(openssl_runtime)
+            item['tls_protocols'] = ['1.2', '1.3']
             browser_run = run(['docker','run','--name',browser,'--runtime=runc','--network','container:'+container,
                               '--shm-size=512m','--mount','type=volume,source='+probe_volume+',target=/probe,readonly',browser_image],check=False,timeout=120)
             (out/'browser-command.log').write_text(browser_run.stdout)
