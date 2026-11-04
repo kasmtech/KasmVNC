@@ -239,21 +239,38 @@ void proxy_handler(ws_ctx_t *ws_ctx) {
     gettimeofday(&tv, NULL);
 
     struct sockaddr_un myaddr;
+    memset(&myaddr, 0, sizeof(myaddr));
     myaddr.sun_family = AF_UNIX;
-    sprintf(myaddr.sun_path, ".%s@%s_%lu.%lu", ws_ctx->user, ws_ctx->ip,
-            tv.tv_sec, tv.tv_usec);
+    const int name_len = snprintf(myaddr.sun_path, sizeof(myaddr.sun_path), ".%s@%s_%lu.%lu", ws_ctx->user, ws_ctx->ip,
+                                  tv.tv_sec, tv.tv_usec);
+    if (name_len < 0 || name_len >= sizeof(myaddr.sun_path)) {
+        wserr("username + client address too long for internal socket name (%d >= %zu), dropping connection\n", name_len, sizeof(myaddr.sun_path));
+
+        return;
+    }
     myaddr.sun_path[0] = '\0';
 
     int tsock = socket(AF_UNIX, SOCK_STREAM, 0);
-    bind(tsock, (struct sockaddr *) &myaddr, sizeof(struct sockaddr_un));
+    if (tsock == -1) {
+        wserr("socket() failed: %s\n", strerror(errno));
+
+        return;
+    }
+
+    int res = bind(tsock, (struct sockaddr *) &myaddr, sizeof(struct sockaddr_un));
+    if (res) {
+        wserr("bind() failed: %s\n", strerror(errno));
+        close(tsock);
+
+        return;
+    }
 
     handler_msg("connecting to VNC target\n");
 
-    if (connect(tsock, (struct sockaddr *) &addr,
-        sizeof(sa_family_t) + strlen(sockname)) < 0) {
+    if (connect(tsock, (struct sockaddr *) &addr, sizeof(sa_family_t) + strlen(sockname)) < 0) {
+        wserr("Could not connect to target: %s\n", strerror(errno));
+        close(tsock);
 
-        handler_emsg("Could not connect to target: %s\n",
-                     strerror(errno));
         return;
     }
 

@@ -2210,7 +2210,7 @@ out:
 
 void *start_server(void *unused) {
     int csock;
-    struct sockaddr_in cli_addr;
+    struct sockaddr_storage cli_addr;
     socklen_t clilen;
 
 //    printf("Waiting for connections on %s:%d\n",
@@ -2229,14 +2229,36 @@ void *start_server(void *unused) {
             error("ERROR on accept");
             continue;
         }
-        struct wspass_t *pass = calloc(1, sizeof(struct wspass_t));
-        inet_ntop(cli_addr.sin_family, &cli_addr.sin_addr, pass->ip, sizeof(pass->ip));
 
-        char logbuf[2][1024];
-        wslog(logbuf[0], settings.handler_id, 0);
-        sprintf(logbuf[1], "got client connection from %s\n",
-                    pass->ip);
-        fprintf(stderr, "%s%s", logbuf[0], logbuf[1]);
+        struct wspass_t *pass = calloc(1, sizeof(struct wspass_t));
+        if (!pass) {
+            error("ERROR: out of memory");
+            close(csock);
+
+            continue;
+        }
+
+        char log_buf[1024];
+        wslog(log_buf, settings.handler_id, 0);
+
+        const size_t prefix = strlen(log_buf);
+        char *msg_buf = log_buf + prefix;
+        const size_t max_len = sizeof(log_buf) - prefix;
+
+        const int gni = getnameinfo((struct sockaddr *) &cli_addr, clilen, pass->ip, sizeof(pass->ip), NULL, 0,
+                                    NI_NUMERICHOST);
+        if (gni) {
+            free(pass);
+            close(csock);
+
+            snprintf(msg_buf, max_len, "failed to get client address: %s, dropping\n", gai_strerror(gni));
+            fprintf(stderr, "%s", log_buf);
+
+            continue;
+        }
+
+        snprintf(msg_buf, max_len, "got client connection from %s\n", pass->ip);
+        fprintf(stderr, "%s", log_buf);
 
         pthread_t tid;
         pass->id = settings.handler_id;
