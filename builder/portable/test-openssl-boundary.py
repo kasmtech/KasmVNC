@@ -85,6 +85,7 @@ class OpenSSLBoundaryTests(unittest.TestCase):
                         + 'int main(void){return ' + ('+'.join(fn + '()' for fn in functions) or '0') + ';}\n')
         binary = directory / name
         subprocess.run(['gcc', '-fPIE', '-pie', str(code), '-o', str(binary), *extra,
+                        '-Wl,-Map,' + str(binary) + '.link-map',
                         '-Wl,--no-as-needed', *map(str, libraries)], check=True)
         return binary
 
@@ -144,6 +145,43 @@ class OpenSSLBoundaryTests(unittest.TestCase):
                              [self.lib / 'libssl.so.3', self.lib / 'libcrypto.so.3'], [str(archive)])
         with self.assertRaisesRegex(RuntimeError, 'Embedded OpenSSL definitions'):
             boundary.reject_embedded_symbols(binary, self.exports)
+
+    def test_libcrypt_collisions_require_local_binding_and_linker_ownership(self):
+        collisions = {'BF_set_key': 'libcrypt_la-crypt-bcrypt.o',
+                      'SHA256_Transform': 'libcrypt_la-alg-sha256.o',
+                      'SHA512_Transform': 'libcrypt_la-alg-sha512.o'}
+        exports = {k: set(v) for k, v in self.exports.items()}
+        exports['libcrypto.so.3'].update(collisions)
+        for variant in ['valid', 'renamed-archive', 'wrong-member', 'global-hidden']:
+            with self.subTest(variant=variant):
+                directory = Path(tempfile.mkdtemp(dir=self.base))
+                archive = directory / ('librenamed.a' if variant == 'renamed-archive' else 'libcrypt.a')
+                functions = []
+                for index, (name, member) in enumerate(collisions.items()):
+                    code = directory / (name + '.c')
+                    binding = '' if variant == 'global-hidden' else 'static '
+                    fn = 'crypt_fixture_' + str(index)
+                    functions.append(fn)
+                    code.write_text(binding + '__attribute__((noinline)) int ' + name + '(void){return 1;}\n'
+                                    'int ' + fn + '(void){return ' + name + '();}\n')
+                    obj = directory / (('wrong-' + member) if variant == 'wrong-member' else member)
+                    subprocess.run(['gcc', '-c', str(code), '-o', str(obj)], check=True)
+                    subprocess.run(['ar', 'rcs', str(archive), str(obj)], check=True)
+                binary = self.binary('collision-probe', functions, [],
+                                     [str(archive), '-Wl,--exclude-libs,' + archive.name])
+                if variant != 'valid':
+                    with self.assertRaisesRegex(RuntimeError, 'Embedded OpenSSL definitions'):
+                        boundary.reject_embedded_symbols(binary, exports, [archive])
+                    continue
+                boundary.reject_embedded_symbols(binary, exports, [archive])
+                with self.assertRaisesRegex(RuntimeError, 'Embedded OpenSSL definitions'):
+                    boundary.reject_embedded_symbols(binary, exports)
+                link_map = Path(str(binary) + '.link-map')
+                original = link_map.read_text()
+                link_map.write_text(original.replace(str(archive), '/unrelated/libcrypt.a'))
+                with self.assertRaisesRegex(RuntimeError, 'Embedded OpenSSL definitions'):
+                    boundary.reject_embedded_symbols(binary, exports, [archive])
+                link_map.write_text(original)
 
     def test_all_five_executables_and_search_path_gate(self):
         musl = Path('/lib/ld-musl-' + platform.machine() + '.so.1').exists()

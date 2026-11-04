@@ -452,10 +452,11 @@ def main():
         openssl_exports = sdk_exports(openssl_root, openssl_sdk)
         for name in BINARIES:
             binary = SRC / name
-            reject_embedded_symbols(binary, openssl_exports)
+            selected_inputs = link_inputs(binary)
+            reject_embedded_symbols(binary, openssl_exports, selected_inputs)
             needed = re.findall(r'\(NEEDED\).*?\[(.*?)\]', run('readelf', '-dW', binary))
             audit_openssl(binary, needed, openssl_exports)
-            for path in link_inputs(binary):
+            for path in selected_inputs:
                 deps.add(inv.archive(path))
             for suffix in ['.static-link.json', '.link-map']:
                 if Path(str(binary) + suffix).exists():

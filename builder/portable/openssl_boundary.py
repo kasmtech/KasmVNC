@@ -139,13 +139,53 @@ def reject_static_openssl(path):
         raise RuntimeError('Portable artifact unexpectedly embeds static OpenSSL: ' + str(path))
 
 
-def reject_embedded_symbols(binary, exports):
+def libcrypt_local_function(binary, name, kind, address, size, selected_inputs):
+    # libxcrypt's independent password-hashing implementations have three local
+    # function names in common with OpenSSL. Do not exempt names alone: prove
+    # both the original archive's local binding and final linker ownership.
+    members = {'BF_set_key': 'libcrypt_la-crypt-bcrypt.o',
+               'SHA256_Transform': 'libcrypt_la-alg-sha256.o',
+               'SHA512_Transform': 'libcrypt_la-alg-sha512.o'}
+    if name not in members or kind != 't' or not size:
+        return False
+    link_map = Path(str(binary) + '.link-map')
+    if not link_map.is_file():
+        return False
+    text = link_map.read_text().split('Linker script and memory map')[-1]
+    member = members[name]
+    for archive in selected_inputs:
+        if archive.name != 'libcrypt.a':
+            continue
+        original = subprocess.check_output(
+            ['nm', '-A', '--defined-only', '--format=posix', str(archive)], text=True)
+        declared = re.search(re.escape(str(archive) + '[' + member + ']: ' + name)
+                             + r' t [0-9a-fA-F]+ ([0-9a-fA-F]+)$', original, re.M)
+        if not declared or int(declared[1], 16) != size:
+            continue
+        section = (r'^ \.text(?:\.[^\s]+)?\s+(0x[0-9a-fA-F]+)\s+(0x[0-9a-fA-F]+)\s+'
+                   + re.escape(str(archive) + '(' + member + ')') + r'$')
+        for match in re.finditer(section, text, re.M):
+            start, length = int(match[1], 16), int(match[2], 16)
+            if start <= address and address + size <= start + length:
+                return True
+    return False
+
+
+def reject_embedded_symbols(binary, exports, selected_inputs=()):
     # Inspect the original, unstripped binary as well as link-map archive names:
     # this also catches hidden definitions in a renamed/repacked archive.
     symbols = subprocess.check_output(['nm', '--defined-only', '--format=posix', str(binary)], text=True)
-    names = {line.split()[0].split('@')[0] for line in symbols.splitlines() if line.split()}
-    if not names:
+    definitions = [line.split() for line in symbols.splitlines() if line.split()]
+    if not definitions:
         raise RuntimeError('Unstripped binary required for OpenSSL implementation audit: ' + str(binary))
-    embedded = names & set().union(*exports.values())
+    baseline = set().union(*exports.values())
+    embedded = set()
+    for fields in definitions:
+        name = fields[0].split('@')[0]
+        if name in baseline:
+            if len(fields) == 4 and libcrypt_local_function(
+                    binary, name, fields[1], int(fields[2], 16), int(fields[3], 16), selected_inputs):
+                continue
+            embedded.add(name)
     if embedded:
         raise RuntimeError('Embedded OpenSSL definitions in ' + str(binary) + ': ' + ', '.join(sorted(embedded)))
