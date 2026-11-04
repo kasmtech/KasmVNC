@@ -1,5 +1,18 @@
 #!/bin/sh
 
+set -e
+
+# The Settings panel reads package.json; use the server release version.
+node -e '
+const fs = require("fs");
+const source = fs.readFileSync("/src/xvnc.c", "utf8");
+const match = source.match(/^#define XVNCVERSION "KasmVNC ([^"]+)"/m);
+if (!match) throw new Error("Cannot read KasmVNC server version");
+const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+pkg.version = match[1];
+fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+'
+
 # clear previous build
 rm -rf /build/*
 
