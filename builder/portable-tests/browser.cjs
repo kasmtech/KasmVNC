@@ -69,8 +69,16 @@ const fs = require('fs');
     const imageCodec = labels.find(s => s.includes('JPEG/WEBP'));
     if (!imageCodec) throw new Error('Image mode unavailable for the UDP transport check');
     await page.locator('#noVNC_setting_stream_mode').selectOption({label: imageCodec}, {force: true});
-    // Use the same public integration message that Workspaces sends.
-    await page.evaluate(() => window.postMessage({action: 'enable_webrtc'}, window.location.origin));
+    // The standalone client exposes this through Settings. Workspaces' parent
+    // message listener is only registered when the client is inside an iframe.
+    if (!(await page.locator('#noVNC_control_bar.noVNC_open').count())) {
+      await page.locator('#noVNC_control_bar_handle').click();
+    }
+    await page.locator('#noVNC_settings_button').click();
+    await page.locator('label:has(#noVNC_setting_enable_webrtc)').click();
+    if (!(await page.locator('#noVNC_setting_enable_webrtc').isChecked())) {
+      throw new Error('WebRTC setting did not enable');
+    }
     await page.waitForFunction(() => window.portableRTC.states.includes('connected') &&
       window.portableRTC.channels.some(c => c.label === 'webudp' && c.state === 'open') &&
       window.portableRTC.messages >= 3 && window.portableRTC.bytes > 1000, null, {timeout: 30000});
