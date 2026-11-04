@@ -56,12 +56,16 @@ def load_adapter_headers(root):
     if manifest.get('format') != 'kasmvnc-ffmpeg-adapter-headers-v1':
         raise RuntimeError('Invalid FFmpeg adapter header manifest')
     families = manifest.get('families', [])
-    if sorted(item['avcodec_major'] for item in families) != [60, 61]:
-        raise RuntimeError('Expected FFmpeg adapter families 60 and 61')
+    catalog = json.loads((Path(__file__).resolve().parents[1] / 'ffmpeg-adapters/sources.json').read_text())
+    expected_families = {item['avcodec_major'] for item in catalog}
+    if sorted(item['avcodec_major'] for item in families) != sorted(expected_families):
+        raise RuntimeError('Expected FFmpeg adapter families ' + ', '.join(map(str, sorted(expected_families))))
     if not manifest.get('headers'):
         raise RuntimeError('Missing FFmpeg adapter header hashes')
-    required = {f'{major}/include/{name}' for major in (60, 61)
-                for name in ('libavcodec/avcodec.h', 'libavcodec/version_major.h', 'libavutil/avconfig.h')}
+    # version.h is present in every supported family. The separate
+    # version_major.h does not exist in the FFmpeg 4.4 headers.
+    required = {f'{major}/include/{name}' for major in expected_families
+                for name in ('libavcodec/avcodec.h', 'libavcodec/version.h', 'libavutil/avconfig.h')}
     if not required <= manifest['headers'].keys():
         raise RuntimeError('Missing required FFmpeg adapter headers')
     for item in families:
@@ -69,7 +73,8 @@ def load_adapter_headers(root):
         if Path(archive).name != archive or sha(root / 'sources' / archive) != item['sha256']:
             raise RuntimeError('FFmpeg adapter source hash mismatch')
     for relative, digest in manifest['headers'].items():
-        if not re.fullmatch(r'(60|61)/include/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.h', relative):
+        match = re.fullmatch(r'([0-9]+)/include/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.h', relative)
+        if not match or int(match[1]) not in expected_families:
             raise RuntimeError('Invalid FFmpeg adapter header path')
         if sha(root / relative) != digest:
             raise RuntimeError('FFmpeg adapter header hash mismatch: ' + relative)

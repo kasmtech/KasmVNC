@@ -544,7 +544,7 @@ build_workspace_noble_arm64:
     - *prepare_www
     - . .ci/helpers.sh
   script:
-    - builder/build-portable
+    - builder/build-portable --ffmpeg-mode adapters
     - builder/portable/test-security-reports
     - upload_portable_packages
     - mkdir -p output
@@ -577,7 +577,7 @@ build_portable_arm64:
 .build_portable_musl:
   extends: .build_portable
   script:
-    - builder/build-portable --libc musl
+    - builder/build-portable --libc musl --ffmpeg-mode adapters
     - builder/portable/test-security-reports
     - upload_portable_packages
     - mkdir -p output

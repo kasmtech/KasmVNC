@@ -35,20 +35,31 @@ while IFS=$'\t' read -r major version url archive checksum; do
             --enable-avcodec --enable-avformat --enable-swscale
         make install-headers
     )
-    grep -Eq "^#define LIBAVCODEC_VERSION_MAJOR +$major$" "$prefix/$major/include/libavcodec/version_major.h"
+    # FFmpeg 4.4 declares the major in version.h; later releases split it out.
+    version_header="$prefix/$major/include/libavcodec/version_major.h"
+    [[ -f "$version_header" ]] || version_header="$prefix/$major/include/libavcodec/version.h"
+    grep -Eq "^#define LIBAVCODEC_VERSION_MAJOR +$major$" "$version_header"
     test -s "$prefix/$major/include/libavutil/avconfig.h"
     rm -rf "$build"
 done < "$prefix/sources.tsv"
 rm "$prefix/sources.tsv"
 python3 - "$recipe_dir/sources.json" "$prefix" <<'PY'
-import hashlib, json, platform, sys
+import hashlib, json, platform, re, sys
 from pathlib import Path
 root = Path(sys.argv[2])
+families = json.load(open(sys.argv[1]))
+for family in families:
+    for library, expected in family['libraries'].items():
+        directory = root / str(family['avcodec_major']) / 'include' / ('lib' + library)
+        text = '\n'.join(p.read_text() for p in (directory / 'version.h', directory / 'version_major.h') if p.exists())
+        found = re.search(r'^#define LIB' + library.upper() + r'_VERSION_MAJOR\s+(\d+)', text, re.M)
+        if not found or int(found[1]) != expected:
+            raise SystemExit(f'Incorrect {library} ABI in FFmpeg {family["version"]} headers')
 manifest = {
     'format': 'kasmvnc-ffmpeg-adapter-headers-v1',
     'architecture': platform.machine(),
     'purpose': 'Compile isolated runtime ABI adapters; FFmpeg and encoder libraries are supplied by the host.',
-    'families': json.load(open(sys.argv[1])),
+    'families': families,
     'headers': {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
                 for p in sorted(root.glob('*/include/**/*.h'))},
 }

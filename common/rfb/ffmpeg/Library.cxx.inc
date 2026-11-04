@@ -136,6 +136,7 @@ void Library::ensureFormat() {
         auto *handle = libswscale.get();
         auto scale_version = reinterpret_cast<unsigned (*)()>(dlsym(handle, "swscale_version"));
         if (!scale_version || AV_VERSION_MAJOR(scale_version()) != LIBSWSCALE_VERSION_MAJOR ||
+            AV_VERSION_MINOR(scale_version()) < LIBSWSCALE_VERSION_MINOR ||
             dlsym(handle, "avutil_version") != util_version_symbol)
             throw std::runtime_error("Inconsistent FFmpeg swscale/util library family");
 #endif
@@ -151,6 +152,7 @@ void Library::ensureFormat() {
         handle = library.get();
         auto format_version = reinterpret_cast<unsigned (*)()>(dlsym(handle, "avformat_version"));
         if (!format_version || AV_VERSION_MAJOR(format_version()) != LIBAVFORMAT_VERSION_MAJOR ||
+            AV_VERSION_MINOR(format_version()) < LIBAVFORMAT_VERSION_MINOR ||
             dlsym(handle, "avutil_version") != util_version_symbol ||
             dlsym(handle, "avcodec_version") != reinterpret_cast<void *>(avcodec_version_f))
             throw std::runtime_error("Inconsistent FFmpeg format/codec/util library family");

@@ -6,9 +6,10 @@ The baseline is Alpine 3.21 / musl 1.2.5; the runtime matrix covers Alpine
 and apk-tools 3. The glibc DEB/RPM/tar files are a different build and cannot
 be used as substitutes on Alpine.
 
-Application libraries, including FFmpeg, are linked statically where possible.
-musl remains dynamic, preserving runtime loading of graphics drivers. The host
-provides musl, Mesa/graphics drivers, timezone data, desktop tools and
+Portable CI uses runtime FFmpeg adapters for libavcodec families 58–63 while
+other application libraries are linked statically where possible. musl remains
+dynamic, preserving runtime loading of graphics drivers. The host provides
+FFmpeg and its encoder libraries, musl, Mesa/graphics drivers, timezone data, desktop tools and
 keyboard data. The package installs the C++20 launcher and has no Perl runtime
 requirement. The certificate stays at `/etc/ssl/private/kasmvnc.pem`.
 
@@ -18,8 +19,16 @@ Build on a native architecture runner with Docker, Git and Python available:
 
 ```sh
 builder/build-www
-builder/build-portable --libc musl
+builder/build-portable --libc musl --ffmpeg-mode adapters
 ```
+
+Alpine 3.21/3.22 use the FFmpeg 6.1 adapter and 3.23/3.24 use the FFmpeg 8.x
+adapter. Install the distro's FFmpeg package for video encoding; the shared
+libraries must provide the requested encoder. Runtime package updates provide
+FFmpeg security fixes; restart sessions after updates. The explicit
+`--ffmpeg-mode static` fallback embeds the existing FFmpeg/encoder dependency
+closure and remains the local command's default when no mode is supplied.
+See [the ABI-family table](../portable/README.md#ffmpeg-runtime-adapters).
 
 Commit source changes before packaging so the source archive and recorded
 revision identify the actual code. Output is in

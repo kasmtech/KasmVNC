@@ -24,8 +24,12 @@
 #include <stdexcept>
 
 #ifdef KASMVNC_FFMPEG_ADAPTERS
+std::unique_ptr<FFmpegBackend> make_ffmpeg_58();
+std::unique_ptr<FFmpegBackend> make_ffmpeg_59();
 std::unique_ptr<FFmpegBackend> make_ffmpeg_60();
 std::unique_ptr<FFmpegBackend> make_ffmpeg_61();
+std::unique_ptr<FFmpegBackend> make_ffmpeg_62();
+std::unique_ptr<FFmpegBackend> make_ffmpeg_63();
 #else
 std::unique_ptr<FFmpegBackend> make_ffmpeg_legacy();
 #endif
@@ -37,12 +41,26 @@ FFmpeg::FFmpeg() {
     // A diagnostic override is useful when several supported families coexist.
     const char *requested = std::getenv("KASMVNC_FFMPEG_MAJOR");
     const std::string selected = requested ? requested : "";
-    if (!selected.empty() && selected != "60" && selected != "61") {
-        vlog.error("Unsupported KASMVNC_FFMPEG_MAJOR=%s (supported: 60, 61)", selected.c_str());
+    const struct {
+        const char *major;
+        std::unique_ptr<FFmpegBackend> (*create)();
+    } adapters[] = {
+        {"63", make_ffmpeg_63}, {"62", make_ffmpeg_62}, {"61", make_ffmpeg_61},
+        {"60", make_ffmpeg_60}, {"59", make_ffmpeg_59}, {"58", make_ffmpeg_58},
+    };
+    bool supported = selected.empty();
+    // Prefer the newest available family. A diagnostic override selects exactly
+    // one family, so a missing requested runtime never silently uses another.
+    for (const auto &adapter : adapters) {
+        if (!selected.empty() && selected != adapter.major) continue;
+        supported = true;
+        backend = adapter.create();
+        if (backend) break;
+    }
+    if (!supported) {
+        vlog.error("Unsupported KASMVNC_FFMPEG_MAJOR=%s (supported: 58, 59, 60, 61, 62, 63)", selected.c_str());
         return;
     }
-    if (selected.empty() || selected == "61") backend = make_ffmpeg_61();
-    if (!backend && (selected.empty() || selected == "60")) backend = make_ffmpeg_60();
 #else
     backend = make_ffmpeg_legacy();
 #endif

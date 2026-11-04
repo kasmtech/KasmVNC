@@ -228,7 +228,7 @@ and Python 3 installed, first prepare `builder/www` using the existing web build
 workflow, then run:
 
 ```sh
-builder/build-portable
+builder/build-portable --ffmpeg-mode adapters
 ```
 
 The Oracle Linux 9 builder compiles the application and embedded dependencies,
@@ -237,6 +237,10 @@ under `builder/build/portable_amd64/` or `builder/build/portable_arm64/`.
 `KASMVNC_PORTABLE_VERSION` can override the inferred three-part release version;
 `BUILD_JOBS` controls compilation concurrency. Do not reuse an in-source build
 from a different distro or architecture in the Docker context.
+Adapter mode uses host FFmpeg ABI families 58–63 and their encoder libraries.
+The local command still defaults to the original static FFmpeg profile when
+no mode is specified; CI explicitly requests adapters for both libcs and
+architectures. See [the runtime family table](portable/README.md#ffmpeg-runtime-adapters).
 
 CI jobs `build_portable_amd64` and `build_portable_arm64` reuse `build_www`,
 upload to the existing immutable `kasmvnc/<commit>/` S3 prefix, and retain
@@ -301,7 +305,7 @@ for the complete build context, security refresh and registry retention policy.
 
 ## Portable musl APKs
 
-Use `builder/build-portable --libc musl` for the native Alpine profile. It shares
+Use `builder/build-portable --libc musl --ffmpeg-mode adapters` for the native Alpine profile. It shares
 source recipes and cache orchestration with glibc, but builds separate musl archives.
 See [musl builds, installation, signing and maintenance](musl/README.md).
 

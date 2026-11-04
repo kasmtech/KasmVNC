@@ -2,7 +2,7 @@
 # namespaces isolate private C++ implementations; no AV type is in the public API.
 set(KASMVNC_FFMPEG_OBJECTS "")
 if(KASMVNC_FFMPEG_ADAPTERS)
-    set(adapter_families 60 61)
+    set(adapter_families 58 59 60 61 62 63)
 else()
     set(adapter_families legacy)
 endif()

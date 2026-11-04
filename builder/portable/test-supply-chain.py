@@ -46,8 +46,8 @@ with tempfile.TemporaryDirectory() as tmp:
     (adapter / 'sources').mkdir()
     families = []
     header_hashes = {}
-    for major in (60, 61):
-        for name in ('libavcodec/avcodec.h', 'libavcodec/version_major.h', 'libavutil/avconfig.h'):
+    for major in range(58, 64):
+        for name in ('libavcodec/avcodec.h', 'libavcodec/version.h', 'libavutil/avconfig.h'):
             header = adapter / f'{major}/include/{name}'
             header.parent.mkdir(parents=True, exist_ok=True)
             header.write_bytes(b'isolated headers')
@@ -65,10 +65,19 @@ with tempfile.TemporaryDirectory() as tmp:
     header.write_bytes(b'isolated headers')
     archive.write_bytes(b'tampered')
     rejects(lambda: m.load_adapter_headers(adapter), 'source hash mismatch')
-    archive.write_bytes(b'61')
+    archive.write_bytes(b'63')
     adapter_manifest['headers']['../../outside.h'] = 'unused'
     (adapter / 'manifest.json').write_text(json.dumps(adapter_manifest))
     rejects(lambda: m.load_adapter_headers(adapter), 'Invalid FFmpeg adapter header path')
+    del adapter_manifest['headers']['../../outside.h']
+    adapter_manifest['headers']['64/include/libavcodec/avcodec.h'] = 'unused'
+    (adapter / 'manifest.json').write_text(json.dumps(adapter_manifest))
+    rejects(lambda: m.load_adapter_headers(adapter), 'Invalid FFmpeg adapter header path')
+    del adapter_manifest['headers']['64/include/libavcodec/avcodec.h']
+    duplicate = dict(families[-1])
+    adapter_manifest['families'] = families + [duplicate]
+    (adapter / 'manifest.json').write_text(json.dumps(adapter_manifest))
+    rejects(lambda: m.load_adapter_headers(adapter), 'Expected FFmpeg adapter families')
     adapter_manifest['families'] = families[:1]
     (adapter / 'manifest.json').write_text(json.dumps(adapter_manifest))
     rejects(lambda: m.load_adapter_headers(adapter), 'Expected FFmpeg adapter families')

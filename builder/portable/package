@@ -8,7 +8,7 @@ version=$KASMVNC_PORTABLE_VERSION
 basename=$KASMVNC_PORTABLE_BASENAME
 runtime_description='Application dependencies are embedded; glibc and GPU drivers remain external.'
 if [[ ${KASMVNC_FFMPEG_MODE:-static} == adapters ]]; then
-  runtime_description='Video uses host FFmpeg 6.1/7.1 ABI families and encoder libraries; other application dependencies are embedded.'
+  runtime_description='Video uses host FFmpeg libavcodec families 58-63 and encoder libraries; other application dependencies are embedded.'
 fi
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$basename" =~ ^[a-zA-Z0-9_.+-]+$ ]]
 case $(uname -m) in

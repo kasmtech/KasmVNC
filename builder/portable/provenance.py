@@ -74,7 +74,8 @@ if musl:
     manifest["dependency_builder"]["apk_resolution"] = "Pinned Alpine base; APK repositories resolved at image creation; image digest and installed APK inventory identify the environment."
     shutil.copytree('/src/builder/musl/dependencies', doc / 'musl-dependency-recipes', dirs_exist_ok=True)
 if manifest['ffmpeg_mode'] == 'adapters':
-    manifest['runtime_boundary'] += ' FFmpeg families 60/61 and their encoder libraries are host dependencies for video; no FFmpeg runtime is embedded.'
+    families = ', '.join(str(item['avcodec_major']) for item in manifest['ffmpeg_adapter_headers']['families'])
+    manifest['runtime_boundary'] += f' FFmpeg families {families} and their encoder libraries are host dependencies for video; no FFmpeg runtime is embedded.'
 shutil.copytree("/src/builder/scripts/portable-dependencies", doc / "dependency-recipes", dirs_exist_ok=True)
 gcc_manifest = Path(os.environ.get("KASMVNC_GCC_RUNTIME_PREFIX", "/opt/kasm-gcc-runtime")) / "share/gcc-runtime"
 if musl:

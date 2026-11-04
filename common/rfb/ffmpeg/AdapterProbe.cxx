@@ -29,6 +29,14 @@ static void check_hardware_options(const FFmpeg &ff) {
             try {
                 ff.create_encoder(settings);
             } catch (const std::exception &e) {
+                // FFmpeg 4.4/5.1 predate both AV1 hardware encoders. Distros may
+                // backport one, so exercise it if present instead of skipping by
+                // family alone. Missing H.264/HEVC remains a test failure.
+                if (ff.version_major() < 60 && std::string(candidate.name).starts_with("av1_") &&
+                    std::string(e.what()) == std::string("Encoder is not available: ") + candidate.name) {
+                    std::cout << "SKIP unavailable on this runtime: " << candidate.name << '\n';
+                    break;
+                }
                 // Exercise the production option setup without a GPU: reaching
                 // device creation proves none of the required options rejected
                 // a supported user quality value. A missing encoder is a failure.

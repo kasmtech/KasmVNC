@@ -42,20 +42,25 @@ host package updates do not patch them. The optional FFmpeg adapter mode below
 uses host FFmpeg and encoder libraries instead. A public release still requires review
 of corresponding-source distribution and all embedded dependency licenses.
 
-## FFmpeg runtime adapter prototype
+## FFmpeg runtime adapters
 
 `builder/build-portable --ffmpeg-mode adapters` produces one application binary
-with two isolated FFmpeg adapters: libavcodec 60 (FFmpeg 6.1) and 61 (FFmpeg 7.1).
-`--libc musl` selects the separate Alpine build; it does not make a glibc binary
-run on musl. The existing default remains `--ffmpeg-mode static`, preserving the
-full portable CI matrix while this prototype covers two families only.
+with isolated adapters for libavcodec families 58 through 63. `--libc musl`
+selects the separate Alpine build; it does not make a glibc binary run on musl.
+Portable CI explicitly selects adapter mode for both architectures and libcs.
+The local command's default remains `--ffmpeg-mode static` for compatibility;
+pass the adapter option when reproducing CI.
 
 | Adapter | Host runtime libraries | Example target |
 |---|---|---|
+| FFmpeg 4.4 | libavcodec.so.58, libavutil.so.56, libswscale.so.5 | Ubuntu 22.04 |
+| FFmpeg 5.1 | libavcodec.so.59, libavutil.so.57, libswscale.so.6 | Debian 12 |
 | FFmpeg 6.1 | libavcodec.so.60, libavutil.so.58, libswscale.so.7 | Ubuntu 24.04, Alpine 3.21/3.22 |
 | FFmpeg 7.1 | libavcodec.so.61, libavutil.so.59, libswscale.so.8 | Debian 13, EL9 with the relevant codec repository |
+| FFmpeg 8.0 | libavcodec.so.62, libavutil.so.60, libswscale.so.9 | Ubuntu 26.04, Alpine 3.23/3.24 |
+| FFmpeg 9.0 | libavcodec.so.63, libavutil.so.61, libswscale.so.10 | Kali rolling |
 
-File-based benchmarks additionally need the matching libavformat.so.60 or .61.
+File-based benchmarks additionally need the matching libavformat family (58–63).
 Install runtime libraries from the host distribution's supported repositories;
 the adapter package intentionally does not bundle FFmpeg or its encoder libraries.
 The host FFmpeg build must provide the requested encoders. For example,
@@ -63,15 +68,15 @@ The host FFmpeg build must provide the requested encoders. For example,
 alone does not establish codec availability, GPU support or performance parity.
 
 Absent or unsupported FFmpeg disables video; the other desktop encodings remain
-available. Jammy's FFmpeg 4.4 and distro targets with families 59, 62 or 63 are
-outside this prototype's video support. Their existing full video tests require
-static mode until additional adapters are implemented and qualified. Runtime
+available. Matching FFmpeg patch releases within a supported ABI family can be
+updated without rebuilding KasmVNC. Older minor releases than the listed header
+baselines and future ABI majors require separate qualification. Runtime
 FFmpeg security updates are supplied by the host package manager; restart Xvnc
 sessions after library updates. Other embedded dependencies still require a
 KasmVNC rebuild.
 
 Headers are pinned and prepared in a separate cheap Docker layer, independently
-of the existing dependency image cache. Source bundles include the two exact
+of the existing dependency image cache. Source bundles include the six exact
 header source archives and their hashes. The SBOM distinguishes build headers
 from runtime libraries and records FFmpeg as an external requirement; cached
 static FFmpeg/x264/x265/SVT archives are not part of adapter-mode artifacts.

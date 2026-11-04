@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -96,9 +97,14 @@ try:
         if len(files) != 1:
             raise RuntimeError('Expected exactly one published '+extension+' artifact')
         artifact = files[0]
+        provenance_path = artifact.with_name(artifact.name.removesuffix('.'+extension)+'.provenance.json')
+        provenance = json.loads(provenance_path.read_text()) if provenance_path.exists() else {}
+        ffmpeg_mode = provenance.get('ffmpeg_mode', 'static')
+        if ffmpeg_mode not in ('static', 'adapters'):
+            raise RuntimeError('Unknown artifact FFmpeg mode: '+str(ffmpeg_mode))
         out = results/fmt
         out.mkdir(exist_ok=True)
-        item = {'format': fmt, 'artifact': artifact.name, 'pass': False,
+        item = {'format': fmt, 'artifact': artifact.name, 'pass': False, 'ffmpeg_mode': ffmpeg_mode,
                 'lifecycle': 'manual tar extraction/removal, not a package manager' if fmt == 'tar' else 'native package manager',
                 'upgrade': 'not tested: no previous package provided'}
         report['formats'].append(item)
@@ -132,10 +138,10 @@ try:
                     'ARG BASE\nFROM ${BASE}\nUSER root\n'
                     + ('RUN apk add --no-cache bash ca-certificates\n' if fmt == 'apk' else '') +
                     'COPY test/prerequisites.sh /portable/prerequisites.sh\n'
-                    'RUN bash /portable/prerequisites.sh '+fmt+(' all' if fmt == 'tar' else ' bootstrap')+'\n'
+                    'RUN bash /portable/prerequisites.sh '+fmt+(' all ' if fmt == 'tar' else ' bootstrap ')+ffmpeg_mode+'\n'
                     'COPY artifacts /artifacts\nCOPY test/package.sh /portable/package.sh\n'
                     'RUN bash /portable/package.sh install '+fmt+' /artifacts/'+initial+'\n'
-                    + ('RUN bash /portable/prerequisites.sh '+fmt+' tools\n' if fmt != 'tar' else '') +
+                    + ('RUN bash /portable/prerequisites.sh '+fmt+' tools '+ffmpeg_mode+'\n' if fmt != 'tar' else '') +
                     'RUN bash /portable/package.sh mark '+fmt+'\n'
                     'RUN bash /portable/package.sh '+replacement_action+' '+fmt+' /artifacts/'+artifact.name+'\n'
                     'RUN bash /portable/package.sh verify-security '+fmt+'\n'
@@ -172,6 +178,11 @@ try:
             (out/'xvnc.log').write_text(logs)
             if 'SoftwareEncoder: Screen id 0, codec 16, frame size:' not in logs:
                 raise RuntimeError('Server did not confirm software H.264 frame encoding')
+            if ffmpeg_mode == 'adapters':
+                selected = re.search(r'Selected FFmpeg avcodec (\d+) from (.+)', logs)
+                if not selected or int(selected[1]) not in range(58, 64):
+                    raise RuntimeError('Server did not confirm a supported system FFmpeg adapter')
+                item['ffmpeg_runtime'] = {'avcodec_major': int(selected[1]), 'path': selected[2].strip()}
             run(['docker','exec',container,'runuser','-u','kasm_test','--','kasmvncserver','-kill',':1'],log=out/'stop.log')
             if run(['docker','exec',container,'runuser','-u','kasm_test','--','xdpyinfo','-display',':1'],check=False).returncode == 0:
                 raise RuntimeError('Launcher stop left the X server running')

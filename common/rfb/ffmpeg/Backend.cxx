@@ -36,11 +36,15 @@ class Encoder final : public FFmpeg::Encoder {
     void option(const char *name, int value) {
         check(lib.av_opt_set_int(context->priv_data, name, value, 0), name);
     }
+    const AVOption *find_option(const char *name) {
+        for (const AVOption *entry = nullptr; (entry = lib.av_opt_next(context->priv_data, entry));)
+            if (std::string(entry->name) == name) return entry;
+        return nullptr;
+    }
     void bounded_option(const char *name, int value) {
         // Runtime option limits can change within an ABI family. For example,
         // AV1 NVENC cq accepts 0..51 in FFmpeg 6.1 and 0..63 in FFmpeg 7.1.
-        for (const AVOption *entry = nullptr; (entry = lib.av_opt_next(context->priv_data, entry));) {
-            if (std::string(entry->name) != name) continue;
+        if (const auto *entry = find_option(name)) {
             const int bounded = std::clamp(value, int(entry->min), int(entry->max));
             if (bounded != value)
                 vlog.info("%s: clamping %s=%d to runtime limit %d", settings.name.c_str(), name, value, bounded);
@@ -99,8 +103,17 @@ public:
             if (settings.device == FFmpeg::Device::CUDA) {
                 context->refs = 0;
                 option("rc", "vbr");
-                option("preset", "p4");
-                option("tune", "ull");
+#if LIBAVCODEC_VERSION_MAJOR < 59
+                // FFmpeg 4.4 can be built with pre-SDK-10 NVENC headers, where
+                // p4/tune do not exist. Its llhq preset provides low latency.
+                if (!find_option("tune")) {
+                    option("preset", "llhq");
+                } else
+#endif
+                {
+                    option("preset", "p4");
+                    option("tune", "ull");
+                }
                 option("zerolatency", 1);
                 option("b_ref_mode", 0);
                 option("delay", "0");
@@ -110,7 +123,14 @@ public:
                 // cq is not the same scale as AV1's qmin/qmax (0..255).
                 bounded_option("cq", settings.quality);
             } else {
+#if LIBAVCODEC_VERSION_MAJOR < 59
+                // FFmpeg 4.4 VAAPI is synchronous and has no async_depth.
+                // Honor the option if a distro backported asynchronous encode.
+                if (find_option("async_depth"))
+                    option("async_depth", "1");
+#else
                 option("async_depth", "1");
+#endif
                 option("rc_mode", "CQP");
                 if (codec->id == AV_CODEC_ID_AV1) {
                     // AV1 VAAPI has no private qp option. CQP reads this value

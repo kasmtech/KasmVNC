@@ -4,6 +4,8 @@
 set -euo pipefail
 format=${1:?package format required}
 stage=${2:-all}
+ffmpeg_mode=${3:-static}
+case "$ffmpeg_mode" in static|adapters) ;; *) echo 'Unknown FFmpeg mode' >&2; exit 2 ;; esac
 . /etc/os-release
 export DEBIAN_FRONTEND=noninteractive
 if command -v apk >/dev/null; then
@@ -89,6 +91,29 @@ EOF
   if [[ "$format" = tar ]]; then
     dnf install -y bash tzdata xorg-x11-xauth xkeyboard-config xkbcomp \
       libglvnd-glx mesa-libgbm hostname
+  fi
+fi
+if [[ "$ffmpeg_mode" = adapters ]]; then
+  # Match the codec repositories used by Workspaces core images. Installing the
+  # runtime in this disposable fixture does not bundle it into the application.
+  if command -v apk >/dev/null; then
+    apk add --no-cache ffmpeg
+  elif command -v apt-get >/dev/null; then
+    apt-get install -y --no-install-recommends ffmpeg
+  elif command -v zypper >/dev/null; then
+    zypper addrepo -cfp 90 'https://ftp.gwdg.de/pub/linux/misc/packman/suse/openSUSE_Leap_$releasever/' packman
+    zypper --non-interactive --gpg-auto-import-keys refresh packman
+    zypper --non-interactive install --no-recommends --allow-vendor-change --from packman ffmpeg-4
+  else
+    if [[ "$ID" = fedora ]]; then
+      release="https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${VERSION_ID}.noarch.rpm"
+    else
+      release='https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm'
+    fi
+    # Bootstrap the repository package over HTTPS; its configuration enables
+    # signature verification for the FFmpeg packages installed below.
+    dnf install -y --nogpgcheck "$release"
+    dnf install -y --allowerasing ffmpeg
   fi
 fi
 useradd -m -s /bin/bash kasm_test

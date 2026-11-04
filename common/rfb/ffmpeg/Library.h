@@ -93,63 +93,61 @@ class Library final {
 
 #define DEFINE_GUARD(name, type) using name##Guard = std::unique_ptr<type, type##Deleter>;
 
+    // Derive exact function signatures from this adapter's headers. Older
+    // families differ in constness (codec lookup, input formats, buffer refs).
+    // These types never cross the Kasm interface or another adapter.
     // libavformat
-    using avformat_close_input_func = void (*)(AVFormatContext **);
-    using avformat_open_input_func = int (*)(AVFormatContext **ps, const char *url, const AVInputFormat *fmt,
-                                             AVDictionary **options);
-    using avformat_find_stream_info_func = int (*)(AVFormatContext *ic, AVDictionary **options);
-    using av_read_frame_func = int (*)(AVFormatContext *s, AVPacket *pkt);
-    using av_seek_frame_func = int (*)(AVFormatContext *s, int stream_index, int64_t timestamp, int flags);
+    using avformat_close_input_func = decltype(&::avformat_close_input);
+    using avformat_open_input_func = decltype(&::avformat_open_input);
+    using avformat_find_stream_info_func = decltype(&::avformat_find_stream_info);
+    using av_read_frame_func = decltype(&::av_read_frame);
+    using av_seek_frame_func = decltype(&::av_seek_frame);
 
     // libavutil
-    using av_frame_free_func = void (*)(AVFrame **);
-    using av_frame_alloc_func = AVFrame *(*) ();
-    using av_frame_get_buffer_func = int (*)(AVFrame *frame, int align);
-    using av_frame_make_writable_func = int (*)(AVFrame *);
-    using av_frame_unref_func = void (*)(AVFrame *frame);
-    using av_opt_next_func = const AVOption *(*) (const void *obj, const AVOption *prev);
-    using av_opt_set_func = int (*)(void *obj, const char *name, const char *val, int search_flags);
-    using av_opt_set_int_func = int (*)(void *obj, const char *name, int64_t val, int search_flags);
-    using av_buffer_unref_func = void (*)(AVBufferRef **);
-    using av_hwdevice_ctx_create_func = int (*)(AVBufferRef **device_ctx, AVHWDeviceType type, const char *device,
-                                                AVDictionary *opts, int flags);
-    using av_hwframe_ctx_alloc_func = AVBufferRef *(*) (AVBufferRef *device_ctx);
-    using av_hwframe_ctx_init_func = int (*)(AVBufferRef *ref);
-    using av_buffer_ref_func = AVBufferRef *(*) (const AVBufferRef *buf);
-    using av_hwframe_get_buffer_func = int (*)(AVBufferRef *hwframe_ctx, AVFrame *frame, int flags);
-    using av_hwframe_transfer_data_func = int (*)(AVFrame *dst, const AVFrame *src, int flags);
-    using av_strerror_func = int (*)(int errnum, char *errbuf, size_t errbuf_size);
-    using av_log_set_level_func = void (*)(int level);
-    using av_log_set_callback_func = void (*)(void (*callback)(void *, int, const char *, va_list));
+    using av_frame_free_func = decltype(&::av_frame_free);
+    using av_frame_alloc_func = decltype(&::av_frame_alloc);
+    using av_frame_get_buffer_func = decltype(&::av_frame_get_buffer);
+    using av_frame_make_writable_func = decltype(&::av_frame_make_writable);
+    using av_frame_unref_func = decltype(&::av_frame_unref);
+    using av_opt_next_func = decltype(&::av_opt_next);
+    using av_opt_set_func = decltype(&::av_opt_set);
+    using av_opt_set_int_func = decltype(&::av_opt_set_int);
+    using av_buffer_unref_func = decltype(&::av_buffer_unref);
+    using av_hwdevice_ctx_create_func = decltype(&::av_hwdevice_ctx_create);
+    using av_hwframe_ctx_alloc_func = decltype(&::av_hwframe_ctx_alloc);
+    using av_hwframe_ctx_init_func = decltype(&::av_hwframe_ctx_init);
+    using av_buffer_ref_func = decltype(&::av_buffer_ref);
+    using av_hwframe_get_buffer_func = decltype(&::av_hwframe_get_buffer);
+    using av_hwframe_transfer_data_func = decltype(&::av_hwframe_transfer_data);
+    using av_strerror_func = decltype(&::av_strerror);
+    using av_log_set_level_func = decltype(&::av_log_set_level);
+    using av_log_set_callback_func = decltype(&::av_log_set_callback);
 
     // libswscale
-    using sws_freeContext_func = void (*)(SwsContext *);
-    using sws_getContext_func = SwsContext *(*) (int srcW, int srcH, AVPixelFormat srcFormat, int dstW, int dstH,
-                                                 AVPixelFormat dstFormat, int flags, SwsFilter *srcFilter,
-                                                 SwsFilter *dstFilter, const double *param);
+    using sws_freeContext_func = decltype(&::sws_freeContext);
+    using sws_getContext_func = decltype(&::sws_getContext);
 
-    using sws_scale_func = int (*)(SwsContext *c, const uint8_t *const srcSlice[], const int srcStride[], int srcSliceY,
-                                   int srcSliceH, uint8_t *const dst[], const int dstStride[]);
+    using sws_scale_func = decltype(&::sws_scale);
 
     // libavcodec
-    using avcodec_version_func = unsigned (*) ();
-    using avcodec_configuration_func = const char *(*) ();
-    using avcodec_free_context_func = void (*)(AVCodecContext **);
-    using av_packet_free_func = void (*)(AVPacket **);
-    using avcodec_find_encoder_func = const AVCodec *(*) (AVCodecID id);
-    using avcodec_find_encoder_by_name_func = const AVCodec *(*) (const char *name);
-    using avcodec_find_decoder_func = const AVCodec *(*) (AVCodecID id);
-    using avcodec_alloc_context3_func = AVCodecContext *(*) (const AVCodec *codec);
-    using avcodec_parameters_to_context_func = int (*)(AVCodecContext *codec, const AVCodecParameters *par);
-    using avcodec_open2_func = int (*)(AVCodecContext *avctx, const AVCodec *codec, AVDictionary **options);
-    using av_packet_alloc_func = AVPacket *(*) ();
-    using avcodec_send_frame_func = int (*)(AVCodecContext *avctx, const AVFrame *frame);
-    using avcodec_send_packet_func = int (*)(AVCodecContext *avctx, const AVPacket *avpkt);
-    using avcodec_receive_packet_func = int (*)(AVCodecContext *avctx, AVPacket *avpkt);
-    using avcodec_receive_frame_func = int (*)(AVCodecContext *avctx, AVFrame *frame);
-    using av_packet_unref_func = void (*)(AVPacket *pkt);
-    using avcodec_flush_buffers_func = void (*)(AVCodecContext *avctx);
-    using av_codec_is_encoder_func = int (*)(const AVCodec *codec);
+    using avcodec_version_func = decltype(&::avcodec_version);
+    using avcodec_configuration_func = decltype(&::avcodec_configuration);
+    using avcodec_free_context_func = decltype(&::avcodec_free_context);
+    using av_packet_free_func = decltype(&::av_packet_free);
+    using avcodec_find_encoder_func = decltype(&::avcodec_find_encoder);
+    using avcodec_find_encoder_by_name_func = decltype(&::avcodec_find_encoder_by_name);
+    using avcodec_find_decoder_func = decltype(&::avcodec_find_decoder);
+    using avcodec_alloc_context3_func = decltype(&::avcodec_alloc_context3);
+    using avcodec_parameters_to_context_func = decltype(&::avcodec_parameters_to_context);
+    using avcodec_open2_func = decltype(&::avcodec_open2);
+    using av_packet_alloc_func = decltype(&::av_packet_alloc);
+    using avcodec_send_frame_func = decltype(&::avcodec_send_frame);
+    using avcodec_send_packet_func = decltype(&::avcodec_send_packet);
+    using avcodec_receive_packet_func = decltype(&::avcodec_receive_packet);
+    using avcodec_receive_frame_func = decltype(&::avcodec_receive_frame);
+    using av_packet_unref_func = decltype(&::av_packet_unref);
+    using avcodec_flush_buffers_func = decltype(&::avcodec_flush_buffers);
+    using av_codec_is_encoder_func = decltype(&::av_codec_is_encoder);
 
     // libavfilter
     /*using avfilter_graph_parse_ptr_func = int (*)(AVFilterGraph *graph, const char *filters, AVFilterInOut **inputs,
@@ -252,7 +250,7 @@ public:
         avformat_close_input_f(s);
     }
 
-    [[nodiscard]] int avformat_open_input(AVFormatContext **ps, const char *url, const AVInputFormat *fmt,
+    [[nodiscard]] int avformat_open_input(AVFormatContext **ps, const char *url, AVInputFormat *fmt,
                                           AVDictionary **options) const {
         get().ensureFormat();
         return avformat_open_input_f(ps, url, fmt, options);
@@ -321,7 +319,7 @@ public:
         return av_hwframe_ctx_init_f(ref);
     }
 
-    [[nodiscard]] AVBufferRef *av_buffer_ref(const AVBufferRef *buf) const {
+    [[nodiscard]] AVBufferRef *av_buffer_ref(AVBufferRef *buf) const {
         return av_buffer_ref_f(buf);
     }
 
