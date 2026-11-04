@@ -103,13 +103,12 @@ public:
             if (settings.device == FFmpeg::Device::CUDA) {
                 context->refs = 0;
                 option("rc", "vbr");
-#if LIBAVCODEC_VERSION_MAJOR < 59
-                // FFmpeg 4.4 can be built with pre-SDK-10 NVENC headers, where
-                // p4/tune do not exist. Its llhq preset provides low latency.
+                // FFmpeg 4.4 and 5.1 can use pre-SDK-10 NVENC headers, where
+                // p4/tune do not exist. Detect runtime capabilities rather than
+                // assuming an SDK version from the libavcodec ABI family.
                 if (!find_option("tune")) {
                     option("preset", "llhq");
                 } else
-#endif
                 {
                     option("preset", "p4");
                     option("tune", "ull");
