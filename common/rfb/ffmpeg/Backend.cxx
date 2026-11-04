@@ -36,6 +36,20 @@ class Encoder final : public FFmpeg::Encoder {
     void option(const char *name, int value) {
         check(lib.av_opt_set_int(context->priv_data, name, value, 0), name);
     }
+    void bounded_option(const char *name, int value) {
+        // Runtime option limits can change within an ABI family. For example,
+        // AV1 NVENC cq accepts 0..51 in FFmpeg 6.1 and 0..63 in FFmpeg 7.1.
+        for (const AVOption *entry = nullptr; (entry = lib.av_opt_next(context->priv_data, entry));) {
+            if (std::string(entry->name) != name) continue;
+            const int bounded = std::clamp(value, int(entry->min), int(entry->max));
+            if (bounded != value)
+                vlog.info("%s: clamping %s=%d to runtime limit %d", settings.name.c_str(), name, value, bounded);
+            option(name, bounded);
+            return;
+        }
+        // Preserve strict failure if a required option is absent entirely.
+        option(name, value);
+    }
     void receive() {
         for (;;) {
             Library::PacketGuard packet{lib.av_packet_alloc()};
@@ -93,11 +107,18 @@ public:
                 // qmin/qmax are generic codec options, not private NVENC options.
                 context->qmin = settings.quality;
                 context->qmax = settings.maximum_quality;
-                option("cq", settings.quality);
+                // cq is not the same scale as AV1's qmin/qmax (0..255).
+                bounded_option("cq", settings.quality);
             } else {
                 option("async_depth", "1");
                 option("rc_mode", "CQP");
-                option("qp", settings.quality);
+                if (codec->id == AV_CODEC_ID_AV1) {
+                    // AV1 VAAPI has no private qp option. CQP reads this value
+                    // directly when AV_CODEC_FLAG_QSCALE is not set.
+                    context->global_quality = settings.quality;
+                } else {
+                    option("qp", settings.quality);
+                }
             }
             AVBufferRef *raw_device{};
             const char *path = settings.device_path.empty() ? nullptr : settings.device_path.c_str();

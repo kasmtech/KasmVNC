@@ -11,6 +11,37 @@
 static void require(bool condition, const char *message) {
     if (!condition) throw std::runtime_error(message);
 }
+static void check_hardware_options(const FFmpeg &ff) {
+    struct Candidate { const char *name; FFmpeg::Device device; int low, high, profile; };
+    const Candidate candidates[] = {
+        {"h264_vaapi", FFmpeg::Device::VAAPI, 0, 50, 77},
+        {"hevc_vaapi", FFmpeg::Device::VAAPI, 0, 50, 1},
+        {"av1_vaapi", FFmpeg::Device::VAAPI, 1, 62, 0},
+        {"h264_nvenc", FFmpeg::Device::CUDA, 0, 50, 77},
+        {"hevc_nvenc", FFmpeg::Device::CUDA, 0, 50, 1},
+        {"av1_nvenc", FFmpeg::Device::CUDA, 19, 62, 0},
+    };
+    for (const auto &candidate : candidates) {
+        for (const int quality : {candidate.low, 25, candidate.high}) {
+            FFmpeg::EncoderSettings settings{candidate.name, candidate.device,
+                candidate.device == FFmpeg::Device::VAAPI ? "/kasm-test-missing-device" : "2147483647",
+                96, 64, 30, 30, quality, candidate.profile, candidate.high};
+            try {
+                ff.create_encoder(settings);
+            } catch (const std::exception &e) {
+                // Exercise the production option setup without a GPU: reaching
+                // device creation proves none of the required options rejected
+                // a supported user quality value. A missing encoder is a failure.
+                if (std::string(e.what()).starts_with("create hardware device:")) {
+                    std::cout << "PASS options " << candidate.name << " quality=" << quality << '\n';
+                    continue;
+                }
+                throw std::runtime_error(std::string(candidate.name) + " quality=" + std::to_string(quality) + ": " + e.what());
+            }
+            throw std::runtime_error("Unexpectedly created the deliberately invalid hardware device");
+        }
+    }
+}
 static void encode(const FFmpeg &ff, const std::string &path, const char *name, int width, int height) {
     FFmpeg::EncoderSettings settings{name, FFmpeg::Device::Software, "", width, height, 30, 30, 25,
                                     std::string(name) == "libx264" ? (66 | 1 << 9) : 1, 50};
@@ -52,6 +83,11 @@ int main(int argc, char **argv) {
         require(ff.is_available(), "FFmpeg runtime unavailable");
         require(argc >= 3, "usage: ffmpeg-adapter-probe output-prefix expected-major [libx264|libx265]");
         require(ff.version_major() == unsigned(std::stoi(argv[2])), "wrong selected ABI family");
+        if (std::string(argv[1]) == "--check-hardware-options") {
+            check_hardware_options(ff);
+            std::cout << "PASS hardware option boundaries " << ff.description() << '\n';
+            return 0;
+        }
         const char *name = argc > 3 ? argv[3] : "libx264";
         const std::string prefix = argv[1];
         auto second = std::async(std::launch::async, [&] { encode(ff, prefix + "-second.bin", name, 128, 96); });
