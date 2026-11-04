@@ -1,0 +1,30 @@
+#!/bin/sh
+# Run inside a disposable Node container with the repository mounted at /repo:
+# docker run --rm --network none -v "$PWD:/repo:ro" node:22-alpine sh /repo/builder/test-www-version
+set -eu
+
+mkdir -p /src/www /build /tmp/bin
+cp /repo/builder/build-www-inside-docker /src/build-www
+cat > /tmp/bin/npm <<'EOF'
+#!/bin/sh
+mkdir -p dist
+cp package.json dist/package.json
+EOF
+chmod +x /tmp/bin/npm
+export PATH="/tmp/bin:$PATH"
+cd /src/www
+
+for version in 1.5.2 1.6.0~beta; do
+  printf '#define XVNCVERSION "KasmVNC %s"\n' "$version" > /src/xvnc.c
+  printf '{"name":"@kasmtech/novnc","version":"1.3.0"}\n' > package.json
+  sh /src/build-www
+  node -e 'require("assert").strictEqual(require("/build/package.json").version, process.argv[1])' "$version"
+done
+
+printf 'no version definition\n' > /src/xvnc.c
+if sh /src/build-www; then
+  echo "Build accepted a missing server version" >&2
+  exit 1
+fi
+
+echo "Frontend build uses the server version and rejects a missing version."
