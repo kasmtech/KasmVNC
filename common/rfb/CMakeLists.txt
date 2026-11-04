@@ -163,7 +163,8 @@ if (ENABLE_DEBUG_ENCODERS)
     set(RFB_DEFINITIONS ${RFB_DEFINITIONS} DEBUG_ENCODERS)
 endif ()
 
-add_library(rfb STATIC ${RFB_SOURCES})
+include(${CMAKE_SOURCE_DIR}/cmake/FFmpegAdapters.cmake)
+add_library(rfb STATIC ${RFB_SOURCES} ${KASMVNC_FFMPEG_OBJECTS})
 
 target_include_directories(rfb PRIVATE
         ${CMAKE_SOURCE_DIR}/common
@@ -181,7 +182,7 @@ set(RFB_LIBRARIES ${RFB_LIBRARIES} tinyxml2_objs ${TBB_LIBRARIES} ${CPUID_LIBRAR
 
 if (KASMVNC_STATIC_FFMPEG)
     set(RFB_LIBRARIES ${RFB_LIBRARIES} ${KASMVNC_FFMPEG_ARCHIVES})
-elseif (DEBUG_FFMPEG)
+elseif (DEBUG_FFMPEG AND NOT KASMVNC_FFMPEG_ADAPTERS)
     set(RFB_LIBRARIES ${RFB_LIBRARIES} ${FFMPEG_LIBRARIES})
 endif ()
 
@@ -193,3 +194,8 @@ target_link_libraries(rfb PUBLIC ${RFB_LIBRARIES})
 if (UNIX)
     libtool_create_control_file(rfb)
 endif ()
+
+# Explicit developer target: no Xorg build and no installation is required.
+add_executable(ffmpeg-adapter-probe EXCLUDE_FROM_ALL ffmpeg/AdapterProbe.cxx)
+target_include_directories(ffmpeg-adapter-probe PRIVATE ${CMAKE_SOURCE_DIR}/common)
+target_link_libraries(ffmpeg-adapter-probe PRIVATE rfb ${CMAKE_DL_LIBS})

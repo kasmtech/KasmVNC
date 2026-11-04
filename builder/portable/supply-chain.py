@@ -50,6 +50,34 @@ def sha(path):
     return h.hexdigest()
 
 
+def load_adapter_headers(root):
+    """Verify the isolated header inputs independently of cached static codecs."""
+    manifest = json.loads((root / 'manifest.json').read_text())
+    if manifest.get('format') != 'kasmvnc-ffmpeg-adapter-headers-v1':
+        raise RuntimeError('Invalid FFmpeg adapter header manifest')
+    families = manifest.get('families', [])
+    if sorted(item['avcodec_major'] for item in families) != [60, 61]:
+        raise RuntimeError('Expected FFmpeg adapter families 60 and 61')
+    if not manifest.get('headers'):
+        raise RuntimeError('Missing FFmpeg adapter header hashes')
+    required = {f'{major}/include/{name}' for major in (60, 61)
+                for name in ('libavcodec/avcodec.h', 'libavcodec/version_major.h', 'libavutil/avconfig.h')}
+    if not required <= manifest['headers'].keys():
+        raise RuntimeError('Missing required FFmpeg adapter headers')
+    for item in families:
+        archive = item['archive']
+        if Path(archive).name != archive or sha(root / 'sources' / archive) != item['sha256']:
+            raise RuntimeError('FFmpeg adapter source hash mismatch')
+    for relative, digest in manifest['headers'].items():
+        if not re.fullmatch(r'(60|61)/include/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.h', relative):
+            raise RuntimeError('Invalid FFmpeg adapter header path')
+        if sha(root / relative) != digest:
+            raise RuntimeError('FFmpeg adapter header hash mismatch: ' + relative)
+    if set(manifest['headers']) != {str(p.relative_to(root)) for p in root.glob('*/include/**/*.h')}:
+        raise RuntimeError('FFmpeg adapter header set mismatch')
+    return manifest
+
+
 def cached_rpm_source(cache, srpm, target):
     if not re.fullmatch(r'[a-zA-Z0-9_.+~-]+\.src\.rpm', srpm):
         raise RuntimeError('Invalid cached source RPM name')
@@ -423,13 +451,39 @@ def main():
             for base in inv.bases:
                 for p in base.glob(pattern):
                     inv.preserve(p, 'upstream/' + p.name)
-        headers = Path(os.environ.get('KASMVNC_CODEC_SOURCES', '/tmp/static-sources')) / 'nv-codec-headers'
-        if not (headers / '.git').exists():
-            raise RuntimeError('Missing NVIDIA codec header sources')
-        revision = run('git', '-C', headers, 'rev-parse', 'HEAD')
-        subprocess.run(['git', '-C', str(headers), 'archive', '--format=tar', '-o', str(bundle / 'upstream/nv-codec-headers.tar'), revision], check=True)
-        inv.sources['upstream/nv-codec-headers.tar'] = {'file': 'upstream/nv-codec-headers.tar',
-            'sha256': sha(bundle / 'upstream/nv-codec-headers.tar'), 'revision': revision, 'purpose': 'build headers'}
+        ffmpeg_mode = os.environ.get('KASMVNC_FFMPEG_MODE', 'static')
+        adapter_headers = None
+        if ffmpeg_mode == 'adapters':
+            # A cached builder may contain these archives, but adapter packages
+            # must never describe or ship them as part of their static closure.
+            if {'ffmpeg', 'x264', 'x265', 'svt-av1'} & inv.components.keys():
+                raise RuntimeError('Runtime FFmpeg adapter build unexpectedly embeds codec libraries')
+            header_root = Path(os.environ.get('KASMVNC_FFMPEG_HEADERS_ROOT', '/opt/kasm-ffmpeg-headers'))
+            adapter_headers = load_adapter_headers(header_root)
+            inv.preserve(header_root / 'manifest.json', 'ffmpeg-adapter-headers.json')
+            for item in adapter_headers['families']:
+                record = inv.preserve(header_root / 'sources' / item['archive'], 'upstream/' + item['archive'])
+                record.update({'url': item['url'], 'purpose': 'Runtime ABI adapter build headers',
+                               'avcodec_major': item['avcodec_major']})
+                name = 'ffmpeg-headers-' + str(item['avcodec_major'])
+                archived_notices(bundle / record['file'], args.doc / 'third-party-licenses/embedded' / name)
+                c = component('ffmpeg-headers', item['version'],
+                    licenses=[{'expression': 'LGPL-2.1-or-later'}],
+                    properties=[prop('delivery', 'build-headers'), prop('avcodec-major', item['avcodec_major']),
+                        prop('source-sha256', item['sha256']), prop('source-file', record['file']),
+                        prop('runtime-implementation', 'Host-supplied FFmpeg; no FFmpeg or encoder library embedded')])
+                inv.components[name] = c
+                deps.add(c['bom-ref'])
+        elif ffmpeg_mode == 'static':
+            headers = Path(os.environ.get('KASMVNC_CODEC_SOURCES', '/tmp/static-sources')) / 'nv-codec-headers'
+            if not (headers / '.git').exists():
+                raise RuntimeError('Missing NVIDIA codec header sources')
+            revision = run('git', '-C', headers, 'rev-parse', 'HEAD')
+            subprocess.run(['git', '-C', str(headers), 'archive', '--format=tar', '-o', str(bundle / 'upstream/nv-codec-headers.tar'), revision], check=True)
+            inv.sources['upstream/nv-codec-headers.tar'] = {'file': 'upstream/nv-codec-headers.tar',
+                'sha256': sha(bundle / 'upstream/nv-codec-headers.tar'), 'revision': revision, 'purpose': 'build headers'}
+        else:
+            raise RuntimeError('Unsupported FFmpeg mode: ' + ffmpeg_mode)
         # Vendored code has exact file hashes even when upstream version is absent.
         for name, files in [('qoi', ['common/rfb/qoi.h']), ('xxhash', ['common/rfb/xxhash.h', 'common/rfb/xxhash.c']),
                             ('tinyxml2', ['third_party/tinyxml2/tinyxml2.h', 'third_party/tinyxml2/tinyxml2.cpp']),
@@ -507,6 +561,13 @@ def main():
                 'other_requirements': ['musl >= 1.2.5' if inv.musl else 'glibc >= 2.34', 'Bash and host timezone data',
                     'XKB tools/data', 'desktop/session applications', 'GPU vendor drivers/loaders when enabled'],
                 'versions': 'Supplied and patched by the host; deliberately not assigned builder versions.'}
+        if adapter_headers:
+            host['runtime_ffmpeg'] = {
+                'selection': 'Optional runtime loading; video unavailable without a supported FFmpeg family and encoder.',
+                'families': [item['libraries'] for item in adapter_headers['families']],
+                'libavformat': 'Required only for file-based benchmarks.',
+                'encoders': 'Host FFmpeg build and host encoder libraries determine codec availability and performance.',
+            }
         inv.limitations += ['Link evidence records archive members selected by ld; a library entry does not imply every upstream feature is enabled.',
             'Vendored source components without upstream release versions may not be matched by vulnerability databases.',
             'Packages marked embedded-startup-object contribute CRT objects only, not a full static libc or compiler.',
@@ -514,18 +575,18 @@ def main():
         manifest = {'format': 'kasmvnc-corresponding-sources-v1', 'revision': os.environ['KASMVNC_COMMIT_ID'],
                     'architecture': args.arch, 'sources': list(inv.sources.values()), 'link_inputs': inv.records,
                     'source_binary_sha256': {name: sha(SRC / name) for name in BINARIES},
-                    'host_requirements': host, 'limitations': inv.limitations}
+                    'ffmpeg_mode': ffmpeg_mode, 'host_requirements': host, 'limitations': inv.limitations}
         write(bundle / 'manifest.json', manifest)
         (bundle / 'README.txt').write_text('KasmVNC portable source inputs\n\nExtract kasmvnc-source.tar for source, patches and builder scripts.\n'
             'upstream/ contains exact release archives and Git snapshots; rpm/ contains signed exact source RPMs; apk/ contains exact aports recipes/patches and checksum-verified upstream inputs.\n'
             'frontend-sources.tar.gz contains the web client source inventory.\n'
-            f'Build entry point: builder/build-portable{" --libc musl" if inv.musl else ""}; see builder documentation.\n'
+            f'Build entry point: builder/build-portable{" --libc musl" if inv.musl else ""} --ffmpeg-mode {ffmpeg_mode}; see builder documentation.\n'
             'It downloads dependencies and is not an offline or bit-reproducible rebuild command.\n'
             'For exact input reproduction restore these archives and recorded Git revisions, rather than following floating branches.\n'
             'Read manifest.json limitations before claiming source-compliance completeness.\n')
         root = component('KasmVNC', os.environ['KASMVNC_PORTABLE_VERSION'], kind='application',
                          properties=[prop('revision', os.environ['KASMVNC_COMMIT_ID']), prop('architecture', args.arch), prop('libc', 'musl' if inv.musl else 'glibc'),
-                                     prop('host-requirements', json.dumps(host)), prop('limitations', json.dumps(inv.limitations))])
+                                     prop('ffmpeg-mode', ffmpeg_mode), prop('host-requirements', json.dumps(host)), prop('limitations', json.dumps(inv.limitations))])
         bom = {'bomFormat': 'CycloneDX', 'specVersion': '1.6', 'version': 1,
                'metadata': {'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'component': root},
                'components': sorted(inv.components.values(), key=lambda c: c['bom-ref']),

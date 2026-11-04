@@ -3,11 +3,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 libc=glibc
-if [[ $# == 2 && $1 == --libc && $2 == musl ]]; then
-  libc=musl
-elif [[ $# != 0 ]]; then
-  echo 'Usage: builder/build-portable [--libc musl]' >&2; exit 2
-fi
+ffmpeg_mode=static
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --libc) [[ $# -ge 2 && $2 =~ ^(glibc|musl)$ ]] || exit 2; libc=$2; shift 2 ;;
+    --ffmpeg-mode) [[ $# -ge 2 && $2 =~ ^(adapters|static)$ ]] || exit 2; ffmpeg_mode=$2; shift 2 ;;
+    *) echo 'Usage: builder/build-portable [--libc glibc|musl] [--ffmpeg-mode adapters|static]' >&2; exit 2 ;;
+  esac
+done
 profile=portable
 [[ "$libc" != musl ]] || profile=portable_musl
 test -s builder/www/index.html || { echo 'Run builder/build-www first' >&2; exit 1; }
@@ -22,9 +25,9 @@ case $(docker info --format '{{.Architecture}}') in
   aarch64|arm64) arch=arm64 ;;
   *) echo 'Unsupported native Docker architecture' >&2; exit 1 ;;
 esac
-basename="kasmvncserver_${profile}_${version}_${branch//\//_}_${revision:0:6}_${arch}"
+basename="kasmvncserver_${profile}_${version}_${branch//\//_}_${revision:0:6}_${ffmpeg_mode}_${arch}"
 [[ "$basename" =~ ^[a-zA-Z0-9_.+-]+$ ]] || { echo 'Unsafe artifact filename' >&2; exit 1; }
-image="kasmvnc-${profile}-builder:${revision:0:12}-${arch}"
+image="kasmvnc-${profile}-builder:${revision:0:12}-${arch}-${ffmpeg_mode}"
 build_dir="builder/build/${profile}_${arch}"
 log="output/${profile}_${arch}/build.log"
 mkdir -p "$build_dir" "output/${profile}_${arch}"
@@ -161,7 +164,7 @@ context_archive="$build_dir/dependency-context.tar"
 python3 builder/portable/dependency-cache.py archive "$context" "$context_archive"
 prepare_dependency_image
 printf '%s\n' "$resolved" > "$build_dir/dependency-image.txt"
-run_logged 'create packaging image' docker build -f "$packaging_dockerfile" --build-arg BUILDER_IMAGE="$image_base" -t "${image}-package" .
+run_logged 'create packaging image' docker build -f "$packaging_dockerfile" --build-arg BUILDER_IMAGE="$image_base" --build-arg KASMVNC_FFMPEG_MODE="$ffmpeg_mode" -t "${image}-package" .
 signing_environment=()
 if [[ "$libc" == musl ]]; then
   # Forward signing secrets only into the disposable runtime container. Never
@@ -169,7 +172,7 @@ if [[ "$libc" == musl ]]; then
   signing_environment=(-e KASMVNC_ALPINE_PRIVATE_KEY -e KASMVNC_ALPINE_PUBLIC_KEY -e KASMVNC_APK_ALLOW_TEST_KEY -e CI)
 fi
 container=$(docker create --entrypoint "$entrypoint" \
-  "${signing_environment[@]}" -e KASMVNC_LIBC="$libc" \
+  "${signing_environment[@]}" -e KASMVNC_LIBC="$libc" -e KASMVNC_FFMPEG_MODE="$ffmpeg_mode" \
   -e KASMVNC_DEPENDENCY_IMAGE="$resolved" -e KASMVNC_DEPENDENCY_KEY="$key" \
   -e KASMVNC_GCC_RUNTIME_IMAGE="$gcc_image" -e KASMVNC_GCC_RUNTIME_KEY="$gcc_key" \
   -e KASMVNC_COMMIT_ID="$revision" -e KASMVNC_PORTABLE_VERSION="$version" \

@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 # Opt-in experimental application-static build; normal distro builds are unchanged.
 set -euo pipefail
-export KASMVNC_STATIC_FFMPEG=ON
+case ${KASMVNC_FFMPEG_MODE:-static} in
+    static) export KASMVNC_STATIC_FFMPEG=ON KASMVNC_FFMPEG_ADAPTERS=OFF ;;
+    adapters)
+        export KASMVNC_STATIC_FFMPEG=OFF KASMVNC_FFMPEG_ADAPTERS=ON
+        export KASMVNC_FFMPEG_HEADERS_ROOT=${KASMVNC_FFMPEG_HEADERS_ROOT:-/opt/kasm-ffmpeg-headers}
+        test -s "$KASMVNC_FFMPEG_HEADERS_ROOT/manifest.json"
+        ;;
+    *) echo 'KASMVNC_FFMPEG_MODE must be static or adapters' >&2; exit 2 ;;
+esac
 export KASMVNC_CODEC_PREFIX=${KASMVNC_CODEC_PREFIX:-/opt/kasm-codecs}
 export KASMVNC_STATIC_RUNTIME_PREFIX=${KASMVNC_STATIC_RUNTIME_PREFIX:-/opt/kasm-runtime}
 if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
@@ -17,11 +25,15 @@ else
 fi
     export PKG_CONFIG_PATH="$KASMVNC_STATIC_DESKTOP_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 fi
-export PKG_CONFIG_PATH="$KASMVNC_STATIC_RUNTIME_PREFIX/lib/pkgconfig:$KASMVNC_CODEC_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export PKG_CONFIG_PATH="$KASMVNC_STATIC_RUNTIME_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export CPATH="$KASMVNC_STATIC_RUNTIME_PREFIX/include${CPATH:+:$CPATH}"
+if [[ $KASMVNC_STATIC_FFMPEG == ON ]]; then
+export PKG_CONFIG_PATH="$KASMVNC_CODEC_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
 if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
 /src/builder/scripts/build-static-ffmpeg
 else
     test "$(cat /opt/kasm-dependencies-ready)" = "${KASMVNC_DEPENDENCIES_MARKER:-kasmvnc-portable-dependencies-v1}"
 fi
-export CPATH="$KASMVNC_STATIC_RUNTIME_PREFIX/include:$KASMVNC_CODEC_PREFIX/include${CPATH:+:$CPATH}"
+export CPATH="$KASMVNC_CODEC_PREFIX/include:$CPATH"
+fi
 exec /src/builder/build.sh "$@"

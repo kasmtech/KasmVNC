@@ -16,175 +16,55 @@
  * USA.
  */
 
-#include "config.h"
+#include <config.h>
 #include "ffmpeg.h"
-
-#include <array>
-#include <filesystem>
+#include "ffmpeg/Backend.h"
 #include "LogWriter.h"
+#include <cstdlib>
+#include <stdexcept>
+
+#ifdef KASMVNC_FFMPEG_ADAPTERS
+std::unique_ptr<FFmpegBackend> make_ffmpeg_60();
+std::unique_ptr<FFmpegBackend> make_ffmpeg_61();
+#else
+std::unique_ptr<FFmpegBackend> make_ffmpeg_legacy();
+#endif
 
 static rfb::LogWriter vlog("ffmpeg");
-using namespace std::string_literals;
-
-#ifndef KASMVNC_STATIC_FFMPEG
-FFmpeg::DlHandlerGuard FFmpeg::loadLibrary(const char *lib, unsigned major_version) {
-
-    static constexpr std::array<std::string_view, 2> paths = {"/usr/lib/", "/usr/lib64"};
-
-    namespace fs = std::filesystem;
-
-    void *handle{};
-    const auto soname = std::string{lib} + "." + std::to_string(major_version);
-    // Use the dynamic loader cache before the compatibility fallback search.
-    handle = dlopen(soname.c_str(), RTLD_LAZY);
-    if (handle)
-        return DlHandlerGuard{handle};
-
-    for (const auto &dir: paths) {
-        if (!fs::exists(dir) || !fs::is_directory(dir))
-            continue;
-
-        for (const auto &entry: fs::recursive_directory_iterator(dir)) {
-            if (!entry.is_regular_file())
-                continue;
-
-            const std::string filename = entry.path().filename().string();
-            if (filename == soname || filename.starts_with(soname + ".")) {
-                handle = dlopen(entry.path().c_str(), RTLD_LAZY);
-
-                if (handle)
-                    break;
-            }
-        }
-
-        if (handle)
-            break;
-    }
-
-    if (!handle)
-        throw std::runtime_error("Could not open "s + soname);
-
-    return DlHandlerGuard{handle};
-}
-
-#endif
-
+FFmpeg &FFmpeg::get() { static FFmpeg instance; return instance; }
 FFmpeg::FFmpeg() {
-    try {
-#ifndef KASMVNC_STATIC_FFMPEG
-        void *handle{};
-        // libavutil
-        libavutil = loadLibrary("libavutil.so", LIBAVUTIL_VERSION_MAJOR);
-        handle = libavutil.get();
-#endif
-
-        av_frame_free_f = D_LOOKUP_SYM(handle, av_frame_free);
-        av_frame_alloc_f = D_LOOKUP_SYM(handle, av_frame_alloc);
-        av_frame_unref_f = D_LOOKUP_SYM(handle, av_frame_unref);
-        av_frame_get_buffer_f = D_LOOKUP_SYM(handle, av_frame_get_buffer);
-        av_opt_next_f = D_LOOKUP_SYM(handle, av_opt_next);
-        av_opt_set_f = D_LOOKUP_SYM(handle, av_opt_set);
-        av_opt_set_int_f = D_LOOKUP_SYM(handle, av_opt_set_int);
-        av_buffer_unref_f = D_LOOKUP_SYM(handle, av_buffer_unref);
-        av_hwdevice_ctx_create_f = D_LOOKUP_SYM(handle, av_hwdevice_ctx_create);
-        av_hwframe_ctx_alloc_f = D_LOOKUP_SYM(handle, av_hwframe_ctx_alloc);
-        av_hwframe_ctx_init_f = D_LOOKUP_SYM(handle, av_hwframe_ctx_init);
-        av_buffer_ref_f = D_LOOKUP_SYM(handle, av_buffer_ref);
-        av_hwframe_get_buffer_f = D_LOOKUP_SYM(handle, av_hwframe_get_buffer);
-        av_hwframe_transfer_data_f = D_LOOKUP_SYM(handle, av_hwframe_transfer_data);
-        av_strerror_f = D_LOOKUP_SYM(handle, av_strerror);
-        av_log_set_level_f = D_LOOKUP_SYM(handle, av_log_set_level);
-        av_log_set_callback_f = D_LOOKUP_SYM(handle, av_log_set_callback);
-
-        vlog.debug("libavutil API initialized");
-
-        // libswscale
-#ifndef KASMVNC_STATIC_FFMPEG
-        libswscale = loadLibrary("libswscale.so", LIBSWSCALE_VERSION_MAJOR);
-        handle = libswscale.get();
-#endif
-
-        sws_freeContext_f = D_LOOKUP_SYM(handle, sws_freeContext);
-        sws_getContext_f = D_LOOKUP_SYM(handle, sws_getContext);
-        sws_scale_f = D_LOOKUP_SYM(handle, sws_scale);
-        vlog.debug("libswscale API initialized");
-
-        // libavcodec
-#ifndef KASMVNC_STATIC_FFMPEG
-        libavcodec = loadLibrary("libavcodec.so", LIBAVCODEC_VERSION_MAJOR);
-        handle = libavcodec.get();
-#endif
-
-        avcodec_find_decoder_f = D_LOOKUP_SYM(handle, avcodec_find_decoder);
-        avcodec_parameters_to_context_f = D_LOOKUP_SYM(handle, avcodec_parameters_to_context);
-        avcodec_version_f = D_LOOKUP_SYM(handle, avcodec_version);
-        avcodec_configuration_f = D_LOOKUP_SYM(handle, avcodec_configuration);
-        avcodec_free_context_f = D_LOOKUP_SYM(handle, avcodec_free_context);
-        avcodec_open2_f = D_LOOKUP_SYM(handle, avcodec_open2);
-        avcodec_find_encoder_f = D_LOOKUP_SYM(handle, avcodec_find_encoder);
-        avcodec_find_encoder_by_name_f = D_LOOKUP_SYM(handle, avcodec_find_encoder_by_name);
-        avcodec_alloc_context3_f = D_LOOKUP_SYM(handle, avcodec_alloc_context3);
-        avcodec_send_frame_f = D_LOOKUP_SYM(handle, avcodec_send_frame);
-        avcodec_send_packet_f = D_LOOKUP_SYM(handle, avcodec_send_packet);
-        avcodec_receive_frame_f = D_LOOKUP_SYM(handle, avcodec_receive_frame);
-        avcodec_receive_packet_f = D_LOOKUP_SYM(handle, avcodec_receive_packet);
-        av_packet_unref_f = D_LOOKUP_SYM(handle, av_packet_unref);
-        avcodec_flush_buffers_f = D_LOOKUP_SYM(handle, avcodec_flush_buffers);
-        av_codec_is_encoder_f = D_LOOKUP_SYM(handle, av_codec_is_encoder);
-        av_packet_alloc_f = D_LOOKUP_SYM(handle, av_packet_alloc);
-        av_packet_free_f = D_LOOKUP_SYM(handle, av_packet_free);
-        vlog.debug("libavcodec API initialized");
-
-        av_log_set_level_f(AV_LOG_VERBOSE); // control what is emitted
-        av_log_set_callback_f(av_log_callback);
-
-        const auto ver = avcodec_version_f();
-        vlog.debug("libavcodec version: %d.%d.%d", AV_VERSION_MAJOR(ver), AV_VERSION_MINOR(ver), AV_VERSION_MICRO(ver));
-
-        const auto *config = avcodec_configuration_f();
-        vlog.debug("libavcodec configuration: %s", config);
-
-#ifdef KASMVNC_STATIC_FFMPEG
-        vlog.info("FFmpeg: static linkage");
-#endif
-        available = true;
-    } catch (std::exception &e) {
-        vlog.error("%s", e.what());
-
+#ifdef KASMVNC_FFMPEG_ADAPTERS
+    // A diagnostic override is useful when several supported families coexist.
+    const char *requested = std::getenv("KASMVNC_FFMPEG_MAJOR");
+    const std::string selected = requested ? requested : "";
+    if (!selected.empty() && selected != "60" && selected != "61") {
+        vlog.error("Unsupported KASMVNC_FFMPEG_MAJOR=%s (supported: 60, 61)", selected.c_str());
         return;
     }
-}
-
-// File-backed benchmarks need demuxing, but normal sessions do not. Defer
-// libavformat and its dependencies until a caller actually uses that API.
-void FFmpeg::ensureFormat() {
-    // FFmpeg is a singleton; local-static initialization is thread-safe and
-    // retries on the next call if loading throws.
-    [[maybe_unused]] static const bool initialized = [this] {
-#ifndef KASMVNC_STATIC_FFMPEG
-        auto library = loadLibrary("libavformat.so", LIBAVFORMAT_VERSION_MAJOR);
-        auto handle = library.get();
-#endif
-        avformat_open_input_f = D_LOOKUP_SYM(handle, avformat_open_input);
-        avformat_find_stream_info_f = D_LOOKUP_SYM(handle, avformat_find_stream_info);
-        av_read_frame_f = D_LOOKUP_SYM(handle, av_read_frame);
-        av_seek_frame_f = D_LOOKUP_SYM(handle, av_seek_frame);
-        avformat_close_input_f = D_LOOKUP_SYM(handle, avformat_close_input);
-#ifndef KASMVNC_STATIC_FFMPEG
-        libavformat = std::move(library);
-        vlog.debug("libavformat.so loaded on demand");
+    if (selected.empty() || selected == "61") backend = make_ffmpeg_61();
+    if (!backend && (selected.empty() || selected == "60")) backend = make_ffmpeg_60();
 #else
-        vlog.debug("Statically linked libavformat initialized on demand");
+    backend = make_ffmpeg_legacy();
 #endif
-        return true;
-    }();
+    if (backend) vlog.info("Selected %s", backend->description().c_str());
+    else vlog.error("No supported FFmpeg runtime is available; video encoders disabled");
 }
-
-void FFmpeg::av_log_callback(void *ptr, int level, const char *fmt, va_list vl) {
-    if (level > AV_LOG_VERBOSE)
-        return;
-
-    char buffer[1024];
-    vsnprintf(buffer, sizeof(buffer), fmt, vl);
-    vlog.debug("[FFmpeg Debug] %s", buffer);
+FFmpeg::~FFmpeg() = default;
+bool FFmpeg::is_available() const noexcept { return bool(backend); }
+unsigned FFmpeg::version_major() const noexcept { return backend ? backend->major() : 0; }
+std::string FFmpeg::description() const { return backend ? backend->description() : "unavailable"; }
+std::unique_ptr<FFmpeg::Encoder> FFmpeg::create_encoder(const EncoderSettings &settings) const {
+    if (!backend) throw std::runtime_error("FFmpeg is not available");
+    return backend->create_encoder(settings);
+}
+bool FFmpeg::probe_encoder(const EncoderSettings &settings) const {
+    try { return bool(create_encoder(settings)); }
+    catch (const std::exception &e) {
+        vlog.debug("Encoder %s unavailable: %s", settings.name.c_str(), e.what());
+        return false;
+    }
+}
+std::unique_ptr<FFmpeg::FrameSource> FFmpeg::open_source(const std::string &path) const {
+    if (!backend) throw std::runtime_error("FFmpeg is not available");
+    return backend->open_source(path);
 }

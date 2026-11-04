@@ -25,3 +25,4 @@
 
 /* Resolve FFmpeg symbols at link time using static archives. */
 #cmakedefine KASMVNC_STATIC_FFMPEG
+#cmakedefine KASMVNC_FFMPEG_ADAPTERS

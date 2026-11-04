@@ -207,7 +207,7 @@ namespace benchmarking {
             screen_layout.add_screen(rfb::Screen(0, 0, 0, w, h, 0));
         }
 
-        void setNewFrame(const AVFrame *frame) override {
+        void setNewFrame(const FFmpeg::RGBFrame *frame) override {
             auto *pb = getFramebuffer();
             const int width = pb->width();
             const int height = pb->height();
@@ -219,8 +219,8 @@ namespace benchmarking {
             const rfb::PixelFormat &pf = pb->getPF();
 
             // Source data and stride from FFmpeg
-            const auto *srcData = frame->data[0];
-            const int srcStride = frame->linesize[0] / 3; // Convert bytes to pixels
+            const auto *srcData = frame->data;
+            const int srcStride = frame->stride / 3; // Convert bytes to pixels
 
             // Convert from the RGB format to the PixelBuffer's format
             pf.bufferFromRGB(buffer, srcData, width, srcStride, height);

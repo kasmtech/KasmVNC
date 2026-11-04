@@ -1,0 +1,18 @@
+[
+  {
+    "avcodec_major": 60,
+    "version": "6.1",
+    "url": "https://ffmpeg.org/releases/ffmpeg-6.1.tar.xz",
+    "archive": "ffmpeg-6.1.tar.xz",
+    "sha256": "488c76e57dd9b3bee901f71d5c95eaf1db4a5a31fe46a28654e837144207c270",
+    "libraries": {"avcodec": 60, "avformat": 60, "avutil": 58, "swscale": 7}
+  },
+  {
+    "avcodec_major": 61,
+    "version": "7.1",
+    "url": "https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz",
+    "archive": "ffmpeg-7.1.tar.xz",
+    "sha256": "40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6",
+    "libraries": {"avcodec": 61, "avformat": 61, "avutil": 59, "swscale": 8}
+  }
+]

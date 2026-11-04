@@ -38,8 +38,44 @@ The adjacent checksum and provenance files identify the build inputs and ELF
 boundary. Installed documentation includes dependency license notices and the
 builder RPM inventory (build provenance only). The separate CycloneDX SBOM
 and advisory scan reports are described below. Embedded dependencies require rebuilding KasmVNC for security fixes;
-host package updates do not patch them. A public release still requires review
+host package updates do not patch them. The optional FFmpeg adapter mode below
+uses host FFmpeg and encoder libraries instead. A public release still requires review
 of corresponding-source distribution and all embedded dependency licenses.
+
+## FFmpeg runtime adapter prototype
+
+`builder/build-portable --ffmpeg-mode adapters` produces one application binary
+with two isolated FFmpeg adapters: libavcodec 60 (FFmpeg 6.1) and 61 (FFmpeg 7.1).
+`--libc musl` selects the separate Alpine build; it does not make a glibc binary
+run on musl. The existing default remains `--ffmpeg-mode static`, preserving the
+full portable CI matrix while this prototype covers two families only.
+
+| Adapter | Host runtime libraries | Example target |
+|---|---|---|
+| FFmpeg 6.1 | libavcodec.so.60, libavutil.so.58, libswscale.so.7 | Ubuntu 24.04, Alpine 3.21/3.22 |
+| FFmpeg 7.1 | libavcodec.so.61, libavutil.so.59, libswscale.so.8 | Debian 13, EL9 with the relevant codec repository |
+
+File-based benchmarks additionally need the matching libavformat.so.60 or .61.
+Install runtime libraries from the host distribution's supported repositories;
+the adapter package intentionally does not bundle FFmpeg or its encoder libraries.
+The host FFmpeg build must provide the requested encoders. For example,
+`ffmpeg-free` may omit software H.264/HEVC encoders. A matching library SONAME
+alone does not establish codec availability, GPU support or performance parity.
+
+Absent or unsupported FFmpeg disables video; the other desktop encodings remain
+available. Jammy's FFmpeg 4.4 and distro targets with families 59, 62 or 63 are
+outside this prototype's video support. Their existing full video tests require
+static mode until additional adapters are implemented and qualified. Runtime
+FFmpeg security updates are supplied by the host package manager; restart Xvnc
+sessions after library updates. Other embedded dependencies still require a
+KasmVNC rebuild.
+
+Headers are pinned and prepared in a separate cheap Docker layer, independently
+of the existing dependency image cache. Source bundles include the two exact
+header source archives and their hashes. The SBOM distinguishes build headers
+from runtime libraries and records FFmpeg as an external requirement; cached
+static FFmpeg/x264/x265/SVT archives are not part of adapter-mode artifacts.
+See [adapter build details](../ffmpeg-adapters/README.md).
 
 ## Portable CI and legacy fallback
 

@@ -60,6 +60,12 @@ manifest["dependency_builder"] = {
     "recipe_sha256": os.environ.get("KASMVNC_DEPENDENCY_KEY"),
     "rpm_resolution": "Pinned base; RPM repositories resolved at image creation. Image digest identifies exact build environment; cold rebuild may resolve newer RPMs.",
 }
+manifest['ffmpeg_mode'] = os.environ.get('KASMVNC_FFMPEG_MODE', 'static')
+manifest['sources_scope'] = 'Builder source inventory, including cached inputs not linked into this artifact; consult sources.json and sbom.cdx.json for shipped components.'
+if manifest['ffmpeg_mode'] == 'adapters':
+    header_root = Path(os.environ.get('KASMVNC_FFMPEG_HEADERS_ROOT', '/opt/kasm-ffmpeg-headers'))
+    manifest['ffmpeg_adapter_headers'] = json.loads((header_root / 'manifest.json').read_text())
+    shutil.copy2(header_root / 'manifest.json', doc / 'ffmpeg-adapter-headers.json')
 if musl:
     manifest.pop("glibc_abi_maximum")
     manifest["musl_abi_minimum"] = "1.2.5"
@@ -67,6 +73,8 @@ if musl:
     manifest["dependency_builder"].pop("rpm_resolution")
     manifest["dependency_builder"]["apk_resolution"] = "Pinned Alpine base; APK repositories resolved at image creation; image digest and installed APK inventory identify the environment."
     shutil.copytree('/src/builder/musl/dependencies', doc / 'musl-dependency-recipes', dirs_exist_ok=True)
+if manifest['ffmpeg_mode'] == 'adapters':
+    manifest['runtime_boundary'] += ' FFmpeg families 60/61 and their encoder libraries are host dependencies for video; no FFmpeg runtime is embedded.'
 shutil.copytree("/src/builder/scripts/portable-dependencies", doc / "dependency-recipes", dirs_exist_ok=True)
 gcc_manifest = Path(os.environ.get("KASMVNC_GCC_RUNTIME_PREFIX", "/opt/kasm-gcc-runtime")) / "share/gcc-runtime"
 if musl:

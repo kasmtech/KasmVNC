@@ -42,6 +42,36 @@ finally:
 
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp)
+    adapter = base / 'adapter'; adapter.mkdir()
+    (adapter / 'sources').mkdir()
+    families = []
+    header_hashes = {}
+    for major in (60, 61):
+        for name in ('libavcodec/avcodec.h', 'libavcodec/version_major.h', 'libavutil/avconfig.h'):
+            header = adapter / f'{major}/include/{name}'
+            header.parent.mkdir(parents=True, exist_ok=True)
+            header.write_bytes(b'isolated headers')
+            header_hashes[str(header.relative_to(adapter))] = m.sha(header)
+        archive_name = f'ffmpeg-{major}.tar.xz'
+        archive = adapter / 'sources' / archive_name
+        archive.write_bytes(str(major).encode())
+        families.append({'avcodec_major': major, 'archive': archive_name, 'sha256': m.sha(archive)})
+    adapter_manifest = {'format': 'kasmvnc-ffmpeg-adapter-headers-v1', 'families': families,
+                        'headers': header_hashes}
+    (adapter / 'manifest.json').write_text(json.dumps(adapter_manifest))
+    assert m.load_adapter_headers(adapter)['families'] == families
+    header.write_bytes(b'tampered')
+    rejects(lambda: m.load_adapter_headers(adapter), 'header hash mismatch')
+    header.write_bytes(b'isolated headers')
+    archive.write_bytes(b'tampered')
+    rejects(lambda: m.load_adapter_headers(adapter), 'source hash mismatch')
+    archive.write_bytes(b'61')
+    adapter_manifest['headers']['../../outside.h'] = 'unused'
+    (adapter / 'manifest.json').write_text(json.dumps(adapter_manifest))
+    rejects(lambda: m.load_adapter_headers(adapter), 'Invalid FFmpeg adapter header path')
+    adapter_manifest['families'] = families[:1]
+    (adapter / 'manifest.json').write_text(json.dumps(adapter_manifest))
+    rejects(lambda: m.load_adapter_headers(adapter), 'Expected FFmpeg adapter families')
     cache = base / 'rpm-cache'; cache.mkdir()
     srpm = 'example-1-1.src.rpm'
     (cache / srpm).write_bytes(b'source archive')

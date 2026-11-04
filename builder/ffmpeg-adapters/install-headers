@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Build-time headers only: no FFmpeg library or encoder is compiled or shipped.
+set -eo pipefail
+if [[ -f /opt/rh/gcc-toolset-14/enable ]]; then
+    source /opt/rh/gcc-toolset-14/enable
+fi
+set -u
+case ${1:-adapters} in
+    static) exit 0 ;;
+    adapters) ;;
+    *) echo 'Expected adapters or static FFmpeg mode' >&2; exit 2 ;;
+esac
+recipe_dir=$(cd "$(dirname "$0")" && pwd)
+prefix=${KASMVNC_FFMPEG_HEADERS_ROOT:-/opt/kasm-ffmpeg-headers}
+mkdir -p "$prefix/sources"
+python3 - "$recipe_dir/sources.json" <<'PY' > "$prefix/sources.tsv"
+import json, sys
+for item in json.load(open(sys.argv[1])):
+    print('\t'.join(str(item[key]) for key in ('avcodec_major', 'version', 'url', 'archive', 'sha256')))
+PY
+while IFS=$'\t' read -r major version url archive checksum; do
+    if [[ ! -f "$prefix/sources/$archive" ]]; then
+        curl --connect-timeout 30 --max-time 900 -fL --retry 3 "$url" -o "$prefix/sources/$archive"
+    fi
+    printf '%s  %s\n' "$checksum" "$prefix/sources/$archive" | sha256sum -c -
+    # Configure on the native target libc/architecture to generate avconfig.h.
+    # Pinning headers does not pin the host's runtime FFmpeg patch release.
+    build=$(mktemp -d /tmp/kasm-ffmpeg-headers.XXXXXX)
+    tar -xf "$prefix/sources/$archive" -C "$build" --strip-components=1
+    (
+        cd "$build"
+        ./configure --prefix="$prefix/$major" --disable-everything \
+            --disable-autodetect --disable-programs --disable-doc --disable-x86asm \
+            --disable-avdevice --disable-avfilter --disable-swresample --disable-network \
+            --enable-avcodec --enable-avformat --enable-swscale
+        make install-headers
+    )
+    grep -Eq "^#define LIBAVCODEC_VERSION_MAJOR +$major$" "$prefix/$major/include/libavcodec/version_major.h"
+    test -s "$prefix/$major/include/libavutil/avconfig.h"
+    rm -rf "$build"
+done < "$prefix/sources.tsv"
+rm "$prefix/sources.tsv"
+python3 - "$recipe_dir/sources.json" "$prefix" <<'PY'
+import hashlib, json, platform, sys
+from pathlib import Path
+root = Path(sys.argv[2])
+manifest = {
+    'format': 'kasmvnc-ffmpeg-adapter-headers-v1',
+    'architecture': platform.machine(),
+    'purpose': 'Compile isolated runtime ABI adapters; FFmpeg and encoder libraries are supplied by the host.',
+    'families': json.load(open(sys.argv[1])),
+    'headers': {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+                for p in sorted(root.glob('*/include/**/*.h'))},
+}
+(root / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+PY

@@ -9,9 +9,7 @@ class FfmpegFrameFeeder final {
     rfb::LogWriter vlog{"FFmpeg"};
     FFmpeg *ffmpeg{};
 
-    FFmpeg::ContextGuard codec_ctx_guard{};
-    FFmpeg::FormatCtxGuard format_ctx_guard{};
-    int video_stream_idx{-1};
+    std::unique_ptr<FFmpeg::FrameSource> source;
 
 public:
     explicit FfmpegFrameFeeder(FFmpeg *ffmpeg);
@@ -20,7 +18,7 @@ public:
 
     void open(std::string_view path);
 
-    [[nodiscard]] int64_t get_total_frame_count() const { return format_ctx_guard->streams[video_stream_idx]->nb_frames; }
+    [[nodiscard]] int64_t get_total_frame_count() const { return source->frame_count(); }
 
     struct frame_dimensions_t
     {
@@ -28,7 +26,7 @@ public:
         int height{};
     };
 
-    [[nodiscard]] frame_dimensions_t get_frame_dimensions() const { return {codec_ctx_guard->width, codec_ctx_guard->height}; }
+    [[nodiscard]] frame_dimensions_t get_frame_dimensions() const { return {source->width(), source->height()}; }
 
     struct play_stats_t
     {

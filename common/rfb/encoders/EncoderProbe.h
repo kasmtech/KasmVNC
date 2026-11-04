@@ -30,13 +30,12 @@ namespace rfb::video_encoders {
 
         struct EncoderCandidate {
             KasmVideoEncoders::Encoder encoder;
-            AVCodecID codec_id;
-            AVHWDeviceType hw_type;
+            FFmpeg::Device hw_type;
         };
 
         explicit EncoderProbe(FFmpeg &ffmpeg, const std::vector<std::string_view> &parsed_encoders, const char *dri_node);
-        static bool dri_node_supports_hwdevice_type(const char *dri_node, int hw_type);
-        bool try_open_codec(const char *dri_node, const AVCodec *codec, const EncoderCandidate &candidate) const;
+        static bool dri_node_supports_hwdevice_type(const char *dri_node, FFmpeg::Device hw_type);
+        bool try_open_codec(const char *dri_node, const EncoderCandidate &candidate) const;
         KasmVideoEncoders::EncoderConfigs probe(const char *dri_node, std::span<EncoderCandidate> candidates);
 
     public:
