@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 from openssl_boundary import read_sdk, sdk_path
+from host_libraries import sonames, COMPILER_MAXIMUM, compiler_exceptions
 
 doc = Path(sys.argv[1])
 licenses = doc / "third-party-licenses"
@@ -63,6 +64,13 @@ manifest["dependency_builder"] = {
 }
 manifest['ffmpeg_mode'] = os.environ.get('KASMVNC_FFMPEG_MODE', 'static')
 manifest['openssl_mode'] = 'host-shared-3'
+manifest['desktop_mode'] = 'host-shared'
+manifest['compiler_runtime_mode'] = 'host-shared'
+manifest['host_libraries'] = sorted({lib for elf in manifest['elf_audit']
+                                    for lib in elf['needed']} & sonames('musl' if musl else 'glibc'))
+manifest['compiler_symbol_maximum'] = COMPILER_MAXIMUM
+manifest['compiler_symbol_exceptions'] = compiler_exceptions()
+shutil.copy2(Path(__file__).with_name('host-libraries.json'), doc / 'host-libraries.json')
 manifest['openssl_build_sdk'] = read_sdk()
 shutil.copy2(sdk_path() / 'share/kasmvnc/openssl-sdk.json', doc / 'openssl-build-sdk.json')
 manifest['sources_scope'] = 'Builder source inventory, including cached inputs not linked into this artifact; consult sources.json and sbom.cdx.json for shipped components.'
@@ -83,21 +91,24 @@ if manifest['ffmpeg_mode'] == 'adapters':
 manifest['runtime_boundary'] += (' OpenSSL libssl.so.3 and libcrypto.so.3, providers and security configuration '
                                  'are supplied and patched by the host. The 3.0 SDK is a build input only; '
                                  'its runtime libraries are not shipped.')
+manifest['runtime_boundary'] += (' Desktop C libraries and C++/exception runtimes are host-supplied. '
+                                 'Their private dependency closure is owned by the distribution. '
+                                 'Application zlib remains private/static for compression performance; '
+                                 'host PNG/font libraries use their own distro zlib. '
+                                 'Selected compiler compatibility/startup objects remain embedded; '
+                                 'the link-input SBOM identifies them exactly.')
 shutil.copytree('/src/builder/openssl3', doc / 'openssl-sdk-recipes', dirs_exist_ok=True)
 shutil.copytree("/src/builder/scripts/portable-dependencies", doc / "dependency-recipes", dirs_exist_ok=True)
 gcc_manifest = Path(os.environ.get("KASMVNC_GCC_RUNTIME_PREFIX", "/opt/kasm-gcc-runtime")) / "share/gcc-runtime"
-if musl:
-    manifest["gcc_runtime"] = "Native Alpine GCC archives; exact APK ownership, aports commit, patches and verified upstream sources recorded by supply-chain.py."
-elif gcc_manifest.exists():
+manifest['gcc_runtime'] = {'delivery': 'host-shared', 'symbol_version_maximum': COMPILER_MAXIMUM,
+                           'embedded_inputs': 'Only selected builtin/startup and toolset nonshared compatibility inputs; exact source and ownership recorded by supply-chain.py.'}
+if not musl and gcc_manifest.exists():
     shutil.copytree(gcc_manifest, doc / "gcc-runtime", dirs_exist_ok=True)
-    manifest["gcc_runtime"] = json.loads((gcc_manifest / "manifest.json").read_text())
-    manifest["gcc_runtime"]["builder_image"] = os.environ.get("KASMVNC_GCC_RUNTIME_IMAGE")
-    manifest["gcc_runtime"]["recipe_sha256"] = os.environ.get("KASMVNC_GCC_RUNTIME_KEY")
+    manifest["cached_gcc_runtime_build_input"] = json.loads((gcc_manifest / "manifest.json").read_text())
+    manifest["cached_gcc_runtime_build_input"]["builder_image"] = os.environ.get("KASMVNC_GCC_RUNTIME_IMAGE")
+    manifest["cached_gcc_runtime_build_input"]["recipe_sha256"] = os.environ.get("KASMVNC_GCC_RUNTIME_KEY")
+    manifest["cached_gcc_runtime_build_input"]["scope"] = 'Cached build provenance only; not evidence that its static unwind runtime is linked.'
     shutil.copytree('/src/builder/scripts/portable-gcc-runtime', doc / 'gcc-runtime-recipes', dirs_exist_ok=True)
-else:
-    if os.environ.get("KASMVNC_PORTABLE_REQUIRE_PROVENANCE") == "1":
-        raise SystemExit("Missing mandatory GCC runtime source manifest")
-    manifest["gcc_runtime"] = "Prototype runtime: source manifest unavailable; not suitable for release."
 (doc / "provenance.json").write_text(json.dumps(manifest, indent=2) + "\n")
 shutil.copytree("/src/builder/scripts", doc / "build-scripts", dirs_exist_ok=True)
 for script in (doc / "build-scripts").rglob("*"):

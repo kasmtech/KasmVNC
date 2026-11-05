@@ -1,6 +1,8 @@
 # Shared dependency build order and pkg-config/include paths.
 python3 "$recipes/run-phase.py" runtime "$recipes/build-static-runtime"
-python3 "$recipes/run-phase.py" desktop "$recipes/build-static-desktop"
+if [[ ${KASMVNC_DYNAMIC_DESKTOP:-OFF} != ON ]]; then
+    python3 "$recipes/run-phase.py" desktop "$recipes/build-static-desktop"
+fi
 export PKG_CONFIG_PATH="$KASMVNC_STATIC_RUNTIME_PREFIX/lib/pkgconfig:$KASMVNC_CODEC_PREFIX/lib/pkgconfig:$KASMVNC_STATIC_DESKTOP_PREFIX/lib/pkgconfig"
 python3 "$recipes/run-phase.py" codecs "$recipes/build-static-ffmpeg"
 export CPATH="$KASMVNC_STATIC_RUNTIME_PREFIX/include:$KASMVNC_CODEC_PREFIX/include"

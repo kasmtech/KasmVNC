@@ -31,9 +31,11 @@ fetch_tar yaml-0.2.5.tar.gz https://pyyaml.org/download/libyaml/yaml-0.2.5.tar.g
     make -j"$jobs"
     make install
 )
-fetch_tar zlib-1.3.2.tar.gz https://zlib.net/zlib-1.3.2.tar.gz \
+fetch_tar zlib-1.3.2.tar.gz https://zlib.net/fossils/zlib-1.3.2.tar.gz \
     bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16
-fetch_git libpng https://github.com/pnggroup/libpng.git cd952f49f95bb27154ae77dbb103032d95f6e580
+if [[ ${KASMVNC_DYNAMIC_DESKTOP:-OFF} != ON ]]; then
+    fetch_git libpng https://github.com/pnggroup/libpng.git cd952f49f95bb27154ae77dbb103032d95f6e580
+fi
 fetch_git libwebp https://chromium.googlesource.com/webm/libwebp 4fa21912338357f89e4fd51cf2368325b59e9bd9
 (
     cd zlib-1.3.2
@@ -45,11 +47,13 @@ fetch_git libwebp https://chromium.googlesource.com/webm/libwebp 4fa21912338357f
     make -j"$jobs"
     make install
 )
+if [[ ${KASMVNC_DYNAMIC_DESKTOP:-OFF} != ON ]]; then
 cmake -S libpng -B libpng/build-static -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
     -DCMAKE_BUILD_TYPE=Release -DPNG_SHARED=OFF -DPNG_TESTS=OFF \
     -DZLIB_LIBRARY="$prefix/lib/libz.a" -DZLIB_INCLUDE_DIR="$prefix/include"
 cmake --build libpng/build-static -j"$jobs"
 cmake --install libpng/build-static
+fi
 cmake -S libwebp -B libwebp/build-static -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
     -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DWEBP_BUILD_ANIM_UTILS=OFF \
     -DWEBP_BUILD_CWEBP=OFF -DWEBP_BUILD_DWEBP=OFF -DWEBP_BUILD_GIF2WEBP=OFF \

@@ -6,10 +6,11 @@ cd /src
 : "${KASMVNC_PORTABLE_VERSION:?}" "${KASMVNC_PORTABLE_BASENAME:?}" "${KASMVNC_COMMIT_ID:?}"
 version=$KASMVNC_PORTABLE_VERSION
 basename=$KASMVNC_PORTABLE_BASENAME
-runtime_description='OpenSSL 3, glibc and GPU drivers are supplied by the host; other application dependencies are embedded.'
+runtime_description='OpenSSL 3, desktop libraries and compiler runtimes are supplied by the host; selected performance libraries remain embedded.'
 if [[ ${KASMVNC_FFMPEG_MODE:-static} == adapters ]]; then
-  runtime_description='TLS uses host OpenSSL 3; video uses host FFmpeg libavcodec families 58-63 and encoder libraries.'
+  runtime_description+=' Video uses host FFmpeg libavcodec families 58-63 and encoder libraries.'
 fi
+host_dependencies=$(python3 builder/portable/host_libraries.py deb)
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$basename" =~ ^[a-zA-Z0-9_.+-]+$ ]]
 case $(uname -m) in
   x86_64) arch=amd64; rpmarch=x86_64 ;;
@@ -83,7 +84,7 @@ Architecture: $arch
 Maintainer: Kasm Technologies LLC <info@kasmweb.com>
 Section: x11
 Priority: optional
-Depends: libc6 (>= 2.34), libssl3 (>= 3.0.0) | libssl3t64 (>= 3.0.0), libgl1, libgbm1, bash, tzdata, ssl-cert, xauth, x11-utils, x11-xkb-utils, xkb-data, openssl
+Depends: libc6 (>= 2.34), libssl3 (>= 3.0.0) | libssl3t64 (>= 3.0.0), $host_dependencies, libgl1, libgbm1, bash, tzdata, ssl-cert, xauth, x11-utils, x11-xkb-utils, xkb-data, openssl
 Provides: vnc-server
 Description: KasmVNC browser desktop server (portable application build)
  $runtime_description
@@ -116,8 +117,8 @@ License: GPL-2.0-or-later
 URL: https://github.com/kasmtech/KasmVNC
 BuildArch: $rpmarch
 # Use file capabilities across EL, Fedora and openSUSE naming schemes.
-# ELF automatic requirements add the exact OpenSSL 3 SONAME/symbol capabilities;
-# openssl-libs and libopenssl3 both provide them across these distributions.
+# ELF automatic requirements add exact SONAME/symbol capabilities across
+# distributions, including libcrypt.so.1 (EL9/Fedora libxcrypt-compat).
 Requires: bash, (tzdata or timezone), /usr/bin/xauth, /usr/bin/xkbcomp, /usr/bin/openssl
 Requires: /usr/bin/xdpyinfo
 Requires: /usr/sbin/groupadd, /usr/bin/getent
@@ -127,7 +128,8 @@ Conflicts: tigervnc-server, tigervnc-server-minimal
 Provides: vnc-server
 %description
 Portable KasmVNC application. $runtime_description
-Host OpenSSL 3, glibc and GPU drivers remain external. Requires glibc 2.34 or newer.
+Host desktop and compiler libraries, OpenSSL 3, glibc and GPU drivers remain external.
+Requires glibc 2.34 or newer and the GCC 11 C++ runtime ABI.
 %install
 mkdir -p %{buildroot}
 cp -a $root/. %{buildroot}/

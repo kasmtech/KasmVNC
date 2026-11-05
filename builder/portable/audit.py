@@ -7,12 +7,13 @@ import re
 import subprocess
 import sys
 from openssl_boundary import SONAMES, read_sdk, sdk_path, sdk_exports, audit_openssl
+from host_libraries import sonames, audit_host_libraries
 
 
 def audit(root, arch):
     allowed = {"libc.so.6", "libm.so.6", "libmvec.so.1", "libresolv.so.2", "libdl.so.2",
            "libpthread.so.0", "librt.so.1", "libGL.so.1", "libgbm.so.1",
-           "ld-linux-x86-64.so.2", "ld-linux-aarch64.so.1"} | SONAMES
+           "ld-linux-x86-64.so.2", "ld-linux-aarch64.so.1"} | SONAMES | sonames('glibc')
     exports = sdk_exports(sdk_path(), read_sdk())
     records = []
     for path in sorted(root.rglob("*")):
@@ -33,8 +34,10 @@ def audit(root, arch):
             raise RuntimeError(f"Nonportable relocations or library search path in {path}")
         subprocess.run(["/src/builder/scripts/check-glibc-floor", "--maximum", "2.34", str(path)], check=True)
         openssl = audit_openssl(path, needed, exports)
+        host = audit_host_libraries(path, needed, 'glibc')
         records.append({"path": "/" + str(path.relative_to(root)), "needed": needed,
-                        "glibc_maximum": "2.34", "pie": True, "openssl": openssl})
+                        "glibc_maximum": "2.34", "pie": True, "openssl": openssl,
+                        "host_libraries": host})
     if len(records) != 5:
         raise RuntimeError(f"Expected all five packaged executables, found {len(records)}")
     return records

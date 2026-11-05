@@ -14,10 +14,17 @@ apk_candidate_version() {
   # Published APKs deliberately use format 2 for Alpine 3.21 compatibility.
   tar -xOf "$package" .PKGINFO | sed -n 's/^pkgver = //p'
 }
+select_apk_key() {
+  local signing_key=/artifacts/kasmvnc_signing_key.rsa.pub
+  if [[ "$package" = /artifacts/previous.apk && -f /artifacts/previous_signing_key.rsa.pub ]]; then
+    signing_key=/artifacts/previous_signing_key.rsa.pub
+  fi
+  install -m 644 "$signing_key" /etc/apk/keys/kasmvnc_signing_key.rsa.pub
+}
 install_package() {
   case "$format" in
     apk)
-      install -m 644 /artifacts/kasmvnc_signing_key.rsa.pub /etc/apk/keys/kasmvnc_signing_key.rsa.pub
+      select_apk_key
       apk verify "$package"
       # Cache the signed local APK so apk fix exercises a real reinstall even
       # though this development artifact is not in an Alpine repository.
@@ -74,7 +81,8 @@ case "$action" in
       [[ $(stat -c '%G' "$tls") = kasmvnc-cert ]]
     fi
     # Linker dependencies must resolve in the target, without builder libraries.
-    ldd /usr/bin/Xkasmvnc /usr/bin/kasmvncserver > /tmp/portable-ldd.txt
+    ldd /usr/bin/Xkasmvnc /usr/bin/kasmvncserver /usr/bin/kasmvncconfig \
+      /usr/bin/kasmvncpasswd /usr/bin/kasmxproxy > /tmp/portable-ldd.txt
     ! grep -q 'not found' /tmp/portable-ldd.txt
     ;;
   mark)
@@ -103,6 +111,7 @@ PY
       candidate=$(dpkg-deb -f "$package" Version)
       dpkg --compare-versions "$before" lt "$candidate"
     elif [[ "$format" = apk ]]; then
+      select_apk_key
       apk verify "$package"
       before=$(apk_installed_version)
       candidate=$(apk_candidate_version)

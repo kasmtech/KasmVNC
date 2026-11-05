@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Opt-in experimental application-static build; normal distro builds are unchanged.
+# Portable application profile; normal distro builds are unchanged.
 set -euo pipefail
 case ${KASMVNC_FFMPEG_MODE:-static} in
     static) export KASMVNC_STATIC_FFMPEG=ON KASMVNC_FFMPEG_ADAPTERS=OFF ;;
@@ -21,6 +21,14 @@ if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
 /src/builder/scripts/build-static-runtime
 else
     test "$(cat /opt/kasm-dependencies-ready)" = "${KASMVNC_DEPENDENCIES_MARKER:-kasmvnc-portable-dependencies-v1}"
+fi
+if [[ ${KASMVNC_DYNAMIC_DESKTOP:-OFF} == ON ]]; then
+    # Select a small private SDK even when reusing an older dependency image.
+    # Desktop headers and pkg-config metadata must come from the baseline OS.
+    python3 /src/builder/scripts/prepare-portable-runtime \
+        --source "$KASMVNC_STATIC_RUNTIME_PREFIX" --destination /opt/kasm-portable-runtime
+    export KASMVNC_STATIC_RUNTIME_PREFIX=/opt/kasm-portable-runtime
+    unset KASMVNC_STATIC_DESKTOP_PREFIX KASMVNC_GCC_RUNTIME_PREFIX
 fi
 if [[ -n ${KASMVNC_STATIC_DESKTOP_PREFIX:-} ]]; then
 if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then

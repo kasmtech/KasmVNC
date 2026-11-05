@@ -197,9 +197,14 @@ class OpenSSLBoundaryTests(unittest.TestCase):
             libraries = [self.lib / 'libssl.so.3', self.lib / 'libcrypto.so.3'] if functions else []
             shutil.copy2(self.binary(name, functions, libraries), stage / name)
         arch = {'x86_64': 'amd64', 'aarch64': 'arm64'}[platform.machine()]
+        # These deliberately minimal ELF fixtures exercise the OpenSSL and
+        # search-path gates. The independent host-library suite supplies its
+        # own positive/negative fixtures; real packages exercise both gates.
         with patch.object(boundary, 'SDK_CATALOG', self.catalog), patch.dict(
-                os.environ, {'KASMVNC_OPENSSL_PREFIX': str(self.sdk)}):
+                os.environ, {'KASMVNC_OPENSSL_PREFIX': str(self.sdk)}), patch.object(
+                audit, 'audit_host_libraries', return_value={}) as host_audit:
             self.assertEqual(len(audit.audit(stage, arch)), 5)
+            self.assertEqual(host_audit.call_count, 5)
             bad = self.binary('kasmvncconfig', [], [], ['-Wl,-rpath,/build/private/lib'])
             shutil.copy2(bad, stage / 'kasmvncconfig')
             with self.assertRaisesRegex(RuntimeError, 'search.path|library search path'):

@@ -6,6 +6,7 @@ cd /src
 export KASMVNC_LIBC=musl
 version=$KASMVNC_PORTABLE_VERSION
 basename=$KASMVNC_PORTABLE_BASENAME
+host_dependencies=$(python3 builder/portable/host_libraries.py apk)
 [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && $basename =~ ^[a-zA-Z0-9_.+-]+$ ]]
 case $(uname -m) in
   x86_64) arch=amd64; apkarch=x86_64 ;;
@@ -67,7 +68,7 @@ for flavor in runtime debug; do
   if [[ $flavor == runtime ]]; then
     pkgname=kasmvncserver
     stage=$root
-    dependencies='musl>=1.2.5 libssl3>=3.0.0 libcrypto3>=3.0.0 mesa-gl mesa-gbm at-spi2-core xterm setxkbmap bash openssl tzdata xauth xdpyinfo xkbcomp xkeyboard-config busybox'
+    dependencies="musl>=1.2.5 libssl3>=3.0.0 libcrypto3>=3.0.0 $host_dependencies mesa-gl mesa-gbm xterm setxkbmap bash openssl tzdata xauth xdpyinfo xkbcomp xkeyboard-config busybox"
     cp alpine/kasmvncserver/kasmvncserver.post-install "$recipe/"
     cp alpine/kasmvncserver/kasmvncserver.post-deinstall "$recipe/"
     # The baseline package hook assumes this directory exists; ensure clean

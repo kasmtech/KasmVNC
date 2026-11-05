@@ -22,6 +22,18 @@ sources = load('sources', HERE / 'dependencies/cache-apk-sources.py')
 keys = load('keys', HERE / 'signing-keys.py')
 audit = load('audit', HERE / 'audit.py')
 
+# Actual --dyn-syms --wide output from the native Alpine 3.21 ARM64 Xvnc.
+ARM_GCC_ALIASES = (
+    '   240: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __register_frame_info@GLIBC_2.0 (7)\n'
+    '   433: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __deregister_frame_info@GLIBC_2.0 (7)\n'
+)
+ARM_GCC_VERSION_NEEDS = (
+    "Version needs section '.gnu.version_r' contains 1 entry:\n"
+    '  000000: Version: 1  File: libgcc_s.so.1  Cnt: 2\n'
+    '  0x0010:   Name: GCC_3.0  Flags: none  Version: 6\n'
+    '  0x0020:   Name: GLIBC_2.0  Flags: none  Version: 7\n'
+)
+
 class PackagingTests(unittest.TestCase):
     def test_exact_apk_ownership_and_cache_fail_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -75,6 +87,86 @@ class PackagingTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'unavailable'):
                 audit.require_baseline('/missing')
 
+    def test_arm_gcc_compatibility_alias_boundary(self):
+        needed = ['libc.musl-aarch64.so.1', 'libgcc_s.so.1']
+        aliases = audit.audit_compiler_compatibility_aliases(
+            ARM_GCC_ALIASES, 'arm64', needed, ARM_GCC_VERSION_NEEDS)
+        self.assertEqual(aliases, [
+            {'symbol': symbol, 'version': 'GLIBC_2.0', 'binding': 'WEAK', 'provider': 'libgcc_s.so.1'}
+            for symbol in ('__register_frame_info', '__deregister_frame_info')])
+        self.assertEqual(audit.audit_compiler_compatibility_aliases(
+            '1: 0000000000000000 0 FUNC GLOBAL DEFAULT UND malloc\n', 'amd64', [], ''), [])
+        # Every line must satisfy the boundary: a valid first alias must not
+        # conceal a strong/defined/unknown/version-mismatched second import.
+        valid = ARM_GCC_ALIASES.splitlines()[0]
+        invalid = {
+            'strong binding': valid.replace('WEAK', 'GLOBAL'),
+            'defined symbol': valid.replace('UND', '12'),
+            'default-version definition': valid.replace('@GLIBC_', '@@GLIBC_'),
+            'other symbol': valid.replace('__register_frame_info', 'malloc'),
+            'other frame API': valid.replace('__register_frame_info', '__register_frame_info_bases'),
+            'other version': valid.replace('GLIBC_2.0', 'GLIBC_2.1'),
+            'version suffix': valid.replace('GLIBC_2.0', 'GLIBC_2.0_extra'),
+            'wrong version index': valid.replace('(7)', '(6)'),
+            'missing version index': valid.replace(' (7)', ''),
+            'other symbol type': valid.replace('FUNC', 'OBJECT'),
+            'other visibility': valid.replace('DEFAULT', 'HIDDEN'),
+            'nonzero value': valid.replace('0000000000000000', '0000000000000001'),
+            'unparsed line': 'GLIBC_2.0',
+        }
+        for description, line in invalid.items():
+            with self.subTest(description=description):
+                with self.assertRaisesRegex(RuntimeError, 'Nonportable glibc symbol'):
+                    audit.audit_compiler_compatibility_aliases(
+                        valid + '\n' + line, 'arm64', needed, ARM_GCC_VERSION_NEEDS)
+        for arch, providers in [('amd64', needed), ('arm64', ['libc.musl-aarch64.so.1'])]:
+            with self.subTest(arch=arch, providers=providers):
+                with self.assertRaisesRegex(RuntimeError, 'Nonportable glibc symbol'):
+                    audit.audit_compiler_compatibility_aliases(
+                        ARM_GCC_ALIASES, arch, providers, ARM_GCC_VERSION_NEEDS)
+        invalid_needs = {
+            'wrong provider with libgcc still needed': ARM_GCC_VERSION_NEEDS.replace('libgcc_s.so.1', 'libc.musl-aarch64.so.1'),
+            'missing provider': ARM_GCC_VERSION_NEEDS.replace('File: libgcc_s.so.1', 'File:'),
+            'version definition instead of need': ARM_GCC_VERSION_NEEDS.replace('Version needs section', 'Version definition section'),
+            'wrong version name': ARM_GCC_VERSION_NEEDS.replace('Name: GLIBC_2.0', 'Name: GCC_3.0'),
+            'unknown version index': ARM_GCC_VERSION_NEEDS.replace('Version: 7', 'Version: 8'),
+            'duplicate version index': ARM_GCC_VERSION_NEEDS + '  0x0030: Name: GCC_3.0 Flags: none Version: 7\n',
+            'absent version needs': '',
+        }
+        for description, version_info in invalid_needs.items():
+            with self.subTest(description=description):
+                with self.assertRaisesRegex(RuntimeError, 'Nonportable glibc symbol'):
+                    audit.audit_compiler_compatibility_aliases(ARM_GCC_ALIASES, 'arm64', needed, version_info)
+
+    def test_arm_aliases_in_complete_audit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ['one', 'two', 'three', 'four', 'five']:
+                (root / name).write_bytes(b'\x7fELF')
+            reports = {
+                '-hW': '  Type: DYN (Position-Independent Executable file)\n  Machine: AArch64\n',
+                '-lW': '[Requesting program interpreter: /lib/ld-musl-aarch64.so.1]\n',
+                '-dW': '(NEEDED) Shared library: [libc.musl-aarch64.so.1]\n'
+                       '(NEEDED) Shared library: [libgcc_s.so.1]\n',
+                '-sDW': ARM_GCC_ALIASES,
+                '-VW': ARM_GCC_VERSION_NEEDS,
+            }
+            with patch.object(audit, 'require_baseline'), patch.object(
+                    audit, 'read_sdk', return_value={}), patch.object(
+                    audit, 'sdk_exports', return_value={}), patch.object(
+                    audit, 'audit_openssl', return_value={}), patch.object(
+                    audit, 'audit_host_libraries', return_value={}), patch.object(
+                    audit.subprocess, 'check_output', side_effect=lambda command, **kw: reports[command[1]]):
+                records = audit.audit(root, 'arm64')
+                self.assertEqual(len(records), 5)
+                for record in records:
+                    self.assertEqual(len(record['compiler_compatibility_aliases']), 2)
+                with self.assertRaisesRegex(RuntimeError, 'Expected native PIE'):
+                    audit.audit(root, 'amd64')
+                reports['-sDW'] += '1: 0000000000000000 0 FUNC GLOBAL DEFAULT UND malloc@GLIBC_2.17 (8)\n'
+                with self.assertRaisesRegex(RuntimeError, 'Nonportable glibc symbol'):
+                    audit.audit(root, 'arm64')
+
     def test_real_musl_elf_audit(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -89,7 +181,10 @@ class PackagingTests(unittest.TestCase):
             # exercises SDK integrity, ABI floors and all five executables.
             with patch.object(audit, 'read_sdk', return_value={}), patch.object(
                     audit, 'sdk_exports', return_value={'libssl.so.3': set(), 'libcrypto.so.3': set()}):
-                self.assertEqual(len(audit.audit(root, arch)),5)
+                records = audit.audit(root, arch)
+                self.assertEqual(len(records),5)
+                if arch == 'amd64':
+                    self.assertTrue(all(not record['compiler_compatibility_aliases'] for record in records))
                 with self.assertRaises(RuntimeError): audit.audit(root, wrong)
                 subprocess.run(['gcc','-static',str(source),'-o',str(root/'one')],check=True)
                 with self.assertRaises(RuntimeError): audit.audit(root, arch)

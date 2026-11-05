@@ -1,6 +1,7 @@
 # Optional application-library prefix. Host graphics and desktop integration
 # libraries remain shared; this does not create a fully static Linux executable.
-set(KASMVNC_STATIC_RUNTIME_PREFIX "" CACHE PATH "Prefix containing static PNG, zlib and WebP")
+option(KASMVNC_DYNAMIC_DESKTOP "Use baseline host desktop and compiler runtime libraries" OFF)
+set(KASMVNC_STATIC_RUNTIME_PREFIX "" CACHE PATH "Prefix containing private zlib, WebP and launcher YAML")
 set(KASMVNC_OPENSSL_PREFIX "" CACHE PATH "Portable OpenSSL 3.0 build SDK; empty uses distro OpenSSL")
 set(KASMVNC_CRYPTO_LIBRARY crypto)
 set(KASMVNC_RUNTIME_MAKE "")
@@ -31,14 +32,20 @@ if(KASMVNC_OPENSSL_PREFIX)
 endif()
 if(KASMVNC_STATIC_RUNTIME_PREFIX)
     set(runtime_lib "${KASMVNC_STATIC_RUNTIME_PREFIX}/lib")
-    foreach(name png16 z webp sharpyuv)
+    set(runtime_archives z webp sharpyuv)
+    if(NOT KASMVNC_DYNAMIC_DESKTOP)
+        list(APPEND runtime_archives png16)
+    endif()
+    foreach(name ${runtime_archives})
         if(NOT EXISTS "${runtime_lib}/lib${name}.a")
             message(FATAL_ERROR "Missing static runtime archive: ${runtime_lib}/lib${name}.a")
         endif()
     endforeach()
     include_directories(BEFORE "${KASMVNC_STATIC_RUNTIME_PREFIX}/include")
-    set(PNG_LIBRARIES "${runtime_lib}/libpng16.a;${runtime_lib}/libz.a")
-    set(PNG_INCLUDE_DIR "${KASMVNC_STATIC_RUNTIME_PREFIX}/include")
+    if(NOT KASMVNC_DYNAMIC_DESKTOP)
+        set(PNG_LIBRARIES "${runtime_lib}/libpng16.a;${runtime_lib}/libz.a")
+        set(PNG_INCLUDE_DIR "${KASMVNC_STATIC_RUNTIME_PREFIX}/include")
+    endif()
     set(ZLIB_LIBRARIES "${runtime_lib}/libz.a")
     if(EXISTS "${runtime_lib}/libssl.a" OR EXISTS "${runtime_lib}/libcrypto.a" OR
        EXISTS "${KASMVNC_STATIC_RUNTIME_PREFIX}/include/openssl")
@@ -46,10 +53,14 @@ if(KASMVNC_STATIC_RUNTIME_PREFIX)
     endif()
     # Avoid exporting our private copies into subsequently loaded GPU drivers.
     set(private_archives "libpng16.a:libz.a:libwebp.a:libsharpyuv.a:libavformat.a:libavcodec.a:libavutil.a:libswscale.a:libswresample.a:libx264.a:libx265.a:libSvtAv1Enc.a")
+    set(runtime_compiler_flags "-static-libstdc++ ")
+    if(KASMVNC_DYNAMIC_DESKTOP)
+        set(runtime_compiler_flags "")
+    endif()
     set(KASMVNC_RUNTIME_MAKE
 "KASMVNC_WEBP_LIBS = ${runtime_lib}/libwebp.a ${runtime_lib}/libsharpyuv.a
 KASMVNC_RUNTIME_CPPFLAGS = -I${KASMVNC_STATIC_RUNTIME_PREFIX}/include
-KASMVNC_RUNTIME_LDFLAGS = -static-libstdc++ -Wl,--exclude-libs,${private_archives}
+KASMVNC_RUNTIME_LDFLAGS = ${runtime_compiler_flags}-Wl,--exclude-libs,${private_archives}
 ")
 endif()
 if(KASMVNC_OPENSSL_PREFIX)

@@ -164,7 +164,7 @@ context_archive="$build_dir/dependency-context.tar"
 python3 builder/portable/dependency-cache.py archive "$context" "$context_archive"
 prepare_dependency_image
 printf '%s\n' "$resolved" > "$build_dir/dependency-image.txt"
-run_logged 'create packaging image' docker build -f "$packaging_dockerfile" --build-arg BUILDER_IMAGE="$image_base" --build-arg KASMVNC_FFMPEG_MODE="$ffmpeg_mode" -t "${image}-package" .
+run_logged 'create packaging image' docker build -f "$packaging_dockerfile" --build-arg BUILD_JOBS="${BUILD_JOBS:-8}" --build-arg BUILDER_IMAGE="$image_base" --build-arg KASMVNC_FFMPEG_MODE="$ffmpeg_mode" -t "${image}-package" .
 signing_environment=()
 if [[ "$libc" == musl ]]; then
   # Forward signing secrets only into the disposable runtime container. Never

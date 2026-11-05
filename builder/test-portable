@@ -24,6 +24,7 @@ parser.add_argument('--arch', required=True, choices=['amd64', 'arm64'])
 parser.add_argument('--results', required=True)
 parser.add_argument('--formats', nargs='+', choices=['native', 'tar'], default=None)
 parser.add_argument('--previous-package', default=os.getenv('PORTABLE_PREVIOUS_PACKAGE'))
+parser.add_argument('--previous-apk-key', help='Public signing key for an earlier APK signed with a different key')
 args = parser.parse_args()
 repo = Path(__file__).resolve().parent.parent
 tests = repo / 'builder/portable-tests'
@@ -100,6 +101,7 @@ try:
         provenance_path = artifact.with_name(artifact.name.removesuffix('.'+extension)+'.provenance.json')
         provenance = json.loads(provenance_path.read_text()) if provenance_path.exists() else {}
         ffmpeg_mode = provenance.get('ffmpeg_mode', 'static')
+        host_shared = provenance.get('desktop_mode') == 'host-shared'
         if ffmpeg_mode not in ('static', 'adapters'):
             raise RuntimeError('Unknown artifact FFmpeg mode: '+str(ffmpeg_mode))
         out = results/fmt
@@ -116,6 +118,8 @@ try:
             with tempfile.TemporaryDirectory(prefix='kasm-portable-test-') as temp:
                 context = Path(temp)
                 shutil.copytree(tests, context/'test')
+                (context/'test/host-libraries.json').write_text(
+                    json.dumps(provenance.get('host_libraries', [])))
                 (context/'artifacts').mkdir()
                 shutil.copy2(artifact, context/'artifacts'/artifact.name)
                 if fmt == 'apk':
@@ -133,6 +137,9 @@ try:
                     initial = 'previous.'+fmt
                     replacement_action = 'upgrade'
                     shutil.copy2(previous, context/'artifacts'/initial)
+                    if fmt == 'apk' and args.previous_apk_key:
+                        shutil.copy2(Path(args.previous_apk_key).resolve(),
+                                     context/'artifacts/previous_signing_key.rsa.pub')
                     item['upgrade'] = 'previous package installed, then candidate replaces it'
                 (context/'Dockerfile').write_text(
                     'ARG BASE\nFROM ${BASE}\nUSER root\n'
@@ -147,6 +154,8 @@ try:
                     'RUN bash /portable/package.sh verify-security '+fmt+'\n'
                     'COPY test/session.sh /portable/session.sh\n'
                     'COPY test/openssl-runtime.py /portable/openssl-runtime.py\n'
+                    'COPY test/host-runtime.py /portable/host-runtime.py\n'
+                    'COPY test/host-libraries.json /portable/host-libraries.json\n'
                     'COPY test/focus.py /portable/focus.py\n'
                     'RUN mkdir /probe && chmod 1777 /probe\n'
                     'ENTRYPOINT ["runuser", "-u", "kasm_test", "--", "bash", "/portable/session.sh"]\n')
@@ -170,6 +179,13 @@ try:
             (out/'openssl-runtime.json').write_text(openssl_runtime)
             item['openssl_runtime'] = json.loads(openssl_runtime)
             item['tls_protocols'] = ['1.2', '1.3']
+            if host_shared:
+                pid = str(item['openssl_runtime']['pid'])
+                host_runtime = run(['docker', 'exec', container, 'runuser', '-u', 'kasm_test', '--',
+                                    'python3', '/portable/host-runtime.py', pid,
+                                    '/portable/host-libraries.json']).stdout
+                (out/'host-runtime.json').write_text(host_runtime)
+                item['host_runtime'] = json.loads(host_runtime)
             browser_run = run(['docker','run','--name',browser,'--runtime=runc','--network','container:'+container,
                               '--shm-size=512m','--mount','type=volume,source='+probe_volume+',target=/probe,readonly',browser_image],check=False,timeout=120)
             (out/'browser-command.log').write_text(browser_run.stdout)

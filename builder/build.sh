@@ -130,6 +130,7 @@ cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
   -DKASMVNC_OPENSSL_PREFIX="${KASMVNC_OPENSSL_PREFIX:-}" \
   -DKASMVNC_STATIC_RUNTIME_PREFIX="${KASMVNC_STATIC_RUNTIME_PREFIX:-}" \
   -DKASMVNC_STATIC_DESKTOP_PREFIX="${KASMVNC_STATIC_DESKTOP_PREFIX:-}" \
+  -DKASMVNC_DYNAMIC_DESKTOP:BOOL="${KASMVNC_DYNAMIC_DESKTOP:-OFF}" \
   -DCMAKE_PREFIX_PATH="$HOME/.local" \
   -DCMAKE_LIBRARY_PATH="$HOME/.local/lib;$HOME/.local/lib64" \
   -DCMAKE_INCLUDE_PATH="$HOME/.local/include" \
@@ -137,7 +138,7 @@ cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
   -DCMAKE_SHARED_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64" \
   -DCMAKE_MODULE_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64"
 
-make -j"$(nproc)"
+make -j"${BUILD_JOBS:-$(nproc)}"
 
 if [ -z "${ATSPI_DEBUG:-}" ] && [ -f CMakeCache.txt ]; then
   case "$(sed -n 's/^ATSPI_DEBUG:BOOL=//p' CMakeCache.txt)" in
@@ -217,7 +218,7 @@ xserver_make_options=()
 if [[ ${KASMVNC_BUILD_XORG_MODULE:-1} == 0 ]]; then
   xserver_make_options+=(libvnc_la_LTLIBRARIES=)
 fi
-make -j"$(nproc)" "${xserver_make_options[@]}"
+make -j"${BUILD_JOBS:-$(nproc)}" "${xserver_make_options[@]}"
 
 # modifications for the servertarball
 cd /src

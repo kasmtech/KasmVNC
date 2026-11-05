@@ -10,7 +10,6 @@ export CFLAGS="${CFLAGS:-} -g" CXXFLAGS="${CXXFLAGS:-} -g"
 builder/build-static-musl-inside-docker --no-servertarball
 builder/scripts/portable-driver-path \
     --verify unix/xserver/hw/vnc/Xvnc \
-    --verify unix/xserver/glx/.libs/glxdricommon.o \
-    --verify /opt/kasm-desktop/lib/libva.a
+    --verify unix/xserver/glx/.libs/glxdricommon.o
 export KASMVNC_PORTABLE_REQUIRE_PROVENANCE=1
 builder/musl/package

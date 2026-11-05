@@ -1,0 +1,325 @@
+{
+  "format": "kasmvnc-host-libraries-v1",
+  "components": [
+    {
+      "name": "libpng",
+      "sonames": [
+        "libpng16.so.16"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libpng16-16 | libpng16-16t64",
+      "apk": "libpng"
+    },
+    {
+      "name": "FreeType",
+      "sonames": [
+        "libfreetype.so.6"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libfreetype6",
+      "apk": "freetype"
+    },
+    {
+      "name": "pixman",
+      "sonames": [
+        "libpixman-1.so.0"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libpixman-1-0",
+      "apk": "pixman"
+    },
+    {
+      "name": "AT-SPI",
+      "sonames": [
+        "libatspi.so.0"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libatspi2.0-0 | libatspi2.0-0t64",
+      "apk": "at-spi2-core"
+    },
+    {
+      "name": "GLib",
+      "sonames": [
+        "libglib-2.0.so.0",
+        "libgobject-2.0.so.0"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libglib2.0-0 (>= 2.68) | libglib2.0-0t64 (>= 2.68)",
+      "apk": "glib"
+    },
+    {
+      "name": "D-Bus",
+      "sonames": [
+        "libdbus-1.so.3"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libdbus-1-3",
+      "apk": "dbus-libs"
+    },
+    {
+      "name": "libX11",
+      "sonames": [
+        "libX11.so.6"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libx11-6",
+      "apk": "libx11"
+    },
+    {
+      "name": "libXau",
+      "sonames": [
+        "libXau.so.6"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libxau6",
+      "apk": "libxau"
+    },
+    {
+      "name": "libXcursor",
+      "sonames": [
+        "libXcursor.so.1"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libxcursor1",
+      "apk": "libxcursor"
+    },
+    {
+      "name": "libXdmcp",
+      "sonames": [
+        "libXdmcp.so.6"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libxdmcp6",
+      "apk": "libxdmcp"
+    },
+    {
+      "name": "libXext",
+      "sonames": [
+        "libXext.so.6"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libxext6",
+      "apk": "libxext"
+    },
+    {
+      "name": "libXfixes",
+      "sonames": [
+        "libXfixes.so.3"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libxfixes3",
+      "apk": "libxfixes"
+    },
+    {
+      "name": "libXfont2",
+      "sonames": [
+        "libXfont2.so.2"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libxfont2",
+      "apk": "libxfont2"
+    },
+    {
+      "name": "libXrandr",
+      "sonames": [
+        "libXrandr.so.2"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libxrandr2",
+      "apk": "libxrandr"
+    },
+    {
+      "name": "libXtst",
+      "sonames": [
+        "libXtst.so.6"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libxtst6",
+      "apk": "libxtst"
+    },
+    {
+      "name": "libxshmfence",
+      "sonames": [
+        "libxshmfence.so.1"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libxshmfence1",
+      "apk": "libxshmfence"
+    },
+    {
+      "name": "libunwind",
+      "sonames": [
+        "libunwind.so.8"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libunwind8",
+      "apk": "libunwind"
+    },
+    {
+      "name": "libstdc++",
+      "sonames": [
+        "libstdc++.so.6"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libstdc++6 (>= 11)",
+      "apk": "libstdc++"
+    },
+    {
+      "name": "libgcc",
+      "sonames": [
+        "libgcc_s.so.1"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "deb": "libgcc-s1",
+      "apk": "libgcc"
+    },
+    {
+      "name": "libxcrypt",
+      "sonames": [
+        "libcrypt.so.1"
+      ],
+      "profiles": [
+        "glibc"
+      ],
+      "deb": "libcrypt1",
+      "rpm_note": "EL9/Fedora require libxcrypt-compat; libcrypt.so.2 is not a substitute."
+    },
+    {
+      "name": "systemd",
+      "sonames": [
+        "libsystemd.so.0"
+      ],
+      "profiles": [
+        "glibc"
+      ],
+      "deb": "libsystemd0"
+    },
+    {
+      "name": "libbsd",
+      "sonames": [
+        "libbsd.so.0"
+      ],
+      "profiles": [
+        "musl"
+      ],
+      "apk": "libbsd"
+    },
+    {
+      "name": "libdrm",
+      "sonames": [
+        "libdrm.so.2"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "ffmpeg_modes": [
+        "static"
+      ],
+      "deb": "libdrm2",
+      "apk": "libdrm"
+    },
+    {
+      "name": "libva",
+      "sonames": [
+        "libva.so.2"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "ffmpeg_modes": [
+        "static"
+      ],
+      "deb": "libva2",
+      "apk": "libva"
+    },
+    {
+      "name": "libva-drm",
+      "sonames": [
+        "libva-drm.so.2"
+      ],
+      "profiles": [
+        "glibc",
+        "musl"
+      ],
+      "ffmpeg_modes": [
+        "static"
+      ],
+      "deb": "libva-drm2",
+      "apk": "libva"
+    }
+  ],
+  "compiler_symbol_maximum": {
+    "GLIBCXX": "3.4.29",
+    "CXXABI": "1.3.13",
+    "GCC": "4.5.0"
+  },
+  "compiler_symbol_exceptions": [
+    {
+      "symbol": "__divmodti4",
+      "version": "GCC_7.0.0",
+      "ffmpeg_modes": [
+        "static"
+      ],
+      "reason": "128-bit arithmetic in the optional bundled codec build; the exact symbol/version is exported by every supported native distro/architecture provider."
+    }
+  ]
+}

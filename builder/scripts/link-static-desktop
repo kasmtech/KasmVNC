@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve Xvnc's expanded libtool link to static archives, except libc/GPU ABI.
+"""Resolve the expanded libtool link with an explicit portable dependency policy.
 
 This is a build-time compiler wrapper, not a runtime dependency. Unknown shared
 libraries fail closed rather than quietly weakening the opt-in static profile.
@@ -42,6 +42,7 @@ def main():
     split = sys.argv.index('--')
     parser = argparse.ArgumentParser()
     parser.add_argument('--prefix', required=True)
+    parser.add_argument('--host-shared', action='store_true')
     parser.add_argument('--runtime-prefix', default='')
     parser.add_argument('--openssl-prefix', default='')
     parser.add_argument('--source-root', required=True)
@@ -64,10 +65,13 @@ def main():
     if env.get('KASMVNC_LIBC') == 'musl':
         modules.remove('libsystemd')
     closure = shlex.split(subprocess.check_output(
-        ['pkg-config', '--static', '--libs'] + modules, env=env, text=True))
+        ['pkg-config'] + ([] if options.host_shared else ['--static']) + ['--libs'] + modules, env=env, text=True))
     # libsystemd's distro .pc omits this private archive dependency.
     # Alpine's libXdmcp archive uses libbsd, but xdmcp.pc omits its private closure.
-    closure += ['-lgomp', '-lbsd', '-lmd'] if env.get('KASMVNC_LIBC') == 'musl' else ['-lcrypt', '-lgomp', '-lcap']
+    if options.host_shared:
+        closure += ['-lgomp']
+    else:
+        closure += ['-lgomp', '-lbsd', '-lmd'] if env.get('KASMVNC_LIBC') == 'musl' else ['-lcrypt', '-lgomp', '-lcap']
     directories = [str(Path(p) / d) for p in prefixes for d in ('lib', 'lib64')]
     for seq in (arguments, closure):
         for i, arg in enumerate(seq):
@@ -116,7 +120,56 @@ def main():
             return str(Path(candidate).resolve())
         raise RuntimeError('Missing static archive for ' + name)
 
+    # These public ABIs are supplied by the baseline OS development packages.
+    # Never search the private SDK or compiler toolset for their headers/DSOs.
+    host_names = {'png', 'png16', 'freetype', 'pixman-1', 'atspi', 'glib-2.0',
+                  'gobject-2.0', 'gio-2.0', 'gmodule-2.0', 'dbus-1', 'systemd',
+                  'bsd', 'intl', 'md', 'X11', 'Xfont2', 'Xrender', 'Xtst', 'Xau',
+                  'Xcursor', 'Xdmcp', 'Xext', 'Xfixes', 'Xrandr', 'drm',
+                  'xshmfence', 'unwind', 'crypt', 'xcb', 'xcb-render', 'xcb-shm',
+                  'fontenc', 'SM', 'ICE', 'Xi', 'va', 'va-drm', 'ffi', 'cap',
+                  'brotlicommon', 'brotlidec', 'bz2', 'expat', 'lzma', 'lz4',
+                  'zstd', 'mount', 'blkid', 'uuid', 'pcre', 'pcre2-8', 'selinux',
+                  'sepol', 'gcrypt', 'gpg-error'}
+
+    def host_input(arg):
+        # Xorg has internal archives called libXi.a/libXext.a; they are not
+        # interchangeable with the similarly named client-side system DSOs.
+        if arg.endswith('.a') and source in Path(arg).resolve().parents:
+            return None
+        if arg.startswith('-l:'):
+            spelling = arg[3:]
+        elif arg.startswith('-l'):
+            spelling = 'lib' + arg[2:] + '.so'
+        else:
+            spelling = Path(arg).name
+        match = re.fullmatch(r'lib(.+)\.(?:a|so(?:\.[0-9.]+)?)', spelling)
+        if not match or match.group(1) not in host_names:
+            return None
+        name = match.group(1)
+        if name == 'png':
+            name = 'png16'
+        if name == 'crypt' and env.get('KASMVNC_LIBC') == 'musl':
+            return '-lc'
+        suffix = '.so.1' if name == 'crypt' else '.so'
+        for directory in ('/usr/lib64', '/usr/lib', '/lib64', '/lib'):
+            path = Path(directory) / ('lib' + name + suffix)
+            if path.is_file():
+                shared.add(path.name)
+                return str(path)
+        raise RuntimeError('Missing baseline host shared library: ' + name)
+
     def resolve(arg):
+        if options.host_shared:
+            if arg in ('-static-libgcc', '-static-libstdc++'):
+                raise RuntimeError('Static compiler runtimes are forbidden in the host-shared profile')
+            host = host_input(arg)
+            if host:
+                return host
+            if arg in ('-lstdc++', '-lgcc_s', '-lgcc'):
+                return arg
+            if Path(arg).name in ('libstdc++.a', 'libgcc_eh.a'):
+                raise RuntimeError('Static compiler runtime input: ' + arg)
         openssl = openssl_shared_input(arg, options.openssl_prefix)
         if openssl:
             shared.add(Path(openssl).name)
@@ -153,8 +206,10 @@ def main():
     linked = [resolve(arg) for arg in arguments + closure]
     # GCC adds libgomp for -fopenmp; explicit archive resolves its references,
     # and --as-needed prevents a redundant DT_NEEDED on the implicit DSO.
-    flags = ['-Wl,-Map=' + str(Path(output + '.link-map').resolve()), '-pie', '-static-libgcc', '-static-libstdc++', '-Wl,--as-needed']
-    if env.get('KASMVNC_GCC_RUNTIME_PREFIX'):
+    flags = ['-Wl,-Map=' + str(Path(output + '.link-map').resolve()), '-pie', '-Wl,--as-needed']
+    if not options.host_shared:
+        flags += ['-static-libgcc', '-static-libstdc++']
+    if env.get('KASMVNC_GCC_RUNTIME_PREFIX') and not options.host_shared:
         gccdir = str(Path(env['KASMVNC_GCC_RUNTIME_PREFIX']) / 'lib')
         for name in ('libgcc.a', 'libgcc_eh.a'):
             if not (Path(gccdir) / name).is_file():
@@ -167,6 +222,8 @@ def main():
     final = compiler + flags + ['-Wl,--start-group'] + linked + ['-Wl,--end-group']
     Path(output + '.static-link.json').write_text(json.dumps({
         'archives': sorted(archives), 'cwd': str(Path.cwd()), 'allowed_shared': sorted(shared),
+        'desktop_mode': 'host-shared' if options.host_shared else 'static',
+        'compiler_runtime_mode': 'host-shared' if options.host_shared else 'static',
         'private_archive_copies': private_archives,
         'symbol_renames': {'XkbFreeGeomOverlayKeys': 'kasm_x11_XkbFreeGeomOverlayKeys'}
             if private_archives else {},

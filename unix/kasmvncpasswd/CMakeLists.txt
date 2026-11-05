@@ -5,7 +5,15 @@ add_executable(kasmvncpasswd
   kasmpasswd.c)
 
 set(kasmvnc_crypt_library crypt)
-if(KASMVNC_STATIC_DESKTOP_PREFIX)
+if(KASMVNC_DYNAMIC_DESKTOP)
+  # musl supplies crypt in libc; glibc targets share the libxcrypt v1 ABI.
+  if("$ENV{KASMVNC_LIBC}" STREQUAL "musl")
+    set(kasmvnc_crypt_library c)
+  else()
+    find_library(KASMVNC_SHARED_CRYPT NAMES libcrypt.so.1 REQUIRED)
+    set(kasmvnc_crypt_library "${KASMVNC_SHARED_CRYPT}")
+  endif()
+elseif(KASMVNC_STATIC_DESKTOP_PREFIX)
   find_library(KASMVNC_STATIC_CRYPT NAMES libcrypt.a)
   if(NOT KASMVNC_STATIC_CRYPT)
     message(FATAL_ERROR "The static desktop profile requires libcrypt.a for kasmvncpasswd")

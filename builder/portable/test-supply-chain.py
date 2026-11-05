@@ -159,6 +159,26 @@ with tempfile.TemporaryDirectory() as tmp:
         rejects(lambda: m.link_inputs(binary), 'Missing link input')
     map_path.write_text(original_map)
     rejects(lambda: inv.archive(inputs[0]), 'Uncatalogued static archive')
+    # The restored host boundary applies after resolving private-copy aliases,
+    # but must not reject Xorg's unrelated, same-named server-side archives.
+    desktop = base / 'libXext.a'
+    desktop.write_bytes(b'old cached desktop archive')
+    map_path.write_text(f'{desktop}(object.o)\nDiscarded input sections\n')
+    rejects(lambda: m.link_inputs(binary), 'embeds a host library')
+    rejects(lambda: inv.archive(desktop), 'embeds a host library')
+    saved_source = m.SRC
+    try:
+        m.SRC = base
+        # Preserve another external archive so the function's nonempty evidence
+        # invariant still holds while internal Xorg archives are excluded.
+        external = base.parent / (base.name + '-external.a')
+        external.write_bytes(b'other input')
+        map_path.write_text(f'{desktop}(server.o)\n{external}(object.o)\nDiscarded input sections\n')
+        assert m.link_inputs(binary) == [external]
+        external.unlink()
+    finally:
+        m.SRC = saved_source
+    map_path.write_text(original_map)
     # Reject a TLS archive even when a cached builder has it available, and
     # before treating archive ownership as a legitimate embedded component.
     for name in ('libssl.a', 'libcrypto.a'):

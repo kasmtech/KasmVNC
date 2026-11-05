@@ -40,6 +40,41 @@ include("{ROOT}/cmake/StaticRuntime.cmake")
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('Obsolete static OpenSSL', result.stderr)
 
+    def test_host_profile_retains_only_private_runtime_sdk(self):
+        # An older cached SDK can contain newer PNG/desktop headers. Exercise
+        # the actual filtering command before configuring the dynamic profile.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            original, selected = root / 'old-sdk', root / 'selected-sdk'
+            (original / 'lib/pkgconfig').mkdir(parents=True)
+            (original / 'include/webp').mkdir(parents=True)
+            for name in ('z', 'yaml', 'webp', 'sharpyuv', 'png16'):
+                (original / 'lib' / ('lib' + name + '.a')).write_bytes(name.encode())
+            for name in ('zlib.h', 'zconf.h', 'yaml.h', 'png.h', 'webp/encode.h'):
+                (original / 'include' / name).write_text(name)
+            run('python3', str(ROOT / 'builder/scripts/prepare-portable-runtime'),
+                '--source', str(original), '--destination', str(selected))
+            self.assertFalse((selected / 'include/png.h').exists())
+            self.assertFalse((selected / 'lib/libpng16.a').exists())
+            self.assertEqual((selected / 'lib/libz.a').read_bytes(), b'z')
+            # Re-running must remove unexpected files from a stale destination.
+            (selected / 'include/png.h').write_text('stale')
+            run('python3', str(ROOT / 'builder/scripts/prepare-portable-runtime'),
+                '--source', str(original), '--destination', str(selected))
+            self.assertFalse((selected / 'include/png.h').exists())
+            (root / 'CMakeLists.txt').write_text(f'''cmake_minimum_required(VERSION 3.10)
+project(profile NONE)
+set(KASMVNC_DYNAMIC_DESKTOP ON CACHE BOOL "" FORCE)
+set(KASMVNC_STATIC_RUNTIME_PREFIX "{selected}" CACHE PATH "" FORCE)
+include("{ROOT}/cmake/StaticRuntime.cmake")
+''')
+            build = root / 'build'
+            run('cmake', '-S', str(root), '-B', str(build))
+            flags = (build / 'kasmvnc-static-runtime.mk').read_text()
+            self.assertNotIn('-static-libstdc++', flags)
+            self.assertIn('--exclude-libs,', flags)
+            self.assertIn('libz.a', flags)
+
     def test_openssl_sdk_headers_require_30(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

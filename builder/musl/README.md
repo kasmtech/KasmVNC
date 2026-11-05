@@ -7,10 +7,12 @@ and apk-tools 3. The glibc DEB/RPM/tar files are a different build and cannot
 be used as substitutes on Alpine.
 
 Portable CI uses runtime FFmpeg adapters for libavcodec families 58–63 and
-system OpenSSL 3; other application libraries are linked statically where possible. musl remains
-dynamic, preserving runtime loading of graphics drivers. The host provides
-FFmpeg and its encoder libraries, OpenSSL 3, musl, Mesa/graphics drivers, timezone data, desktop tools and
-keyboard data. The package installs the C++20 launcher and has no Perl runtime
+system OpenSSL 3. Desktop C libraries and compiler runtimes use host shared
+libraries, including libbsd, libstdc++ and libgcc. musl remains dynamic, preserving
+runtime loading of graphics drivers. The host provides FFmpeg and its encoder
+libraries, OpenSSL 3, musl, Mesa/graphics drivers, timezone data, desktop tools and
+keyboard data. Private zlib, prior performance libraries such as WebP/JPEG, and
+launcher YAML remain embedded. See the [desktop/compiler boundary](../portable/README.md#system-desktop-and-compiler-libraries). The package installs the C++20 launcher and has no Perl runtime
 requirement. The certificate stays at `/etc/ssl/private/kasmvnc.pem`.
 
 ## Build and install
@@ -123,7 +125,10 @@ OpenSSL has a separate symbol boundary: `.so.3` only and the `OPENSSL_3.0.0`
 imports available in the verified SDK. If an ELF omits symbol-version metadata,
 the audit compares its OpenSSL imports with the SDK's original-ABI exports.
 The final source inventory rejects static OpenSSL archive members and hidden
-OpenSSL definitions in the unstripped binaries.
+OpenSSL definitions in the unstripped binaries. It also rejects converted desktop
+and full compiler-runtime archives; hidden private zlib cannot interpose on the
+host font/PNG dependency closure. The APK explicitly lists all required host
+providers, and installed provenance records their SONAMEs without builder versions.
 
 Musl does not version its public symbols like glibc. This is a controlled-build
 and runtime qualification guarantee, not a claim that ELF metadata alone proves

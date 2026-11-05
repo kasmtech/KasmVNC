@@ -4,8 +4,8 @@ These packages contain the same native application build in DEB, RPM and tar
 formats. They require glibc 2.34 or newer; these files do not run on musl or EL8.
 Alpine uses the separate [portable musl APK profile](../musl/README.md).
 The x86_64 build uses EL9 distro archives, so its supported CPU baseline is
-x86-64-v2. ARM64 is built natively. OpenSSL 3, GPU loaders and drivers, timezone data,
-XKB tools/data, and the desktop remain host dependencies.
+x86-64-v2. ARM64 is built natively. Desktop C libraries, compiler runtimes, OpenSSL 3, GPU
+loaders and drivers, timezone data, XKB tools/data and the desktop remain host dependencies.
 
 Install the DEB/RPM with the distro package manager, allowing it to resolve
 dependencies. The package name remains `kasmvncserver`, replacing an existing
@@ -23,7 +23,8 @@ or add that user to `kasmvnc-cert`. Do not overlay a package-managed installatio
 with the tar archive; use its DEB/RPM instead. Tar installation has no package
 manager tracking or automatic uninstaller; retain its file listing.
 
-Tar dependencies include glibc, libGL, libgbm, bash, tzdata, xauth, xdpyinfo,
+Tar dependencies include the desktop/compiler libraries listed below, glibc,
+libGL, libgbm, bash, tzdata, xauth, xdpyinfo,
 xkbcomp, XKB data, the openssl command, and the system `libssl.so.3` and
 `libcrypto.so.3` libraries. Group creation uses groupadd/getent. Mesa DRI and VAAPI
 drivers are supplied by the host. Their default search checks the native Debian
@@ -42,6 +43,51 @@ and advisory scan reports are described below. Embedded dependencies require reb
 host package updates do not patch them. The optional FFmpeg adapter mode below
 uses host FFmpeg and encoder libraries instead. A public release still requires review
 of corresponding-source distribution and all embedded dependency licenses.
+
+## System desktop and compiler libraries
+
+Portable packages use host libpng, FreeType, pixman, AT-SPI, GLib, D-Bus,
+libunwind and X11 client/font libraries. Glibc builds additionally require
+libsystemd and **libcrypt.so.1**; EL9/Fedora satisfy the latter with
+`libxcrypt-compat`, not the different `libcrypt.so.2` ABI. Musl builds use host
+libbsd directly. Parent DSOs own their private dependency closure, including
+font compression, regex, ffi, capabilities and internationalization libraries.
+We do not pin those private DSOs or embed copies of them.
+
+C++ and exception handling use host `libstdc++.so.6` and `libgcc_s.so.1`.
+The ELF audit rejects imports newer than `GLIBCXX_3.4.29`, `CXXABI_1.3.13`
+and `GCC_4.5.0`. Optional static FFmpeg builds additionally permit the exact
+`__divmodti4@GCC_7.0.0` import, verified in every target distro's runtime;
+adapter builds do not permit this exception. EL9's toolset may contribute a small
+`libstdc++_nonshared.a` compatibility supplement; selected members, builtin
+helpers and CRT objects remain embedded and retain their source/SBOM evidence.
+Musl C++ symbols are generally unversioned, so these version ceilings alone
+cannot establish compatibility there.
+
+Builds use baseline distro development headers and public shared APIs; the
+mandatory runtime matrix tests the same packaged binaries on every target.
+A compatible SONAME alone is insufficient. Final link maps reject the converted
+static archives, and audits require the expected shared libraries on all five
+executables. `host-libraries.json` in installed documentation lists the exact
+SONAMEs and DEB/APK providers; `elf-audit.json` records the actual imports.
+RPM automatically requires the ELF SONAME and symbol capabilities, avoiding
+provider-name differences across EL, Fedora and openSUSE. Tar users must install
+these providers themselves; the package manager does this for DEB/RPM/APK.
+
+**Application zlib stays private/static.** The measured Ubuntu 22.04 system
+zlib cost approximately 22–24% more compression time on several production
+Tight/ZRLE stream workloads; this is not a whole-session FPS comparison. Its
+symbols are hidden so distro PNG/font DSOs continue to use their own system
+zlib. Previously embedded performance libraries such as WebP and JPEG remain
+embedded, as does the native launcher's YAML library. These retained inputs
+still require KasmVNC rebuilds for applicable security fixes.
+
+Update host packages and restart sessions to apply fixes to shared libraries.
+For immutable Workspaces containers, refresh the image and recreate containers;
+updating only the Docker host does not update libraries inside the container.
+The application SBOM identifies required host components without assigning
+builder versions to deployed runtimes. Scan the actual deployed image for the
+host libraries and their transitive closure.
 
 ## System OpenSSL 3
 
@@ -157,7 +203,7 @@ Each architecture publishes the following alongside its runtime and debug
 packages under the same S3 commit directory:
 
 * `.cdx.json`: CycloneDX 1.6 JSON for embedded native components, required host
-  OpenSSL (with no invented installed version), vendored code
+  OpenSSL, desktop and compiler libraries (with no invented installed versions), vendored code
   and the web client's actually bundled npm dependencies and identified vendored
   DES/base64 code. The same application
   inventory applies to the DEB, RPM and tarball; packaging metadata differs.
@@ -258,8 +304,8 @@ handoff before publishing. Runtime packages install notices under
 `/usr/share/doc/kasmvncserver/third-party-licenses`, including vendored license
 headers and source files when upstream has no standalone license text.
 
-Host OpenSSL 3, glibc, Bash, timezone data, desktop tools/data and GPU loaders/drivers remain host
-requirements, not builder-versioned runtime components in this SBOM. Scan the
+Host desktop and compiler libraries, OpenSSL 3, glibc, Bash, timezone data,
+desktop tools/data and GPU loaders/drivers remain host requirements, not builder-versioned runtime components in this SBOM. Scan the
 final deployed image separately to cover them. A linked library entry does not
 mean every upstream feature is enabled; archive/member selection and compiler
 optimization can remove unused code.
@@ -318,8 +364,11 @@ scan for that application revision. No KasmVNC application source or frontend is
 baked into the shared dependency image. Local builds use the same context and
 Docker layer cache without publishing anything.
 
-The image contains compiled GCC unwind runtime, desktop/runtime libraries,
-FFmpeg/codecs and the JPEG/TBB/cpuid/fmt/libyuv/libstatgrab helper dependencies.
+Older cached images may contain unused static desktop/GCC archives. They are
+not shipped merely because they exist in the builder: selected final link inputs
+determine the SBOM. Current builds use system desktop/compiler libraries and
+retain the JPEG/TBB/cpuid/fmt/libyuv/libstatgrab helper dependencies, private zlib,
+WebP/YAML and optional static FFmpeg/codecs.
 Xorg and KasmVNC are built together for each application commit because the Xorg
 patches integrate application code. Sources and license evidence are retained
 inside the image for later source bundles; the Grype database is refreshed for
@@ -371,7 +420,9 @@ again, even if other dependencies change. Authentication/network errors fail
 closed; only a registry manifest 404 permits rebuilding. Bump the toolchain's
 `repository-refresh.txt` to refresh its RPM environment deliberately. Source,
 patches, runtime notices and the toolchain RPM inventory remain available to the
-source/SBOM pipeline. No libc ABI, compiler baseline or linkage policy changed.
+source/SBOM pipeline. Portable application links no longer select the cached private unwind runtime.
+Its manifest remains cached build provenance, separately labelled from the
+actual embedded compatibility/startup inputs and host compiler-runtime requirements.
 
 Container validation: `python3 builder/portable/test-gcc-cache.py` and
 `python3 builder/portable/test-dependency-cache.py` in a dedicated test container.

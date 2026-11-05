@@ -8,6 +8,7 @@ export CFLAGS="-O2 -fPIC $baseline -g" CXXFLAGS="-O2 -fPIC $baseline -g"
 export KASMVNC_STATIC_RUNTIME_PREFIX=/opt/kasm-runtime
 export KASMVNC_CODEC_PREFIX=/opt/kasm-codecs
 export KASMVNC_STATIC_DESKTOP_PREFIX=/opt/kasm-desktop
+export KASMVNC_DYNAMIC_DESKTOP=ON
 export LIBYUV_COMMIT=eb6e7bb63738e29efd82ea3cf2a115238a89fa51
 KASMVNC_PORTABLE_DRIVER_PATH=$(/opt/kasm-dependency-recipes/portable-driver-path)
 export KASMVNC_PORTABLE_DRIVER_PATH

@@ -20,6 +20,8 @@ import tempfile
 from urllib.parse import quote
 from openssl_boundary import (read_sdk, sdk_path, sdk_exports, reject_static_openssl,
                               reject_embedded_symbols, audit_openssl)
+from host_libraries import (components as host_components, reject_static_host_library,
+                            audit_host_libraries, COMPILER_MAXIMUM, compiler_exceptions)
 
 SRC = Path('/src')
 BINARIES = ['unix/xserver/hw/vnc/Xvnc', 'unix/vncconfig/vncconfig',
@@ -141,6 +143,7 @@ def link_inputs(binary):
         if re.fullmatch(r'cc[^/]+\.(?:ltrans[0-9]+\.ltrans|debug\.temp)\.o', path.name) and path.parent == Path('/tmp'):
             continue
         if SRC not in path.parents:
+            reject_static_host_library(path)
             if not path.is_file():
                 raise RuntimeError(f'Missing link input {path}')
             result.append(path)
@@ -412,6 +415,7 @@ class Inventory:
 
     def archive(self, path):
         reject_static_openssl(path)
+        reject_static_host_library(path)
         # Package ownership wins over an upstream name (EL backports matter).
         package = self.apk_sources.owner(path, self.apk_packages) if self.musl else None
         if package:
@@ -453,9 +457,12 @@ def main():
         for name in BINARIES:
             binary = SRC / name
             selected_inputs = link_inputs(binary)
+            if binary.name == 'Xvnc' and not any(path.name == 'libz.a' for path in selected_inputs):
+                raise RuntimeError('Xvnc is missing its private static zlib link input')
             reject_embedded_symbols(binary, openssl_exports, selected_inputs)
             needed = re.findall(r'\(NEEDED\).*?\[(.*?)\]', run('readelf', '-dW', binary))
             audit_openssl(binary, needed, openssl_exports)
+            audit_host_libraries(binary, needed, 'musl' if inv.musl else 'glibc')
             for path in selected_inputs:
                 deps.add(inv.archive(path))
             for suffix in ['.static-link.json', '.link-map']:
@@ -592,6 +599,26 @@ def main():
                 'other_requirements': ['musl >= 1.2.5' if inv.musl else 'glibc >= 2.34', 'Bash and host timezone data',
                     'XKB tools/data', 'desktop/session applications', 'GPU vendor drivers/loaders when enabled'],
                 'versions': 'Supplied and patched by the host; deliberately not assigned builder versions.'}
+        host['desktop_mode'] = 'host-shared'
+        host['compiler_runtime'] = {
+            'selection': 'Host libstdc++.so.6 and libgcc_s.so.1; selected startup/builtin and toolset nonshared compatibility inputs remain embedded.',
+            'symbol_version_maximum': COMPILER_MAXIMUM,
+            'symbol_exceptions': compiler_exceptions(),
+            'musl_qualification': 'Unversioned C++ imports require native baseline builds and runtime-matrix execution.',
+        }
+        host['private_dependency_closure'] = 'The host desktop DSOs own their transitive dependencies; versions and security fixes are determined by the deployed distro.'
+        host['zlib'] = 'KasmVNC embeds a hidden private zlib for compression performance; host PNG/font DSOs retain their own distro zlib.'
+        for item in host_components('musl' if inv.musl else 'glibc'):
+            required = sorted(set(item['sonames']) & set(host['shared_libraries']))
+            if not required:
+                continue
+            ref = 'host:' + item['name']
+            c = {'type': 'library', 'bom-ref': ref, 'name': item['name'], 'scope': 'required',
+                 'properties': [prop('delivery', 'host-runtime'),
+                                prop('required-sonames', ','.join(required)),
+                                prop('version-source', 'Installed host package; no runtime version assigned from builder') ]}
+            inv.components[ref] = c
+            deps.add(ref)
         host['runtime_openssl'] = {
             'sonames': ['libssl.so.3', 'libcrypto.so.3'], 'abi_baseline': 'OPENSSL_3.0.0',
             'selection': 'Required system shared libraries; no embedded runtime or private shared-library fallback.',
@@ -613,6 +640,7 @@ def main():
                     'architecture': args.arch, 'sources': list(inv.sources.values()), 'link_inputs': inv.records,
                     'source_binary_sha256': {name: sha(SRC / name) for name in BINARIES},
                     'ffmpeg_mode': ffmpeg_mode, 'openssl_mode': 'host-shared-3',
+                    'desktop_mode': 'host-shared', 'compiler_runtime_mode': 'host-shared',
                     'build_dependencies': {'openssl_sdk': openssl_sdk},
                     'host_requirements': host, 'limitations': inv.limitations}
         write(bundle / 'manifest.json', manifest)
@@ -627,6 +655,7 @@ def main():
         root = component('KasmVNC', os.environ['KASMVNC_PORTABLE_VERSION'], kind='application',
                          properties=[prop('revision', os.environ['KASMVNC_COMMIT_ID']), prop('architecture', args.arch), prop('libc', 'musl' if inv.musl else 'glibc'),
                                      prop('ffmpeg-mode', ffmpeg_mode), prop('openssl-mode', 'host-shared-3'),
+                                     prop('desktop-mode', 'host-shared'), prop('compiler-runtime-mode', 'host-shared'),
                                      prop('host-requirements', json.dumps(host)), prop('limitations', json.dumps(inv.limitations))])
         bom = {'bomFormat': 'CycloneDX', 'specVersion': '1.6', 'version': 1,
                'metadata': {'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'component': root},

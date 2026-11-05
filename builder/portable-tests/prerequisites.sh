@@ -8,6 +8,21 @@ ffmpeg_mode=${3:-static}
 case "$ffmpeg_mode" in static|adapters) ;; *) echo 'Unknown FFmpeg mode' >&2; exit 2 ;; esac
 . /etc/os-release
 export DEBIAN_FRONTEND=noninteractive
+# Tar archives have no package transaction to resolve their host library ABI.
+# RPM capability names avoid EL/Fedora/SUSE package-name differences, including
+# the libxcrypt-compat provider of libcrypt.so.1. All supported targets are 64-bit.
+tar_host_sonames=(libpng16.so.16 libfreetype.so.6 libpixman-1.so.0 libatspi.so.0
+  libglib-2.0.so.0 libgobject-2.0.so.0 libdbus-1.so.3 libX11.so.6 libXau.so.6
+  libXcursor.so.1 libXdmcp.so.6 libXext.so.6 libXfixes.so.3 libXfont2.so.2
+  libXrandr.so.2 libXtst.so.6 libxshmfence.so.1 libunwind.so.8 libstdc++.so.6
+  libgcc_s.so.1 libcrypt.so.1 libsystemd.so.0 libssl.so.3 libcrypto.so.3)
+tar_rpm_capabilities=()
+if [[ "$ffmpeg_mode" = static ]]; then
+  tar_host_sonames+=(libdrm.so.2 libva.so.2 libva-drm.so.2)
+fi
+for soname in "${tar_host_sonames[@]}"; do
+  tar_rpm_capabilities+=("$soname()(64bit)")
+done
 if command -v apk >/dev/null; then
   if [[ "$stage" = bootstrap ]]; then
     apk add --no-cache bash ca-certificates
@@ -39,8 +54,22 @@ elif command -v apt-get >/dev/null; then
   apt-get install -y --no-install-recommends ca-certificates curl openssl procps \
     python3 openbox xterm x11-utils dbus-x11 util-linux binutils mesa-utils libgl1-mesa-dri
   if [[ "$format" = tar ]]; then
+    tar_deb_libraries=()
+    if [[ "$ffmpeg_mode" = static ]]; then
+      tar_deb_libraries+=(libdrm2 libva2 libva-drm2)
+    fi
+    for library in libpng16-16 libatspi2.0-0 libglib2.0-0; do
+      if apt-cache show "${library}t64" >/dev/null 2>&1; then
+        tar_deb_libraries+=("${library}t64")
+      else
+        tar_deb_libraries+=("$library")
+      fi
+    done
     apt-get install -y --no-install-recommends bash tzdata ssl-cert xauth x11-xkb-utils \
-      xkb-data libgl1 libgbm1
+      xkb-data libgl1 libgbm1 "${tar_deb_libraries[@]}" libfreetype6 libpixman-1-0 \
+      libdbus-1-3 libx11-6 libxau6 libxcursor1 libxdmcp6 libxext6 libxfixes3 \
+      libxfont2 libxrandr2 libxtst6 libxshmfence1 libunwind8 libstdc++6 libgcc-s1 \
+      libcrypt1 libsystemd0
   fi
 elif command -v zypper >/dev/null; then
   # Leap container defaults omit RPM documentation. Override only the test
@@ -55,7 +84,7 @@ elif command -v zypper >/dev/null; then
     procps python3 openbox xterm xdpyinfo dbus-1-x11 util-linux shadow binutils tar gzip Mesa-dri Mesa-demo-x
   if [[ "$format" = tar ]]; then
     zypper --non-interactive install --no-recommends bash timezone xauth xkeyboard-config \
-      xkbcomp libglvnd libgbm1 hostname
+      xkbcomp libglvnd libgbm1 hostname "${tar_rpm_capabilities[@]}"
   fi
 else
   # EL9 needs EPEL for the same desktop prerequisites as existing packages.
@@ -90,7 +119,7 @@ EOF
     '/usr/bin/glxinfo' mesa-dri-drivers
   if [[ "$format" = tar ]]; then
     dnf install -y bash tzdata xorg-x11-xauth xkeyboard-config xkbcomp \
-      libglvnd-glx mesa-libgbm hostname
+      libglvnd-glx mesa-libgbm hostname "${tar_rpm_capabilities[@]}"
   fi
 fi
 if [[ "$ffmpeg_mode" = adapters ]]; then
