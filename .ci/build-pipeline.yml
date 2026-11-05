@@ -190,8 +190,10 @@ functional_test_standard:
   needs:
     - job: build_portable_amd64
       optional: true
+      artifacts: true
     - job: build_portable_musl_amd64
       optional: true
+      artifacts: true
   before_script:
     - . .ci/helpers.sh
     - prepare_to_run_scripts_and_s3_uploads
@@ -205,8 +207,7 @@ functional_test_standard:
       (export AWS_ACCESS_KEY_ID="${EC2_LAUNCHER_ID:-$AWS_ACCESS_KEY_ID}"
       AWS_SECRET_ACCESS_KEY="${EC2_LAUNCHER_SECRET:-$AWS_SECRET_ACCESS_KEY}";
       if [ -n "${EC2_LAUNCHER_ID:-}" ]; then unset AWS_SESSION_TOKEN AWS_SECURITY_TOKEN; fi;
-      .vm/venv/bin/python -m virtualization.matrix --state .vm/state.json --report-dir report
-      --package-deb "$FUNCTIONAL_TEST_DEB" --package-rpm "$FUNCTIONAL_TEST_RPM");
+      .vm/venv/bin/python -m virtualization.matrix --state .vm/state.json --report-dir report);
       exit_code=$?; set -e
     - upload_report_to_s3
     - put_report_into_ci_pipeline "$exit_code"

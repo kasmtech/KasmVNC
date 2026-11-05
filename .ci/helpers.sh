@@ -353,19 +353,20 @@ prepare_standard_functional_tests() {
   export KASMVNC_ARTIFACT_COMMIT="$CI_COMMIT_SHA"
   export KASMVNC_ARTIFACT_BRANCH="$CI_COMMIT_REF_NAME"
   export KASMVNC_ARTIFACT_FFMPEG_MODE=adapters
-  local -a deb_packages rpm_packages
-  mapfile -t deb_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*_amd64.deb' ! -name '*dbgsym*' -print)
-  mapfile -t rpm_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*_amd64.rpm' -print)
-  if [[ ${#deb_packages[@]} != 1 || ${#rpm_packages[@]} != 1 ]]; then
-    echo 'Standard requires exactly one pipeline AMD64 portable DEB and RPM' >&2
-    return 1
-  fi
-  export FUNCTIONAL_TEST_DEB="$(realpath "${deb_packages[0]}")"
-  export FUNCTIONAL_TEST_RPM="$(realpath "${rpm_packages[0]}")"
+  unset KASMVNC_CANDIDATE_DIR KASMVNC_CANDIDATE_SHA256
+  local glibc_artifacts musl_artifacts
+  glibc_artifacts=$(realpath -e output/portable_amd64) || return 1
+  musl_artifacts=$(realpath -e output/portable_musl_amd64) || return 1
+  [[ -d "$glibc_artifacts" && -d "$musl_artifacts" ]] || return 1
   prepare_functional_tests_source_and_cd_into_it
-  # Preflight this pipeline's exact published DEB/RPM/APK and pinned APK key
-  # before launching hosts. Never resolve another pipeline as a fallback.
-  python3 -m runner.resolve_candidate --output-dir candidate || return 1
+  # Freeze this pipeline's DEB/RPM/APK, manifests, provenance and pinned APK key
+  # before launching hosts. Another pipeline may overwrite the public S3 names.
+  python3 -m runner.resolve_candidate --output-dir candidate \
+    --local-artifacts "$glibc_artifacts" --local-artifacts "$musl_artifacts" || return 1
+  export KASMVNC_CANDIDATE_DIR
+  KASMVNC_CANDIDATE_DIR=$(realpath -e candidate) || return 1
+  export KASMVNC_CANDIDATE_SHA256
+  KASMVNC_CANDIDATE_SHA256=$(python3 -c 'import hashlib; print(hashlib.sha256(open("candidate/candidate.json", "rb").read()).hexdigest())') || return 1
   export KASMVNC_ALPINE_KEY_SHA256
   KASMVNC_ALPINE_KEY_SHA256=$(python3 -c 'import json; print(json.load(open("candidate/candidate.json"))["signing_key"]["sha256"])') || return 1
   cp candidate/candidate.json report/candidate.json

@@ -204,6 +204,11 @@ Compare total job duration (runner time), pipeline wall time, and artifact bytes
 against the prior successful pipeline; counts alone do not predict time savings.
 Public rollout remains subject to manual host/kernel/GPU validation.
 
+The required MR Standard functional job verifies and snapshots the DEB, RPM,
+APK, checksum manifests, provenance and pinned APK public key received from its
+own pipeline before launching test hosts. Every host uses that frozen candidate;
+concurrent pipelines publishing the same commit cannot change its test inputs.
+
 Separate build-ID debug symbols are published in DEB, RPM and tar formats, with
 checksums and a `.debug.json` mapping. See `DEBUGGING.md` for exact-build matching
 and the existing crashpad lookup.
