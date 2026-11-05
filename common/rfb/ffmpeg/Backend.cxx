@@ -1,5 +1,4 @@
 /* Copyright (C) 2026 Kasm Technologies Corp. GPL-2.0-or-later. */
-#include <config.h>
 #include "Backend.h"
 #include <algorithm>
 #include <deque>

@@ -19,9 +19,21 @@ Xvnc_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) -
 endif()
 file(WRITE "${CMAKE_BINARY_DIR}/kasmvnc-static-desktop.mk" "${KASMVNC_DESKTOP_MAKE}")
 
-# Apply the same dependency policy to every shipped helper executable.
+# Apply the desktop dependency policy to shipped helper executables.
+# RUNTIME_ONLY shares executable flags without adding desktop dependencies.
 # The final ELF audit checks their compiler ABI versions as well as Xvnc.
 function(kasmvnc_static_desktop_target target)
+  cmake_parse_arguments(POLICY "RUNTIME_ONLY" "" "" ${ARGN})
+  if(POLICY_RUNTIME_ONLY)
+    # Small C helpers need the portable executable flags, not the desktop
+    # dependency closure. Preserve activation for runtime-prefix-only builds.
+    if(KASMVNC_STATIC_RUNTIME_PREFIX)
+      set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+      set_property(TARGET ${target} APPEND_STRING PROPERTY LINK_FLAGS
+        " -pie -Wl,--as-needed -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${target}.link-map")
+    endif()
+    return()
+  endif()
   if(KASMVNC_STATIC_DESKTOP_PREFIX OR KASMVNC_DYNAMIC_DESKTOP)
     set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     set_property(TARGET ${target} PROPERTY RULE_LAUNCH_LINK

@@ -11,12 +11,16 @@ fi
 # invoke build.sh with no args — still produce the server tarball and still fail
 # if the web assets (builder/www, from builder/build-www) are missing.
 run_servertarball=1
+force_autoreconf=1
 for arg in "$@"; do
   case "$arg" in
     # Skip the final `make servertarball` packaging step (and the /build copies).
     # For dev/CI smoke builds that only need the Xvnc binary + libraries and don't
     # have builder/www. Do NOT pass this in packaging pipelines.
     --no-servertarball) run_servertarball=0 ;;
+    # Keep dependency-based regeneration for incremental builds, without forcing
+    # every Autotools output to be rewritten. Cold/package builds retain -f.
+    --no-force-autoreconf) force_autoreconf=0 ;;
     *) echo "build.sh: ignoring unknown argument: $arg" >&2 ;;
   esac
 done
@@ -166,7 +170,11 @@ else
   cd unix/xserver
 fi
 
-autoreconf -fi
+autoreconf_options=(-i)
+if [[ "$force_autoreconf" == 1 ]]; then
+  autoreconf_options+=(-f)
+fi
+autoreconf "${autoreconf_options[@]}"
 # Configuring Xorg is long and has many distro-specific paths.
 # The distro paths start after prefix and end with the font path,
 # everything after that is based on BUILDING.txt to remove unneeded

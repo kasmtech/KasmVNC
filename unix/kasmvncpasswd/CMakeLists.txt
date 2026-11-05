@@ -24,9 +24,6 @@ elseif(KASMVNC_STATIC_DESKTOP_PREFIX)
 endif()
 target_link_libraries(kasmvncpasswd ${kasmvnc_crypt_library} ${KASMVNC_CRYPTO_LIBRARY})
 
-if(KASMVNC_STATIC_RUNTIME_PREFIX)
-  set_target_properties(kasmvncpasswd PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  set_property(TARGET kasmvncpasswd APPEND_STRING PROPERTY LINK_FLAGS " -pie -Wl,--as-needed -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/kasmvncpasswd.link-map")
-endif()
+kasmvnc_static_desktop_target(kasmvncpasswd RUNTIME_ONLY)
 
 install(TARGETS kasmvncpasswd DESTINATION ${BIN_DIR})

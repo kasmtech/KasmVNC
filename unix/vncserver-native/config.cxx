@@ -506,8 +506,8 @@ namespace launcher {
             throw std::runtime_error("Cannot resolve timezone");
         return static_cast<int>(result.tm_gmtoff);
     }
-    std::vector<std::string> arguments(const Config &c, Context &context, const std::set<std::string> &supplied) {
-        std::vector<std::string> out;
+    std::vector<Argument> arguments(const Config &c, Context &context, const std::set<std::string> &supplied) {
+        std::vector<Argument> out;
         auto value = [&](const std::string &key) { return scalar(c, key); };
         auto protocol =
             c.get("network.protocol").kind == Node::Kind::Scalar ? value("network.protocol") : std::string{};
@@ -641,12 +641,12 @@ namespace launcher {
             }
             if (name == "http-header") {
                 for (const auto &header: c.get(option.keys[0].name).values()) {
-                    out.push_back("-http-header");
-                    out.push_back(header);
+                    out.push_back({"-http-header", ArgumentKind::OptionName});
+                    out.push_back({header});
                 }
                 continue;
             }
-            out.push_back("-" + name);
+            out.push_back({"-" + name, ArgumentKind::OptionName});
             const bool undefinedDerived =
                 !firstDefined &&
                 (name == "IdleTimeout" || name == "MaxDisconnectionTime" || name == "MaxConnectionTime" ||
@@ -655,7 +655,7 @@ namespace launcher {
                     name == "udpFullFrameFrequency" || name == "PrintVideoArea" || name == "VideoArea" ||
                     name == "ScrollDetectLimit" || name == "VideoScaling" || name == "CompareFB");
             if (name != "hw3d" && !undefinedDerived && !(name == "depth" && v.empty()))
-                out.push_back(interpolate(derived));
+                out.push_back({interpolate(derived)});
         }
         return out;
     }

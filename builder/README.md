@@ -114,6 +114,14 @@ just build your deb/rpm with `build-deb` and test with `test-deb`.
 
 `build-rpm` and `test-rpm` are also available.
 
+For incremental builds inside a developer container,
+`builder/build.sh --no-force-autoreconf --no-servertarball` lets Autotools
+regenerate only outputs whose inputs changed. Portable profile entrypoints also
+forward this option; keep using the same profile for those rebuilds.
+The option runs `autoreconf -i`. Cold and package builds keep the default forced
+regeneration (`autoreconf -i -f`) needed by the portable EL9 builder. Omit the
+opt-out when changing the build toolchain or recreating the build environment.
+
 ## Ensuring packages have all dependencies they need.
 
 If you're working on a deb/rpm package, testing that it has all the necessary

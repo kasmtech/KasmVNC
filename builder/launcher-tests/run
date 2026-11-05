@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Invoke from repository root. The bind mount permits writing reports and a
-# separately compiled candidate, but all test HOME/process state is disposable.
-docker build -t kasmvnc-launcher-parity:local -f builder/launcher-tests/Dockerfile .
-docker run --rm --network none -v "$PWD:/src" kasmvnc-launcher-parity:local "$@"
+root=$(cd "$(dirname "$0")/../.." && pwd)
+runner="$root/kasmvnc-unit-tests/launcher/run"
+if [[ ! -x "$runner" ]]; then
+  echo 'Initialize tests: git submodule update --init kasmvnc-unit-tests' >&2
+  exit 1
+fi
+exec "$runner" "$root" "$@"

@@ -16,7 +16,6 @@
  * USA.
  */
 
-#include <config.h>
 #include "ffmpeg.h"
 #include "ffmpeg/Backend.h"
 #include "LogWriter.h"

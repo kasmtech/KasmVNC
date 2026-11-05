@@ -16,7 +16,6 @@
  * USA.
  */
 
-#include "config.h"
 #include "Library.h"
 
 #include <array>

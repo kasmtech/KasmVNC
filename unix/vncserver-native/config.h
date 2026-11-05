@@ -59,7 +59,12 @@ namespace launcher {
         std::string geometry, fontPath, authority, desktop;
         int display = 1;
     };
-    std::vector<std::string> arguments(const Config &, Context &, const std::set<std::string> &supplied);
+    enum class ArgumentKind { OptionName, Value, PassThrough };
+    struct Argument {
+        std::string value;
+        ArgumentKind kind = ArgumentKind::Value;
+    };
+    std::vector<Argument> arguments(const Config &, Context &, const std::set<std::string> &supplied);
     int timezoneOffset(const std::string &name);
     struct Exit {
         int status;

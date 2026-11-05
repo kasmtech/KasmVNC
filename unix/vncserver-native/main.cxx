@@ -175,15 +175,10 @@ namespace launcher {
                 out += c == '\'' ? "'\"'\"'" : std::string(1, c);
             return out + "'";
         }
-        std::string render(const std::vector<std::string> &args, const std::string &log, std::size_t passthroughCount) {
-            std::string result = args.front();
+        std::string render(const std::vector<Argument> &args, const std::string &log) {
+            std::string result = args.front().value;
             for (std::size_t i = 1; i < args.size(); ++i)
-                result += " " + ((!(i >= 2 && i < 2 + passthroughCount) && args[i].starts_with('-') &&
-                                     args[i].find_first_not_of(
-                                         "-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") ==
-                                         std::string::npos)
-                                        ? args[i]
-                                        : quote(args[i]));
+                result += " " + (args[i].kind == ArgumentKind::OptionName ? args[i].value : quote(args[i].value));
             return result + " >> " + quote(log) + " 2>&1";
         }
         bool alive(pid_t pid) {
@@ -642,18 +637,20 @@ twm
                 if (error)
                     throw Exit{1};
             }
-            std::vector<std::string> command(Context &ctx) {
-                std::vector<std::string> result{tool("Xvnc"), ":" + std::to_string(display)};
+            std::vector<Argument> command(Context &ctx) {
+                std::vector<Argument> result{{tool("Xvnc")}, {":" + std::to_string(display)}};
                 std::set<std::string> supplied;
                 for (const auto &arg: pass) {
-                    result.push_back(arg);
+                    // Preserve the legacy quoted presentation of every CLI
+                    // pass-through token without guessing option/value roles.
+                    result.push_back({arg, ArgumentKind::PassThrough});
                     if (arg.starts_with('-'))
                         supplied.insert(arg);
                 }
                 for (const auto &key: {"-fp", "-interface", "-websocketPort", "-Log"})
                     if (has(key) && !cli.at(key).empty() && cli.at(key) != "0") {
-                        result.push_back(key);
-                        result.push_back(cli.at(key));
+                        result.push_back({key, ArgumentKind::OptionName});
+                        result.push_back({cli.at(key)});
                         supplied.insert(key);
                     }
                 auto generated = arguments(config, ctx, supplied);
@@ -664,8 +661,8 @@ twm
                          {"-rfbwait", "30000"                        }
                 })
                     if (!supplied.contains(key)) {
-                        result.push_back(key);
-                        result.push_back(val);
+                        result.push_back({key, ArgumentKind::OptionName});
+                        result.push_back({val});
                     }
                 return result;
             }
@@ -864,11 +861,16 @@ twm
                     authority,
                     host + ":" + std::to_string(display) + " (" + user + ")",
                     display};
-                auto args = command(context);
+                auto commandArgs = command(context);
+                // Rendering metadata never changes the literal argv passed to exec.
+                std::vector<std::string> args;
+                args.reserve(commandArgs.size());
+                for (const auto &arg: commandArgs)
+                    args.push_back(arg.value);
                 desktop = context.desktop;
                 certificates();
                 if ((dry || debug) && topic("xvnc-cmd"))
-                    std::cout << render(args, log, pass.size()) << "\n";
+                    std::cout << render(commandArgs, log) << "\n";
                 if (dry)
                     return;
                 if (!has("-interface") && value("network.interface").empty())
