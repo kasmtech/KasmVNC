@@ -55,6 +55,32 @@ put_report_into_ci_pipeline {code}
                 self.assertIn('standard functional tests ' + state, result.stdout)
                 self.assertIn('/tests/exact-commit/report/index.html', result.stdout)
 
+    def test_standard_preflight_receives_exact_adapter_artifact_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            packages = root/'output/portable_amd64'; packages.mkdir(parents=True)
+            for suffix in ['deb', 'rpm']:
+                (packages/f'kasmvncserver_portable_1.5.3_test_adapters_amd64.{suffix}').touch()
+            (root/'kasmvnc-functional-tests').mkdir()
+            result = self.shell(f'''source "{ROOT}/.ci/helpers.sh"
+detect_release_version() {{ RELEASE_VERSION=1.5.3; }}
+CI_COMMIT_SHA=abcdef123456; CI_COMMIT_REF_NAME=feature/test
+python3() {{
+  if [[ "$1" == -m ]]; then
+    printf '%s\\n' "$KASMVNC_ARTIFACT_VERSION" "$KASMVNC_ARTIFACT_COMMIT" "$KASMVNC_ARTIFACT_BRANCH" "$KASMVNC_ARTIFACT_FFMPEG_MODE" > identity.txt
+    mkdir -p candidate
+    printf '%s' '{{"signing_key":{{"sha256":"key-fixture"}}}}' > candidate/candidate.json
+  else
+    command python3 "$@"
+  fi
+}}
+prepare_standard_functional_tests
+''', root)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((root/'kasmvnc-functional-tests/identity.txt').read_text().splitlines(),
+                             ['1.5.3', 'abcdef123456', 'feature/test', 'adapters'])
+            self.assertTrue((root/'kasmvnc-functional-tests/report/candidate.json').is_file())
+
     def test_failed_certificate_generation_does_not_publish_partial_file(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); cert = root/'private/server.pem'; cert.parent.mkdir()

@@ -17,28 +17,39 @@ KasmVNC provides remote web-based access to a Desktop or application. While VNC 
 ## Installation
 
 Choose a package from the [release assets](https://github.com/kasmtech/KasmVNC/releases)
-for your CPU architecture and Linux distribution. Universal packages share one
-build across compatible distributions; legacy packages target an individual
-distribution release.
+for your CPU architecture and Linux distribution. Portable packages share one
+build across the tested userspaces below; legacy packages target an individual
+distribution release. A libc version alone does not establish compatibility.
 
-| Package | Compatible systems | Release asset name |
+| Package | Userspace requirements | Release asset name |
 | --- | --- | --- |
-| Universal DEB | Debian, Ubuntu, Kali and derivatives with **glibc 2.34 or newer** | `kasmvncserver_portable_…_<arch>.deb` |
-| Universal RPM | Fedora, RHEL-compatible systems and openSUSE with **glibc 2.34 or newer** | `kasmvncserver_portable_…_<arch>.rpm` |
-| Universal APK | **Alpine 3.21 or newer**, with musl 1.2.5 or newer | `kasmvncserver_portable_musl_…_<arch>.apk` |
+| Portable DEB | Tested Debian/Ubuntu-family userspaces, **glibc 2.34+**, and the required host libraries | `kasmvncserver_portable_…_<arch>.deb` |
+| Portable RPM | Tested Fedora/EL9/openSUSE userspaces, **glibc 2.34+**, and the required host libraries | `kasmvncserver_portable_…_<arch>.rpm` |
+| Portable APK | Tested **Alpine 3.21–3.24** userspaces, **musl 1.2.5+**, and the required host libraries | `kasmvncserver_portable_musl_…_<arch>.apk` |
 | Legacy distro package | Older systems such as Oracle Linux 8 and openSUSE 15 | Select the asset named for your exact distribution and release |
 
-Universal packages are available for **AMD64 (x86_64)** and **ARM64 (aarch64)**.
-The glibc AMD64 packages require an **x86-64-v2** CPU. Check `uname -m` for your
+Portable builds target **AMD64 (x86_64)** and **ARM64 (aarch64)** separately.
+The glibc AMD64 build requires **x86-64-v2**; musl AMD64 targets **x86-64**,
+and ARM64 targets **ARMv8-A**. Host libraries and GPU drivers can impose additional
+requirements. Check `uname -m` for your
 architecture and `getconf GNU_LIBC_VERSION` for the glibc version on DEB/RPM
 systems. Alpine uses musl and requires the APK build; the DEB/RPM binaries are
 not interchangeable with it.
 
-Universal packages include the native C++ `vncserver` launcher and do not
-require Perl. They statically link application dependencies while retaining
-the host's libc and graphics drivers. Your package manager installs the
-remaining runtime dependencies; install your preferred desktop environment
-separately. Use a newer KasmVNC release to update its embedded libraries.
+The [published validation matrix](builder/portable-tests/README.md) lists the
+exact distro versions, architectures, fixtures and exclusions. These are native
+Docker runtime tests sharing each CI runner's kernel, not separate boots of
+each distro's kernel. They do not establish an oldest supported kernel,
+untested future distro compatibility, NixOS support or GPU qualification.
+Distinct host/kernel and GPU validation remains a public-release requirement.
+
+Portable packages include the native C++ `vncserver` launcher and do not
+require Perl. Desktop libraries, compiler runtimes, OpenSSL 3 and, in adapter
+builds, FFmpeg and its encoders come from the host. Your package manager resolves
+declared dependencies; install a desktop environment and a supported FFmpeg
+runtime with the desired encoders separately. Update host packages and restart
+sessions to apply their security fixes. Retained embedded libraries, including
+WebP, JPEG, private zlib and launcher YAML, require a newer KasmVNC build for fixes.
 Legacy packages retain their distro-specific dependencies and Perl launcher.
 
 Download the runtime package, rather than a debug-symbol package, and verify it
@@ -48,14 +59,14 @@ and back up `/etc/kasmvnc/kasmvnc.yaml` first. The installed package remains
 `kasmvncserver`, and the `vncserver` / `vncpasswd` commands and configuration
 locations remain the same.
 
-### Universal DEB: Debian / Ubuntu / Kali
+### Portable DEB: Debian / Ubuntu / Kali
 
 ```sh
 sudo apt-get install ./<downloaded-package>.deb
 sudo adduser "$USER" ssl-cert
 ```
 
-### Universal RPM: Fedora / RHEL-compatible systems / openSUSE
+### Portable RPM: Fedora / RHEL-compatible systems / openSUSE
 
 ```sh
 sudo dnf install ./<downloaded-package>.rpm
@@ -65,7 +76,7 @@ sudo usermod -a -G kasmvnc-cert "$USER"
 On openSUSE, use `sudo zypper install ./<downloaded-package>.rpm` in place of
 `dnf install`.
 
-### Universal APK: Alpine
+### Portable APK: Alpine
 
 Obtain the APK and its accompanying public signing key from the same trusted
 release. Run these commands as root, substituting your desktop username:
@@ -84,7 +95,7 @@ This gives new sessions access to the TLS certificate's private key.
 
 ### Legacy distro packages
 
-Use a legacy package when your distribution does not meet the universal
+Use a legacy package when your distribution does not meet the portable
 package requirements. Choose the exact distribution, release and architecture
 from the release assets; availability depends on the KasmVNC release.
 Install legacy DEBs with `apt-get` and RPMs with your distro's package manager.

@@ -647,7 +647,9 @@ twm
                     if (arg.starts_with('-'))
                         supplied.insert(arg);
                 }
-                for (const auto &key: {"-fp", "-interface", "-websocketPort", "-Log"})
+                // Parsed launcher options must reach Xvnc and suppress their
+                // YAML equivalents, including a workspace's requested geometry.
+                for (const auto &key: {"-geometry", "-fp", "-interface", "-websocketPort", "-Log"})
                     if (has(key) && !cli.at(key).empty() && cli.at(key) != "0") {
                         result.push_back({key, ArgumentKind::OptionName});
                         result.push_back({cli.at(key)});

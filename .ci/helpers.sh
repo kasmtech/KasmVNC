@@ -352,6 +352,7 @@ prepare_standard_functional_tests() {
   export KASMVNC_ARTIFACT_VERSION="$RELEASE_VERSION"
   export KASMVNC_ARTIFACT_COMMIT="$CI_COMMIT_SHA"
   export KASMVNC_ARTIFACT_BRANCH="$CI_COMMIT_REF_NAME"
+  export KASMVNC_ARTIFACT_FFMPEG_MODE=adapters
   local -a deb_packages rpm_packages
   mapfile -t deb_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*_amd64.deb' ! -name '*dbgsym*' -print)
   mapfile -t rpm_packages < <(find output/portable_amd64 -maxdepth 1 -type f -name '*_amd64.rpm' -print)

@@ -16,11 +16,15 @@ variables:
   # E.g. BUILD_DISTROS_REGEX: "jammy|\ noble".
   BUILD_DISTROS_REGEX: all
   BUILD_PORTABLE: "true"
+  # Preserve artifact names/layouts consumed by workspaces-core-images until
+  # its installers migrate to portable packages. Disable for reduced portable CI.
+  BUILD_WORKSPACE_LEGACY: "true"
   # Opt in to rebuilding portable-capable distros for comparison/rollback.
   BUILD_FULL_LEGACY: "false"
   WORKSPACE_IMAGE_TAG: "develop"
   # To debug upload stage, you can limit BUILD_DISTROS_REGEX to jammy and allow
-  # run_test distros to fail, by setting ALLOW_RUN_TESTS_TO_FAIL to true.
+  # run_test distros to fail with ALLOW_RUN_TESTS_TO_FAIL=true only when
+  # BUILD_WORKSPACE_LEGACY=false; compatibility jobs remain required.
   ALLOW_RUN_TESTS_TO_FAIL: false
   # "auto" uses Kali's stock mirror (http.kali.org). If a Kali job fails with
   # "APT mirror failed", rerun the pipeline from the UI with another mirror.
@@ -61,8 +65,10 @@ stages:
   - touch builder/www
 
 .prepare_artfacts: &prepare_artfacts
-  - cp -r builder/build/* output/
-  - rm output/*.tar.gz
+  - if [ -d "builder/build/$DISTRO_SLUG" ]; then
+      mkdir -p output;
+      cp -r "builder/build/$DISTRO_SLUG" output/;
+    fi
 
 .enable_core_dumps: &enable_core_dumps
   - echo core > /proc/sys/kernel/core_pattern
@@ -117,6 +123,18 @@ stages:
         DISTRO_SLUG: 'fedora_43'
         LEGACY_REQUIRED: "false"
         GROUP: 12
+      - DISTRO: 'alpine 321'
+        DISTRO_SLUG: 'alpine_321'
+        LEGACY_REQUIRED: "false"
+        GROUP: 13
+      - DISTRO: 'alpine 322'
+        DISTRO_SLUG: 'alpine_322'
+        LEGACY_REQUIRED: "false"
+        GROUP: 14
+      - DISTRO: 'alpine 323'
+        DISTRO_SLUG: 'alpine_323'
+        LEGACY_REQUIRED: "false"
+        GROUP: 15
 
 
 default:
@@ -226,7 +244,8 @@ build_www:
   before_script:
     - *prepare_build
   script:
-    - apt-get install -y git
+    - apt-get install -y git python3 python3-yaml ruby
+    - python3 -m unittest discover -s .ci/tests -v
     - builder/build-www
     - mkdir -p output/www
     - cd builder
@@ -253,7 +272,8 @@ build_amd64:
     - *prepare_artfacts
   script:
     - if ! is_build_this_distro "$DISTRO"; then
-        exit 1;
+        echo "Skipping $DISTRO (BUILD_DISTROS_REGEX=$BUILD_DISTROS_REGEX)";
+        exit 0;
       fi
     - builder/build-package $DISTRO
     - upload_packages $DISTRO
@@ -271,8 +291,12 @@ build_amd64:
   parallel:
     *parallel_matrix
   rules:
-    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true"'
+    - if: '$BUILD_DISTROS_REGEX == "none"'
       when: never
+    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true" && $BUILD_WORKSPACE_LEGACY != "true"'
+      when: never
+    - if: '$BUILD_WORKSPACE_LEGACY == "true"'
+      allow_failure: false
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH =~ /^release\//'
       allow_failure: false
     - allow_failure: true
@@ -291,7 +315,8 @@ build_arm64:
   script:
     - set -e
     - if ! is_build_this_distro "$DISTRO"; then
-        exit 1;
+        echo "Skipping $DISTRO (BUILD_DISTROS_REGEX=$BUILD_DISTROS_REGEX)";
+        exit 0;
       fi
     - builder/build-package $DISTRO
     - upload_packages $DISTRO
@@ -308,8 +333,12 @@ build_arm64:
   parallel:
     *parallel_matrix
   rules:
-    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true"'
+    - if: '$BUILD_DISTROS_REGEX == "none"'
       when: never
+    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true" && $BUILD_WORKSPACE_LEGACY != "true"'
+      when: never
+    - if: '$BUILD_WORKSPACE_LEGACY == "true"'
+      allow_failure: false
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH =~ /^release\//'
       allow_failure: false
     - allow_failure: true
@@ -326,10 +355,18 @@ run_test_amd64:
     - . .ci/helpers.sh
   script:
     - set -e
-    - is_build_this_distro "$DISTRO" && builder/test-barebones --run-test $DISTRO
+    - if is_build_this_distro "$DISTRO"; then
+        builder/test-barebones --run-test $DISTRO;
+      else
+        echo "Skipping $DISTRO (BUILD_DISTROS_REGEX=$BUILD_DISTROS_REGEX)";
+      fi
   rules:
-    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true"'
+    - if: '$BUILD_DISTROS_REGEX == "none"'
       when: never
+    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true" && $BUILD_WORKSPACE_LEGACY != "true"'
+      when: never
+    - if: '$BUILD_WORKSPACE_LEGACY == "true"'
+      allow_failure: false
     - if: $ALLOW_RUN_TESTS_TO_FAIL == "false"
     - if: $ALLOW_RUN_TESTS_TO_FAIL == "true"
       allow_failure: true
@@ -356,10 +393,18 @@ run_test_arm64:
     - . .ci/helpers.sh
   script:
     - set -e
-    - is_build_this_distro "$DISTRO" && builder/test-barebones --run-test $DISTRO
+    - if is_build_this_distro "$DISTRO"; then
+        builder/test-barebones --run-test $DISTRO;
+      else
+        echo "Skipping $DISTRO (BUILD_DISTROS_REGEX=$BUILD_DISTROS_REGEX)";
+      fi
   rules:
-    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true"'
+    - if: '$BUILD_DISTROS_REGEX == "none"'
       when: never
+    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true" && $BUILD_WORKSPACE_LEGACY != "true"'
+      when: never
+    - if: '$BUILD_WORKSPACE_LEGACY == "true"'
+      allow_failure: false
     - if: $ALLOW_RUN_TESTS_TO_FAIL == "false"
     - if: $ALLOW_RUN_TESTS_TO_FAIL == "true"
       allow_failure: true
@@ -478,7 +523,7 @@ upload_build_preview_html:
   rules:
     - if: '$BUILD_DISTROS_REGEX == "none"'
       when: never
-    - if: '$BUILD_PORTABLE != "false" && $BUILD_FULL_LEGACY != "true"'
+    - if: '$BUILD_PORTABLE != "false" && $BUILD_FULL_LEGACY != "true" && $BUILD_WORKSPACE_LEGACY != "true"'
       when: never
     # BUILD_DISTROS_REGEX is a shell regex, not a GitLab /regex/ value.
     # Keep the optional action available; it validates the Noble artifact.
@@ -527,8 +572,8 @@ build_workspace_noble_arm64:
             GROUP: 2
       artifacts: true
 
-# Portable builds replace modern glibc distro builds by default.
-# Keep the full portable runtime matrix; legacy exceptions use the matrix above.
+# Portable builds retain the full runtime matrix. The matrix above also supplies
+# temporary workspace-consumer artifacts and older-libc legacy exceptions.
 .build_portable:
   stage: build
   timeout: 3h

@@ -176,19 +176,30 @@ See [adapter build details](../ffmpeg-adapters/README.md).
 
 The default pipeline builds glibc DEB/RPM/tar packages and separate musl APKs
 for amd64 and arm64. Native distro builds remain for Oracle 8 and openSUSE 15.
+During the workspace-installer transition, `BUILD_WORKSPACE_LEGACY=true` also
+builds and tests the distro-specific packages requested by workspaces-core-images:
+Ubuntu Jammy/Noble/Resolute, Debian Bookworm/Trixie, Kali, Oracle 9, openSUSE 16,
+Fedora 42/43 and Alpine 3.21/3.22/3.23. These are real native packages, including
+Alpine's legacy filesystem layout, rather than renamed portable artifacts.
+Their existing upload path remains available alongside the portable packages
+and their unchanged checksums, signatures and provenance. These native build
+and runtime jobs are required while the compatibility switch is enabled,
+including on feature branches and when `ALLOW_RUN_TESTS_TO_FAIL=true`.
 Ubuntu Focal is no longer built or tested in CI because workspaces-core-images
 no longer produces a Focal image. The 31 glibc cases and eight Alpine 3.21–3.24 cases are mandatory.
 Functional and vncserver specification tests consume the portable amd64 DEB.
-Set `BUILD_FULL_LEGACY=true` to additionally build/test the other non-Alpine
-traditional distros. `BUILD_PORTABLE=false` disables both portable profiles,
-including Alpine CI, and restores the non-Alpine traditional matrix and Jammy
-test artifacts. Old Alpine recipes remain available locally for comparison;
-per-release Alpine build jobs have been retired.
+Set `BUILD_WORKSPACE_LEGACY=false` to omit the temporary compatibility builds;
+the portable matrix and the older-libc exceptions still run. Retire this default
+only after downstream installers have migrated to the portable names, dependencies,
+signing keys and filesystem layout. Until then, the extra native builds and tests
+increase runner time and artifact storage.
+`BUILD_FULL_LEGACY=true` builds/tests the full native matrix regardless of the
+compatibility switch. `BUILD_PORTABLE=false` disables both portable profiles and
+their runtime matrix, and runs the native matrix, including Alpine and Jammy
+test artifacts.
 `BUILD_DISTROS_REGEX` still filters legacy builds; it does not narrow the portable
 test matrix. Its special `none` value disables portable builds as before.
 
-The default feature-branch pipeline has 56 jobs and eight package builds,
-including the cached spec-environment preparation job.
 Compare total job duration (runner time), pipeline wall time, and artifact bytes
 against the prior successful pipeline; counts alone do not predict time savings.
 Public rollout remains subject to manual host/kernel/GPU validation.
