@@ -11,18 +11,19 @@ case ${1:-adapters} in
     *) echo 'Expected adapters or static FFmpeg mode' >&2; exit 2 ;;
 esac
 recipe_dir=$(cd "$(dirname "$0")" && pwd)
+fetch_archive="$recipe_dir/fetch-archive"
+[[ -x $fetch_archive ]] || fetch_archive="$recipe_dir/../scripts/portable-dependencies/fetch-archive"
 prefix=${KASMVNC_FFMPEG_HEADERS_ROOT:-/opt/kasm-ffmpeg-headers}
 mkdir -p "$prefix/sources"
 python3 - "$recipe_dir/sources.json" <<'PY' > "$prefix/sources.tsv"
 import json, sys
 for item in json.load(open(sys.argv[1])):
-    print('\t'.join(str(item[key]) for key in ('avcodec_major', 'version', 'url', 'archive', 'sha256')))
+    print('\t'.join([str(item[key]) for key in ('avcodec_major', 'version', 'url', 'archive', 'sha256')]
+                    + item['mirrors']))
 PY
-while IFS=$'\t' read -r major version url archive checksum; do
-    if [[ ! -f "$prefix/sources/$archive" ]]; then
-        curl --connect-timeout 30 --max-time 900 -fL --retry 3 "$url" -o "$prefix/sources/$archive"
-    fi
-    printf '%s  %s\n' "$checksum" "$prefix/sources/$archive" | sha256sum -c -
+while IFS=$'\t' read -r major version url archive checksum mirrors; do
+    IFS=$'\t' read -r -a mirror_urls <<< "$mirrors"
+    "$fetch_archive" "$prefix/sources/$archive" "$checksum" "$url" "${mirror_urls[@]}"
     # Configure on the native target libc/architecture to generate avconfig.h.
     # Pinning headers does not pin the host's runtime FFmpeg patch release.
     build=$(mktemp -d /tmp/kasm-ffmpeg-headers.XXXXXX)

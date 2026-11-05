@@ -27,11 +27,25 @@ test "$(git -C x265 rev-parse '4.3^{commit}')" = e9b88125dc21393b3fd8d68e98083bd
 fetch_git svt-av1 https://gitlab.com/AOMediaCodec/SVT-AV1.git 9292ec8e32bce26f781f277ec8739b53426c4300
 # 13.1 requires NVIDIA 610; 13.0 supports drivers >=570, including our 595 test host.
 fetch_git nv-codec-headers https://github.com/FFmpeg/nv-codec-headers.git 88fee5c37318c991a8762d423530f91681e32e3a
-if [[ ! -f ffmpeg-9.0.2.tar.xz ]]; then
-    curl --connect-timeout 30 --max-time 900 -fL --retry 3 https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz -o ffmpeg-9.0.2.tar.xz
-fi
-echo '8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e  ffmpeg-9.0.2.tar.xz' | sha256sum -c -
+"$recipe_dir/fetch-archive" ffmpeg-9.0.2.tar.xz \
+    8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e \
+    https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz \
+    https://distfiles.alpinelinux.org/distfiles/edge/ffmpeg-9.0.2.tar.xz
 [[ -d ffmpeg-9.0.2 ]] || tar -xf ffmpeg-9.0.2.tar.xz
+# Codecs are static, but libdrm is deliberately supplied by the host. Expose
+# its shared link interface to FFmpeg's otherwise-static pkg-config queries.
+# EL9's libdrm Requires.private includes valgrind, whose static archives are
+# absent; those private dependencies are not needed when linking libdrm.so.
+mkdir -p "$prefix/lib/pkgconfig"
+drm_version=$(env -u PKG_CONFIG_PATH -u PKG_CONFIG_LIBDIR pkg-config --modversion libdrm)
+drm_cflags=$(env -u PKG_CONFIG_PATH -u PKG_CONFIG_LIBDIR pkg-config --cflags libdrm)
+drm_libs=$(env -u PKG_CONFIG_PATH -u PKG_CONFIG_LIBDIR pkg-config --libs libdrm)
+{
+    printf 'Name: libdrm\nDescription: Host shared libdrm interface\n'
+    printf 'Version: %s\n' "$drm_version"
+    printf 'Cflags: %s\n' "$drm_cflags"
+    printf 'Libs: %s\n' "$drm_libs"
+} > "$prefix/lib/pkgconfig/libdrm.pc"
 export PKG_CONFIG_PATH="$prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 (
     cd x264
