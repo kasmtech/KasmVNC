@@ -42,6 +42,61 @@ finally:
 
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp)
+    source, cache = base / 'source', base / 'cache'
+    catalog_path = source / 'builder/portable/native-sources.json'
+    catalog_path.parent.mkdir(parents=True)
+    catalog = json.loads(Path(__file__).with_name('native-sources.json').read_text())
+    catalog_path.write_text(json.dumps(catalog))
+    entry = next(item for item in catalog if item['name'] == 'zlib')
+    cache.mkdir()
+    # A previous release can remain in a reused source cache. The current
+    # inventory must select the pinned source and omit its retired backport.
+    for stem in ('zlib-1.3.2', entry['source']):
+        with tarfile.open(cache / (stem + '.tar.gz'), 'w:gz') as tar:
+            info = tarfile.TarInfo(stem + '/LICENSE')
+            info.size = len(b'fixture license')
+            tar.addfile(info, io.BytesIO(b'fixture license'))
+    patch_dir = source / 'builder/scripts/portable-dependencies/patches'
+    patch_dir.mkdir(parents=True)
+    historical = patch_dir / 'zlib-CVE-2026-85091.patch'
+    historical.write_bytes(b'Historical backport evidence')
+    saved_source = m.SRC
+    try:
+        m.SRC = source
+
+        def inventory(index):
+            bundle, doc = base / ('bundle-' + index), base / ('doc-' + index)
+            bundle.mkdir(); doc.mkdir()
+            inv = m.Inventory(bundle, doc, 'amd64')
+            inv.bases = [cache]
+            return inv
+
+        inv = inventory('current')
+        current = inv.upstream(entry)
+        assert current['version'] == '1.4'
+        assert current['purl'] == 'pkg:generic/zlib@1.4'
+        assert not any(prop['name'] == 'kasmvnc:source-patch' for prop in current['properties'])
+        assert list(inv.sources) == ['upstream/zlib-1.4.tar.gz']
+        assert historical.read_bytes() == b'Historical backport evidence'
+        # Existing applied-patch discovery remains intact for other entries,
+        # while explicit lists must name real, component-owned patch files.
+        default = {key: value for key, value in entry.items() if key != 'patches'}
+        for index, selected in [('default', default),
+                                ('explicit', dict(entry, patches=[historical.name]))]:
+            component = inventory(index).upstream(selected)
+            patches = [json.loads(prop['value']) for prop in component['properties']
+                       if prop['name'] == 'kasmvnc:source-patch']
+            assert patches == [{'file': 'upstream/' + historical.name, 'sha256': m.sha(historical)}]
+        rejects(lambda: inventory('invalid').upstream(dict(entry, patches=['../outside.patch'])),
+                'Invalid source patch list')
+        rejects(lambda: inventory('missing').upstream(dict(entry, patches=['zlib-missing.patch'])),
+                'Missing source patch')
+    finally:
+        m.SRC = saved_source
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp)
     adapter = base / 'adapter'; adapter.mkdir()
     (adapter / 'sources').mkdir()
     families = []

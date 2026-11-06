@@ -313,7 +313,22 @@ class Inventory:
         # Backports keep the upstream version truthful. Preserve the exact patch
         # bytes alongside upstream sources so consumers can reproduce/review them.
         patch_dir = SRC / 'builder/scripts/portable-dependencies/patches'
-        for patch in sorted(patch_dir.glob(name + '-*.patch')):
+        # An explicit list can retire applied backports without deleting their
+        # historical assessment evidence from the repository. In particular,
+        # zlib 1.4 already contains the fix that was backported onto 1.3.2.
+        patch_names = entry.get('patches')
+        if patch_names is None:
+            patches = sorted(patch_dir.glob(name + '-*.patch'))
+        else:
+            if not isinstance(patch_names, list) or any(
+                    not isinstance(p, str) or Path(p).name != p or
+                    not p.startswith(name + '-') or not p.endswith('.patch')
+                    for p in patch_names):
+                raise RuntimeError('Invalid source patch list for ' + name)
+            patches = [patch_dir / p for p in patch_names]
+        for patch in patches:
+            if not patch.is_file():
+                raise RuntimeError('Missing source patch: ' + str(patch))
             patch_record = self.preserve(patch, 'upstream/' + patch.name)
             c['properties'].append(prop('source-patch', json.dumps(patch_record, sort_keys=True)))
         if entry.get('cpe') and re.fullmatch(r'\d+(?:\.\d+)+', version):

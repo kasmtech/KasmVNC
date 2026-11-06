@@ -61,7 +61,7 @@ The opt-in scripts pin source hashes or commits; they do not follow moving heads
 | NVIDIA codec headers | 13.0.19.1 | Requires driver >=570. Latest 13.1 requires >=610, so is deliberately not selected. |
 | OpenSSL | 4.0.3 (standalone static experiment) | Portable packages instead use a build-only 3.0 SDK and dynamically link the host's OpenSSL 3.x runtime. |
 | libpng | 1.6.59 | Static copy must not interpose on graphics-driver dependencies. |
-| zlib | 1.3.2 | Same symbol-isolation requirement. |
+| zlib | 1.4 | Same symbol-isolation requirement; includes the upstream fix for CVE-2026-85091. |
 | WebP | 1.6.0 | Same symbol-isolation requirement. |
 
 Existing builder pins for JPEG, fmt, TBB, libcpuid, libstatgrab and libyuv remain

@@ -14,7 +14,8 @@
     "libraries": [
       "z"
     ],
-    "source": "zlib-*",
+    "source": "zlib-1.4",
+    "patches": [],
     "cpe": "zlib:zlib",
     "license": "Zlib"
   },
