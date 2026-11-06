@@ -107,3 +107,84 @@ It is retained in raw scan reports, not suppressed.
 Local validation evidence and per-pipeline monitoring records are retained in
 the VNC-680 task's `validation/security-remediation` directory. A green build
 or a smaller raw finding count is not a claim that every finding is resolved.
+
+
+## Revalidation of CVE-2026-34000 and CVE-2026-34002 — 2026-11-06
+
+This section supplements the October 23 review above. It renews only these two
+`false_positive` assessments for embedded **xorg-server 21.1.25**, on **amd64 and
+arm64**, with **glibc and musl**. It does not reassess the other Xorg findings,
+change their states, or classify host X servers. Reviewer: KasmVNC project
+security review, with an independent source/evidence review.
+
+The baseline is KasmVNC commit
+`a5d1226678f608bdd7e0343c698a2f0e71f92d66`, branch pipeline **3036327588**.
+All four successful portable build profiles have checksummed source manifests
+and CycloneDX records identifying the same upstream archive:
+
+* File: `upstream/xorg-server-21.1.25.tar.gz`
+* SHA256: `fdb5ec9b4ab7371745b182b68c7054ed72fc4d13e185fc369cfc45e0c3a174e7`
+* Source file: `xorg-server-21.1.25/xkb/xkb.c`
+* Source-file SHA256: `abf593bac4ca0207f1eac56b4e3ff77cdbe247bb9c11583a61507f3caedee516`
+
+The [April 14 upstream advisory](https://lists.x.org/archives/xorg-announce/2026-April/003677.html)
+and [X.Org security release list](https://www.x.org/Development/Security/)
+identify **21.1.22** as the fixed Xorg release for both issues. The verified
+21.1.25 archive's `ChangeLog` records the fixes and the inspected source contains
+their complete request-bound checks:
+
+| Finding | Upstream fix | Verified source behavior |
+|---|---|---|
+| CVE-2026-34000 | [81b6a34f90b28c32ad499a78a4f391b7c06daea2](https://gitlab.freedesktop.org/xorg/xserver/-/commit/81b6a34f90b28c32ad499a78a4f391b7c06daea2), release-branch cherry-pick `a48d67f38753de551cd177e471b545bd8b9b1b64` | `_CheckSetGeom()` validates `2 * XkbKeyNameLength` bytes for each alias before `XkbAddGeomKeyAlias()` accesses both names; an insufficient request returns `BadLength`. |
+| CVE-2026-34002 | [f056ce1cc96ed9261052c31524162c78e458f98c](https://gitlab.freedesktop.org/xorg/xserver/-/commit/f056ce1cc96ed9261052c31524162c78e458f98c), release-branch cherry-pick `5328a544ba6c32ecdd1758283ee69058dec100f8` | `CheckModifierMap()` receives `ClientPtr` and validates `wire` through `wire + 2` for every entry before reading it; failure returns zero and `_XkbSetMapChecks()` rejects the request. |
+
+Reconstructing the source and applying the current `unix/xserver21.patch` with
+the production patch command preserves **every byte of `xkb/xkb.c`**. That VNC
+patch touches only `configure.ac`, `hw/Makefile.am`, `mi/miinitext.c`,
+`present/present.c`, and `damageext/damageext.c`. Some unrelated hunks use the
+existing patch command's default fuzz/offset handling; the claim here is the
+verified unchanged XKB source, not fuzz-free application. Both checks are common
+C code with no architecture/libc selection around the reviewed paths.
+
+The two platform selectors, `builder/build-static-glibc234-inside-docker` and
+`builder/build-static-musl-inside-docker`, explicitly select `XORG_VER=21.1.25`
+and delegate through `builder/build-static-inside-docker` to `builder/build.sh`.
+The latter extracts that archive into `unix/xserver`, applies the VNC patch,
+configures Xorg and builds Xvnc. `builder/build-portable` supplies a tracked
+`git archive` to both packaging Dockerfiles, rather than reusing the working
+tree's generated Xorg directory. There is no tracked `xkb/xkb.c` override.
+This clean-source property matters: `builder/build.sh` intentionally retains an
+existing extracted tree in incremental builds when `unix/xserver/include` exists.
+The new generated-source fingerprint also detects an unexpected reused tree.
+
+The previous evidence hashes matched commit `b26dcae5`. Reviewing their changes
+through `a5d1226` showed added FFmpeg/OpenSSL/shared-desktop/owned-startup linker
+configuration, build-job limits, an optional autoreconf control, and removal of
+private `libva.a` driver-path verification. The Xorg source extraction and VNC
+patch selection did not change, and these changes do not remove or modify either
+XKB bounds check. This review therefore refreshes the changed build fingerprints
+and adds the explicit source selectors, shared build path, packaging source
+construction, this review document, and the **actual generated XKB source** as
+evidence. It is not a hash refresh based solely on an unchanged version string.
+
+At this baseline, Grype 0.120.1's recorded database matches generic
+`x.org:x_server` CPEs without a version cutoff (`none (unknown)`, no fixed-version
+entry). The raw matches against an already fixed release are therefore retained
+as `false_positive` assessments within the exact reviewed scope. This is not a
+new backport or a claim that no XKB code is shipped. Raw scanner findings and
+upstream version numbers remain unchanged; generated VEX applies only to the
+reviewed KasmVNC package identity. GitLab's persistent triage state is separate
+and is not changed by this registry update.
+
+`unix/xserver/xkb/xkb.c` is generated from upstream source, not committed in this
+repository. Normal packaging reconciles assessments after compiling that tree.
+For report-only validation against a clean checkout, first reconstruct that file
+from the archive with the SHA256 above, verify its source-file SHA256, and use a
+separate validation source root. Missing or different source must leave the
+assessment `in_triage` / `needs_review`; do not remove the fingerprint or supply
+unverified placeholder text. Source/recipe changes and other versions remain
+subject to a new review. The archived baseline reports and source reconstruction
+are retained under the VNC-680 task's `validation/xorg-assessment-refresh`.
+This source review is not a new exploit reproduction or a fresh advisory scan;
+report-generation, actual Grype VEX-consumption, and package validation results
+are recorded separately for the refreshed revision.

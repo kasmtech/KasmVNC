@@ -604,17 +604,27 @@
         "musl"
       ],
       "state": "false_positive",
-      "detail": "Xorg 21.1.25 includes 21.1.22 XKB geometry fix.",
+      "detail": "Revalidated 2026-11-06 against exact 21.1.25 source in all four a5d1226 portable profiles: _CheckSetGeom validates both key names before alias access. Upstream fixed 21.1.22; the current VNC patch preserves xkb.c unchanged. The scanner CPE lacks the fixed-version cutoff. See SECURITY-REVIEW.md dated revalidation; evidence includes the actual generated source.",
       "author": "KasmVNC project security review",
-      "reviewed_at": "2026-10-23T18:40:00Z",
+      "reviewed_at": "2026-11-06T13:10:55Z",
       "references": [
-        "https://www.x.org/Development/Security/"
+        "https://www.x.org/Development/Security/",
+        "https://lists.x.org/archives/xorg-announce/2026-April/003677.html",
+        "https://gitlab.freedesktop.org/xorg/xserver/-/commit/81b6a34f90b28c32ad499a78a4f391b7c06daea2"
       ],
       "evidence": {
-        "builder/build.sh": "02443994f47629cb824c8db9247404b7b8c2a85893166bc10e4a878f582d8b7a",
-        "builder/musl/build-inside-docker": "dcfcda2d097d06313a954b56c0f71d02eb282e28e7e2400f5330bfa4e6642597",
-        "builder/portable/build-inside-docker": "06c28d799bcc010ff67985479abfbaa33d29932e5e9010dc706f336b6940ec43",
-        "unix/xserver21.patch": "fe18af06f7662052b28521ffa7e85c6a99b2175ea35337672cd5f87455c22b5a"
+        "builder/build.sh": "e1fb35b19ca14035bd81bbaa85654c41c629b791f7db64c8edae912e101c8b66",
+        "builder/musl/build-inside-docker": "73a1ce86a482ad637b087df28b775274967d476cb177df2efe7bdc22ad961e68",
+        "builder/portable/build-inside-docker": "bb63e93adaf32b71f62e967fe262095bd94da20b14be472456965d043aa3e500",
+        "unix/xserver21.patch": "fe18af06f7662052b28521ffa7e85c6a99b2175ea35337672cd5f87455c22b5a",
+        "builder/build-static-glibc234-inside-docker": "1e129fa9a346f37f80493b97f08af36be46e36cfb64bac40ada279cf71822b37",
+        "builder/build-static-musl-inside-docker": "3d46866f2597c5417d9cfefc49195ecd973122e46fce00a6255b247ce87c2c80",
+        "builder/build-static-inside-docker": "d66e6c2d0cd0aefde5a6bb33c548a260ed08e59d842ce0d2ad048281475ddb77",
+        "builder/build-portable": "1e1c267fed2166de46f6bc63668da9cbc2a139a22f59e744d4911255e5b095c6",
+        "builder/portable/Dockerfile": "400d3345687debc206a29b6ac27c74cd908855511a599d5e1fea66be5a027413",
+        "builder/musl/Dockerfile": "ad335d59bc4c59723aa454bc9f91f07de55117ed1629391b1acbb186fdf9f6f0",
+        "builder/portable/SECURITY-REVIEW.md": "228decf415166708d049567b9846cc21051b4a0be80915cbdd73b8eda4b47f6e",
+        "unix/xserver/xkb/xkb.c": "abf593bac4ca0207f1eac56b4e3ff77cdbe247bb9c11583a61507f3caedee516"
       }
     },
     {
@@ -632,17 +642,27 @@
         "musl"
       ],
       "state": "false_positive",
-      "detail": "Xorg 21.1.25 includes 21.1.22 XKB modifier fix.",
+      "detail": "Revalidated 2026-11-06 against exact 21.1.25 source in all four a5d1226 portable profiles: CheckModifierMap validates each two-byte entry before access and rejects truncated requests. Upstream fixed 21.1.22; the current VNC patch preserves xkb.c unchanged. The scanner CPE lacks the fixed-version cutoff. See SECURITY-REVIEW.md dated revalidation; evidence includes the actual generated source.",
       "author": "KasmVNC project security review",
-      "reviewed_at": "2026-10-23T18:40:00Z",
+      "reviewed_at": "2026-11-06T13:10:55Z",
       "references": [
-        "https://www.x.org/Development/Security/"
+        "https://www.x.org/Development/Security/",
+        "https://lists.x.org/archives/xorg-announce/2026-April/003677.html",
+        "https://gitlab.freedesktop.org/xorg/xserver/-/commit/f056ce1cc96ed9261052c31524162c78e458f98c"
       ],
       "evidence": {
-        "builder/build.sh": "02443994f47629cb824c8db9247404b7b8c2a85893166bc10e4a878f582d8b7a",
-        "builder/musl/build-inside-docker": "dcfcda2d097d06313a954b56c0f71d02eb282e28e7e2400f5330bfa4e6642597",
-        "builder/portable/build-inside-docker": "06c28d799bcc010ff67985479abfbaa33d29932e5e9010dc706f336b6940ec43",
-        "unix/xserver21.patch": "fe18af06f7662052b28521ffa7e85c6a99b2175ea35337672cd5f87455c22b5a"
+        "builder/build.sh": "e1fb35b19ca14035bd81bbaa85654c41c629b791f7db64c8edae912e101c8b66",
+        "builder/musl/build-inside-docker": "73a1ce86a482ad637b087df28b775274967d476cb177df2efe7bdc22ad961e68",
+        "builder/portable/build-inside-docker": "bb63e93adaf32b71f62e967fe262095bd94da20b14be472456965d043aa3e500",
+        "unix/xserver21.patch": "fe18af06f7662052b28521ffa7e85c6a99b2175ea35337672cd5f87455c22b5a",
+        "builder/build-static-glibc234-inside-docker": "1e129fa9a346f37f80493b97f08af36be46e36cfb64bac40ada279cf71822b37",
+        "builder/build-static-musl-inside-docker": "3d46866f2597c5417d9cfefc49195ecd973122e46fce00a6255b247ce87c2c80",
+        "builder/build-static-inside-docker": "d66e6c2d0cd0aefde5a6bb33c548a260ed08e59d842ce0d2ad048281475ddb77",
+        "builder/build-portable": "1e1c267fed2166de46f6bc63668da9cbc2a139a22f59e744d4911255e5b095c6",
+        "builder/portable/Dockerfile": "400d3345687debc206a29b6ac27c74cd908855511a599d5e1fea66be5a027413",
+        "builder/musl/Dockerfile": "ad335d59bc4c59723aa454bc9f91f07de55117ed1629391b1acbb186fdf9f6f0",
+        "builder/portable/SECURITY-REVIEW.md": "228decf415166708d049567b9846cc21051b4a0be80915cbdd73b8eda4b47f6e",
+        "unix/xserver/xkb/xkb.c": "abf593bac4ca0207f1eac56b4e3ff77cdbe247bb9c11583a61507f3caedee516"
       }
     },
     {
