@@ -22,6 +22,7 @@ from openssl_boundary import (read_sdk, sdk_path, sdk_exports, reject_static_ope
                               reject_embedded_symbols, audit_openssl)
 from host_libraries import (components as host_components, reject_static_host_library,
                             audit_host_libraries, COMPILER_MAXIMUM, compiler_exceptions)
+from glibc_crt import audit_link as audit_glibc_startup
 
 SRC = Path('/src')
 BINARIES = ['unix/xserver/hw/vnc/Xvnc', 'unix/vncconfig/vncconfig',
@@ -456,6 +457,8 @@ def main():
         openssl_exports = sdk_exports(openssl_root, openssl_sdk)
         for name in BINARIES:
             binary = SRC / name
+            if not inv.musl:
+                audit_glibc_startup(binary)
             selected_inputs = link_inputs(binary)
             if binary.name == 'Xvnc' and not any(path.name == 'libz.a' for path in selected_inputs):
                 raise RuntimeError('Xvnc is missing its private static zlib link input')

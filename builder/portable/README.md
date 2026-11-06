@@ -64,6 +64,24 @@ helpers and CRT objects remain embedded and retain their source/SBOM evidence.
 Musl C++ symbols are generally unversioned, so these version ceilings alone
 cannot establish compatibility there.
 
+The glibc profile supplies KasmVNC's own small executable entry and `atexit`
+adapter from `builder/portable/crt/`. It calls the host's versioned
+`__libc_start_main@GLIBC_2.34` and `__cxa_atexit` interfaces; the host still owns
+libc initialization, threading, allocation and callback execution. GCC's
+`crtbeginS.o` and `crtendS.o` remain compiler inputs. All five executable link
+maps must exclude glibc's startup objects, selected `libc_nonshared.a` members
+and `libc.a` members. Legacy `.init`/`.fini` fragments are rejected instead of
+silently losing initialization or cleanup. The normal constructor/destructor
+arrays and loader cleanup callback are preserved.
+
+This startup policy applies only to dynamically linked portable glibc builds
+on x86_64 and ARM64. It does not change the musl or traditional distro profiles.
+The builder still uses glibc development headers. The product SBOM records
+actual embedded link inputs; removing the glibc startup objects does not remove
+the host libc requirement or imply that builder packages need no security
+updates. Changes to the entry code require lifecycle tests on both architectures
+and the existing package/runtime matrix, including compiler hardening checks.
+
 Builds use baseline distro development headers and public shared APIs; the
 mandatory runtime matrix tests the same packaged binaries on every target.
 A compatible SONAME alone is insufficient. Final link maps reject the converted

@@ -15,6 +15,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'portable'))
+from glibc_crt import MODE as GLIBC_STARTUP_MODE, prepare as prepare_glibc_crt, audit_link as audit_glibc_link
+
 
 def openssl_shared_input(arg, prefix):
     """Keep every spelling of an OpenSSL input inside the audited SDK boundary."""
@@ -43,10 +46,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--prefix', required=True)
     parser.add_argument('--host-shared', action='store_true')
+    parser.add_argument('--owned-glibc-crt', action='store_true')
+    parser.add_argument('--runtime-only', action='store_true')
     parser.add_argument('--runtime-prefix', default='')
     parser.add_argument('--openssl-prefix', default='')
     parser.add_argument('--source-root', required=True)
     options = parser.parse_args(sys.argv[1:split])
+    if options.owned_glibc_crt and not options.host_shared:
+        raise RuntimeError('Owned glibc startup requires the host-shared profile')
     command = sys.argv[split + 1:]
     # Preserve compiler launchers such as "sccache g++".
     count = 1
@@ -64,11 +71,15 @@ def main():
                'xshmfence', 'libsystemd', 'sm', 'ice', 'xrandr', 'xrender', 'xcursor']
     if env.get('KASMVNC_LIBC') == 'musl':
         modules.remove('libsystemd')
+    if options.runtime_only:
+        modules = []
     closure = shlex.split(subprocess.check_output(
-        ['pkg-config'] + ([] if options.host_shared else ['--static']) + ['--libs'] + modules, env=env, text=True))
+        ['pkg-config'] + ([] if options.host_shared else ['--static']) + ['--libs'] + modules, env=env, text=True)) if modules else []
     # libsystemd's distro .pc omits this private archive dependency.
     # Alpine's libXdmcp archive uses libbsd, but xdmcp.pc omits its private closure.
-    if options.host_shared:
+    if options.runtime_only:
+        pass
+    elif options.host_shared:
         closure += ['-lgomp']
     else:
         closure += ['-lgomp', '-lbsd', '-lmd'] if env.get('KASMVNC_LIBC') == 'musl' else ['-lcrypt', '-lgomp', '-lcap']
@@ -219,11 +230,16 @@ def main():
     if archives:
         flags.append('-Wl,--exclude-libs,' + ':'.join(sorted(
             {Path(p).name for p in archives} | {'libstdc++.a', 'libgcc.a', 'libgcc_eh.a'})))
-    final = compiler + flags + ['-Wl,--start-group'] + linked + ['-Wl,--end-group']
+    startup = []
+    if options.owned_glibc_crt:
+        startup_flags, startup = prepare_glibc_crt(compiler, arguments, output, source)
+        flags += startup_flags
+    final = compiler + flags + startup + ['-Wl,--start-group'] + linked + ['-Wl,--end-group']
     Path(output + '.static-link.json').write_text(json.dumps({
         'archives': sorted(archives), 'cwd': str(Path.cwd()), 'allowed_shared': sorted(shared),
         'desktop_mode': 'host-shared' if options.host_shared else 'static',
         'compiler_runtime_mode': 'host-shared' if options.host_shared else 'static',
+        'startup_mode': GLIBC_STARTUP_MODE if options.owned_glibc_crt else 'compiler-default',
         'private_archive_copies': private_archives,
         'symbol_renames': {'XkbFreeGeomOverlayKeys': 'kasm_x11_XkbFreeGeomOverlayKeys'}
             if private_archives else {},
@@ -241,6 +257,8 @@ def main():
           f'user={after.ru_utime - before.ru_utime:.1f}s; '
           f'system={after.ru_stime - before.ru_stime:.1f}s; '
           f'peak_child_rss={after.ru_maxrss}KiB', flush=True)
+    if result == 0 and options.owned_glibc_crt:
+        audit_glibc_link(Path(output))
     return result
 
 

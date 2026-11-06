@@ -16,6 +16,7 @@ esac
 export CFLAGS="-O2 -fPIC $baseline_flags ${CFLAGS:-}"
 export CXXFLAGS="-O2 -fPIC $baseline_flags ${CXXFLAGS:-}"
 export KASMVNC_DYNAMIC_DESKTOP=ON
+export KASMVNC_OWN_GLIBC_CRT=ON
 # The toolset links the EL9 system runtime plus its small nonshared supplement.
 # Never put the old private libgcc prefix ahead of the system linker inputs.
 unset KASMVNC_GCC_RUNTIME_PREFIX

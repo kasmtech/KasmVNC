@@ -12,6 +12,7 @@ import subprocess
 import sys
 from openssl_boundary import read_sdk, sdk_path
 from host_libraries import sonames, COMPILER_MAXIMUM, compiler_exceptions
+from glibc_crt import MODE as GLIBC_STARTUP_MODE
 
 doc = Path(sys.argv[1])
 licenses = doc / "third-party-licenses"
@@ -66,6 +67,10 @@ manifest['ffmpeg_mode'] = os.environ.get('KASMVNC_FFMPEG_MODE', 'static')
 manifest['openssl_mode'] = 'host-shared-3'
 manifest['desktop_mode'] = 'host-shared'
 manifest['compiler_runtime_mode'] = 'host-shared'
+manifest['startup_mode'] = 'compiler-default' if musl else GLIBC_STARTUP_MODE
+if not musl and any(elf.get('startup', {}).get('mode') != GLIBC_STARTUP_MODE
+                    for elf in manifest['elf_audit']):
+    raise RuntimeError('Portable glibc provenance requires audited first-party startup')
 manifest['host_libraries'] = sorted({lib for elf in manifest['elf_audit']
                                     for lib in elf['needed']} & sonames('musl' if musl else 'glibc'))
 manifest['compiler_symbol_maximum'] = COMPILER_MAXIMUM
@@ -97,6 +102,10 @@ manifest['runtime_boundary'] += (' Desktop C libraries and C++/exception runtime
                                  'host PNG/font libraries use their own distro zlib. '
                                  'Selected compiler compatibility/startup objects remain embedded; '
                                  'the link-input SBOM identifies them exactly.')
+if not musl:
+    manifest['runtime_boundary'] += (' First-party executable startup calls the host glibc 2.34 '
+                                     'entry ABI; no glibc startup objects or nonshared archive '
+                                     'members are embedded. Glibc headers remain build inputs.')
 shutil.copytree('/src/builder/openssl3', doc / 'openssl-sdk-recipes', dirs_exist_ok=True)
 shutil.copytree("/src/builder/scripts/portable-dependencies", doc / "dependency-recipes", dirs_exist_ok=True)
 gcc_manifest = Path(os.environ.get("KASMVNC_GCC_RUNTIME_PREFIX", "/opt/kasm-gcc-runtime")) / "share/gcc-runtime"

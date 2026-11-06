@@ -15,6 +15,7 @@ import unittest
 from unittest.mock import patch
 
 import openssl_boundary as boundary
+import glibc_crt
 
 
 class OpenSSLBoundaryTests(unittest.TestCase):
@@ -78,13 +79,18 @@ class OpenSSLBoundaryTests(unittest.TestCase):
         subprocess.run(args, check=True)
         return directory / soname
 
-    def binary(self, name, functions, libraries, extra=()):
+    def binary(self, name, functions, libraries, extra=(), owned_crt=False):
         directory = Path(tempfile.mkdtemp(dir=self.base))
         code = directory / 'probe.c'
         code.write_text(''.join('extern int ' + fn + '(void);\n' for fn in functions)
                         + 'int main(void){return ' + ('+'.join(fn + '()' for fn in functions) or '0') + ';}\n')
         binary = directory / name
-        subprocess.run(['gcc', '-fPIE', '-pie', str(code), '-o', str(binary), *extra,
+        startup = []
+        if owned_crt:
+            flags, objects = glibc_crt.prepare(['gcc'], list(extra), binary,
+                                             Path(__file__).resolve().parents[2])
+            startup = flags + objects
+        subprocess.run(['gcc', *startup, '-fPIE', '-pie', str(code), '-o', str(binary), *extra,
                         '-Wl,-Map,' + str(binary) + '.link-map',
                         '-Wl,--no-as-needed', *map(str, libraries)], check=True)
         return binary
@@ -195,7 +201,7 @@ class OpenSSLBoundaryTests(unittest.TestCase):
             functions = ['SSL_new', 'EVP_sha256'] if name == 'Xkasmvnc' else (
                 ['EVP_sha256'] if name == 'kasmvncpasswd' else [])
             libraries = [self.lib / 'libssl.so.3', self.lib / 'libcrypto.so.3'] if functions else []
-            shutil.copy2(self.binary(name, functions, libraries), stage / name)
+            shutil.copy2(self.binary(name, functions, libraries, owned_crt=not musl), stage / name)
         arch = {'x86_64': 'amd64', 'aarch64': 'arm64'}[platform.machine()]
         # These deliberately minimal ELF fixtures exercise the OpenSSL and
         # search-path gates. The independent host-library suite supplies its
