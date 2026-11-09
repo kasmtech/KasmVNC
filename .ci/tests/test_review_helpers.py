@@ -13,13 +13,13 @@ class ReviewHelpers(unittest.TestCase):
             env={**os.environ, 'CI': '1', 'CI_COMMIT_SHA': 'test', 'S3_BUCKET': 'unused'},
             capture_output=True)
 
-    def test_legacy_package_selection_excludes_symbols(self):
+    def test_portable_package_selection_excludes_symbols(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); (root/'functional').mkdir()
-            packages = root/'output/ubuntu_jammy'; packages.mkdir(parents=True)
+            packages = root/'output/portable_amd64'; packages.mkdir(parents=True)
             for name in ['kasmvncserver_1_amd64.deb', 'kasmvncserver-dbgsym_1_amd64.deb']:
                 (packages/name).touch()
-            result = self.shell(f'source "{ROOT}/.ci/helpers.sh"; BUILD_PORTABLE=false; select_functional_test_package; echo "$FUNCTIONAL_TEST_PACKAGE"', root/'functional')
+            result = self.shell(f'source "{ROOT}/.ci/helpers.sh"; select_functional_test_package; echo "$FUNCTIONAL_TEST_PACKAGE"', root/'functional')
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), str(packages/'kasmvncserver_1_amd64.deb'))
 

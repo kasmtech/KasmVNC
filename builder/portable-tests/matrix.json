@@ -80,7 +80,7 @@
         "arm64"
       ],
       "format": "rpm",
-      "exclude_reason": "glibc 2.28 is below the portable 2.34 baseline"
+      "exclude_reason": null
     },
     {
       "name": "oracle-9",
@@ -111,7 +111,7 @@
         "arm64"
       ],
       "format": "rpm",
-      "exclude_reason": "glibc 2.28 is below the portable 2.34 baseline"
+      "exclude_reason": null
     },
     {
       "name": "rockylinux-9",
@@ -131,11 +131,21 @@
         "arm64"
       ],
       "format": "rpm",
-      "exclude_reason": "glibc 2.28 is below the portable 2.34 baseline"
+      "exclude_reason": null
     },
     {
       "name": "almalinux-9",
       "image": "almalinux:9",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "format": "rpm",
+      "exclude_reason": null
+    },
+    {
+      "name": "opensuse-15",
+      "image": "opensuse/leap:15.6",
       "architectures": [
         "amd64",
         "arm64"

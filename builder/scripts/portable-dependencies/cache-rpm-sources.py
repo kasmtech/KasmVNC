@@ -25,7 +25,7 @@ def main():
             raise RuntimeError('Invalid source RPM name: ' + srpm)
         target = cache / srpm
         for repo in ['baseos/latest', 'appstream', 'codeready/builder', 'developer/EPEL']:
-            url = f'https://yum.oracle.com/repo/OracleLinux/OL9/{repo}/{platform.machine()}/getPackageSource/{srpm}'
+            url = f'https://yum.oracle.com/repo/OracleLinux/OL8/{repo}/{platform.machine()}/getPackageSource/{srpm}'
             result = subprocess.run(['curl', '-fLsS', '--retry', '3', '--connect-timeout', '30',
                                      '--max-time', '600', url, '-o', str(target)])
             if result.returncode == 0:

@@ -8,7 +8,7 @@ KASMVNC_PORTABLE_DRIVER_PATH=$(builder/scripts/portable-driver-path)
 export KASMVNC_PORTABLE_DRIVER_PATH
 export KASMVNC_BUILD_XORG_MODULE=0
 export CFLAGS="${CFLAGS:-} -g" CXXFLAGS="${CXXFLAGS:-} -g"
-builder/build-static-glibc234-inside-docker --no-servertarball
+builder/build-static-glibc228-inside-docker --no-servertarball
 builder/scripts/portable-driver-path \
     --verify unix/xserver/hw/vnc/Xvnc \
     --verify unix/xserver/glx/.libs/glxdricommon.o

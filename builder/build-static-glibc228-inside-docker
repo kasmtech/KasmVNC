@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Experimental native x86_64/aarch64 EL9 profile; use a clean build tree.
+# Native x86_64/aarch64 EL8 profile; use a clean build tree.
 set -eo pipefail
 source /opt/rh/gcc-toolset-14/enable
 set -u
-[[ $(getconf GNU_LIBC_VERSION) == 'glibc 2.34' ]] || {
-    echo "This profile requires a clean EL9 / glibc 2.34 builder" >&2; exit 1;
+[[ $(getconf GNU_LIBC_VERSION) == 'glibc 2.28' ]] || {
+    echo "This profile requires a clean EL8 / glibc 2.28 builder" >&2; exit 1;
 }
 case $(uname -m) in
     x86_64) baseline_flags='-march=x86-64 -mtune=generic' ;;
@@ -17,13 +17,17 @@ export CFLAGS="-O2 -fPIC $baseline_flags ${CFLAGS:-}"
 export CXXFLAGS="-O2 -fPIC $baseline_flags ${CXXFLAGS:-}"
 export KASMVNC_DYNAMIC_DESKTOP=ON
 export KASMVNC_OWN_GLIBC_CRT=ON
-# The toolset links the EL9 system runtime plus its small nonshared supplement.
+# The toolset links the EL8 system runtime plus its small nonshared supplement.
 # Never put the old private libgcc prefix ahead of the system linker inputs.
 unset KASMVNC_GCC_RUNTIME_PREFIX
 export KASMVNC_NATIVE_LAUNCHER=ON
 export XORG_VER=21.1.25
-export KASMVNC_BUILD_OS=oracle KASMVNC_BUILD_OS_CODENAME=9
+export KASMVNC_BUILD_OS=oracle KASMVNC_BUILD_OS_CODENAME=8
+export PKG_CONFIG_PATH="/opt/kasm-xorgproto/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export CPATH="/opt/kasm-xorgproto/include${CPATH:+:$CPATH}"
 unset KASMVNC_STATIC_DESKTOP_PREFIX
 /src/builder/build-static-inside-docker "$@"
-/src/builder/scripts/check-glibc-floor --maximum 2.34 \
-    /src/unix/xserver/hw/vnc/Xvnc /src/unix/kasmvncpasswd/kasmvncpasswd
+/src/builder/scripts/check-glibc-floor --maximum 2.28 \
+    /src/unix/xserver/hw/vnc/Xvnc /src/unix/kasmvncpasswd/kasmvncpasswd \
+    /src/unix/vncserver-native/vncserver-native /src/unix/vncconfig/vncconfig \
+    /src/unix/kasmxproxy/kasmxproxy

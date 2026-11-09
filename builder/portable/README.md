@@ -1,10 +1,9 @@
 # Portable KasmVNC packages
 
 These packages contain the same native application build in DEB, RPM and tar
-formats. They require glibc 2.34 or newer; these files do not run on musl or EL8.
+formats. They require glibc 2.28 or newer; musl requires a separate build.
 Alpine uses the separate [portable musl APK profile](../musl/README.md).
-The x86_64 build uses EL9 distro archives, so its supported CPU baseline is
-x86-64-v2. ARM64 is built natively. Desktop C libraries, compiler runtimes, OpenSSL 3, GPU
+The EL8 builder targets the x86-64 CPU baseline. ARM64 is built natively. Desktop C libraries, compiler runtimes, OpenSSL 3, GPU
 loaders and drivers, timezone data, XKB tools/data and the desktop remain host dependencies.
 
 Install the DEB/RPM with the distro package manager, allowing it to resolve
@@ -35,13 +34,13 @@ override behavior for custom driver locations. These paths do not guarantee
 compatibility with every host driver; validate the intended GPU and distro.
 
 All shipped ELF executables are checked for architecture, PIE, unexpected
-dynamic dependencies, search paths, and a maximum glibc ABI requirement of 2.34.
+dynamic dependencies, search paths, and a maximum glibc ABI requirement of 2.28.
 The adjacent checksum and provenance files identify the build inputs and ELF
 boundary. Installed documentation includes dependency license notices and the
 builder RPM inventory (build provenance only). The separate CycloneDX SBOM
 and advisory scan reports are described below. Embedded dependencies require rebuilding KasmVNC for security fixes;
-host package updates do not patch them. The optional FFmpeg adapter mode below
-uses host FFmpeg and encoder libraries instead. A public release still requires review
+host package updates do not patch them. The default FFmpeg adapter mode below
+uses host FFmpeg and encoder libraries. A public release still requires review
 of corresponding-source distribution and all embedded dependency licenses.
 
 ## System desktop and compiler libraries
@@ -55,18 +54,21 @@ font compression, regex, ffi, capabilities and internationalization libraries.
 We do not pin those private DSOs or embed copies of them.
 
 C++ and exception handling use host `libstdc++.so.6` and `libgcc_s.so.1`.
-The ELF audit rejects imports newer than `GLIBCXX_3.4.29`, `CXXABI_1.3.13`
+The ELF audit rejects imports newer than `GLIBCXX_3.4.25`, `CXXABI_1.3.11`
 and `GCC_4.5.0`. Optional static FFmpeg builds additionally permit the exact
 `__divmodti4@GCC_7.0.0` import, verified in every target distro's runtime;
-adapter builds do not permit this exception. EL9's toolset may contribute a small
+adapter builds do not permit this exception. EL8's GCC 14 toolset may contribute a small
 `libstdc++_nonshared.a` compatibility supplement; selected members, builtin
 helpers and CRT objects remain embedded and retain their source/SBOM evidence.
 Musl C++ symbols are generally unversioned, so these version ceilings alone
 cannot establish compatibility there.
 
 The glibc profile supplies KasmVNC's own small executable entry and `atexit`
-adapter from `builder/portable/crt/`. It calls the host's versioned
-`__libc_start_main@GLIBC_2.34` and `__cxa_atexit` interfaces; the host still owns
+adapter and stat-family wrappers from `builder/portable/crt/`. It calls the host's
+older `__libc_start_main` ABI (GLIBC_2.2.5 on AMD64; GLIBC_2.17 on ARM64)
+and `__cxa_atexit`; an initialization callback preserves constructor arrays.
+Stat wrappers call the host's versioned stat interfaces without embedding
+`libc_nonshared.a`. The host still owns
 libc initialization, threading, allocation and callback execution. GCC's
 `crtbeginS.o` and `crtendS.o` remain compiler inputs. All five executable link
 maps must exclude glibc's startup objects, selected `libc_nonshared.a` members
@@ -106,6 +108,20 @@ updating only the Docker host does not update libraries inside the container.
 The application SBOM identifies required host components without assigning
 builder versions to deployed runtimes. Scan the actual deployed image for the
 host libraries and their transitive closure.
+
+## EL8 build and runtime requirements
+
+GCC Toolset 14 retains C++20 and the current Xorg 21.1.25. Pinned xorgproto
+2024.1 headers supply newer protocol definitions missing from EL8; they are a
+build input only. Their archive, checksum and license notices accompany the
+source bundle and provenance. No older Xorg or C++ language level is required.
+
+Oracle/Rocky/AlmaLinux 8 need EPEL's OpenSSL 3 runtime and their development
+repository (CodeReady Builder or PowerTools) for desktop dependencies. Video
+also needs a compatible host FFmpeg, tested with RPM Fusion's FFmpeg 4.4.
+The required minimum is a complete runtime dependency set, not glibc alone.
+The compiler is newer than the host C++ runtime; link audits limit imported
+symbols to GCC 8's runtime ABI and record any toolset compatibility objects.
 
 ## System OpenSSL 3
 
@@ -155,13 +171,12 @@ OpenSSL package. See [OpenSSL's ABI policy](https://openssl-library.org/policies
 `builder/build-portable --ffmpeg-mode adapters` produces one application binary
 with isolated adapters for libavcodec families 58 through 63. `--libc musl`
 selects the separate Alpine build; it does not make a glibc binary run on musl.
-Portable CI explicitly selects adapter mode for both architectures and libcs.
-The local command's default remains `--ffmpeg-mode static` for compatibility;
-pass the adapter option when reproducing CI.
+Local and CI builds default to adapter mode for both architectures and libcs.
+`--ffmpeg-mode static` retains the separate static-codec experiment.
 
 | Adapter | Host runtime libraries | Example target |
 |---|---|---|
-| FFmpeg 4.4 | libavcodec.so.58, libavutil.so.56, libswscale.so.5 | Ubuntu 22.04 |
+| FFmpeg 4.4 | libavcodec.so.58, libavutil.so.56, libswscale.so.5 | Ubuntu 22.04, EL8 with RPM Fusion |
 | FFmpeg 5.1 | libavcodec.so.59, libavutil.so.57, libswscale.so.6 | Debian 12 |
 | FFmpeg 6.1 | libavcodec.so.60, libavutil.so.58, libswscale.so.7 | Ubuntu 24.04, Alpine 3.21/3.22 |
 | FFmpeg 7.1 | libavcodec.so.61, libavutil.so.59, libswscale.so.8 | Debian 13, EL9 with the relevant codec repository |
@@ -190,42 +205,35 @@ from runtime libraries and records FFmpeg as an external requirement; cached
 static FFmpeg/x264/x265/SVT archives are not part of adapter-mode artifacts.
 See [adapter build details](../ffmpeg-adapters/README.md).
 
-## Portable CI and legacy fallback
+## Portable CI
 
-The default pipeline builds glibc DEB/RPM/tar packages and separate musl APKs
-for amd64 and arm64. Native distro builds remain for Oracle 8 and openSUSE 15.
-During the workspace-installer transition, `BUILD_WORKSPACE_LEGACY=true` also
-builds and tests the distro-specific packages requested by workspaces-core-images:
-Ubuntu Jammy/Noble/Resolute, Debian Bookworm/Trixie, Kali, Oracle 9, openSUSE 16,
-Fedora 42/43 and Alpine 3.21/3.22/3.23. These are real native packages, including
-Alpine's legacy filesystem layout, rather than renamed portable artifacts.
-Their existing upload path remains available alongside the portable packages
-and their unchanged checksums, signatures and provenance. These native build
-and runtime jobs are required while the compatibility switch is enabled,
-including on feature branches and when `ALLOW_RUN_TESTS_TO_FAIL=true`.
-Ubuntu Focal is no longer built or tested in CI because workspaces-core-images
-no longer produces a Focal image. The 31 glibc cases and eight Alpine 3.21–3.24 cases are mandatory.
-Functional and vncserver specification tests consume the portable amd64 DEB.
-Set `BUILD_WORKSPACE_LEGACY=false` to omit the temporary compatibility builds;
-the portable matrix and the older-libc exceptions still run. Retire this default
-only after downstream installers have migrated to the portable names, dependencies,
-signing keys and filesystem layout. Until then, the extra native builds and tests
-increase runner time and artifact storage.
-`BUILD_FULL_LEGACY=true` builds/tests the full native matrix regardless of the
-compatibility switch. `BUILD_PORTABLE=false` disables both portable profiles and
-their runtime matrix, and runs the native matrix, including Alpine and Jammy
-test artifacts.
-`BUILD_DISTROS_REGEX` still filters legacy builds; it does not narrow the portable
-test matrix. Its special `none` value disables portable builds as before.
+The default pipeline has four native package producers: glibc and musl on
+amd64 and arm64. The glibc build targets glibc 2.28+, using Oracle Linux 8 and
+GCC Toolset 14; C++20 and Xorg 21.1.25 are retained. Musl targets 1.2.5+.
+There are no legacy package producers or legacy package test consumers.
+`BUILD_WORKSPACE_LEGACY` and `BUILD_FULL_LEGACY` have been removed; setting
+those obsolete variables cannot re-enable native distro builds.
+`BUILD_PORTABLE` has also been removed. `BUILD_DISTROS_REGEX=none` disables
+portable packaging; it never falls back to legacy builds. Other regex values
+do not narrow the portable runtime matrix.
 
-Compare total job duration (runner time), pipeline wall time, and artifact bytes
-against the prior successful pipeline; counts alone do not predict time savings.
-Public rollout remains subject to manual host/kernel/GPU validation.
+The required matrix covers 39 glibc and eight Alpine cases (47 distro/architecture
+cases, 86 format runs), including Oracle/Rocky/AlmaLinux 8 and Leap 15.6 on both
+architectures. Minimal functional and launcher specification tests consume the
+portable amd64 DEB. Standard functional qualification adds Oracle Linux 8 with
+an asserted glibc 2.28 floor and Kali with glibc 2.43 or newer, each on both kernel
+hosts. Existing userspace and Noble/Oracle 9 GPU configurations remain, giving
+16 Standard configurations. The functional runner fails if a boundary image no
+longer meets its asserted glibc version. Containers still share their host kernel.
+
+Downstream Workspaces installers must use portable asset names and install the
+host dependencies. The former optional Noble image jobs consumed native distro
+packages and have been removed. Local distro recipes remain for development;
+they are not release pipeline products.
 
 The required MR Standard functional job verifies and snapshots the DEB, RPM,
-APK, checksum manifests, provenance and pinned APK public key received from its
-own pipeline before launching test hosts. Every host uses that frozen candidate;
-concurrent pipelines publishing the same commit cannot change its test inputs.
+APK, checksum manifests, provenance and pinned APK public key from its own
+pipeline. Every host uses that frozen candidate.
 
 Separate build-ID debug symbols are published in DEB, RPM and tar formats, with
 checksums and a `.debug.json` mapping. See `DEBUGGING.md` for exact-build matching

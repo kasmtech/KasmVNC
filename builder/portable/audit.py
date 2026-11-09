@@ -33,12 +33,12 @@ def audit(root, arch):
             raise RuntimeError(f"Unexpected runtime libraries in {path}: {set(needed) - allowed}")
         if "TEXTREL" in dynamic or "RPATH" in dynamic or "RUNPATH" in dynamic:
             raise RuntimeError(f"Nonportable relocations or library search path in {path}")
-        subprocess.run(["/src/builder/scripts/check-glibc-floor", "--maximum", "2.34", str(path)], check=True)
+        subprocess.run(["/src/builder/scripts/check-glibc-floor", "--maximum", "2.28", str(path)], check=True)
         openssl = audit_openssl(path, needed, exports)
         host = audit_host_libraries(path, needed, 'glibc')
         startup = audit_glibc_startup(path)
         records.append({"path": "/" + str(path.relative_to(root)), "needed": needed,
-                        "glibc_maximum": "2.34", "pie": True, "openssl": openssl,
+                        "glibc_maximum": "2.28", "pie": True, "openssl": openssl,
                         "host_libraries": host, "startup": startup})
     if len(records) != 5:
         raise RuntimeError(f"Expected all five packaged executables, found {len(records)}")

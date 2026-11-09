@@ -24,9 +24,9 @@ class HostLibraryTests(unittest.TestCase):
         self.assertNotIn('libz.so.1', host.sonames('glibc'))
 
     def test_compiler_floor_rejects_newer_and_private_versions(self):
-        for version in ['GLIBCXX_3.4.29', 'CXXABI_1.3.13', 'GCC_3.0', 'GCC_4.5.0']:
+        for version in ['GLIBCXX_3.4.25', 'CXXABI_1.3.11', 'GCC_3.0', 'GCC_4.5.0']:
             host.check_compiler_versions([{'symbol': 'fixture', 'version': version}])
-        for version in ['GLIBCXX_3.4.30', 'CXXABI_1.3.14', 'GCC_7.0.0', 'GLIBCXX_PRIVATE']:
+        for version in ['GLIBCXX_3.4.26', 'CXXABI_1.3.12', 'GCC_7.0.0', 'GLIBCXX_PRIVATE']:
             with self.assertRaisesRegex(RuntimeError, 'exceeds portable ABI'):
                 host.check_compiler_versions([{'symbol': 'fixture', 'version': version}])
 

@@ -18,18 +18,16 @@ KasmVNC provides remote web-based access to a Desktop or application. While VNC 
 
 Choose a package from the [release assets](https://github.com/kasmtech/KasmVNC/releases)
 for your CPU architecture and Linux distribution. Portable packages share one
-build across the tested userspaces below; legacy packages target an individual
-distribution release. A libc version alone does not establish compatibility.
+build across the tested userspaces below. A libc version alone does not establish compatibility.
 
 | Package | Userspace requirements | Release asset name |
 | --- | --- | --- |
-| Portable DEB | Tested Debian/Ubuntu-family userspaces, **glibc 2.34+**, and the required host libraries | `kasmvncserver_portable_…_<arch>.deb` |
-| Portable RPM | Tested Fedora/EL9/openSUSE userspaces, **glibc 2.34+**, and the required host libraries | `kasmvncserver_portable_…_<arch>.rpm` |
+| Portable DEB | Tested Debian/Ubuntu-family userspaces, **glibc 2.28+**, and the required host libraries | `kasmvncserver_portable_…_<arch>.deb` |
+| Portable RPM | Tested Fedora/EL8/EL9/openSUSE userspaces, **glibc 2.28+**, and the required host libraries | `kasmvncserver_portable_…_<arch>.rpm` |
 | Portable APK | Tested **Alpine 3.21–3.24** userspaces, **musl 1.2.5+**, and the required host libraries | `kasmvncserver_portable_musl_…_<arch>.apk` |
-| Legacy distro package | Older systems such as Oracle Linux 8 and openSUSE 15 | Select the asset named for your exact distribution and release |
 
 Portable builds target **AMD64 (x86_64)** and **ARM64 (aarch64)** separately.
-The glibc AMD64 build requires **x86-64-v2**; musl AMD64 targets **x86-64**,
+Both glibc and musl AMD64 target **x86-64**,
 and ARM64 targets **ARMv8-A**. Host libraries and GPU drivers can impose additional
 requirements. Check `uname -m` for your
 architecture and `getconf GNU_LIBC_VERSION` for the glibc version on DEB/RPM
@@ -93,19 +91,14 @@ Keep signature verification enabled; `--allow-untrusted` is not needed.
 **Log out and log back in after adding your user to the certificate group.**
 This gives new sessions access to the TLS certificate's private key.
 
-### Legacy distro packages
-
-Use a legacy package when your distribution does not meet the portable
-package requirements. Choose the exact distribution, release and architecture
-from the release assets; availability depends on the KasmVNC release.
-Install legacy DEBs with `apt-get` and RPMs with your distro's package manager.
+### Enterprise Linux 8
 
 Oracle Linux 8 requires its additional dependency repositories:
 
 ```sh
 sudo dnf config-manager --set-enabled ol8_codeready_builder
 sudo dnf install oracle-epel-release-el8
-sudo dnf install ./<downloaded-oracle-8-package>.rpm
+sudo dnf install ./<downloaded-portable-package>.rpm
 sudo usermod -a -G kasmvnc-cert "$USER"
 ```
 

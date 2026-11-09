@@ -63,7 +63,7 @@ class PortableCRTTests(unittest.TestCase):
         cls.loader = ['-l:ld-linux-aarch64.so.1'] if cls.architecture == 'arm64' else []
         for source, obj in [('start-' + cls.architecture + '.S', 'kasm-start.o'),
                             ('bootstrap.c', 'kasm-bootstrap.o'), ('atexit.c', 'kasm-atexit.o'),
-                            ('metadata.S', 'kasm-metadata.o')]:
+                            ('stat.c', 'kasm-stat.o'), ('metadata.S', 'kasm-metadata.o')]:
             cls.run_command([*cls.cc, *cls.flags, '-c', str(SOURCE / source), '-o', str(cls.directory / obj)])
         cls.run_command([*cls.cxx, '-O2', '-fPIE', '-UNDEBUG', *flags, '-c',
                          str(SOURCE / 'lifecycle-main.cxx'), '-o', str(cls.directory / 'main.o')])
@@ -79,7 +79,7 @@ class PortableCRTTests(unittest.TestCase):
         cls.run_command([*cls.cxx, '-pie', '-nostdlib', '-Wl,-z,relro,-z,now',
                          '-Wl,-Map,' + str(d / 'replacement.map'), str(d / 'kasm-start.o'),
                          str(d / 'kasm-metadata.o'), cls.begin, str(d / 'kasm-bootstrap.o'), str(d / 'main.o'),
-                         str(d / 'kasm-atexit.o'), '-lstdc++', '-lm', '-lgcc_s', '-l:libc.so.6',
+                         str(d / 'kasm-atexit.o'), str(d / 'kasm-stat.o'), '-lstdc++', '-lm', '-lpthread', '-ldl', '-lgcc_s', '-l:libc.so.6',
                          *cls.loader, cls.end, '-o', str(d / 'replacement')])
         # Exercise the real compiler driver/specs integration as well as the
         # independent minimal link. Its default libraries must retain the same
@@ -134,13 +134,13 @@ class PortableCRTTests(unittest.TestCase):
         sys.path.insert(0, str(ROOT / 'builder/portable'))
         import glibc_crt
         result = glibc_crt.audit_link(self.directory / 'replacement-driver')
-        self.assertEqual(result['mode'], 'owned-glibc-2.34')
+        self.assertEqual(result['mode'], 'owned-glibc-2.28')
 
     def test_dynamic_pie_and_host_runtime_abi(self):
         self.assertRegex(self.elf, r'Type:\s+DYN')
         self.assertIn('Requesting program interpreter:', self.elf)
         self.assertIn('Shared library: [libc.so.6]', self.elf)
-        self.assertIn('__libc_start_main@GLIBC_2.34', self.elf)
+        self.assertIn('__libc_start_main@GLIBC_' + ('2.2.5' if self.architecture == 'amd64' else '2.17'), self.elf)
         self.assertIn('__cxa_atexit@GLIBC_', self.elf)
         self.assertRegex(self.elf, r'FUNC\s+LOCAL\s+\S+\s+\S+\s+atexit\b')
         for marker in ('__data_start', 'data_start', '_IO_stdin_used'):
@@ -159,7 +159,7 @@ class PortableCRTTests(unittest.TestCase):
         if self.architecture == 'amd64':
             self.assertRegex(self.elf, r'\.note\.gnu\.property\s+NOTE\b')
             self.assertIn('x86 feature: IBT, SHSTK', self.elf)
-            self.assertRegex(self.elf, r'x86-64-v2|0xc0008002 data: 02 00 00 00')
+            self.assertRegex(self.elf, r'x86-64-baseline|0xc0008002 data: 01 00 00 00')
         # Some GCC AArch64 crtbegin/end objects lack property notes. Verify the
         # owned entry's claim without falsely claiming the full ELF has BTI/PAC.
         else:

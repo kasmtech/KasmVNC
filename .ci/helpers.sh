@@ -331,11 +331,7 @@ put_report_into_ci_pipeline() {
 select_functional_test_package() {
   local package_dir
   local -a candidates
-  if [[ "${BUILD_PORTABLE:-false}" != false ]]; then
-    package_dir=../output/portable_amd64
-  else
-    package_dir=../output/ubuntu_jammy
-  fi
+  package_dir=../output/portable_amd64
   # Do not fall back to a previously published artifact when this pipeline's
   # package is missing or ambiguous.
   mapfile -t candidates < <(find "$package_dir" -maxdepth 1 -type f -name '*_amd64.deb' ! -name '*dbgsym*' -print)

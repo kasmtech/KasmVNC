@@ -140,7 +140,7 @@ and [Mesa GBM build](https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/src/gb
 
 The earlier Noble-built x86_64 Xvnc directly needs only `libGL.so.1`, `libgbm.so.1`,
 `libm.so.6`, `libmvec.so.1`, `libc.so.6`, and `ld-linux-x86-64.so.2`.
-That earlier artifact requires GLIBC_2.38; the EL9 profile below targets 2.34. Drivers pull in their
+That earlier artifact requires GLIBC_2.38; the current portable profile below targets 2.28. Drivers pull in their
 own X11/DRM/C++ and other dependencies: a process map is broader than this list.
 Perl, external helpers, font/XKB data, session/accessibility bus daemons, and
 host GPU drivers remain deployment requirements. This profile targets Xvnc;
@@ -156,82 +156,27 @@ claimed. GIO modules must not introduce conflicting private GObject state;
 process maps during the accessibility tests showed no shared GLib/GObject/GIO
 copies in Xvnc.
 
-## EL9 / glibc 2.34 profile
+## Production portable profile
 
-The opt-in `builder/dockerfile.el9.static` and
-`builder/build-static-glibc234-inside-docker` build the application on Oracle
-Linux 9 with GCC Toolset 14, keeping Xorg 21.1.12 and the codec/TLS pins above.
-Use a clean source tree when building this image:
+Use `builder/build-portable` from a clean committed checkout. The production
+profile uses pinned Oracle Linux 8, GCC Toolset 14, C++20 and Xorg 21.1.25,
+with a glibc 2.28 ABI ceiling. Local and CI defaults use host FFmpeg adapters,
+OpenSSL 3, desktop libraries and compiler runtimes. Private application zlib
+and selected performance libraries remain embedded. This supersedes the
+removed standalone EL9 Dockerfile and its glibc 2.34 entrypoint.
 
-```sh
-docker build -f builder/dockerfile.el9.static -t kasmvnc-static-el9-builder .
-docker run --name kasmvnc-static-el9-build kasmvnc-static-el9-builder --no-servertarball
-docker cp kasmvnc-static-el9-build:/src/unix/xserver/hw/vnc/Xvnc ./Xvnc-static-glibc234
-```
+The application supplies small first-party executable startup and stat wrappers;
+it does not embed glibc CRT or libc_nonshared objects. GCC CRT and selected
+compatibility objects retain their source and SBOM evidence. The pinned
+xorgproto 2024.1 SDK supplies build-only headers needed by current Xorg.
 
-EL9 omits many static development archives. `build-static-desktop-el9` builds
-those in the private prefix with verified source hashes, while retaining EL9's
-patched GLib/PCRE1, crypt and SELinux archives. AT-SPI headers and pkg-config
-metadata match the private 2.52 client. No replacement session or accessibility
-daemons are installed. Newer compiler/header compatibility fixes are limited to
-build integration, including libffi 3.5.2 and the systemd filesystem-name table.
-These source copies still require security/backport review before release.
-
-Current EL9 GCC archives use `_dl_find_object@GLIBC_2.35` through a distro
-backport. Therefore merely selecting an EL9 builder is insufficient.
-`build-static-gcc-runtime` builds hash-pinned upstream GCC 14.2.0's static
-runtime, selecting its existing `dl_iterate_phdr` unwind implementation instead
-of the optional newer libc API. The application still uses GCC Toolset 14 and
-its static C++ library. The private GCC archive source, patch description,
-licenses and hashes are recorded under `/opt/kasm-gcc-runtime/share/gcc-runtime`.
-This is an upstream 14.2.0 runtime with a vendor 14.2.1 compiler, not the exact
-vendor runtime patch set. Unwinding may be slower than the newer lookup path;
-no encoding performance equivalence is claimed.
-
-The entrypoint audits Xvnc and kasmvncpasswd with `check-glibc-floor`, failing
-if either imports a symbol newer than GLIBC_2.34. This is an executable ABI
-check, not validation of every driver, CPU, kernel or desktop combination.
-EL9 static archives retain their CPU requirements; x86_64 targets x86-64-v2
-and is not qualified on older CPUs. The pipeline also builds ARM64 natively. It still relies on host
-GL/GBM and drivers, glibc, XKB/fonts and launcher/session helpers. EL8's glibc
-2.28 and musl-only systems remain outside this target. The standalone development
-profile defaults to EL9's `/usr/lib64/dri`; the portable package entrypoint adds
-the native Debian multiarch directory and `/usr/lib/dri` to Mesa DRI and VAAPI
-driver discovery. `LIBGL_DRIVERS_PATH` and `LIBVA_DRIVERS_PATH` remain available
-for custom driver installations.
-
-EL9 GIO carries a backport using `mnt_monitor_veil_kernel`; its private
-util-linux/libmount is therefore 2.42.4 rather than Noble's 2.39.3. The password
-utility also embeds libcrypt for this profile, avoiding EL9's `libcrypt.so.2`
-versus Ubuntu's `libcrypt.so.1` dependency. Both executables are PIE; Xvnc keeps
-its six shared dependencies listed above, and kasmvncpasswd needs only libc.
-
-Local x86_64 validation of the final GLIBC_2.34 artifact passed software H.264
-browser sessions on Oracle Linux 9 and Ubuntu 22.04; NVIDIA H.264 and AV1
-browser sessions plus EGL rendering on Ubuntu 24.04 / RTX5090 / driver595.84;
-GTK focus events delivered to Xvnc; HTTPS authentication; core font lookup;
-and sd_notify READY. A separate static C++ runtime probe passed exceptions,
-backtraces and pthread cancellation/destructors. The stripped Xvnc is
-58,622,776 bytes. No text relocations or private library API exports were found.
-These tests share the host kernel and do not qualify older kernels, ARM,
-pre-v2 CPUs, VAAPI hardware, Vulkan or the complete core-image matrix. The
-Dockerfile records the tested build-container setup; it has not received a
-separate clean Docker image build and pipeline qualification.
-
-
-## Portable package pipeline
-
-The package pipeline applies the static-link policy to the shipped helper
-executables as well as Xvnc, including PIC archives and static C++/GCC runtimes.
-Its packaging audit checks every shipped ELF for PIE, architecture, imported
-GLIBC versions and allowed shared dependencies. This avoids silently adding
-an EL9-specific GLIBCXX or libcrypt dependency through a helper.
-
+Every packaged executable is audited for PIE, hardening, architecture, allowed
+shared dependencies, glibc versions and GCC 8-compatible C++ symbol imports.
 See [builder instructions](README.md#portable-application-packages) and the
-[portable installation guide](portable/README.md). The local validation results
-above describe the earlier development artifact, not certification of every
-pipeline artifact or supported host. CI matrix results and separate manual
-hardware/kernel testing determine the qualification of each release.
+[portable installation guide](portable/README.md) for exact runtime requirements.
+The earlier static experiments above are historical evidence, not qualification
+of the current portable artifacts. Native runtime and functional CI qualify the
+exact packages, including the EL8 floor and newer userspaces.
 
 The portable distro tests require an actual software Mesa OpenGL renderer as
 well as a browser session. This catches driver discovery failures even on CI

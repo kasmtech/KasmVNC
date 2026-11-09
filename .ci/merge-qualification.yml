@@ -12,18 +12,6 @@ build_www:
   rules:
     - when: on_success
   allow_failure: false
-build_amd64:
-  rules:
-    - when: never
-build_arm64:
-  rules:
-    - when: never
-run_test_amd64:
-  rules:
-    - when: never
-run_test_arm64:
-  rules:
-    - when: never
 spec_dependencies:
   rules:
     - when: never
@@ -35,12 +23,6 @@ make_build_preview_html:
     - when: never
 upload_build_preview_html:
   only: null
-  rules:
-    - when: never
-build_workspace_noble_amd64:
-  rules:
-    - when: never
-build_workspace_noble_arm64:
   rules:
     - when: never
 build_portable_amd64:

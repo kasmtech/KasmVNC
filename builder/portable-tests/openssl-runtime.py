@@ -7,6 +7,8 @@ import shutil
 import subprocess
 import sys
 
+# Leap 15.6 ships Python 3.6; probes must work with its stock interpreter.
+
 
 def inspect_runtime(pid):
     executable = Path('/proc', pid, 'exe').resolve()
@@ -32,18 +34,18 @@ def inspect_runtime(pid):
             # dpkg ownership may retain /lib even on a merged-/usr filesystem.
             candidates = [path]
             if path.startswith('/usr/lib/'):
-                candidates.append(path.removeprefix('/usr'))
+                candidates.append(path[len('/usr'):])
             elif path.startswith('/lib/'):
                 candidates.append('/usr' + path)
             result = None
             for candidate in candidates:
-                result = subprocess.run(['dpkg-query', '-S', candidate], text=True, capture_output=True)
+                result = subprocess.run(['dpkg-query', '-S', candidate], universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if result.returncode == 0:
                     break
         elif shutil.which('rpm'):
-            result = subprocess.run(['rpm', '-qf', path], text=True, capture_output=True)
+            result = subprocess.run(['rpm', '-qf', path], universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         elif shutil.which('apk'):
-            result = subprocess.run(['apk', 'info', '--who-owns', path], text=True, capture_output=True)
+            result = subprocess.run(['apk', 'info', '--who-owns', path], universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
             raise RuntimeError('No supported package manager for OpenSSL ownership verification')
         if result.returncode or not result.stdout.strip():

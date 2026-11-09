@@ -1,6 +1,6 @@
 # Portable linkage policy; desktop libraries can remain host-provided.
 set(KASMVNC_STATIC_DESKTOP_PREFIX "" CACHE PATH "Prefix containing static desktop libraries")
-option(KASMVNC_OWN_GLIBC_CRT "Use KasmVNC startup for glibc 2.34+ portable executables" OFF)
+option(KASMVNC_OWN_GLIBC_CRT "Use KasmVNC startup for glibc 2.28+ portable executables" OFF)
 if(KASMVNC_OWN_GLIBC_CRT AND NOT KASMVNC_DYNAMIC_DESKTOP)
   message(FATAL_ERROR "Owned glibc startup requires KASMVNC_DYNAMIC_DESKTOP")
 endif()
@@ -21,6 +21,7 @@ if(KASMVNC_STATIC_DESKTOP_PREFIX OR KASMVNC_DYNAMIC_DESKTOP)
       "${CMAKE_SOURCE_DIR}/builder/portable/crt/start-arm64.S"
       "${CMAKE_SOURCE_DIR}/builder/portable/crt/bootstrap.c"
       "${CMAKE_SOURCE_DIR}/builder/portable/crt/atexit.c"
+      "${CMAKE_SOURCE_DIR}/builder/portable/crt/stat.c"
       "${CMAKE_SOURCE_DIR}/builder/portable/crt/metadata.S"
       "${CMAKE_SOURCE_DIR}/builder/portable/glibc_crt.py"
       "${CMAKE_SOURCE_DIR}/builder/scripts/link-static-desktop")

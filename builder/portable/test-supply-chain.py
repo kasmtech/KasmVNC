@@ -274,3 +274,31 @@ Path(sys.argv[sys.argv.index('--file')+1]).write_text(json.dumps({
     assert gitlab_report['vulnerabilities'][0]['severity'] == 'Critical'
     assert (base / 'gl-sbom.cdx.json').read_bytes() == (base / 'test.cdx.json').read_bytes()
 print('PASS: frontend asset/source/notice integrity, nested and header-only notices, path traversal rejection, vendored headers, unknown actual link input, scanner errors, advisory critical findings')
+
+# Build-only protocol sources must remain pinned and available for rebuilding.
+import xorgproto_sdk
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    source = root / 'share/kasmvnc/sources/xorgproto-2024.1.tar.xz'
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b'fixture protocol source')
+    manifest = {'version': xorgproto_sdk.VERSION, 'source_url': xorgproto_sdk.SOURCE_URL,
+                'source_sha256': xorgproto_sdk.SOURCE_SHA256, 'source_archive': str(source)}
+    path = root / 'share/kasmvnc/xorgproto-sdk.json'
+    path.write_text(json.dumps(manifest))
+    rejects(lambda: xorgproto_sdk.read_sdk(root), 'checksum mismatch')
+    old_hash = xorgproto_sdk.SOURCE_SHA256
+    try:
+        xorgproto_sdk.SOURCE_SHA256 = m.sha(source)
+        manifest['source_sha256'] = xorgproto_sdk.SOURCE_SHA256
+        path.write_text(json.dumps(manifest))
+        assert xorgproto_sdk.read_sdk(root) == manifest
+        manifest['source_archive'] = str(root / 'other.tar.xz')
+        path.write_text(json.dumps(manifest))
+        rejects(lambda: xorgproto_sdk.read_sdk(root), 'pinned source')
+        manifest['source_archive'] = str(source)
+        manifest['version'] = 'unreviewed'
+        path.write_text(json.dumps(manifest))
+        rejects(lambda: xorgproto_sdk.read_sdk(root), 'pinned source')
+    finally:
+        xorgproto_sdk.SOURCE_SHA256 = old_hash

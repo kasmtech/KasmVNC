@@ -375,9 +375,10 @@ Three independent layers:
    `report/`. Requires Docker socket access, the private submodule, and a built
    `.deb`.
 
-CI is GitLab (`.gitlab-ci.yml`). `BUILD_DISTROS_REGEX` limits which distros
-build (use `"jammy"` for a fast loop; Jammy is required for the spec and
-functional test stages). See `BUILDING.md` for the CI fast-feedback knobs.
+CI is GitLab (`.gitlab-ci.yml`). It builds only portable glibc/musl packages on
+AMD64/ARM64. `BUILD_DISTROS_REGEX=none` skips packaging; other values do not
+filter the runtime matrix. Spec and minimal functional tests consume the portable
+DEB; Standard covers the glibc 2.28 floor and newer userspaces. See `BUILDING.md`.
 
 ## Security review and vulnerability triage (opt-in)
 

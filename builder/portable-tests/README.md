@@ -12,7 +12,7 @@ result.
 Every row below runs on native AMD64 and ARM64 runners, except CUDA Jammy, which
 is AMD64-only in the source Workspace image matrix. DEB and RPM cases also test
 the same binaries installed from the tar archive. Alpine tests its separate
-musl APK. This gives 39 distro/architecture cases and 70 format runs.
+musl APK. This gives 47 distro/architecture cases and 86 format runs.
 
 | Userspace | Container image(s) | Formats |
 | --- | --- | --- |
@@ -22,17 +22,19 @@ musl APK. This gives 39 distro/architecture cases and 70 format runs.
 | Parrot OS 7.1 | `parrotsec/core:7.1` | DEB, tar |
 | KasmOS userspace fixture | `debian:bookworm-slim`; not a booted KasmOS system | DEB, tar |
 | CUDA on Ubuntu 22.04 (AMD64 only) | `nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04`; software runtime test, no GPU claim | DEB, tar |
+| Oracle Linux 8 | `oraclelinux:8` plus Oracle EPEL/CodeReady and RPM Fusion | RPM, tar |
+| Rocky Linux 8 | `rockylinux:8` plus EPEL/PowerTools and RPM Fusion | RPM, tar |
+| AlmaLinux 8 | `almalinux:8` plus EPEL/PowerTools and RPM Fusion | RPM, tar |
 | Oracle Linux 9 | `oraclelinux:9` | RPM, tar |
 | RHEL 9 userspace fixture | `registry.access.redhat.com/ubi9/ubi` plus signed Oracle EL9 repositories; not pristine or entitled RHEL | RPM, tar |
 | Rocky Linux 9 | `rockylinux:9` | RPM, tar |
 | AlmaLinux 9 | `almalinux:9` | RPM, tar |
-| openSUSE Leap 16.0 | `opensuse/leap:16.0` | RPM, tar |
+| openSUSE Leap 15.6, 16.0 | `opensuse/leap:15.6`, `opensuse/leap:16.0` | RPM, tar |
 | Fedora 42, 43 | `fedora:42`, `fedora:43` | RPM, tar |
 | Alpine 3.21, 3.22, 3.23, 3.24 | `alpine:3.21`, `alpine:3.22`, `alpine:3.23`, `alpine:3.24` | APK |
 
-The glibc build's ABI floor is glibc 2.34. The musl build targets musl 1.2.5.
-CPU build baselines are x86-64-v2 for glibc AMD64 (including EL9 build inputs),
-x86-64 for musl AMD64, and ARMv8-A for ARM64. Native runner execution proves
+The glibc build's ABI floor is glibc 2.28. The musl build targets musl 1.2.5.
+CPU build baselines are x86-64 for glibc and musl AMD64, and ARMv8-A for ARM64. Native runner execution proves
 operation on those runner CPUs; it is not a test on every minimum-generation
 CPU. Host DSOs and drivers have their own requirements. The
 [host-library boundary](../portable/README.md#system-desktop-and-compiler-libraries)
@@ -57,8 +59,8 @@ separately before claiming those capabilities or a public-release support range.
 
 | Target | Reason it is outside this portable qualification |
 | --- | --- |
-| Oracle/Rocky/AlmaLinux 8 | glibc 2.28 is below the portable glibc 2.34 floor; the matrix records these exclusions. |
-| Ubuntu 20.04 and openSUSE Leap 15 | Below the glibc floor; use an available distro-specific legacy package. Ubuntu 20.04 is no longer in the Workspace image CI matrix. |
+| Ubuntu 20.04 | Outside the current Workspace image CI matrix; satisfying glibc alone does not provide the required OpenSSL 3 and desktop runtime. |
+| Earlier openSUSE Leap 15 releases | The Leap 15 target is specifically 15.6 (glibc 2.38); its results do not qualify earlier minor releases. |
 | NixOS | No Nix closure or NixOS integration is shipped by this portable package profile. Its runtime loader, host libraries and data paths assume a conventional filesystem layout. Installation and runtime on NixOS have not been qualified. |
 | Untested distro releases and kernels | The listed userspace runs do not qualify future releases or an arbitrary old host kernel. |
 | GPU rendering/encoding | Software GLX and H.264 tests do not establish VA-API, NVENC or proprietary-driver compatibility. Separate hardware tests are required. |

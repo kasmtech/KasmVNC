@@ -23,6 +23,7 @@ from openssl_boundary import (read_sdk, sdk_path, sdk_exports, reject_static_ope
 from host_libraries import (components as host_components, reject_static_host_library,
                             audit_host_libraries, COMPILER_MAXIMUM, compiler_exceptions)
 from glibc_crt import audit_link as audit_glibc_startup
+from xorgproto_sdk import read_sdk as read_xorgproto_sdk, sdk_path as xorgproto_path
 
 SRC = Path('/src')
 BINARIES = ['unix/xserver/hw/vnc/Xvnc', 'unix/vncconfig/vncconfig',
@@ -359,7 +360,7 @@ class Inventory:
                 else:
                     machine = 'x86_64' if self.arch == 'amd64' else 'aarch64'
                     for repo in ['baseos/latest', 'appstream', 'codeready/builder', 'developer/EPEL']:
-                        url = f'https://yum.oracle.com/repo/OracleLinux/OL9/{repo}/{machine}/getPackageSource/{srpm}'
+                        url = f'https://yum.oracle.com/repo/OracleLinux/OL8/{repo}/{machine}/getPackageSource/{srpm}'
                         result = subprocess.run(['curl', '-fLsS', '--retry', '3', '--connect-timeout', '30', '--max-time', '600', url, '-o', str(target)])
                         if result.returncode == 0:
                             break
@@ -376,7 +377,7 @@ class Inventory:
                 self.sources['rpm/' + srpm] = {'file': 'rpm/' + srpm, 'sha256': sha(target), 'url': url,
                                              'signature': signature.split(': ', 1)[-1]}
             ver = (epoch + ':' if epoch != '0' else '') + version + '-' + release
-            c = component(name, ver, purl=f'pkg:rpm/oracle/{quote(name)}@{quote(ver)}?arch={arch}&distro=oraclelinux-9',
+            c = component(name, ver, purl=f'pkg:rpm/oracle/{quote(name)}@{quote(ver)}?arch={arch}&distro=oraclelinux-8',
                           licenses=[{'license': {'name': license_}}], properties=[prop('delivery', 'embedded-static'),
                           prop('source-rpm', srpm), prop('rpm-epoch', epoch), prop('source-sha256', sha(target))])
             self.components[key] = c
@@ -496,6 +497,15 @@ def main():
         sdk_record.update({'url': openssl_sdk['source_url'],
                            'purpose': 'Build-only OpenSSL 3.0 SDK; runtime libraries supplied by host'})
         archived_notices(bundle / sdk_record['file'], args.doc / 'third-party-licenses/build-only/openssl-sdk')
+        build_dependencies = {'openssl_sdk': openssl_sdk}
+        if not inv.musl:
+            xorgproto_sdk = read_xorgproto_sdk()
+            build_dependencies['xorgproto_sdk'] = xorgproto_sdk
+            inv.preserve(xorgproto_path() / 'share/kasmvnc/xorgproto-sdk.json', 'xorgproto-build-sdk.json')
+            protocol_source = Path(xorgproto_sdk['source_archive'])
+            record = inv.preserve(protocol_source, 'build-only/' + protocol_source.name)
+            record.update({'url': xorgproto_sdk['source_url'], 'purpose': 'Build-only Xorg protocol headers'})
+            archived_notices(bundle / record['file'], args.doc / 'third-party-licenses/build-only/xorgproto-sdk')
         host_openssl = {'type': 'library', 'bom-ref': 'host:openssl3', 'name': 'OpenSSL',
                         'scope': 'required', 'properties': [prop('delivery', 'host-runtime'),
                             prop('required-sonames', 'libssl.so.3,libcrypto.so.3'),
@@ -614,7 +624,7 @@ def main():
             deps.add(c['bom-ref'])
         audit = json.loads((args.doc / 'elf-audit.json').read_text())
         host = {'shared_libraries': sorted({lib for elf in audit for lib in elf['needed']}),
-                'other_requirements': ['musl >= 1.2.5' if inv.musl else 'glibc >= 2.34', 'Bash and host timezone data',
+                'other_requirements': ['musl >= 1.2.5' if inv.musl else 'glibc >= 2.28', 'Bash and host timezone data',
                     'XKB tools/data', 'desktop/session applications', 'GPU vendor drivers/loaders when enabled'],
                 'versions': 'Supplied and patched by the host; deliberately not assigned builder versions.'}
         host['desktop_mode'] = 'host-shared'
@@ -659,13 +669,13 @@ def main():
                     'source_binary_sha256': {name: sha(SRC / name) for name in BINARIES},
                     'ffmpeg_mode': ffmpeg_mode, 'openssl_mode': 'host-shared-3',
                     'desktop_mode': 'host-shared', 'compiler_runtime_mode': 'host-shared',
-                    'build_dependencies': {'openssl_sdk': openssl_sdk},
+                    'build_dependencies': build_dependencies,
                     'host_requirements': host, 'limitations': inv.limitations}
         write(bundle / 'manifest.json', manifest)
         (bundle / 'README.txt').write_text('KasmVNC portable source inputs\n\nExtract kasmvnc-source.tar for source, patches and builder scripts.\n'
             'upstream/ contains exact release archives and Git snapshots; rpm/ contains signed exact source RPMs; apk/ contains exact aports recipes/patches and checksum-verified upstream inputs.\n'
             'frontend-sources.tar.gz contains the web client source inventory.\n'
-            'build-only/ contains the OpenSSL SDK source used to compile/link; its runtime is not bundled.\n'
+            'build-only/ contains the OpenSSL SDK and, for glibc, Xorg protocol header sources; these SDKs are not shipped runtimes.\n'
             f'Build entry point: builder/build-portable{" --libc musl" if inv.musl else ""} --ffmpeg-mode {ffmpeg_mode}; see builder documentation.\n'
             'It downloads dependencies and is not an offline or bit-reproducible rebuild command.\n'
             'For exact input reproduction restore these archives and recorded Git revisions, rather than following floating branches.\n'

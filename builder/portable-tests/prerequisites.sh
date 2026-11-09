@@ -87,11 +87,20 @@ elif command -v zypper >/dev/null; then
       xkbcomp libglvnd libgbm1 hostname "${tar_rpm_capabilities[@]}"
   fi
 else
-  # EL9 needs EPEL for the same desktop prerequisites as existing packages.
+  # Enterprise Linux needs EPEL for the desktop prerequisites.
   if [[ "$stage" != tools ]]; then
   case "$ID" in
-    ol) dnf install -y oracle-epel-release-el9 dnf-plugins-core; dnf config-manager --set-enabled ol9_codeready_builder ;;
-    rocky|almalinux) dnf install -y epel-release dnf-plugins-core; dnf config-manager --set-enabled crb ;;
+    ol)
+      el_major=${VERSION_ID%%.*}
+      dnf install -y "oracle-epel-release-el${el_major}" dnf-plugins-core
+      dnf config-manager --set-enabled "ol${el_major}_codeready_builder" ;;
+    rocky|almalinux)
+      dnf install -y epel-release dnf-plugins-core
+      if [[ ${VERSION_ID%%.*} = 8 ]]; then
+        dnf config-manager --set-enabled powertools
+      else
+        dnf config-manager --set-enabled crb
+      fi ;;
     rhel)
       # Match workspaces-core-images install_rhel.sh (11a313aa): its RHEL
       # desktop is UBI9 with Oracle repositories, not an entitled RHEL base.
@@ -137,7 +146,7 @@ if [[ "$ffmpeg_mode" = adapters ]]; then
     if [[ "$ID" = fedora ]]; then
       release="https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${VERSION_ID}.noarch.rpm"
     else
-      release='https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm'
+      release="https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-${VERSION_ID%%.*}.noarch.rpm"
     fi
     # Bootstrap the repository package over HTTPS; its configuration enables
     # signature verification for the FFmpeg packages installed below.

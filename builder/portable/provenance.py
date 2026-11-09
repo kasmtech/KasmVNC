@@ -13,6 +13,7 @@ import sys
 from openssl_boundary import read_sdk, sdk_path
 from host_libraries import sonames, COMPILER_MAXIMUM, compiler_exceptions
 from glibc_crt import MODE as GLIBC_STARTUP_MODE
+from xorgproto_sdk import read_sdk as read_xorgproto_sdk, sdk_path as xorgproto_path
 
 doc = Path(sys.argv[1])
 licenses = doc / "third-party-licenses"
@@ -54,7 +55,7 @@ else:
     rpms = subprocess.check_output(["rpm", "-qa", "--qf", "%{NAME}\t%{VERSION}-%{RELEASE}\t%{ARCH}\t%{LICENSE}\n"], text=True)
     (doc / "builder-rpms.tsv").write_text(rpms)
 manifest = {"format": "kasmvnc-portable-build-provenance-v1", "revision": os.environ["KASMVNC_COMMIT_ID"],
-            "version": os.environ["KASMVNC_PORTABLE_VERSION"], "glibc_abi_maximum": "2.34",
+            "version": os.environ["KASMVNC_PORTABLE_VERSION"], "glibc_abi_maximum": "2.28",
             "architecture": sys.argv[2], "sources": sources,
             "elf_audit": json.loads((doc / "elf-audit.json").read_text()),
             "runtime_boundary": "Host glibc, GPU loader/driver stack, timezone data, XKB tools/data and desktop remain external."}
@@ -78,6 +79,9 @@ manifest['compiler_symbol_exceptions'] = compiler_exceptions()
 shutil.copy2(Path(__file__).with_name('host-libraries.json'), doc / 'host-libraries.json')
 manifest['openssl_build_sdk'] = read_sdk()
 shutil.copy2(sdk_path() / 'share/kasmvnc/openssl-sdk.json', doc / 'openssl-build-sdk.json')
+if not musl:
+    manifest['xorgproto_build_sdk'] = read_xorgproto_sdk()
+    shutil.copy2(xorgproto_path() / 'share/kasmvnc/xorgproto-sdk.json', doc / 'xorgproto-build-sdk.json')
 manifest['sources_scope'] = 'Builder source inventory, including cached inputs not linked into this artifact; consult sources.json and sbom.cdx.json for shipped components.'
 if manifest['ffmpeg_mode'] == 'adapters':
     header_root = Path(os.environ.get('KASMVNC_FFMPEG_HEADERS_ROOT', '/opt/kasm-ffmpeg-headers'))
@@ -103,7 +107,7 @@ manifest['runtime_boundary'] += (' Desktop C libraries and C++/exception runtime
                                  'Selected compiler compatibility/startup objects remain embedded; '
                                  'the link-input SBOM identifies them exactly.')
 if not musl:
-    manifest['runtime_boundary'] += (' First-party executable startup calls the host glibc 2.34 '
+    manifest['runtime_boundary'] += (' First-party executable startup calls the host glibc through its pre-2.34 '
                                      'entry ABI; no glibc startup objects or nonshared archive '
                                      'members are embedded. Glibc headers remain build inputs.')
 shutil.copytree('/src/builder/openssl3', doc / 'openssl-sdk-recipes', dirs_exist_ok=True)

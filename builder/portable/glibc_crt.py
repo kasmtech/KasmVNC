@@ -1,6 +1,6 @@
 """Build and audit the portable glibc executable startup boundary.
 
-Only the glibc 2.34+ dynamic PIE profile opts in. GCC still supplies its own
+Only the glibc 2.28+ dynamic PIE profile opts in. GCC still supplies its own
 crtbegin/crtend and normal implicit libraries, in the driver's usual order.
 """
 import json
@@ -9,8 +9,8 @@ from pathlib import Path
 import re
 import subprocess
 
-MODE = 'owned-glibc-2.34'
-OBJECTS = ('kasm-start.o', 'kasm-bootstrap.o', 'kasm-atexit.o', 'kasm-metadata.o')
+MODE = 'owned-glibc-2.28'
+OBJECTS = ('kasm-start.o', 'kasm-bootstrap.o', 'kasm-atexit.o', 'kasm-stat.o', 'kasm-metadata.o')
 GLIBC_OBJECTS = {'crt1.o', 'Scrt1.o', 'rcrt1.o', 'gcrt1.o', 'grcrt1.o', 'crti.o', 'crtn.o'}
 
 
@@ -65,7 +65,7 @@ def prepare(compiler, arguments, binary, source_root):
     flags = ['-O2', '-fPIE', '-fno-stack-protector', '-fno-sanitize=all',
              '-fno-lto', '-fvisibility=hidden', hardening]
     inputs = [source / ('start-' + arch + '.S'), source / 'bootstrap.c', source / 'atexit.c',
-              source / 'metadata.S']
+              source / 'stat.c', source / 'metadata.S']
     for src, name in zip(inputs, OBJECTS):
         language = 'assembler-with-cpp' if src.suffix == '.S' else 'c'
         subprocess.check_call(compiler + flags + ['-x', language, '-c', str(src), '-o', str(directory / name)])
@@ -128,8 +128,15 @@ def audit_elf(binary):
     symbols = output('readelf', '-sDW', str(binary))
     if not re.search(r'Type:\s+DYN', header) or not re.search(r'\(FLAGS_1\).*\bPIE\b', dynamic):
         raise RuntimeError('Owned glibc startup requires PIE: ' + str(binary))
-    if '[libc.so.6]' not in dynamic or not re.search(r'\bUND\s+__libc_start_main@GLIBC_2\.34\b', symbols):
-        raise RuntimeError('Missing host glibc 2.34 startup ABI: ' + str(binary))
+    if 'Advanced Micro Devices X86-64' in header:
+        entry_version = '2.2.5'
+    elif re.search(r'Machine:\s+AArch64', header):
+        entry_version = '2.17'
+    else:
+        raise RuntimeError('Unsupported owned glibc startup ELF machine: ' + str(binary))
+    host_entry = '__libc_start_main@GLIBC_' + entry_version
+    if '[libc.so.6]' not in dynamic or not re.search(r'\bUND\s+' + re.escape(host_entry) + r'\b', symbols):
+        raise RuntimeError('Missing host glibc 2.28 startup ABI: ' + str(binary))
     if 'GLIBC_PRIVATE' in symbols:
         raise RuntimeError('Private glibc startup ABI: ' + str(binary))
     for line in sections.splitlines():
@@ -143,5 +150,5 @@ def audit_elf(binary):
         raise RuntimeError('Missing non-executable stack/RELRO: ' + str(binary))
     if not re.search(r'\((?:FLAGS|FLAGS_1)\).*\b(?:BIND_NOW|NOW)\b', dynamic):
         raise RuntimeError('Missing immediate binding for full RELRO: ' + str(binary))
-    return {'mode': MODE, 'host_entry': '__libc_start_main@GLIBC_2.34',
+    return {'mode': MODE, 'host_entry': host_entry,
             'legacy_init_fini': False, 'non_executable_stack': True, 'relro': True, 'bind_now': True}

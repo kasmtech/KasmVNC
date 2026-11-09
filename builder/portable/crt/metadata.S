@@ -47,9 +47,9 @@ _IO_stdin_used:
 #ifdef __x86_64__
 .long 4,32,5
 .asciz "GNU"
-/* Compatible with IBT/SHSTK; require the portable glibc x86-64-v2 floor. */
+/* Compatible with IBT/SHSTK; require the portable glibc x86-64 baseline. */
 .long 0xc0000002,4,3,0
-.long 0xc0008002,4,2,0
+.long 0xc0008002,4,1,0
 #else
 .long 4,16,5
 .asciz "GNU"

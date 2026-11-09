@@ -5,7 +5,7 @@ import re
 import subprocess
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--maximum", default="2.34")
+parser.add_argument("--maximum", default="2.28")
 parser.add_argument("binaries", nargs="+")
 args = parser.parse_args()
 ceiling = tuple(map(int, args.maximum.split(".")))

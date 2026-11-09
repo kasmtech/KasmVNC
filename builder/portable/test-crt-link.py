@@ -127,6 +127,47 @@ include kasmvnc-static-desktop.mk
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(error, result.stderr)
 
+    def test_owned_stat_wrappers(self):
+        # Force out-of-line calls: optimized EL8 headers normally inline them,
+        # masking the libc_nonshared fallback selected by real application code.
+        with tempfile.TemporaryDirectory(prefix='kasm-stat-') as tmp:
+            root = Path(tmp)
+            source = root / 'stat.c'
+            source.write_text(r"""
+#define _GNU_SOURCE 1
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+#include <assert.h>
+int main(int argc, char **argv) {
+    struct stat s; struct stat64 s64;
+    int fd = open(argv[1], O_CREAT|O_RDWR, 0600); assert(fd >= 0);
+    assert(write(fd, "abc", 3) == 3);
+    assert(symlink(argv[1], argv[2]) == 0);
+    assert(stat(argv[2], &s) == 0 && S_ISREG(s.st_mode) && s.st_size == 3);
+    assert(lstat(argv[2], &s) == 0 && S_ISLNK(s.st_mode));
+    assert(fstat(fd, &s) == 0 && s.st_size == 3);
+    assert(fstatat(AT_FDCWD, argv[2], &s, AT_SYMLINK_NOFOLLOW) == 0 && S_ISLNK(s.st_mode));
+    assert(stat64(argv[2], &s64) == 0 && s64.st_size == 3);
+    assert(lstat64(argv[2], &s64) == 0 && S_ISLNK(s64.st_mode));
+    assert(fstat64(fd, &s64) == 0 && s64.st_size == 3);
+    assert(fstatat64(AT_FDCWD, argv[2], &s64, AT_SYMLINK_NOFOLLOW) == 0 && S_ISLNK(s64.st_mode));
+    errno = 0; assert(fstat(-1, &s) == -1 && errno == EBADF);
+    assert(unlink(argv[1]) == 0);
+    errno = 0; assert(stat(argv[1], &s) == -1 && errno == ENOENT);
+    assert(unlink(argv[2]) == 0 && close(fd) == 0);
+    return 0;
+}
+""")
+            binary = root / 'stat-test'
+            subprocess.run(['python3', str(ROOT / 'builder/scripts/link-static-desktop'),
+                            '--prefix', '', '--source-root', str(ROOT), '--host-shared',
+                            '--owned-glibc-crt', '--runtime-only', '--', os.environ.get('CC', 'gcc'),
+                            '-O0', '-fPIE', str(source), '-o', str(binary)], check=True)
+            glibc_crt.audit_link(binary)
+            subprocess.run([str(binary), str(root / 'file'), str(root / 'symlink')], check=True)
+
     def test_selected_archive_boundary(self):
         # A libc linker script can name the unused archive. That does not
         # warrant suppressing it when any member actually enters the binary.

@@ -8,19 +8,21 @@ import shutil
 import subprocess
 import sys
 
+# Leap 15.6 ships Python 3.6; probes must work with its stock interpreter.
+
 
 EXECUTABLES = ('Xkasmvnc', 'kasmvncserver', 'kasmvncconfig',
                'kasmvncpasswd', 'kasmxproxy')
 
 
 def output(command):
-    return subprocess.check_output(command, text=True, stderr=subprocess.STDOUT)
+    return subprocess.check_output(command, universal_newlines=True, stderr=subprocess.STDOUT)
 
 
 def owner(path):
     candidates = [path]
     if path.startswith('/usr/lib/'):
-        candidates.append(path.removeprefix('/usr'))
+        candidates.append(path[len('/usr'):])
     elif path.startswith('/lib/'):
         candidates.append('/usr' + path)
     if shutil.which('dpkg-query'):
@@ -32,7 +34,7 @@ def owner(path):
     else:
         raise RuntimeError('No supported package manager for library ownership')
     for command in commands:
-        result = subprocess.run(command, text=True, capture_output=True)
+        result = subprocess.run(command, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()
     raise RuntimeError('Library has no distribution package owner: ' + path)

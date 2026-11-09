@@ -9,33 +9,11 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_FORCE_HTTPS: "true"
   GIT_FETCH_EXTRA_FLAGS: --tags --force
-  # For example, BUILD_DISTROS_REGEX: "jammy|noble".
-  # "BUILD_DISTROS_REGEX: none" won't build any distros, nor www.
-  # "BUILD_DISTROS_REGEX: all" would build all distros.
-  # Make sure you quote any whitespace characters you use.
-  # E.g. BUILD_DISTROS_REGEX: "jammy|\ noble".
+  # Only "none" disables packaging; all other values retain the full portable matrix.
   BUILD_DISTROS_REGEX: all
-  BUILD_PORTABLE: "true"
-  # Preserve artifact names/layouts consumed by workspaces-core-images until
-  # its installers migrate to portable packages. Disable for reduced portable CI.
-  BUILD_WORKSPACE_LEGACY: "true"
-  # Opt in to rebuilding portable-capable distros for comparison/rollback.
-  BUILD_FULL_LEGACY: "false"
+  # Portable packages are the only CI producers. Runtime qualification is
+  # mandatory for every enabled libc/architecture profile.
   WORKSPACE_IMAGE_TAG: "develop"
-  # To debug upload stage, you can limit BUILD_DISTROS_REGEX to jammy and allow
-  # run_test distros to fail with ALLOW_RUN_TESTS_TO_FAIL=true only when
-  # BUILD_WORKSPACE_LEGACY=false; compatibility jobs remain required.
-  ALLOW_RUN_TESTS_TO_FAIL: false
-  # "auto" uses Kali's stock mirror (http.kali.org). If a Kali job fails with
-  # "APT mirror failed", rerun the pipeline from the UI with another mirror.
-  # A project CI/CD variable can set any URL.
-  KALI_MIRROR:
-    value: "auto"
-    options:
-      - "auto"
-      - "http://kali.download/kali"
-      - "http://ftp.halifax.rwth-aachen.de/kali/"
-    description: "Kali APT mirror. auto = stock http.kali.org. Pick another if a Kali job reports an APT mirror failure."
   DEBIAN_STABLE_IMAGE: debian:trixie-slim
   DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
@@ -48,94 +26,16 @@ stages:
   - run_test
   - test
   - upload_build_preview
-  - workspace_image
 
 .prepare_build: &prepare_build
   - pwd
   - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
   - apt-get update && apt-get install -y docker.io sudo
   - echo "$DOCKER_HUB_PASSWORD" | docker login --username $DOCKER_HUB_USERNAME --password-stdin
-  # DISTRO_MIRROR is passed to the distro's Dockerfiles; empty = stock mirror.
-  - if [ "$DISTRO_SLUG" = kali_kali-rolling ] && [ "$KALI_MIRROR" != auto ]; then
-      export DISTRO_MIRROR="$KALI_MIRROR";
-    fi
 
 .prepare_www: &prepare_www
   - tar -zxf output/www/kasm_www.tar.gz -C builder/
   - touch builder/www
-
-.prepare_artfacts: &prepare_artfacts
-  - if [ -d "builder/build/$DISTRO_SLUG" ]; then
-      mkdir -p output;
-      cp -r "builder/build/$DISTRO_SLUG" output/;
-    fi
-
-.enable_core_dumps: &enable_core_dumps
-  - echo core > /proc/sys/kernel/core_pattern
-
-.parallel_matrix: &parallel_matrix
-  matrix:
-      - DISTRO: 'ubuntu jammy'
-        DISTRO_SLUG: 'ubuntu_jammy'
-        LEGACY_REQUIRED: "false"
-        GROUP: 1
-      - DISTRO: 'ubuntu noble'
-        DISTRO_SLUG: 'ubuntu_noble'
-        LEGACY_REQUIRED: "false"
-        GROUP: 2
-      - DISTRO: 'ubuntu resolute'
-        DISTRO_SLUG: 'ubuntu_resolute'
-        LEGACY_REQUIRED: "false"
-        GROUP: 3
-      - DISTRO: 'debian bookworm'
-        DISTRO_SLUG: 'debian_bookworm'
-        LEGACY_REQUIRED: "false"
-        GROUP: 4
-      - DISTRO: 'debian trixie'
-        DISTRO_SLUG: 'debian_trixie'
-        LEGACY_REQUIRED: "false"
-        GROUP: 5
-      - DISTRO: 'kali kali-rolling'
-        DISTRO_SLUG: 'kali_kali-rolling'
-        LEGACY_REQUIRED: "false"
-        GROUP: 6
-      - DISTRO: 'oracle 8'
-        DISTRO_SLUG: 'oracle_8'
-        LEGACY_REQUIRED: "true"
-        GROUP: 7
-      - DISTRO: 'oracle 9'
-        DISTRO_SLUG: 'oracle_9'
-        LEGACY_REQUIRED: "false"
-        GROUP: 8
-      - DISTRO: 'opensuse 15'
-        DISTRO_SLUG: 'opensuse_15'
-        LEGACY_REQUIRED: "true"
-        GROUP: 9
-      - DISTRO: 'opensuse 16'
-        DISTRO_SLUG: 'opensuse_16'
-        LEGACY_REQUIRED: "false"
-        GROUP: 10
-      - DISTRO: 'fedora 42'
-        DISTRO_SLUG: 'fedora_42'
-        LEGACY_REQUIRED: "false"
-        GROUP: 11
-      - DISTRO: 'fedora 43'
-        DISTRO_SLUG: 'fedora_43'
-        LEGACY_REQUIRED: "false"
-        GROUP: 12
-      - DISTRO: 'alpine 321'
-        DISTRO_SLUG: 'alpine_321'
-        LEGACY_REQUIRED: "false"
-        GROUP: 13
-      - DISTRO: 'alpine 322'
-        DISTRO_SLUG: 'alpine_322'
-        LEGACY_REQUIRED: "false"
-        GROUP: 14
-      - DISTRO: 'alpine 323'
-        DISTRO_SLUG: 'alpine_323'
-        LEGACY_REQUIRED: "false"
-        GROUP: 15
-
 
 default:
   retry: 2
@@ -161,8 +61,6 @@ functional_test:
     - put_report_into_ci_pipeline "$exit_code"
     - exit "$exit_code"
   needs:
-    - job: build_amd64
-      optional: true
     - job: build_portable_amd64
       optional: true
   artifacts:
@@ -175,6 +73,8 @@ functional_test:
         - kasmvnc-functional-tests/report/*/junit.xml
   allow_failure: true
   rules:
+    - if: '$BUILD_DISTROS_REGEX == "none"'
+      when: never
     - when: on_success
 
 
@@ -228,7 +128,7 @@ functional_test_standard:
     reports:
       junit: kasmvnc-functional-tests/report/*/*/junit.xml
   rules:
-    - if: '$BUILD_PORTABLE == "false" || $BUILD_DISTROS_REGEX == "none"'
+    - if: '$BUILD_DISTROS_REGEX == "none"'
       when: never
     - if: '$RUN_STANDARD == "true"'
       when: on_success
@@ -260,167 +160,6 @@ build_www:
     paths:
       - output/
 
-build_amd64:
-  stage: build
-  image: $DEBIAN_STABLE_IMAGE
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *prepare_www
-    - . .ci/helpers.sh
-  after_script:
-    - *prepare_artfacts
-  script:
-    - if ! is_build_this_distro "$DISTRO"; then
-        echo "Skipping $DISTRO (BUILD_DISTROS_REGEX=$BUILD_DISTROS_REGEX)";
-        exit 0;
-      fi
-    - builder/build-package $DISTRO
-    - upload_packages $DISTRO
-    - bash .ci/record-workspace-package
-  artifacts:
-    paths:
-      - output/
-  cache:
-    key: "sccache-$CI_RUNNER_EXECUTABLE_ARCH-$CI_COMMIT_REF_SLUG-$DISTRO_SLUG"
-    paths:
-      - builder/build/.sccache
-    policy: pull-push
-
-  resource_group: "concurrent_$GROUP"
-  parallel:
-    *parallel_matrix
-  rules:
-    - if: '$BUILD_DISTROS_REGEX == "none"'
-      when: never
-    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true" && $BUILD_WORKSPACE_LEGACY != "true"'
-      when: never
-    - if: '$BUILD_WORKSPACE_LEGACY == "true"'
-      allow_failure: false
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH =~ /^release\//'
-      allow_failure: false
-    - allow_failure: true
-
-build_arm64:
-  stage: build
-  image: $DEBIAN_STABLE_IMAGE
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *prepare_www
-    - . .ci/helpers.sh
-  after_script:
-    - *prepare_artfacts
-  script:
-    - set -e
-    - if ! is_build_this_distro "$DISTRO"; then
-        echo "Skipping $DISTRO (BUILD_DISTROS_REGEX=$BUILD_DISTROS_REGEX)";
-        exit 0;
-      fi
-    - builder/build-package $DISTRO
-    - upload_packages $DISTRO
-    - bash .ci/record-workspace-package
-  artifacts:
-    paths:
-      - output/
-  cache:
-    key: "sccache-$CI_RUNNER_EXECUTABLE_ARCH-$CI_COMMIT_REF_SLUG-$DISTRO_SLUG"
-    paths:
-      - builder/build/.sccache
-    policy: pull-push
-  resource_group: "concurrent_$GROUP"
-  parallel:
-    *parallel_matrix
-  rules:
-    - if: '$BUILD_DISTROS_REGEX == "none"'
-      when: never
-    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true" && $BUILD_WORKSPACE_LEGACY != "true"'
-      when: never
-    - if: '$BUILD_WORKSPACE_LEGACY == "true"'
-      allow_failure: false
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH =~ /^release\//'
-      allow_failure: false
-    - allow_failure: true
-
-
-run_test_amd64:
-  stage: run_test
-  image: $DEBIAN_STABLE_IMAGE
-  tags:
-    - oci-fixed-amd
-  before_script:
-    - *prepare_build
-    - *enable_core_dumps
-    - . .ci/helpers.sh
-  script:
-    - set -e
-    - if is_build_this_distro "$DISTRO"; then
-        builder/test-barebones --run-test $DISTRO;
-      else
-        echo "Skipping $DISTRO (BUILD_DISTROS_REGEX=$BUILD_DISTROS_REGEX)";
-      fi
-  rules:
-    - if: '$BUILD_DISTROS_REGEX == "none"'
-      when: never
-    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true" && $BUILD_WORKSPACE_LEGACY != "true"'
-      when: never
-    - if: '$BUILD_WORKSPACE_LEGACY == "true"'
-      allow_failure: false
-    - if: $ALLOW_RUN_TESTS_TO_FAIL == "false"
-    - if: $ALLOW_RUN_TESTS_TO_FAIL == "true"
-      allow_failure: true
-  dependencies:
-    - build_amd64
-  artifacts:
-    when: always
-    paths:
-      - run_test/core_dumps/*/core
-    reports:
-      junit:
-        - run_test/*.xml
-  parallel:
-    *parallel_matrix
-
-run_test_arm64:
-  stage: run_test
-  image: $DEBIAN_STABLE_IMAGE
-  tags:
-    - oci-fixed-arm
-  before_script:
-    - *prepare_build
-    - *enable_core_dumps
-    - . .ci/helpers.sh
-  script:
-    - set -e
-    - if is_build_this_distro "$DISTRO"; then
-        builder/test-barebones --run-test $DISTRO;
-      else
-        echo "Skipping $DISTRO (BUILD_DISTROS_REGEX=$BUILD_DISTROS_REGEX)";
-      fi
-  rules:
-    - if: '$BUILD_DISTROS_REGEX == "none"'
-      when: never
-    - if: '$BUILD_FULL_LEGACY != "true" && $BUILD_PORTABLE != "false" && $LEGACY_REQUIRED != "true" && $BUILD_WORKSPACE_LEGACY != "true"'
-      when: never
-    - if: '$BUILD_WORKSPACE_LEGACY == "true"'
-      allow_failure: false
-    - if: $ALLOW_RUN_TESTS_TO_FAIL == "false"
-    - if: $ALLOW_RUN_TESTS_TO_FAIL == "true"
-      allow_failure: true
-  dependencies:
-    - build_arm64
-  artifacts:
-    when: always
-    paths:
-      - run_test/core_dumps/*/core
-    reports:
-      junit:
-        - run_test/*.xml
-  parallel:
-    *parallel_matrix
-
 spec_dependencies:
   stage: build
   image: $DEBIAN_STABLE_IMAGE
@@ -447,13 +186,8 @@ spec_test:
   rules:
     - if: '$BUILD_DISTROS_REGEX == "none"'
       when: never
-    - if: '$BUILD_PORTABLE != "false"'
-      needs: [spec_dependencies, build_portable_amd64]
     - when: on_success
-      needs:
-        - spec_dependencies
-        - job: build_amd64
-          optional: true
+      needs: [spec_dependencies, build_portable_amd64]
   before_script:
     - *prepare_build
   artifacts:
@@ -463,12 +197,7 @@ spec_test:
         - Benchmark.xml
   script:
     - apt-get install -y python3
-    - |
-      if [ "$BUILD_PORTABLE" != "false" ]; then
-        KASMVNC_PACKAGE_DIR=output/portable_amd64 builder/test-vncserver
-      else
-        builder/test-vncserver
-      fi
+    - KASMVNC_PACKAGE_DIR=output/portable_amd64 builder/test-vncserver
 
 
 make_build_preview_html:
@@ -505,76 +234,7 @@ upload_build_preview_html:
     - upload_to_s3 "output/index.html" "$preview_builds_dir/index.html" "$S3_BUCKET"
     - show_file_link_in_ci "index.html" "$UPLOADED_FILE_S3_URL"
 
-# Optional end-to-end images; each job consumes only its native Noble package.
-.workspace_image:
-  stage: workspace_image
-  image: $DEBIAN_STABLE_IMAGE
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
-    WORKSPACE_CORE_REF: develop
-    WORKSPACE_DESKTOP_REF: develop
-  when: manual
-  allow_failure: true
-  timeout: 3h
-  retry:
-    max: 2
-    when:
-      - runner_system_failure
-      - api_failure
-  rules:
-    - if: '$BUILD_DISTROS_REGEX == "none"'
-      when: never
-    - if: '$BUILD_PORTABLE != "false" && $BUILD_FULL_LEGACY != "true" && $BUILD_WORKSPACE_LEGACY != "true"'
-      when: never
-    # BUILD_DISTROS_REGEX is a shell regex, not a GitLab /regex/ value.
-    # Keep the optional action available; it validates the Noble artifact.
-    - when: manual
-  resource_group: "workspace-$CI_COMMIT_REF_SLUG-$WORKSPACE_ARCH"
-  before_script:
-    # Trixie splits the CLI from docker.io; no daemon is needed in the job container.
-    - apt-get update && apt-get install -y --no-install-recommends docker-cli docker-buildx git python3 ca-certificates
-    - docker --version && docker buildx version
-    - echo "$DOCKER_HUB_PASSWORD" | docker login --username "$DOCKER_HUB_USERNAME" --password-stdin
-  script:
-    - python3 .ci/build-workspace-image.py --arch "$WORKSPACE_ARCH"
-  artifacts:
-    when: always
-    expire_in: 30 days
-    paths:
-      - workspace-image-report/
-
-build_workspace_noble_amd64:
-  extends: .workspace_image
-  tags: [oci-fixed-amd]
-  variables:
-    WORKSPACE_ARCH: amd64
-  needs:
-    - job: build_amd64
-      parallel:
-        matrix:
-          - DISTRO: 'ubuntu noble'
-            DISTRO_SLUG: 'ubuntu_noble'
-            LEGACY_REQUIRED: "false"
-            GROUP: 2
-      artifacts: true
-
-build_workspace_noble_arm64:
-  extends: .workspace_image
-  tags: [oci-fixed-arm]
-  variables:
-    WORKSPACE_ARCH: arm64
-  needs:
-    - job: build_arm64
-      parallel:
-        matrix:
-          - DISTRO: 'ubuntu noble'
-            DISTRO_SLUG: 'ubuntu_noble'
-            LEGACY_REQUIRED: "false"
-            GROUP: 2
-      artifacts: true
-
-# Portable builds retain the full runtime matrix. The matrix above also supplies
-# temporary workspace-consumer artifacts and older-libc legacy exceptions.
+# Four portable producers retain required distro/architecture runtime coverage.
 .build_portable:
   stage: build
   timeout: 3h
@@ -604,7 +264,7 @@ build_workspace_noble_arm64:
       cyclonedx: ["output/portable_*/gl-sbom.cdx.json"]
       dependency_scanning: ["output/portable_*/gl-dependency-scanning-report.json"]
   rules:
-    - if: '$BUILD_PORTABLE == "false" || $BUILD_DISTROS_REGEX == "none"'
+    - if: '$BUILD_DISTROS_REGEX == "none"'
       when: never
     - when: on_success
 
@@ -656,7 +316,7 @@ build_portable_musl_arm64:
     when: always
     paths: [output/portable-tests/]
   rules:
-    - if: '$BUILD_PORTABLE == "false" || $BUILD_DISTROS_REGEX == "none"'
+    - if: '$BUILD_DISTROS_REGEX == "none"'
       when: never
     - when: on_success
 
@@ -668,7 +328,7 @@ test_portable_amd64:
     PORTABLE_ARCH: amd64
   parallel:
     matrix:
-      - PORTABLE_CASE: [kasmos-kasmos, ubuntu-jammy, ubuntu-noble, ubuntu-resolute, debian-bookworm, debian-trixie, kali-rolling, oracle-9, rhel-9, rockylinux-9, almalinux-9, opensuse-16, fedora-42, fedora-43, parrotos-7, cuda-jammy]
+      - PORTABLE_CASE: [kasmos-kasmos, ubuntu-jammy, ubuntu-noble, ubuntu-resolute, debian-bookworm, debian-trixie, kali-rolling, oracle-8, oracle-9, rhel-9, rockylinux-8, rockylinux-9, almalinux-8, almalinux-9, opensuse-15, opensuse-16, fedora-42, fedora-43, parrotos-7, cuda-jammy]
 
 test_portable_arm64:
   extends: .test_portable
@@ -678,7 +338,7 @@ test_portable_arm64:
     PORTABLE_ARCH: arm64
   parallel:
     matrix:
-      - PORTABLE_CASE: [kasmos-kasmos, ubuntu-jammy, ubuntu-noble, ubuntu-resolute, debian-bookworm, debian-trixie, kali-rolling, oracle-9, rhel-9, rockylinux-9, almalinux-9, opensuse-16, fedora-42, fedora-43, parrotos-7]
+      - PORTABLE_CASE: [kasmos-kasmos, ubuntu-jammy, ubuntu-noble, ubuntu-resolute, debian-bookworm, debian-trixie, kali-rolling, oracle-8, oracle-9, rhel-9, rockylinux-8, rockylinux-9, almalinux-8, almalinux-9, opensuse-15, opensuse-16, fedora-42, fedora-43, parrotos-7]
 
 .test_portable_musl:
   extends: .test_portable

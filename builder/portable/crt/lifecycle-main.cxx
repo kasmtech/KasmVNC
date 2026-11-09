@@ -21,7 +21,13 @@ struct Global {
     Global() { event("global:constructor"); }
     ~Global() { event("global:destructor"); }
 } global;
-__attribute__((constructor)) static void constructor() { event("attribute:constructor"); }
+__attribute__((constructor)) static void constructor(int argc, char **argv, char **envp)
+{
+    assert(argc == 4 && argv && envp && envp == environ);
+    assert(!strcmp(argv[1], "first-argument"));
+    assert(!strcmp(getenv("KASM_CRT_TEST_ENV"), "environment-value"));
+    event("attribute:constructor");
+}
 __attribute__((destructor)) static void destructor() { event("attribute:destructor"); }
 struct Local {
     int value = 23;

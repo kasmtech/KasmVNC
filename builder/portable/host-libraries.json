@@ -59,7 +59,7 @@
         "glibc",
         "musl"
       ],
-      "deb": "libglib2.0-0 (>= 2.68) | libglib2.0-0t64 (>= 2.68)",
+      "deb": "libglib2.0-0 (>= 2.56) | libglib2.0-0t64 (>= 2.56)",
       "apk": "glib"
     },
     {
@@ -215,7 +215,7 @@
         "glibc",
         "musl"
       ],
-      "deb": "libstdc++6 (>= 11)",
+      "deb": "libstdc++6 (>= 8)",
       "apk": "libstdc++"
     },
     {
@@ -308,8 +308,8 @@
     }
   ],
   "compiler_symbol_maximum": {
-    "GLIBCXX": "3.4.29",
-    "CXXABI": "1.3.13",
+    "GLIBCXX": "3.4.25",
+    "CXXABI": "1.3.11",
     "GCC": "4.5.0"
   },
   "compiler_symbol_exceptions": [

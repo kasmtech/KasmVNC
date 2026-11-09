@@ -2,7 +2,7 @@
 set -eo pipefail
 source /opt/rh/gcc-toolset-14/enable
 set -u
-[[ $(getconf GNU_LIBC_VERSION) == 'glibc 2.34' ]]
+[[ $(getconf GNU_LIBC_VERSION) == 'glibc 2.28' ]]
 case $(uname -m) in
  x86_64) baseline='-march=x86-64 -mtune=generic' ;;
  aarch64) baseline='-march=armv8-a -mtune=generic' ;;

@@ -1,4 +1,4 @@
-# The private GLIBC 2.34-compatible libgcc and its build environment are cached
+# The private GLIBC 2.28-compatible libgcc and its build environment are cached
 # independently. CI supplies an immutable image digest, never a moving tag.
 ARG GCC_RUNTIME_IMAGE
 FROM ${GCC_RUNTIME_IMAGE}

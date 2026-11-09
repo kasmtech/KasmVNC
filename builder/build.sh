@@ -78,7 +78,7 @@ setup_compilers_to_see_libs_in_dot_local() {
 }
 
 ensure_libturbojpeg_links() {
-  export LDFLAGS="${KASMVNC_OPENSSL_PREFIX:+-L$KASMVNC_OPENSSL_PREFIX/lib }${KASMVNC_GCC_RUNTIME_PREFIX:+-L$KASMVNC_GCC_RUNTIME_PREFIX/lib }${KASMVNC_STATIC_RUNTIME_PREFIX:+-L$KASMVNC_STATIC_RUNTIME_PREFIX/lib }-L$HOME/.local/lib -L$HOME/.local/lib64"
+  export LDFLAGS="${KASMVNC_OPENSSL_PREFIX:+-L$KASMVNC_OPENSSL_PREFIX/lib }${KASMVNC_GCC_RUNTIME_PREFIX:+-L$KASMVNC_GCC_RUNTIME_PREFIX/lib }${KASMVNC_STATIC_RUNTIME_PREFIX:+-L$KASMVNC_STATIC_RUNTIME_PREFIX/lib }-L$HOME/.local/lib -L$HOME/.local/lib64 -Wl,-z,relro,-z,now"
 }
 
 # For build-dep to work, the apt sources need to have the source server
@@ -140,8 +140,8 @@ cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
   -DCMAKE_LIBRARY_PATH="$HOME/.local/lib;$HOME/.local/lib64" \
   -DCMAKE_INCLUDE_PATH="$HOME/.local/include" \
   -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
-  -DCMAKE_SHARED_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64" \
-  -DCMAKE_MODULE_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64"
+  -DCMAKE_SHARED_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64 -Wl,-z,relro,-z,now" \
+  -DCMAKE_MODULE_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64 -Wl,-z,relro,-z,now"
 
 make -j"${BUILD_JOBS:-$(nproc)}"
 
