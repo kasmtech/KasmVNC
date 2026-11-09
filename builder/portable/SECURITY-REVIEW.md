@@ -146,7 +146,7 @@ existing patch command's default fuzz/offset handling; the claim here is the
 verified unchanged XKB source, not fuzz-free application. Both checks are common
 C code with no architecture/libc selection around the reviewed paths.
 
-The two platform selectors, `builder/build-static-glibc234-inside-docker` and
+The two platform selectors, `builder/build-static-glibc228-inside-docker` and
 `builder/build-static-musl-inside-docker`, explicitly select `XORG_VER=21.1.25`
 and delegate through `builder/build-static-inside-docker` to `builder/build.sh`.
 The latter extracts that archive into `unix/xserver`, applies the VNC patch,

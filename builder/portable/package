@@ -106,6 +106,9 @@ sed -i -e 's!pem_certificate: .*!pem_certificate: /etc/pki/tls/private/kasmvnc.p
   "$root/usr/share/kasmvnc/kasmvnc_defaults.yaml"
 tar --sort=name --owner=0 --group=0 --numeric-owner -czf "/artifacts/$basename.tar.gz" -C "$root" .
 mkdir -p "$work/rpm/BUILD" "$work/rpm/RPMS" "$work/rpm/SOURCES" "$work/rpm/SPECS" "$work/rpm/SRPMS"
+# RPM 4.14 resolves -f scriptlets under its build directory, even for
+# absolute filenames. A staged relative input works on EL8 and newer RPM.
+install -m644 builder/portable/rpm-preun "$work/rpm/BUILD/rpm-preun"
 cat > "$work/rpm/SPECS/portable.spec" <<EOF
 %global debug_package %{nil}
 %global __os_install_post %{nil}
@@ -136,7 +139,7 @@ mkdir -p %{buildroot}
 cp -a $root/. %{buildroot}/
 %post
 /usr/lib/kasmvncserver/initialize-tls
-%preun -f /src/builder/portable/rpm-preun
+%preun -f rpm-preun
 %files
 %config(noreplace) /etc/kasmvnc/kasmvnc.yaml
 /usr/bin/*
