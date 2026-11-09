@@ -1,6 +1,7 @@
 {
   "source": "workspaces-core-images/ci-scripts/template-vars.yaml",
   "source_revision": "11a313aaf3ebf1d35851d707875c2c7627e8fdd0",
+  "source_note": "Curated runtime matrix seeded from the Workspace image inventory at source_revision, extended with openSUSE Leap 15.6 and EL8 portable qualification.",
   "cases": [
     {
       "name": "kasmos-kasmos",

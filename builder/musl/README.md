@@ -1,4 +1,4 @@
-# Portable musl APKs (experimental)
+# Portable musl APKs
 
 This profile produces one signed KasmVNC APK for x86_64 and one for aarch64.
 The baseline is Alpine 3.21 / musl 1.2.5; the runtime matrix covers Alpine
@@ -29,7 +29,7 @@ adapter. Install the distro's FFmpeg package for video encoding; the shared
 libraries must provide the requested encoder. Runtime package updates provide
 FFmpeg security fixes; restart sessions after updates. The explicit
 `--ffmpeg-mode static` fallback embeds the existing FFmpeg/encoder dependency
-closure and remains the local command's default when no mode is supplied.
+closure for explicit experiments; local and CI commands default to adapters.
 See [the ABI-family table](../portable/README.md#ffmpeg-runtime-adapters).
 
 OpenSSL is dynamically linked in both FFmpeg modes. The APK explicitly requires
