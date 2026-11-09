@@ -53,11 +53,26 @@ export PKG_CONFIG_PATH="$prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PAT
     make -j"$jobs"
     make install
 )
+# x265 strips pthread from its pkg-config private closure, which breaks
+# static consumers on systems where pthread is not merged into libc.
+if ! patch --batch --force --dry-run -R -p1 -d x265 < "$recipe_dir/patches/x265-pthread-pkgconfig.patch" >/dev/null 2>&1; then
+    patch --batch --forward -p1 -d x265 < "$recipe_dir/patches/x265-pthread-pkgconfig.patch"
+fi
 cmake -S x265/source -B x265/build-static -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
     -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DENABLE_PIC=ON -DNATIVE_BUILD=OFF
 cmake --build x265/build-static -j"$jobs"
 cmake --install x265/build-static
+# Exercise the same C-link boundary FFmpeg uses; pkg-config --exists alone
+# cannot detect a missing transitive pthread dependency on older glibc.
+cat > x265-consumer.c <<'C'
+#include <stdint.h>
+#include <x265.h>
+int main(void) { return x265_api_get(0) == 0; }
+C
+read -r -a x265_flags <<< "$(pkg-config --static --cflags --libs x265)"
+${CC:-cc} x265-consumer.c "${x265_flags[@]}" -o x265-consumer
+./x265-consumer
 cmake -S svt-av1 -B svt-av1/build-static -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_APPS=OFF -DBUILD_TESTING=OFF -DNATIVE=OFF

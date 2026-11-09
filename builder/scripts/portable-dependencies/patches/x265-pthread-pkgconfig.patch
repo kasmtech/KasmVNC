@@ -1,0 +1,13 @@
+--- a/source/CMakeLists.txt
++++ b/source/CMakeLists.txt
+@@ -1203,8 +1203,9 @@
+         endif()
+     endforeach()
+     if(PLIBLIST)
++        # Static consumers need the separate pthread DSO on glibc before 2.34.
+         # blacklist of libraries that should not be in Libs.private
+-        list(REMOVE_ITEM PLIBLIST "-lc" "-lpthread" "-lmingwex" "-lmingwthrd"
++        list(REMOVE_ITEM PLIBLIST "-lc" "-lmingwex" "-lmingwthrd"
+             "-lmingw32" "-lmoldname" "-lmsvcrt" "-ladvapi32" "-lshell32"
+             "-luser32" "-lkernel32")
+         string(REPLACE ";" " " PRIVATE_LIBS "${PLIBLIST}")

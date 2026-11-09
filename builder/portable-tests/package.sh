@@ -57,33 +57,59 @@ install_package() {
       printf '%s\n' "$package" > /tmp/portable-tar-package ;;
   esac
 }
+verify_candidate() {
+  command -v kasmvncserver
+  command -v Xkasmvnc
+  test "$(head -c4 /usr/bin/kasmvncserver)" = "$(printf '\177ELF')"
+  test ! -d /usr/share/perl5/KasmVNC
+  test ! -d /usr/share/perl5/vendor_perl/KasmVNC
+  for tool in xdpyinfo xauth xkbcomp openssl; do command -v "$tool"; done
+  test -s /usr/share/X11/xkb/rules/evdev
+  Xkasmvnc -version
+  test -s /usr/share/kasmvnc/www/index.html
+  test -f "$config"
+  if [[ "$format" = deb ]]; then
+    test -s /etc/ssl/certs/ssl-cert-snakeoil.pem
+    test -s /etc/ssl/private/ssl-cert-snakeoil.key
+  else
+    tls=/etc/pki/tls/private/kasmvnc.pem
+    [[ "$format" != apk ]] || tls=/etc/ssl/private/kasmvnc.pem
+    test -s "$tls"
+    [[ $(stat -c '%a' "$tls") = 640 ]]
+    [[ $(stat -c '%G' "$tls") = kasmvnc-cert ]]
+  fi
+  # Linker dependencies must resolve in the target, without builder libraries.
+  ldd /usr/bin/Xkasmvnc /usr/bin/kasmvncserver /usr/bin/kasmvncconfig \
+    /usr/bin/kasmvncpasswd /usr/bin/kasmxproxy > /tmp/portable-ldd.txt
+  ! grep -q 'not found' /tmp/portable-ldd.txt
+}
+# A legacy native package can still have the Perl launcher and old TLS setup.
+# Validate its actual package identity/config before applying candidate audits.
+verify_previous() {
+  test -s "$config"
+  case "$format" in
+    rpm)
+      [[ "$(rpm -qp --qf '%{NAME}' "$package")" = kasmvncserver ]]
+      [[ "$(rpm -qp --qf '%{ARCH}' "$package")" = "$(rpm --eval '%{_arch}')" ]]
+      [[ "$(rpm -q --qf '%{VERSION}-%{RELEASE}.%{ARCH}' kasmvncserver)" = "$(rpm -qp --qf '%{VERSION}-%{RELEASE}.%{ARCH}' "$package")" ]] ;;
+    deb)
+      [[ "$(dpkg-deb -f "$package" Package)" = kasmvncserver ]]
+      [[ "$(dpkg-deb -f "$package" Architecture)" = "$(dpkg --print-architecture)" ]]
+      [[ "$(dpkg-query -W -f='${Version}' kasmvncserver)" = "$(dpkg-deb -f "$package" Version)" ]] ;;
+    apk)
+      [[ "$(apk_installed_version)" = "$(apk_candidate_version)" ]]
+      apk info --exists kasmvncserver ;;
+    *) echo "Previous package requires a native package format" >&2; exit 2 ;;
+  esac
+}
 case "$action" in
+  install-previous)
+    install_package
+    verify_previous
+    ;;
   install)
     install_package
-    command -v kasmvncserver
-    command -v Xkasmvnc
-    test "$(head -c4 /usr/bin/kasmvncserver)" = "$(printf '\177ELF')"
-    test ! -d /usr/share/perl5/KasmVNC
-    test ! -d /usr/share/perl5/vendor_perl/KasmVNC
-    for tool in xdpyinfo xauth xkbcomp openssl; do command -v "$tool"; done
-    test -s /usr/share/X11/xkb/rules/evdev
-    Xkasmvnc -version
-    test -s /usr/share/kasmvnc/www/index.html
-    test -f "$config"
-    if [[ "$format" = deb ]]; then
-      test -s /etc/ssl/certs/ssl-cert-snakeoil.pem
-      test -s /etc/ssl/private/ssl-cert-snakeoil.key
-    else
-      tls=/etc/pki/tls/private/kasmvnc.pem
-      [[ "$format" != apk ]] || tls=/etc/ssl/private/kasmvnc.pem
-      test -s "$tls"
-      [[ $(stat -c '%a' "$tls") = 640 ]]
-      [[ $(stat -c '%G' "$tls") = kasmvnc-cert ]]
-    fi
-    # Linker dependencies must resolve in the target, without builder libraries.
-    ldd /usr/bin/Xkasmvnc /usr/bin/kasmvncserver /usr/bin/kasmvncconfig \
-      /usr/bin/kasmvncpasswd /usr/bin/kasmxproxy > /tmp/portable-ldd.txt
-    ! grep -q 'not found' /tmp/portable-ldd.txt
+    verify_candidate
     ;;
   mark)
     printf '\n%s\n' "$marker" >> "$config" ;;
@@ -130,6 +156,7 @@ PY
       after=$(rpm -q --qf '%{VERSION}-%{RELEASE}' kasmvncserver)
     fi
     [[ "$after" = "$candidate" && "$after" != "$before" ]]
+    verify_candidate
     grep -Fq "$marker" "$config"
     printf 'Version transition: %s -> %s\n' "$before" "$after"
     ;;

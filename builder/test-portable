@@ -147,7 +147,7 @@ try:
                     'COPY test/prerequisites.sh /portable/prerequisites.sh\n'
                     'RUN bash /portable/prerequisites.sh '+fmt+(' all ' if fmt == 'tar' else ' bootstrap ')+ffmpeg_mode+'\n'
                     'COPY artifacts /artifacts\nCOPY test/package.sh /portable/package.sh\n'
-                    'RUN bash /portable/package.sh install '+fmt+' /artifacts/'+initial+'\n'
+                    'RUN bash /portable/package.sh '+('install-previous' if args.previous_package and fmt != 'tar' else 'install')+' '+fmt+' /artifacts/'+initial+'\n'
                     + ('RUN bash /portable/prerequisites.sh '+fmt+' tools '+ffmpeg_mode+'\n' if fmt != 'tar' else '') +
                     'RUN bash /portable/package.sh mark '+fmt+'\n'
                     'RUN bash /portable/package.sh '+replacement_action+' '+fmt+' /artifacts/'+artifact.name+'\n'
