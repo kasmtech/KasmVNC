@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
+# Keep compiler, ELF audit and split-debug tools on the same modern toolset.
+source /opt/rh/gcc-toolset-14/enable
+set -u
 cd /src
 # Stage directly, so the legacy tarball's bundled Mesa swrast is not included.
 # Web assets are still mandatory and supplied by the same build_www CI job.

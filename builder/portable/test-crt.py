@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -166,6 +167,31 @@ class PortableCRTTests(unittest.TestCase):
             entry = self.run_command(['readelf', '-aW', str(self.directory / 'kasm-start.o')])
             self.assertRegex(entry, r'\.note\.gnu\.property\s+NOTE\b')
             self.assertIn('AArch64 feature: BTI, PAC', entry)
+
+    def test_stripped_elf_audit_with_system_binutils(self):
+        # EL8's readelf -D omits undefined imports from GNU-hash output.
+        # Exercise its explicit dynamic-symbol-table mode on the stripped ELF.
+        if self.runner:
+            self.skipTest('System strip does not support the cross target')
+        import glibc_crt
+        binary = self.directory / 'stripped-system-tools'
+        shutil.copy2(self.directory / 'replacement-driver', binary)
+        subprocess.run(['/usr/bin/strip', '--strip-unneeded', str(binary)], check=True)
+        previous = os.environ.get('PATH', '')
+        try:
+            os.environ['PATH'] = '/usr/bin:/bin'
+            result = glibc_crt.audit_elf(binary)
+            self.assertEqual(result['mode'], glibc_crt.MODE)
+        finally:
+            os.environ['PATH'] = previous
+        # GNU property data must survive stripping, even if old BFD cannot
+        # decode every property type introduced by newer assemblers.
+        for name in ('replacement-driver', 'stripped-system-tools'):
+            subprocess.run(['objcopy', '--dump-section',
+                            '.note.gnu.property=' + str(self.directory / (name + '.property')),
+                            str(self.directory / name)], check=True)
+        self.assertEqual((self.directory / 'replacement-driver.property').read_bytes(),
+                         (self.directory / 'stripped-system-tools.property').read_bytes())
 
     def test_bootstrap_requires_pie(self):
         result = subprocess.run([*self.cc, '-fno-pie', '-c', str(SOURCE / 'bootstrap.c'),

@@ -125,7 +125,8 @@ def audit_elf(binary):
     segments = output('readelf', '-lW', str(binary))
     dynamic = output('readelf', '-dW', str(binary))
     sections = output('readelf', '-SW', str(binary))
-    symbols = output('readelf', '-sDW', str(binary))
+    # -D on older binutils enumerates the GNU hash table, omitting imports.
+    symbols = output('readelf', '--dyn-syms', '--wide', str(binary))
     if not re.search(r'Type:\s+DYN', header) or not re.search(r'\(FLAGS_1\).*\bPIE\b', dynamic):
         raise RuntimeError('Owned glibc startup requires PIE: ' + str(binary))
     if 'Advanced Micro Devices X86-64' in header:
