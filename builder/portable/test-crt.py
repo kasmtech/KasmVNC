@@ -184,14 +184,38 @@ class PortableCRTTests(unittest.TestCase):
             self.assertEqual(result['mode'], glibc_crt.MODE)
         finally:
             os.environ['PATH'] = previous
-        # GNU property data must survive stripping, even if old BFD cannot
-        # decode every property type introduced by newer assemblers.
-        for name in ('replacement-driver', 'stripped-system-tools'):
-            subprocess.run(['objcopy', '--dump-section',
-                            '.note.gnu.property=' + str(self.directory / (name + '.property')),
-                            str(self.directory / name)], check=True)
-        self.assertEqual((self.directory / 'replacement-driver.property').read_bytes(),
-                         (self.directory / 'stripped-system-tools.property').read_bytes())
+    def test_stripping_preserves_optional_gnu_property(self):
+        # Use target binutils so this check runs for native AND cross targets.
+        # GCC's ARM crtbegin/end can omit property notes, causing the linked
+        # executable to have none despite the owned entry's BTI/PAC note.
+        strip = self.run_command([*self.cc, '-print-prog-name=strip']).strip()
+        objcopy = self.run_command([*self.cc, '-print-prog-name=objcopy']).strip()
+
+        def property_data(path, label):
+            sections = self.run_command(['readelf', '-SW', str(path)])
+            if not re.search(r'\]\s+\.note\.gnu\.property\s+NOTE\b', sections):
+                return None
+            data = self.directory / (label + '.property')
+            self.run_command([objcopy, '--dump-section', '.note.gnu.property=' + str(data),
+                              str(path), str(self.directory / (label + '.copy'))])
+            return data.read_bytes()
+
+        # Cover presence and absence independently of the toolchain's final
+        # ELF note-merging behavior. The existing entry hardening assertions
+        # still require the architecture-specific IBT/SHSTK or BTI/PAC note.
+        entry = self.directory / 'kasm-start.o'
+        self.assertIsNotNone(property_data(entry, 'entry-before'))
+        absent = self.directory / 'entry-without-property.o'
+        self.run_command([objcopy, '--remove-section=.note.gnu.property', str(entry), str(absent)])
+        self.assertIsNone(property_data(absent, 'absent-before'))
+        for name in ('replacement-driver', 'kasm-start.o', 'entry-without-property.o'):
+            with self.subTest(binary=name):
+                source = self.directory / name
+                stripped = self.directory / (name + '.stripped')
+                shutil.copy2(source, stripped)
+                self.run_command([strip, '--strip-unneeded', str(stripped)])
+                self.assertEqual(property_data(source, name + '-before'),
+                                 property_data(stripped, name + '-after'))
 
     def test_bootstrap_requires_pie(self):
         result = subprocess.run([*self.cc, '-fno-pie', '-c', str(SOURCE / 'bootstrap.c'),
