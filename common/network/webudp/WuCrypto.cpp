@@ -1,8 +1,7 @@
 #include "WuCrypto.h"
 #include <assert.h>
+#include <stdlib.h>
 #include <openssl/hmac.h>
-#include <openssl/rand.h>
-#include "WuRng.h"
 
 WuSHA1Digest WuSHA1(const uint8_t* src, size_t len, const void* key,
                     size_t keyLen) {
@@ -17,18 +16,14 @@ WuCert::WuCert() : key(EVP_PKEY_new()), x509(X509_new()) {
   BIGNUM* n = BN_new();
   BN_set_word(n, RSA_F4);
 
-  if (!RAND_status()) {
-    uint64_t seed = WuRandomU64();
-    RAND_seed(&seed, sizeof(seed));
-  }
-
   RSA_generate_key_ex(rsa, 2048, n, NULL);
   EVP_PKEY_assign_RSA(key, rsa);
 
   BIGNUM* serial = BN_new();
   X509_NAME* name = X509_NAME_new();
   X509_set_pubkey(x509, key);
-  BN_pseudo_rand(serial, 64, 0, 0);
+  if (BN_rand(serial, 64, 0, 0) != 1 || !BN_to_ASN1_INTEGER(serial, X509_get_serialNumber(x509)))
+      abort();
 
   X509_set_version(x509, 0L);
   X509_NAME_add_entry_by_NID(name, NID_commonName, MBSTRING_UTF8,
