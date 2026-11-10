@@ -51,7 +51,7 @@ extern "C" {
 
 // using SwsContextGuard = std::unique_ptr<SwsContext, SwsContextDeleter>;
 
-namespace KASMVNC_FFMPEG_NAMESPACE {
+namespace KASMVNC_FFMPEG {
 
 class Library final {
     struct AVFrameDeleter {
@@ -426,4 +426,4 @@ public:
     }
 };
 
-} // namespace KASMVNC_FFMPEG_NAMESPACE
+} // namespace KASMVNC_FFMPEG

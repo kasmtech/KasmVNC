@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -ex pipefail
+set -euxo pipefail
 
 LIBYUV_REPO="https://chromium.googlesource.com/libyuv/libyuv"
 LIBYUV_SRC_DIR="/tmp/libyuv"

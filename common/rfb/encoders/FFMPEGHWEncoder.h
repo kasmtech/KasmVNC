@@ -16,15 +16,8 @@
  * USA.
  */
 #pragma once
-#include "SoftwareEncoder.h"
+#include "FFmpegVideoEncoder.h"
 namespace rfb {
-template<FFmpeg::Device Device>
-class FFMPEGHWEncoder final : public SoftwareEncoder {
-    template<typename T> friend class EncoderBuilder;
-    FFMPEGHWEncoder(Screen layout, const FFmpeg &ffmpeg, SConnection *conn,
-        KasmVideoEncoders::Encoder encoder, const char *path, VideoEncoderParams params)
-        : SoftwareEncoder(layout, ffmpeg, conn, encoder, params, Device, path) {}
-};
-using FFMPEGVAAPIEncoder = FFMPEGHWEncoder<FFmpeg::Device::VAAPI>;
-using FFMPEGCudaEncoder = FFMPEGHWEncoder<FFmpeg::Device::CUDA>;
+    using FFMPEGVAAPIEncoder = FFmpegDeviceEncoder<FFmpeg::Device::VAAPI>;
+    using FFMPEGCudaEncoder = FFmpegDeviceEncoder<FFmpeg::Device::CUDA>;
 } // namespace rfb

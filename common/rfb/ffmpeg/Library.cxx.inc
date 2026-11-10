@@ -22,14 +22,14 @@
 #include <filesystem>
 #include "rfb/LogWriter.h"
 
-namespace KASMVNC_FFMPEG_NAMESPACE {
+namespace KASMVNC_FFMPEG {
 static rfb::LogWriter vlog("ffmpeg");
 using namespace std::string_literals;
 
 #ifndef KASMVNC_STATIC_FFMPEG
 Library::DlHandlerGuard Library::loadLibrary(const char *lib, unsigned major_version) {
     const auto soname = std::string{lib} + "." + std::to_string(major_version);
-    auto *handle = dlopen(soname.c_str(), RTLD_NOW | RTLD_LOCAL);
+    auto *handle = dlopen(soname.c_str(), RTLD_NOW | RTLD_LOCAL | RTLD_NODELETE);
     if (!handle)
         throw std::runtime_error("Could not open " + soname + ": " + dlerror());
     return DlHandlerGuard{handle};
@@ -117,7 +117,7 @@ Library::Library() {
 #endif
         available = true;
     } catch (std::exception &e) {
-        vlog.error("%s", e.what());
+        vlog.debug("FFmpeg %d runtime not usable: %s", LIBAVCODEC_VERSION_MAJOR, e.what());
 
         return;
     }
@@ -190,4 +190,4 @@ std::string Library::description() const {
            (info.dli_fname ? info.dli_fname : "unknown path");
 #endif
 }
-} // namespace KASMVNC_FFMPEG_NAMESPACE
+} // namespace KASMVNC_FFMPEG

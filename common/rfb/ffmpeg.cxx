@@ -23,18 +23,23 @@
 #include <stdexcept>
 
 #ifdef KASMVNC_FFMPEG_ADAPTERS
-std::unique_ptr<FFmpegBackend> make_ffmpeg_58();
-std::unique_ptr<FFmpegBackend> make_ffmpeg_59();
-std::unique_ptr<FFmpegBackend> make_ffmpeg_60();
-std::unique_ptr<FFmpegBackend> make_ffmpeg_61();
-std::unique_ptr<FFmpegBackend> make_ffmpeg_62();
-std::unique_ptr<FFmpegBackend> make_ffmpeg_63();
+FFmpegBackend *make_ffmpeg_58();
+FFmpegBackend *make_ffmpeg_59();
+FFmpegBackend *make_ffmpeg_60();
+FFmpegBackend *make_ffmpeg_61();
+FFmpegBackend *make_ffmpeg_62();
+FFmpegBackend *make_ffmpeg_63();
 #else
-std::unique_ptr<FFmpegBackend> make_ffmpeg_legacy();
+FFmpegBackend *make_ffmpeg_legacy();
 #endif
 
 static rfb::LogWriter vlog("ffmpeg");
-FFmpeg &FFmpeg::get() { static FFmpeg instance; return instance; }
+
+FFmpeg &FFmpeg::get() {
+    static FFmpeg instance;
+    return instance;
+}
+
 FFmpeg::FFmpeg() {
 #ifdef KASMVNC_FFMPEG_ADAPTERS
     // A diagnostic override is useful when several supported families coexist.
@@ -42,15 +47,20 @@ FFmpeg::FFmpeg() {
     const std::string selected = requested ? requested : "";
     const struct {
         const char *major;
-        std::unique_ptr<FFmpegBackend> (*create)();
+
+        FFmpegBackend *(*create)();
     } adapters[] = {
-        {"63", make_ffmpeg_63}, {"62", make_ffmpeg_62}, {"61", make_ffmpeg_61},
-        {"60", make_ffmpeg_60}, {"59", make_ffmpeg_59}, {"58", make_ffmpeg_58},
+        {"63", make_ffmpeg_63},
+        {"62", make_ffmpeg_62},
+        {"61", make_ffmpeg_61},
+        {"60", make_ffmpeg_60},
+        {"59", make_ffmpeg_59},
+        {"58", make_ffmpeg_58},
     };
     bool supported = selected.empty();
     // Prefer the newest available family. A diagnostic override selects exactly
     // one family, so a missing requested runtime never silently uses another.
-    for (const auto &adapter : adapters) {
+    for (const auto &adapter: adapters) {
         if (!selected.empty() && selected != adapter.major) continue;
         supported = true;
         backend = adapter.create();
@@ -64,23 +74,36 @@ FFmpeg::FFmpeg() {
     backend = make_ffmpeg_legacy();
 #endif
     if (backend) vlog.info("Selected %s", backend->description().c_str());
-    else vlog.error("No supported FFmpeg runtime is available; video encoders disabled");
+    else vlog.error("No supported FFmpeg runtime is available; video encoders disabled (see -Log ffmpeg:stdout:100)");
 }
+
 FFmpeg::~FFmpeg() = default;
+
 bool FFmpeg::is_available() const noexcept { return bool(backend); }
 unsigned FFmpeg::version_major() const noexcept { return backend ? backend->major() : 0; }
 std::string FFmpeg::description() const { return backend ? backend->description() : "unavailable"; }
-std::unique_ptr<FFmpeg::Encoder> FFmpeg::create_encoder(const EncoderSettings &settings) const {
+
+void FFmpeg::create_encoder(EncoderSlot &slot, const EncoderSettings &settings) const {
     if (!backend) throw std::runtime_error("FFmpeg is not available");
-    return backend->create_encoder(settings);
+    slot.reset();
+    slot.encoder = backend->construct_encoder(slot.storage, settings);
 }
+
+bool FFmpeg::has_encoder(const std::string &name) const {
+    return backend && backend->has_encoder(name);
+}
+
 bool FFmpeg::probe_encoder(const EncoderSettings &settings) const {
-    try { return bool(create_encoder(settings)); }
-    catch (const std::exception &e) {
+    try {
+        EncoderSlot slot;
+        create_encoder(slot, settings);
+        return true;
+    } catch (const std::exception &e) {
         vlog.debug("Encoder %s unavailable: %s", settings.name.c_str(), e.what());
         return false;
     }
 }
+
 std::unique_ptr<FFmpeg::FrameSource> FFmpeg::open_source(const std::string &path) const {
     if (!backend) throw std::runtime_error("FFmpeg is not available");
     return backend->open_source(path);

@@ -68,6 +68,17 @@ namespace launcher {
             Event(const Event &) = delete;
             Event &operator=(const Event &) = delete;
         };
+        std::size_t byteOffset(std::string_view source, std::size_t characters) {
+            std::size_t offset = 0;
+            for (; offset < source.size(); ++offset) {
+                if ((static_cast<unsigned char>(source[offset]) & 0xC0) != 0x80) {
+                    if (characters == 0)
+                        break;
+                    --characters;
+                }
+            }
+            return offset;
+        }
         Node readNode(Parser &parser, Event &event, unsigned depth) {
             if (depth > 64)
                 throw std::runtime_error("YAML nesting exceeds 64 levels");
@@ -93,9 +104,11 @@ namespace launcher {
                         Event child(parser);
                         if (child.value.type == YAML_SEQUENCE_END_EVENT) {
                             if (event.value.data.sequence_start.style == YAML_FLOW_SEQUENCE_STYLE &&
-                                !out.sequence.empty())
-                                return Node(std::string(parser.source.substr(event.value.start_mark.index,
-                                    child.value.end_mark.index - event.value.start_mark.index)));
+                                !out.sequence.empty()) {
+                                const auto begin = byteOffset(parser.source, event.value.start_mark.index);
+                                const auto end = byteOffset(parser.source, child.value.end_mark.index);
+                                return Node(std::string(parser.source.substr(begin, end - begin)));
+                            }
                             break;
                         }
                         out.sequence.push_back(readNode(parser, child, depth + 1));
@@ -137,6 +150,8 @@ namespace launcher {
                 if (contents.size() > maxConfigBytes)
                     throw std::runtime_error("Configuration exceeds 4 MiB: " + file);
             }
+            if (contents.starts_with("\xEF\xBB\xBF"))
+                contents.erase(0, 3);
             Parser parser;
             parser.source = contents;
             yaml_parser_set_input_string(
@@ -348,6 +363,22 @@ namespace launcher {
     }
     void Config::environment(bool debug, bool validationOutput) {
         const auto keys = knownKeys();
+        auto interpolateAll = [&]() {
+            for (const auto &key: keys) {
+                if (key == envGate)
+                    continue;
+                Node node = get(key);
+                if (node.kind == Node::Kind::Scalar)
+                    node.text = interpolate(node.text);
+                else if (node.kind == Node::Kind::Sequence) {
+                    for (auto &item: node.sequence)
+                        if (item.kind == Node::Kind::Scalar)
+                            item.text = interpolate(item.text);
+                } else
+                    continue;
+                set(key, std::move(node));
+            }
+        };
         if (get(envGate).kind == Node::Kind::Scalar && get(envGate).text == "true") {
             std::map<std::string, std::string> envNames;
             for (const auto &key: keys)
@@ -375,18 +406,14 @@ namespace launcher {
             }
             // Keep unsupported-variable errors after setting validation, like the reference.
             if (!unsupported.empty()) {
-                for (const auto &key: keys)
-                    if (key != envGate && get(key).kind == Node::Kind::Scalar)
-                        set(key, Node(interpolate(get(key).text)));
+                interpolateAll();
                 validate(validationOutput, false);
                 if (validationOutput)
                     std::cerr << "Unsupported config env vars found:\n" << join(unsupported, "\n") << "\n\n";
                 throw Exit{1};
             }
         }
-        for (const auto &key: keys)
-            if (key != envGate && get(key).kind == Node::Kind::Scalar)
-                set(key, Node(interpolate(get(key).text)));
+        interpolateAll();
     }
     void Config::validate(bool output, bool includeUnknown) const {
         auto definitions = options();
@@ -655,7 +682,7 @@ namespace launcher {
                     name == "udpFullFrameFrequency" || name == "PrintVideoArea" || name == "VideoArea" ||
                     name == "ScrollDetectLimit" || name == "VideoScaling" || name == "CompareFB");
             if (name != "hw3d" && !undefinedDerived && !(name == "depth" && v.empty()))
-                out.push_back({interpolate(derived)});
+                out.push_back({derived});
         }
         return out;
     }

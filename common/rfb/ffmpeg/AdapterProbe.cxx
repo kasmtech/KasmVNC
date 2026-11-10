@@ -11,8 +11,13 @@
 static void require(bool condition, const char *message) {
     if (!condition) throw std::runtime_error(message);
 }
+
 static void check_hardware_options(const FFmpeg &ff) {
-    struct Candidate { const char *name; FFmpeg::Device device; int low, high, profile; };
+    struct Candidate {
+        const char *name;
+        FFmpeg::Device device;
+        int low, high, profile;
+    };
     const Candidate candidates[] = {
         {"h264_vaapi", FFmpeg::Device::VAAPI, 0, 50, 77},
         {"hevc_vaapi", FFmpeg::Device::VAAPI, 0, 50, 1},
@@ -21,13 +26,16 @@ static void check_hardware_options(const FFmpeg &ff) {
         {"hevc_nvenc", FFmpeg::Device::CUDA, 0, 50, 1},
         {"av1_nvenc", FFmpeg::Device::CUDA, 19, 62, 0},
     };
-    for (const auto &candidate : candidates) {
-        for (const int quality : {candidate.low, 25, candidate.high}) {
-            FFmpeg::EncoderSettings settings{candidate.name, candidate.device,
+    for (const auto &candidate: candidates) {
+        for (const int quality: {candidate.low, 25, candidate.high}) {
+            FFmpeg::EncoderSettings settings{
+                candidate.name, candidate.device,
                 candidate.device == FFmpeg::Device::VAAPI ? "/kasm-test-missing-device" : "2147483647",
-                96, 64, 30, 30, quality, candidate.profile, candidate.high};
+                96, 64, 30, 30, quality, candidate.profile, candidate.high
+            };
             try {
-                ff.create_encoder(settings);
+                FFmpeg::EncoderSlot slot;
+                ff.create_encoder(slot, settings);
             } catch (const std::exception &e) {
                 // FFmpeg 4.4/5.1 predate both AV1 hardware encoders. Distros may
                 // backport one, so exercise it if present instead of skipping by
@@ -44,16 +52,21 @@ static void check_hardware_options(const FFmpeg &ff) {
                     std::cout << "PASS options " << candidate.name << " quality=" << quality << '\n';
                     continue;
                 }
-                throw std::runtime_error(std::string(candidate.name) + " quality=" + std::to_string(quality) + ": " + e.what());
+                throw std::runtime_error(
+                    std::string(candidate.name) + " quality=" + std::to_string(quality) + ": " + e.what());
             }
             throw std::runtime_error("Unexpectedly created the deliberately invalid hardware device");
         }
     }
 }
+
 static void encode(const FFmpeg &ff, const std::string &path, const char *name, int width, int height) {
-    FFmpeg::EncoderSettings settings{name, FFmpeg::Device::Software, "", width, height, 30, 30, 25,
-                                    std::string(name) == "libx264" ? (66 | 1 << 9) : 1, 50};
-    auto encoder = ff.create_encoder(settings);
+    FFmpeg::EncoderSettings settings{
+        name, FFmpeg::Device::Software, "", width, height, 30, 30, 25,
+        std::string(name) == "libx264" ? (66 | 1 << 9) : 1, 50
+    };
+    FFmpeg::EncoderSlot encoder;
+    ff.create_encoder(encoder, settings);
     std::ofstream output(path, std::ios::binary);
     require(bool(output), "cannot open encoded output");
     std::vector<uint8_t> pixels(width * height * 4);
@@ -78,6 +91,7 @@ static void encode(const FFmpeg &ff, const std::string &path, const char *name, 
     require(count == 24 && keys >= 3, "low-delay frame or keyframe count mismatch");
     require(bool(output), "failed to write encoded output");
 }
+
 int main(int argc, char **argv) {
     rfb::initStdIOLoggers();
     rfb::LogWriter::setLogParams("*:stderr:100");

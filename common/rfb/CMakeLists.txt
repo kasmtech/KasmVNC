@@ -69,7 +69,7 @@ set(RFB_SOURCES
         util.cxx
         xxhash.c
         ffmpeg.cxx
-        encoders/SoftwareEncoder.cxx
+        encoders/FFmpegVideoEncoder.cxx
         benchmark/FfmpegFrameFeeder.cpp
         encoders/ScreenEncoderManager.cxx
         encoders/FFMPEGHWEncoder.cxx

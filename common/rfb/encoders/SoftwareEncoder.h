@@ -16,36 +16,7 @@
  * USA.
  */
 #pragma once
-#include "KasmVideoConstants.h"
-#include "rdr/OutStream.h"
-#include "rfb/Encoder.h"
-#include "rfb/encoders/VideoEncoder.h"
-#include "rfb/ffmpeg.h"
-
+#include "FFmpegVideoEncoder.h"
 namespace rfb {
-class SoftwareEncoder : public VideoEncoder {
-    Screen layout;
-    const FFmpeg &ffmpeg;
-    std::unique_ptr<FFmpeg::Encoder> backend;
-    KasmVideoEncoders::Encoder encoder;
-    FFmpeg::Device device;
-    std::string device_path;
-    VideoEncoderParams current_params{};
-    uint8_t msg_codec_id{}, msg_codec_type_id{};
-    int64_t pts{};
-    void init(VideoEncoderParams params);
-    template<typename T> friend class EncoderBuilder;
-    SoftwareEncoder(Screen layout, const FFmpeg &ffmpeg, SConnection *conn,
-                    KasmVideoEncoders::Encoder encoder, VideoEncoderParams params);
-protected:
-    SoftwareEncoder(Screen layout, const FFmpeg &ffmpeg, SConnection *conn,
-                    KasmVideoEncoders::Encoder encoder, VideoEncoderParams params,
-                    FFmpeg::Device device, const char *device_path);
-public:
-    bool isSupported() const override;
-    void writeRect(const PixelBuffer *pb, const Palette &palette) override;
-    void writeSolidRect(int, int, const PixelFormat &, const rdr::U8 *) override {}
-    bool render(const PixelBuffer *pb, bool forceKeyFrame = false) override;
-    void writeSkipRect() override;
-};
+    using SoftwareEncoder = FFmpegDeviceEncoder<FFmpeg::Device::Software>;
 } // namespace rfb

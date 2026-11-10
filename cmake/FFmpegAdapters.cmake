@@ -11,7 +11,7 @@ foreach(family IN LISTS adapter_families)
     add_library(${adapter_target} OBJECT ${CMAKE_SOURCE_DIR}/common/rfb/ffmpeg/Backend.cxx)
     set_target_properties(${adapter_target} PROPERTIES POSITION_INDEPENDENT_CODE ON INTERPROCEDURAL_OPTIMIZATION OFF)
     target_compile_definitions(${adapter_target} PRIVATE
-        KASMVNC_FFMPEG_NAMESPACE=kasm_ffmpeg_${family}
+        KASMVNC_FFMPEG=kasm_ffmpeg_${family}
         KASMVNC_FFMPEG_FACTORY=make_ffmpeg_${family})
     target_include_directories(${adapter_target} PRIVATE ${CMAKE_SOURCE_DIR}/common ${LIBYUV_INCLUDE_DIR})
     if(KASMVNC_FFMPEG_ADAPTERS)

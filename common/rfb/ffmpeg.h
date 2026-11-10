@@ -51,6 +51,27 @@ public:
         virtual Packet packet() const = 0;
         virtual void pop_packet() = 0;
     };
+    static constexpr size_t EncoderStorageSize = 512;
+    class EncoderSlot {
+    public:
+        EncoderSlot() = default;
+        ~EncoderSlot() { reset(); }
+        EncoderSlot(const EncoderSlot &) = delete;
+        EncoderSlot &operator=(const EncoderSlot &) = delete;
+        Encoder *get() const noexcept { return encoder; }
+        Encoder *operator->() const noexcept { return encoder; }
+        explicit operator bool() const noexcept { return encoder != nullptr; }
+        void reset() noexcept {
+            if (encoder) {
+                encoder->~Encoder();
+                encoder = nullptr;
+            }
+        }
+    private:
+        friend class FFmpeg;
+        alignas(std::max_align_t) unsigned char storage[EncoderStorageSize];
+        Encoder *encoder{};
+    };
     struct RGBFrame {
         const uint8_t *data{};
         int stride{}, width{}, height{};
@@ -69,7 +90,8 @@ public:
     bool is_available() const noexcept;
     unsigned version_major() const noexcept;
     std::string description() const;
-    std::unique_ptr<Encoder> create_encoder(const EncoderSettings &settings) const;
+    void create_encoder(EncoderSlot &slot, const EncoderSettings &settings) const;
+    bool has_encoder(const std::string &name) const;
     bool probe_encoder(const EncoderSettings &settings) const;
     std::unique_ptr<FrameSource> open_source(const std::string &path) const;
 private:
@@ -77,5 +99,5 @@ private:
     ~FFmpeg();
     FFmpeg(const FFmpeg &) = delete;
     FFmpeg &operator=(const FFmpeg &) = delete;
-    std::unique_ptr<FFmpegBackend> backend;
+    FFmpegBackend *backend{};
 };

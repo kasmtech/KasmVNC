@@ -16,6 +16,7 @@
  * USA.
  */
 #include "EncoderProbe.h"
+#include <algorithm>
 #include <fcntl.h>
 #include <fmt/format.h>
 #include <fstream>
@@ -126,7 +127,10 @@ namespace rfb::video_encoders {
             const auto *name = KasmVideoEncoders::to_string(encoder_candidate.encoder);
             vlog.debug("Probing %s...", name);
             if (encoder_candidate.hw_type == FFmpeg::Device::Software) {
-                if (try_open_codec(nullptr, encoder_candidate)) result.emplace_back(encoder_candidate.encoder);
+                if (ffmpeg.has_encoder(name))
+                    result.emplace_back(encoder_candidate.encoder);
+                else
+                    vlog.info("Software encoder %s is not provided by this FFmpeg runtime", name);
                 continue;
             }
             // CUDA selects a device ordinal, not a DRM render-node pathname.
@@ -159,6 +163,14 @@ namespace rfb::video_encoders {
         }
 
         // result.push_back(KasmVideoEncoders::Encoder::av1_software);
+
+        const bool has_software = std::any_of(result.begin(), result.end(), [](const auto &config) {
+            return config.encoder == KasmVideoEncoders::Encoder::h264_software ||
+                   config.encoder == KasmVideoEncoders::Encoder::h265_software;
+        });
+        if (!has_software)
+            vlog.error("No software video encoder (libx264/libx265) in this FFmpeg runtime; "
+                       "hardware encoder failures cannot fall back to software");
 
         return result;
     }

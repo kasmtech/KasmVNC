@@ -17,6 +17,7 @@
 #include <fstream>
 #include <grp.h>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <netdb.h>
 #include <pwd.h>
@@ -797,13 +798,19 @@ twm
                 invoked = fs::absolute(invoked).lexically_normal().string();
                 auto slash = invoked.rfind('/');
                 bin = slash == std::string::npos ? "" : invoked.substr(0, slash + 1);
-                if (bin.find("unix/") != std::string::npos)
+                const fs::path invokedPath(invoked);
+                const auto dir = invokedPath.parent_path();
+                const bool inSourceTree = dir.filename() == "unix" || (dir.filename() == "vncserver-native" &&
+                                                                          dir.parent_path().filename() == "unix");
+                const bool systemInstall = !invokedPath.empty() &&
+                                           std::next(invokedPath.begin()) != invokedPath.end() &&
+                                           *std::next(invokedPath.begin()) == "usr";
+                if (inSourceTree)
                     bin = "/usr/bin/";
-                selectDe = invoked.starts_with("/usr")
-                               ? "/usr/lib/kasmvncserver/select-de.sh"
-                               : (fs::path(invoked).parent_path() / "../builder/startup/deb/select-de.sh").string();
-                if (invoked.find("vncserver-native/") != std::string::npos)
-                    selectDe = (fs::path(invoked).parent_path() / "../../builder/startup/deb/select-de.sh").string();
+                selectDe = systemInstall ? "/usr/lib/kasmvncserver/select-de.sh"
+                                         : (dir / "../builder/startup/deb/select-de.sh").string();
+                if (inSourceTree && dir.filename() == "vncserver-native")
+                    selectDe = (dir / "../../builder/startup/deb/select-de.sh").string();
                 for (const auto &required: {"xauth"})
                     if (findCommand(required).empty())
                         throw std::runtime_error(program + ": couldn't find \"" + required + "\" on your PATH.");
