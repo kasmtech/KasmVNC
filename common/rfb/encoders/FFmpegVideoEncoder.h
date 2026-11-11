@@ -34,7 +34,7 @@ class FFmpegVideoEncoder : public VideoEncoder {
     VideoEncoderParams current_params{};
     uint8_t msg_codec_id{}, msg_codec_type_id{};
     int bpp{};
-    void init(VideoEncoderParams params);
+    [[nodiscard]] bool init(VideoEncoderParams params);
 
 protected:
     FFmpegVideoEncoder(Screen layout, const FFmpeg &ffmpeg, SConnection *conn, KasmVideoEncoders::Encoder encoder,

@@ -33,28 +33,22 @@ static void check_hardware_options(const FFmpeg &ff) {
                 candidate.device == FFmpeg::Device::VAAPI ? "/kasm-test-missing-device" : "2147483647",
                 96, 64, 30, 30, quality, candidate.profile, candidate.high
             };
-            try {
-                [[maybe_unused]] const auto encoder = ff.create_encoder(settings);
-            } catch (const std::exception &e) {
+            if (!ff.has_encoder(candidate.name)) {
                 // FFmpeg 4.4/5.1 predate both AV1 hardware encoders. Distros may
                 // backport one, so exercise it if present instead of skipping by
                 // family alone. Missing H.264/HEVC remains a test failure.
-                if (ff.version_major() < 60 && std::string(candidate.name).starts_with("av1_") &&
-                    std::string(e.what()) == std::string("Encoder is not available: ") + candidate.name) {
+                if (ff.version_major() < 60 && std::string(candidate.name).starts_with("av1_")) {
                     std::cout << "SKIP unavailable on this runtime: " << candidate.name << '\n';
                     break;
                 }
-                // Exercise the production option setup without a GPU: reaching
-                // device creation proves none of the required options rejected
-                // a supported user quality value. A missing encoder is a failure.
-                if (std::string(e.what()).starts_with("create hardware device:")) {
-                    std::cout << "PASS options " << candidate.name << " quality=" << quality << '\n';
-                    continue;
-                }
-                throw std::runtime_error(
-                    std::string(candidate.name) + " quality=" + std::to_string(quality) + ": " + e.what());
+                throw std::runtime_error(std::string(candidate.name) + " is not available");
             }
-            throw std::runtime_error("Unexpectedly created the deliberately invalid hardware device");
+            if (ff.create_encoder(settings))
+                throw std::runtime_error("Unexpectedly created the deliberately invalid hardware device: " +
+                                         std::string(candidate.name) + " device=" + settings.device_path +
+                                         " quality=" + std::to_string(quality) +
+                                         " profile=" + std::to_string(candidate.profile));
+            std::cout << "PASS options " << candidate.name << " quality=" << quality << '\n';
         }
     }
 }
@@ -65,6 +59,7 @@ static void encode(const FFmpeg &ff, const std::string &path, const char *name, 
         std::string(name) == "libx264" ? (66 | 1 << 9) : 1, 50
     };
     const auto encoder = ff.create_encoder(settings);
+    require(bool(encoder), "cannot create encoder");
     std::ofstream output(path, std::ios::binary);
     require(bool(output), "cannot open encoded output");
     std::vector<uint8_t> pixels(width * height * 4);
@@ -73,7 +68,7 @@ static void encode(const FFmpeg &ff, const std::string &path, const char *name, 
     for (int frame = 0; frame < 24; ++frame) {
         for (size_t i = 0; i < pixels.size(); ++i) pixels[i] = uint8_t(i + frame * 13);
         require(encoder->next_pts() == frame, "encoder PTS counter out of sequence");
-        encoder->encode_argb(pixels.data(), width * 4, frame == 8 || frame == 16);
+        require(encoder->encode_argb(pixels.data(), width * 4, frame == 8 || frame == 16), "encode frame");
         for (;;) {
             const auto packet = encoder->packet();
             if (!packet.data) break;

@@ -49,10 +49,11 @@ namespace rfb {
         params.height = layout.dimensions.height() & ~1;
         if (!params.frame_rate)
             params.frame_rate = Server::frameRate;
-        init(params);
+        if (!init(params))
+            throw std::runtime_error(std::string("Cannot create ") + KasmVideoEncoders::to_string(encoder));
     }
 
-    void FFmpegVideoEncoder::init(VideoEncoderParams params) {
+    bool FFmpegVideoEncoder::init(VideoEncoderParams params) {
         const auto &config = EncoderConfiguration::get_configuration(encoder);
         FFmpeg::EncoderSettings settings{
             KasmVideoEncoders::to_string(encoder),
@@ -68,6 +69,10 @@ namespace rfb {
             backend ? backend->next_pts() : 0
         };
         auto next = ffmpeg.create_encoder(settings);
+        if (!next) {
+            vlog.error("%s %s: cannot create encoder", kind(device), KasmVideoEncoders::to_string(encoder));
+            return false;
+        }
         backend = std::move(next);
         current_params = params;
         vlog.debug("%s %s: FRAME RESIZE (%d, %d): RATE: %d, GOP: %d, QUALITY: %d",
@@ -78,6 +83,7 @@ namespace rfb {
                    params.frame_rate,
                    params.group_of_picture,
                    params.quality);
+        return true;
     }
 
     bool FFmpegVideoEncoder::isSupported() const {
@@ -85,39 +91,38 @@ namespace rfb {
     }
 
     bool FFmpegVideoEncoder::render(const PixelBuffer *pb, bool forceKeyFrame) {
-        try {
-            const auto rect = layout.dimensions;
-            VideoEncoderParams params{
-                rect.width() & ~1,
-                rect.height() & ~1,
-                static_cast<uint8_t>(Server::frameRate),
-                static_cast<uint8_t>(Server::groupOfPicture),
-                static_cast<uint8_t>(Server::videoQualityCRFCQP)
-            };
-            const bool reinit = params != current_params;
-            if (reinit || !bpp) {
-                const int bytes = pb->getPF().bpp >> 3;
-                if (bytes != 4)
-                    throw std::runtime_error("Video encoder requires a 32-bit framebuffer");
-                bpp = bytes;
+        const auto rect = layout.dimensions;
+        VideoEncoderParams params{
+            rect.width() & ~1,
+            rect.height() & ~1,
+            static_cast<uint8_t>(Server::frameRate),
+            static_cast<uint8_t>(Server::groupOfPicture),
+            static_cast<uint8_t>(Server::videoQualityCRFCQP)
+        };
+        const bool reinit = params != current_params;
+        if (reinit || !bpp) {
+            const int bytes = pb->getPF().bpp >> 3;
+            if (bytes != 4) {
+                vlog.error("%s %s: video encoder requires a 32-bit framebuffer, got %d bpp", kind(device),
+                           KasmVideoEncoders::to_string(encoder), pb->getPF().bpp);
+                return false;
             }
-            if (reinit) {
-                init(params);
-                forceKeyFrame = true;
-            }
-            int stride{};
-            const auto *pixels = pb->getBuffer(rect, &stride);
-            backend->encode_argb(pixels, stride * bpp, forceKeyFrame);
-            const auto packet = backend->packet();
-            if (packet.keyframe)
-                DEBUG_LOG(vlog, "%s %s: Key frame %ld", kind(device), KasmVideoEncoders::to_string(encoder),
-                          packet.pts);
-            return true;
-        } catch (const std::exception &e) {
-            vlog.error("%s %s: video encoding failed: %s", kind(device), KasmVideoEncoders::to_string(encoder),
-                       e.what());
-            return false;
+            bpp = bytes;
         }
+        if (reinit) {
+            if (!init(params))
+                return false;
+            forceKeyFrame = true;
+        }
+        int stride{};
+        const auto *pixels = pb->getBuffer(rect, &stride);
+        if (!backend->encode_argb(pixels, stride * bpp, forceKeyFrame))
+            return false;
+
+        const auto packet = backend->packet();
+        if (packet.keyframe)
+            DEBUG_LOG(vlog, "%s %s: Key frame %ld", kind(device), KasmVideoEncoders::to_string(encoder), packet.pts);
+        return true;
     }
 
     void FFmpegVideoEncoder::writeRect(const PixelBuffer *, const Palette &) {

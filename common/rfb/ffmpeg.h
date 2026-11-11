@@ -51,7 +51,7 @@ public:
     public:
         virtual ~Encoder() = default;
 
-        virtual void encode_argb(const uint8_t *data, int stride, bool keyframe) = 0;
+        [[nodiscard]] virtual bool encode_argb(const uint8_t *data, int stride, bool keyframe) = 0;
         [[nodiscard]] virtual int64_t next_pts() const = 0;
         [[nodiscard]] virtual Packet packet() const = 0;
         virtual void pop_packet() = 0;
@@ -83,8 +83,7 @@ public:
     [[nodiscard]] unsigned version_major() const noexcept;
     [[nodiscard]] std::string description() const;
 
-    // Throws if the encoder cannot be created; never returns null.
-    [[nodiscard]] std::unique_ptr<Encoder> create_encoder(const EncoderSettings &settings) const;
+    [[nodiscard]] std::unique_ptr<Encoder> create_encoder(const EncoderSettings &settings) const noexcept;
     [[nodiscard]] bool has_encoder(const std::string &name) const;
     [[nodiscard]] bool probe_encoder(const EncoderSettings &settings) const;
 

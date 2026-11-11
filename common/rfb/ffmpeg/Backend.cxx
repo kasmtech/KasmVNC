@@ -5,6 +5,7 @@
 #include <libyuv.h>
 #include <new>
 #include <stdexcept>
+#include <type_traits>
 // The symbol table and every use of FFmpeg structures belong to this versioned
 // translation unit. The public interface uses only Kasm-owned types.
 #include "Library.cxx.inc"
@@ -20,17 +21,33 @@ namespace KASMVNC_FFMPEG {
             throw std::runtime_error(std::string(operation) + ": " + Library::get().get_error_description(result));
     }
 
-    class Encoder final : public FFmpeg::Encoder {
-        Library &lib = Library::get();
-        FFmpeg::EncoderSettings settings;
+    struct NoHardware {
+    };
+
+    struct HardwareState {
         Library::BufferGuard device;
         Library::BufferGuard pool;
+        Library::FrameGuard frame;
+    };
+
+    template<FFmpeg::Device D>
+    class Encoder final : public FFmpeg::Encoder {
+        static constexpr bool hardware = D != FFmpeg::Device::Software;
+        static constexpr AVPixelFormat codec_format = D == FFmpeg::Device::CUDA
+                                                          ? AV_PIX_FMT_CUDA
+                                                          : D == FFmpeg::Device::VAAPI
+                                                                ? AV_PIX_FMT_VAAPI
+                                                                : AV_PIX_FMT_YUV420P;
+        static constexpr AVPixelFormat frame_format = hardware ? AV_PIX_FMT_NV12 : AV_PIX_FMT_YUV420P;
+
+        Library &lib = Library::get();
+        FFmpeg::EncoderSettings settings;
         Library::ContextGuard context;
         Library::FrameGuard frame;
-        Library::FrameGuard hw_frame;
+        [[no_unique_address]] std::conditional_t<hardware, HardwareState, NoHardware> hw;
         Library::PacketGuard pending;
-        Library::PacketGuard incoming;
         bool has_packet{};
+        bool keyframe_pending{};
         int64_t pts_counter{};
 
         void option(const char *name, const char *value) {
@@ -73,22 +90,108 @@ namespace KASMVNC_FFMPEG {
             option(name, value);
         }
 
-        void receive() {
-            for (;;) {
-                const int result = lib.avcodec_receive_packet(context.get(), incoming.get());
-                if (result == AVERROR(EAGAIN) || result == AVERROR_EOF)
-                    return;
-                check(result, "receive encoded packet");
-                if (has_packet)
-                    throw std::runtime_error("Encoder produced more than one packet for a frame");
-                pending.swap(incoming);
-                has_packet = true;
-            }
+        bool failed(int result, const char *operation) const {
+            if (result >= 0)
+                return false;
+            vlog.error("%s: %s: %s", settings.name.c_str(), operation, lib.get_error_description(result).c_str());
+            return true;
         }
 
         void drop_packet() {
             lib.av_packet_unref(pending.get());
             has_packet = false;
+        }
+
+        void set_software_options() {
+            if (settings.name == "libsvtav1") {
+                option("preset", "12");
+                option("svtav1-params", "rtc=1");
+            } else {
+                option("tune", "zerolatency");
+                option("preset", "ultrafast");
+            }
+            option("crf", settings.quality);
+        }
+
+        void set_cuda_options() {
+            context->refs = 0;
+            option("rc", "vbr");
+            // FFmpeg 4.4 and 5.1 can use pre-SDK-10 NVENC headers, where
+            // p4/tune do not exist. Detect runtime capabilities rather than
+            // assuming an SDK version from the libavcodec ABI family.
+            if (!find_option("tune")) {
+                option("preset", "llhq");
+            } else {
+                option("preset", "p4");
+                option("tune", "ull");
+            }
+            option("zerolatency", 1);
+            option("b_ref_mode", 0);
+            option("delay", "0");
+            // qmin/qmax are generic codec options, not private NVENC options.
+            context->qmin = settings.quality;
+            context->qmax = settings.maximum_quality;
+            // cq is not the same scale as AV1's qmin/qmax (0..255).
+            bounded_option("cq", settings.quality);
+        }
+
+        void set_vaapi_options(const AVCodec *codec) {
+#if LIBAVCODEC_VERSION_MAJOR < 59
+            // FFmpeg 4.4 VAAPI is synchronous and has no async_depth.
+            // Honor the option if a distro backported asynchronous encode.
+            if (find_option("async_depth"))
+                option("async_depth", "1");
+#else
+            option("async_depth", "1");
+#endif
+            option("rc_mode", "CQP");
+            if (codec->id == AV_CODEC_ID_AV1) {
+                // AV1 VAAPI has no private qp option. CQP reads this value
+                // directly when AV_CODEC_FLAG_QSCALE is not set.
+                context->global_quality = settings.quality;
+            } else {
+                option("qp", settings.quality);
+            }
+        }
+
+        const char *device_path() const {
+            if (settings.device_path.empty())
+                return nullptr;
+            if constexpr (D == FFmpeg::Device::CUDA) {
+                const bool ordinal = std::all_of(settings.device_path.begin(),
+                                                 settings.device_path.end(),
+                                                 [](unsigned char c) { return std::isdigit(c); });
+                if (!ordinal) {
+                    vlog.info("%s: ignoring non-ordinal CUDA device '%s'; using the default device",
+                              settings.name.c_str(),
+                              settings.device_path.c_str());
+                    return nullptr;
+                }
+            }
+            return settings.device_path.c_str();
+        }
+
+        void create_hardware_frames() {
+            constexpr auto type = D == FFmpeg::Device::CUDA ? AV_HWDEVICE_TYPE_CUDA : AV_HWDEVICE_TYPE_VAAPI;
+            AVBufferRef *raw_device{};
+            check(lib.av_hwdevice_ctx_create(&raw_device, type, device_path(), nullptr, 0), "create hardware device");
+            hw.device.reset(raw_device);
+            hw.pool.reset(lib.av_hwframe_ctx_alloc(hw.device.get()));
+            if (!hw.pool)
+                throw std::bad_alloc();
+            auto *frames = reinterpret_cast<AVHWFramesContext *>(hw.pool->data);
+            frames->format = codec_format;
+            frames->sw_format = frame_format;
+            frames->width = settings.width;
+            frames->height = settings.height;
+            frames->initial_pool_size = 20;
+            check(lib.av_hwframe_ctx_init(hw.pool.get()), "initialize hardware frames");
+            context->hw_frames_ctx = lib.av_buffer_ref(hw.pool.get());
+            if (!context->hw_frames_ctx)
+                throw std::bad_alloc();
+            hw.frame.reset(lib.av_frame_alloc());
+            if (!hw.frame)
+                throw std::bad_alloc();
         }
 
     public:
@@ -102,8 +205,7 @@ namespace KASMVNC_FFMPEG {
             context.reset(lib.avcodec_alloc_context3(codec));
             frame.reset(lib.av_frame_alloc());
             pending.reset(lib.av_packet_alloc());
-            incoming.reset(lib.av_packet_alloc());
-            if (!context || !frame || !pending || !incoming)
+            if (!context || !frame || !pending)
                 throw std::bad_alloc();
             context->time_base = {1, settings.frame_rate};
             context->framerate = {settings.frame_rate, 1};
@@ -112,99 +214,19 @@ namespace KASMVNC_FFMPEG {
             context->width = settings.width;
             context->height = settings.height;
             context->profile = settings.profile;
-            const bool hardware = settings.device != FFmpeg::Device::Software;
-            context->pix_fmt = hardware
-                                   ? (settings.device == FFmpeg::Device::CUDA ? AV_PIX_FMT_CUDA : AV_PIX_FMT_VAAPI)
-                                   : AV_PIX_FMT_YUV420P;
-            if (!hardware) {
-                if (settings.name == "libsvtav1") {
-                    option("preset", "12");
-                    option("svtav1-params", "rtc=1");
-                } else {
-                    option("tune", "zerolatency");
-                    option("preset", "ultrafast");
-                }
-                option("crf", settings.quality);
+            context->pix_fmt = codec_format;
+            if constexpr (D == FFmpeg::Device::Software) {
+                set_software_options();
             } else {
                 context->flags |= AV_CODEC_FLAG_LOW_DELAY;
                 context->delay = 0;
-                if (settings.device == FFmpeg::Device::CUDA) {
-                    context->refs = 0;
-                    option("rc", "vbr");
-                    // FFmpeg 4.4 and 5.1 can use pre-SDK-10 NVENC headers, where
-                    // p4/tune do not exist. Detect runtime capabilities rather than
-                    // assuming an SDK version from the libavcodec ABI family.
-                    if (!find_option("tune")) {
-                        option("preset", "llhq");
-                    } else {
-                        option("preset", "p4");
-                        option("tune", "ull");
-                    }
-                    option("zerolatency", 1);
-                    option("b_ref_mode", 0);
-                    option("delay", "0");
-                    // qmin/qmax are generic codec options, not private NVENC options.
-                    context->qmin = settings.quality;
-                    context->qmax = settings.maximum_quality;
-                    // cq is not the same scale as AV1's qmin/qmax (0..255).
-                    bounded_option("cq", settings.quality);
-                } else {
-#if LIBAVCODEC_VERSION_MAJOR < 59
-                    // FFmpeg 4.4 VAAPI is synchronous and has no async_depth.
-                    // Honor the option if a distro backported asynchronous encode.
-                    if (find_option("async_depth"))
-                        option("async_depth", "1");
-#else
-                    option("async_depth", "1");
-#endif
-                    option("rc_mode", "CQP");
-                    if (codec->id == AV_CODEC_ID_AV1) {
-                        // AV1 VAAPI has no private qp option. CQP reads this value
-                        // directly when AV_CODEC_FLAG_QSCALE is not set.
-                        context->global_quality = settings.quality;
-                    } else {
-                        option("qp", settings.quality);
-                    }
-                }
-                AVBufferRef *raw_device{};
-                const bool ordinal =
-                        !settings.device_path.empty() && std::all_of(settings.device_path.begin(),
-                                                                     settings.device_path.end(),
-                                                                     [](unsigned char c) { return std::isdigit(c); });
-                if (settings.device == FFmpeg::Device::CUDA && !ordinal && !settings.device_path.empty())
-                    vlog.info("%s: ignoring non-ordinal CUDA device '%s'; using the default device",
-                              settings.name.c_str(),
-                              settings.device_path.c_str());
-                const char *path = settings.device_path.empty() || (settings.device == FFmpeg::Device::CUDA && !ordinal)
-                                       ? nullptr
-                                       : settings.device_path.c_str();
-                check(lib.av_hwdevice_ctx_create(&raw_device,
-                                                 settings.device == FFmpeg::Device::CUDA
-                                                     ? AV_HWDEVICE_TYPE_CUDA
-                                                     : AV_HWDEVICE_TYPE_VAAPI,
-                                                 path,
-                                                 nullptr,
-                                                 0),
-                      "create hardware device");
-                device.reset(raw_device);
-                pool.reset(lib.av_hwframe_ctx_alloc(device.get()));
-                if (!pool)
-                    throw std::bad_alloc();
-                auto *frames = reinterpret_cast<AVHWFramesContext *>(pool->data);
-                frames->format = context->pix_fmt;
-                frames->sw_format = AV_PIX_FMT_NV12;
-                frames->width = settings.width;
-                frames->height = settings.height;
-                frames->initial_pool_size = 20;
-                check(lib.av_hwframe_ctx_init(pool.get()), "initialize hardware frames");
-                context->hw_frames_ctx = lib.av_buffer_ref(pool.get());
-                if (!context->hw_frames_ctx)
-                    throw std::bad_alloc();
-                hw_frame.reset(lib.av_frame_alloc());
-                if (!hw_frame)
-                    throw std::bad_alloc();
+                if constexpr (D == FFmpeg::Device::CUDA)
+                    set_cuda_options();
+                else
+                    set_vaapi_options(codec);
+                create_hardware_frames();
             }
-            frame->format = hardware ? AV_PIX_FMT_NV12 : AV_PIX_FMT_YUV420P;
+            frame->format = frame_format;
             frame->width = settings.width;
             frame->height = settings.height;
             check(lib.av_frame_get_buffer(frame.get(), 0), "allocate frame buffer");
@@ -213,56 +235,83 @@ namespace KASMVNC_FFMPEG {
 
         int64_t next_pts() const override { return pts_counter; }
 
-        void encode_argb(const uint8_t *data, int stride, bool keyframe) override {
-            if (!data || stride < int64_t(settings.width) * 4)
-                throw std::invalid_argument("Invalid ARGB input or row stride");
-            if (has_packet) {
-                if (pending->flags & AV_PKT_FLAG_KEY)
-                    keyframe = true;
-                drop_packet();
+        bool encode_argb(const uint8_t *data, int stride, bool keyframe) override {
+            if (!data || stride < int64_t(settings.width) * 4) {
+                vlog.error("%s: invalid ARGB input or row stride", settings.name.c_str());
+                return false;
             }
-            const bool hardware = settings.device != FFmpeg::Device::Software;
-            const int result = hardware
-                                   ? libyuv::ARGBToNV12(data,
-                                                        stride,
-                                                        frame->data[0],
-                                                        frame->linesize[0],
-                                                        frame->data[1],
-                                                        frame->linesize[1],
-                                                        settings.width,
-                                                        settings.height)
-                                   : libyuv::ARGBToI420(data,
-                                                        stride,
-                                                        frame->data[0],
-                                                        frame->linesize[0],
-                                                        frame->data[1],
-                                                        frame->linesize[1],
-                                                        frame->data[2],
-                                                        frame->linesize[2],
-                                                        settings.width,
-                                                        settings.height);
-            if (result)
-                throw std::runtime_error("libyuv pixel conversion failed");
+            if (has_packet) {
+                drop_packet();
+                keyframe = true;
+            }
+            keyframe = keyframe || keyframe_pending;
+            keyframe_pending = keyframe;
+            int result;
+            if constexpr (hardware)
+                result = libyuv::ARGBToNV12(data,
+                                            stride,
+                                            frame->data[0],
+                                            frame->linesize[0],
+                                            frame->data[1],
+                                            frame->linesize[1],
+                                            settings.width,
+                                            settings.height);
+            else
+                result = libyuv::ARGBToI420(data,
+                                            stride,
+                                            frame->data[0],
+                                            frame->linesize[0],
+                                            frame->data[1],
+                                            frame->linesize[1],
+                                            frame->data[2],
+                                            frame->linesize[2],
+                                            settings.width,
+                                            settings.height);
+            if (result) {
+                vlog.error("%s: libyuv pixel conversion failed (%d)", settings.name.c_str(), result);
+                return false;
+            }
+
             const int64_t pts = pts_counter++;
             frame->pts = pts;
             frame->pict_type = keyframe ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
             AVFrame *input = frame.get();
-            if (hardware) {
+
+            if constexpr (hardware) {
                 // Do not overwrite a surface retained asynchronously by the encoder.
-                lib.av_frame_unref(hw_frame.get());
-                check(lib.av_hwframe_get_buffer(pool.get(), hw_frame.get(), 0), "allocate hardware frame");
-                check(lib.av_hwframe_transfer_data(hw_frame.get(), frame.get(), 0), "upload hardware frame");
-                hw_frame->pts = pts;
-                hw_frame->pict_type = frame->pict_type;
-                input = hw_frame.get();
+                lib.av_frame_unref(hw.frame.get());
+                if (failed(lib.av_hwframe_get_buffer(hw.pool.get(), hw.frame.get(), 0), "allocate hardware frame") ||
+                    failed(lib.av_hwframe_transfer_data(hw.frame.get(), frame.get(), 0), "upload hardware frame"))
+                    return false;
+                hw.frame->pts = pts;
+                hw.frame->pict_type = frame->pict_type;
+                input = hw.frame.get();
             }
-            int sent = lib.avcodec_send_frame(context.get(), input);
-            if (sent == AVERROR(EAGAIN)) {
-                receive();
-                sent = lib.avcodec_send_frame(context.get(), input);
+
+            if (failed(lib.avcodec_send_frame(context.get(), input), "submit video frame"))
+                return false;
+
+            keyframe_pending = false;
+
+            int received = lib.avcodec_receive_packet(context.get(), pending.get());
+            if (received == AVERROR(EAGAIN) || received == AVERROR_EOF) {
+                lib.avcodec_send_frame(context.get(), input);
+                received = lib.avcodec_receive_packet(context.get(), pending.get());
+                if (received == AVERROR(EAGAIN)) {
+                    vlog.error("%s: encoder buffering frame (EAGAIN)", settings.name.c_str());
+                    return false;
+                }
             }
-            check(sent, "submit video frame");
-            receive();
+
+            if (received == AVERROR_EOF) {
+                vlog.error("%s: encoder EOF reached", settings.name.c_str());
+                return false;
+            }
+            if (failed(received, "receive encoded packet"))
+                return false;
+
+            has_packet = true;
+            return true;
         }
 
         FFmpeg::Packet packet() const override {
@@ -424,7 +473,15 @@ namespace KASMVNC_FFMPEG {
         }
 
         std::unique_ptr<FFmpeg::Encoder> create_encoder(const FFmpeg::EncoderSettings &settings) override {
-            return std::make_unique<Encoder>(settings);
+            switch (settings.device) {
+                case FFmpeg::Device::VAAPI:
+                    return std::make_unique<Encoder<FFmpeg::Device::VAAPI> >(settings);
+                case FFmpeg::Device::CUDA:
+                    return std::make_unique<Encoder<FFmpeg::Device::CUDA> >(settings);
+                case FFmpeg::Device::Software:
+                    break;
+            }
+            return std::make_unique<Encoder<FFmpeg::Device::Software> >(settings);
         }
 
         std::unique_ptr<FFmpeg::FrameSource> open_source(const std::string &path) override {
