@@ -3,6 +3,9 @@
 set -eu
 cert=/etc/pki/tls/private/kasmvnc.pem
 getent group kasmvnc-cert >/dev/null || groupadd --system kasmvnc-cert
+if [ -L "$cert" ] && [ ! -e "$cert" ]; then
+    echo "initialize-tls: $cert is a broken symlink to $(readlink "$cert"); leaving it unchanged" >&2
+fi
 if [ ! -e "$cert" ] && [ ! -L "$cert" ]; then
     install -d -m 755 /etc/pki/tls/private
     umask 077
