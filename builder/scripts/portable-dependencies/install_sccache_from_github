@@ -24,7 +24,7 @@ work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 trap 'exit 1' HUP INT TERM
 
-wget --https-only --timeout=60 --tries=3 -O "$work_dir/sccache.tar.gz" \
+wget --timeout=60 --tries=3 -O "$work_dir/sccache.tar.gz" \
   "https://github.com/mozilla/sccache/releases/download/${sccache_version}/${sccache_dir}.tar.gz"
 
 echo "${sccache_sha256}  $work_dir/sccache.tar.gz" | sha256sum -c -
