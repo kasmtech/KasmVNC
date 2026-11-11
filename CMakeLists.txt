@@ -266,6 +266,9 @@ if (TESTS)
     add_subdirectory(tests)
 endif()
 
+# Opt-in via its own option (KASMVNC_FFMPEG_ADAPTER_PROBE); see tests/ffmpeg/CMakeLists.txt.
+add_subdirectory(tests/ffmpeg)
+
 include(cmake/BuildPackages.cmake)
 
 # uninstall

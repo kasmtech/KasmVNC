@@ -34,8 +34,7 @@ static void check_hardware_options(const FFmpeg &ff) {
                 96, 64, 30, 30, quality, candidate.profile, candidate.high
             };
             try {
-                FFmpeg::EncoderSlot slot;
-                ff.create_encoder(slot, settings);
+                [[maybe_unused]] const auto encoder = ff.create_encoder(settings);
             } catch (const std::exception &e) {
                 // FFmpeg 4.4/5.1 predate both AV1 hardware encoders. Distros may
                 // backport one, so exercise it if present instead of skipping by
@@ -65,8 +64,7 @@ static void encode(const FFmpeg &ff, const std::string &path, const char *name, 
         name, FFmpeg::Device::Software, "", width, height, 30, 30, 25,
         std::string(name) == "libx264" ? (66 | 1 << 9) : 1, 50
     };
-    FFmpeg::EncoderSlot encoder;
-    ff.create_encoder(encoder, settings);
+    const auto encoder = ff.create_encoder(settings);
     std::ofstream output(path, std::ios::binary);
     require(bool(output), "cannot open encoded output");
     std::vector<uint8_t> pixels(width * height * 4);
@@ -74,7 +72,8 @@ static void encode(const FFmpeg &ff, const std::string &path, const char *name, 
     int64_t previous = -1;
     for (int frame = 0; frame < 24; ++frame) {
         for (size_t i = 0; i < pixels.size(); ++i) pixels[i] = uint8_t(i + frame * 13);
-        encoder->encode_argb(pixels.data(), width * 4, frame, frame == 8 || frame == 16);
+        require(encoder->next_pts() == frame, "encoder PTS counter out of sequence");
+        encoder->encode_argb(pixels.data(), width * 4, frame == 8 || frame == 16);
         for (;;) {
             const auto packet = encoder->packet();
             if (!packet.data) break;

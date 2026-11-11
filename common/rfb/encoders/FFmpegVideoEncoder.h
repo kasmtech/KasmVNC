@@ -27,40 +27,26 @@ namespace rfb {
 class FFmpegVideoEncoder : public VideoEncoder {
     Screen layout;
     const FFmpeg &ffmpeg;
-    FFmpeg::EncoderSlot slots[2];
-    FFmpeg::Encoder *backend{};
-    unsigned active{};
+    std::unique_ptr<FFmpeg::Encoder> backend;
     KasmVideoEncoders::Encoder encoder;
     FFmpeg::Device device;
     std::string device_path;
-    LogWriter &logger;
     VideoEncoderParams current_params{};
     uint8_t msg_codec_id{}, msg_codec_type_id{};
-    int64_t pts{};
+    int bpp{};
     void init(VideoEncoderParams params);
 
 protected:
     FFmpegVideoEncoder(Screen layout, const FFmpeg &ffmpeg, SConnection *conn, KasmVideoEncoders::Encoder encoder,
-        VideoEncoderParams params, FFmpeg::Device device, const char *device_path, LogWriter &logger);
+        VideoEncoderParams params, FFmpeg::Device device, const char *device_path);
 
 public:
-    bool isSupported() const override;
+    [[nodiscard]] bool isSupported() const override;
     void writeRect(const PixelBuffer *pb, const Palette &palette) override;
     void writeSolidRect(int, int, const PixelFormat &, const rdr::U8 *) override {}
     bool render(const PixelBuffer *pb, bool forceKeyFrame = false) override;
     void writeSkipRect() override;
 };
-
-template<FFmpeg::Device D>
-struct EncoderLog {
-    static LogWriter &get();
-};
-template<>
-LogWriter &EncoderLog<FFmpeg::Device::Software>::get();
-template<>
-LogWriter &EncoderLog<FFmpeg::Device::VAAPI>::get();
-template<>
-LogWriter &EncoderLog<FFmpeg::Device::CUDA>::get();
 
 template<FFmpeg::Device D>
 class FFmpegDeviceEncoder final : public FFmpegVideoEncoder {
@@ -71,12 +57,12 @@ class FFmpegDeviceEncoder final : public FFmpegVideoEncoder {
         VideoEncoderParams params)
         requires(D == FFmpeg::Device::Software)
         :
-        FFmpegVideoEncoder(layout, ffmpeg, conn, encoder, params, D, nullptr, EncoderLog<D>::get()) {}
+        FFmpegVideoEncoder(layout, ffmpeg, conn, encoder, params, D, nullptr) {}
 
     FFmpegDeviceEncoder(Screen layout, const FFmpeg &ffmpeg, SConnection *conn, KasmVideoEncoders::Encoder encoder,
         const char *path, VideoEncoderParams params)
         requires(D != FFmpeg::Device::Software)
         :
-        FFmpegVideoEncoder(layout, ffmpeg, conn, encoder, params, D, path, EncoderLog<D>::get()) {}
+        FFmpegVideoEncoder(layout, ffmpeg, conn, encoder, params, D, path) {}
 };
 } // namespace rfb

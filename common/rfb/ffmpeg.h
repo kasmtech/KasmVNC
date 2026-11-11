@@ -26,78 +26,73 @@
 // This boundary contains no FFmpeg types. All objects and their allocations stay
 // inside the implementation compiled against the selected library's headers.
 class FFmpegBackend;
+
 class FFmpeg final {
 public:
     enum class Device { Software, VAAPI, CUDA };
+
     struct EncoderSettings {
         std::string name;
         Device device{Device::Software};
         std::string device_path;
         int width{}, height{}, frame_rate{60}, gop{30}, quality{25};
         int profile{}, maximum_quality{50};
+        int64_t first_pts{};
     };
+
     struct Packet {
         const uint8_t *data{};
         size_t size{};
         bool keyframe{};
         int64_t pts{};
     };
+
     class Encoder {
     public:
         virtual ~Encoder() = default;
-        // Input is consumed before return. Packet memory remains owned here until
-        // pop_packet(); each screen has its own encoder and pending packet queue.
-        virtual void encode_argb(const uint8_t *data, int stride, int64_t pts, bool keyframe) = 0;
-        virtual Packet packet() const = 0;
+
+        virtual void encode_argb(const uint8_t *data, int stride, bool keyframe) = 0;
+        [[nodiscard]] virtual int64_t next_pts() const = 0;
+        [[nodiscard]] virtual Packet packet() const = 0;
         virtual void pop_packet() = 0;
     };
-    static constexpr size_t EncoderStorageSize = 512;
-    class EncoderSlot {
-    public:
-        EncoderSlot() = default;
-        ~EncoderSlot() { reset(); }
-        EncoderSlot(const EncoderSlot &) = delete;
-        EncoderSlot &operator=(const EncoderSlot &) = delete;
-        Encoder *get() const noexcept { return encoder; }
-        Encoder *operator->() const noexcept { return encoder; }
-        explicit operator bool() const noexcept { return encoder != nullptr; }
-        void reset() noexcept {
-            if (encoder) {
-                encoder->~Encoder();
-                encoder = nullptr;
-            }
-        }
-    private:
-        friend class FFmpeg;
-        alignas(std::max_align_t) unsigned char storage[EncoderStorageSize];
-        Encoder *encoder{};
-    };
+
     struct RGBFrame {
         const uint8_t *data{};
         int stride{}, width{}, height{};
     };
+
     class FrameSource {
     public:
         virtual ~FrameSource() = default;
-        virtual int width() const = 0;
-        virtual int height() const = 0;
-        virtual int64_t frame_count() const = 0;
+
+        [[nodiscard]] virtual int width() const = 0;
+        [[nodiscard]] virtual int height() const = 0;
+        [[nodiscard]] virtual int64_t frame_count() const = 0;
+
         // The returned RGB pixels remain valid until the next next()/rewind().
         virtual bool next(RGBFrame &frame) = 0;
         virtual void rewind() = 0;
     };
+
+    FFmpeg(const FFmpeg &) = delete;
+    FFmpeg &operator=(const FFmpeg &) = delete;
+
     static FFmpeg &get();
-    bool is_available() const noexcept;
-    unsigned version_major() const noexcept;
-    std::string description() const;
-    void create_encoder(EncoderSlot &slot, const EncoderSettings &settings) const;
-    bool has_encoder(const std::string &name) const;
-    bool probe_encoder(const EncoderSettings &settings) const;
+    [[nodiscard]] bool is_available() const noexcept;
+    [[nodiscard]] unsigned version_major() const noexcept;
+    [[nodiscard]] std::string description() const;
+
+    // Throws if the encoder cannot be created; never returns null.
+    [[nodiscard]] std::unique_ptr<Encoder> create_encoder(const EncoderSettings &settings) const;
+    [[nodiscard]] bool has_encoder(const std::string &name) const;
+    [[nodiscard]] bool probe_encoder(const EncoderSettings &settings) const;
+
     std::unique_ptr<FrameSource> open_source(const std::string &path) const;
+
 private:
     FFmpeg();
     ~FFmpeg();
-    FFmpeg(const FFmpeg &) = delete;
-    FFmpeg &operator=(const FFmpeg &) = delete;
+
     FFmpegBackend *backend{};
 };

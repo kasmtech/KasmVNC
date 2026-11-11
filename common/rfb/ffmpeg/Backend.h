@@ -25,6 +25,6 @@ public:
     virtual unsigned major() const = 0;
     virtual std::string description() const = 0;
     virtual bool has_encoder(const std::string &name) const = 0;
-    virtual FFmpeg::Encoder *construct_encoder(void *storage, const FFmpeg::EncoderSettings &) = 0;
+    virtual std::unique_ptr<FFmpeg::Encoder> create_encoder(const FFmpeg::EncoderSettings &) = 0;
     virtual std::unique_ptr<FFmpeg::FrameSource> open_source(const std::string &) = 0;
 };

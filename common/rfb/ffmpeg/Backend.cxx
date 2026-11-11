@@ -31,6 +31,7 @@ namespace KASMVNC_FFMPEG {
         Library::PacketGuard pending;
         Library::PacketGuard incoming;
         bool has_packet{};
+        int64_t pts_counter{};
 
         void option(const char *name, const char *value) {
             const int result = lib.av_opt_set(context->priv_data, name, value, 0);
@@ -91,7 +92,7 @@ namespace KASMVNC_FFMPEG {
         }
 
     public:
-        explicit Encoder(const FFmpeg::EncoderSettings &value) : settings(value) {
+        explicit Encoder(const FFmpeg::EncoderSettings &value) : settings(value), pts_counter(value.first_pts) {
             if (settings.width < 2 || settings.height < 2 || settings.width % 2 || settings.height % 2 ||
                 settings.frame_rate <= 0 || settings.gop < 0)
                 throw std::invalid_argument("Invalid encoder dimensions or frame timing");
@@ -210,7 +211,9 @@ namespace KASMVNC_FFMPEG {
             check(lib.avcodec_open2(context.get(), codec, nullptr), "open encoder");
         }
 
-        void encode_argb(const uint8_t *data, int stride, int64_t pts, bool keyframe) override {
+        int64_t next_pts() const override { return pts_counter; }
+
+        void encode_argb(const uint8_t *data, int stride, bool keyframe) override {
             if (!data || stride < int64_t(settings.width) * 4)
                 throw std::invalid_argument("Invalid ARGB input or row stride");
             if (has_packet) {
@@ -218,7 +221,6 @@ namespace KASMVNC_FFMPEG {
                     keyframe = true;
                 drop_packet();
             }
-            check(lib.av_frame_make_writable(frame.get()), "make frame writable");
             const bool hardware = settings.device != FFmpeg::Device::Software;
             const int result = hardware
                                    ? libyuv::ARGBToNV12(data,
@@ -241,6 +243,7 @@ namespace KASMVNC_FFMPEG {
                                                         settings.height);
             if (result)
                 throw std::runtime_error("libyuv pixel conversion failed");
+            const int64_t pts = pts_counter++;
             frame->pts = pts;
             frame->pict_type = keyframe ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
             AVFrame *input = frame.get();
@@ -278,9 +281,6 @@ namespace KASMVNC_FFMPEG {
                 drop_packet();
         }
     };
-
-    static_assert(sizeof(Encoder) <= FFmpeg::EncoderStorageSize && alignof(Encoder) <= alignof(std::max_align_t),
-                  "FFmpeg::EncoderSlot storage is too small for this adapter's Encoder");
 
     class FrameSource final : public FFmpeg::FrameSource {
         Library &lib = Library::get();
@@ -423,8 +423,8 @@ namespace KASMVNC_FFMPEG {
             return codec && codec->type == AVMEDIA_TYPE_VIDEO && lib.av_codec_is_encoder(codec);
         }
 
-        FFmpeg::Encoder *construct_encoder(void *storage, const FFmpeg::EncoderSettings &settings) override {
-            return ::new(storage) Encoder(settings);
+        std::unique_ptr<FFmpeg::Encoder> create_encoder(const FFmpeg::EncoderSettings &settings) override {
+            return std::make_unique<Encoder>(settings);
         }
 
         std::unique_ptr<FFmpeg::FrameSource> open_source(const std::string &path) override {

@@ -200,8 +200,3 @@ target_link_libraries(rfb PUBLIC ${RFB_LIBRARIES})
 if (UNIX)
     libtool_create_control_file(rfb)
 endif ()
-
-# Explicit developer target: no Xorg build and no installation is required.
-add_executable(ffmpeg-adapter-probe EXCLUDE_FROM_ALL ffmpeg/AdapterProbe.cxx)
-target_include_directories(ffmpeg-adapter-probe PRIVATE ${CMAKE_SOURCE_DIR}/common)
-target_link_libraries(ffmpeg-adapter-probe PRIVATE rfb ${CMAKE_DL_LIBS})

@@ -83,10 +83,9 @@ bool FFmpeg::is_available() const noexcept { return bool(backend); }
 unsigned FFmpeg::version_major() const noexcept { return backend ? backend->major() : 0; }
 std::string FFmpeg::description() const { return backend ? backend->description() : "unavailable"; }
 
-void FFmpeg::create_encoder(EncoderSlot &slot, const EncoderSettings &settings) const {
+std::unique_ptr<FFmpeg::Encoder> FFmpeg::create_encoder(const EncoderSettings &settings) const {
     if (!backend) throw std::runtime_error("FFmpeg is not available");
-    slot.reset();
-    slot.encoder = backend->construct_encoder(slot.storage, settings);
+    return backend->create_encoder(settings);
 }
 
 bool FFmpeg::has_encoder(const std::string &name) const {
@@ -95,8 +94,7 @@ bool FFmpeg::has_encoder(const std::string &name) const {
 
 bool FFmpeg::probe_encoder(const EncoderSettings &settings) const {
     try {
-        EncoderSlot slot;
-        create_encoder(slot, settings);
+        [[maybe_unused]] const auto encoder = create_encoder(settings);
         return true;
     } catch (const std::exception &e) {
         vlog.debug("Encoder %s unavailable: %s", settings.name.c_str(), e.what());
