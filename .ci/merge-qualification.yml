@@ -1,13 +1,5 @@
-# MR qualification builds the exact commit and requires the Standard suite.
-# Branch build pipelines retain their full matrix and optional functional jobs.
-functional_test:
-  rules:
-    - when: never
-functional_test_standard:
-  rules:
-    - when: on_success
-  allow_failure: false
-  needs: [build_portable_amd64, build_portable_musl_amd64]
+# MR pipelines build the exact commit with the shared functional-test rules:
+# automatic nonblocking Minimal tests and optional Standard tests.
 build_www:
   rules:
     - when: on_success

@@ -78,7 +78,7 @@ functional_test:
     - when: on_success
 
 
-# Branch qualification is optional; MR qualification is required separately.
+# Standard qualification is optional in branch and MR pipelines.
 functional_test_standard:
   stage: functional_test
   image: python:3.13-slim-trixie

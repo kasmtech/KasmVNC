@@ -1,4 +1,4 @@
-# Build results are independent of required merge qualification.
+# MR pipelines use a reduced build matrix with shared functional-test rules.
 include:
   - local: .ci/build-pipeline.yml
   - local: .ci/merge-qualification.yml

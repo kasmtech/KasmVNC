@@ -522,14 +522,12 @@ for deliberate security refreshes, provenance and registry cleanup.
 
 ### Functional tests and merge qualification
 
-Branch pipelines retain the full build/test matrix. Minimal functional tests and
-opt-in Standard functional tests may fail without failing that build pipeline.
-`RUN_STANDARD=true` runs the optional Standard job automatically on a branch.
+Branch pipelines retain the full build/test matrix. Merge-request pipelines use
+`.ci/merge-qualification.yml` to build frontend, glibc AMD64 and musl AMD64
+artifacts from the MR commit.
 
-Merge-request pipelines use `.ci/merge-qualification.yml`: they build frontend,
-glibc AMD64 and musl AMD64 artifacts from the MR commit and then run Standard
-functional tests automatically with `allow_failure: false`. Build-selection
-shortcuts cannot skip this qualification. The project must enable **Pipelines
-must succeed**, with skipped pipelines not accepted, for this to block merging.
-GitLab evaluates MR pipelines for that check independently of branch build
-results. Retry unreliable Standard runs; do not waive their merge requirement.
+Both pipeline types run Minimal functional tests automatically and offer Standard
+functional tests as an optional manual job. Both functional jobs are nonblocking
+(`allow_failure: true`). `RUN_STANDARD=true` runs Standard automatically in either
+pipeline type, while keeping it nonblocking. `BUILD_DISTROS_REGEX=none` disables
+both functional jobs; the MR artifact builds remain required.
