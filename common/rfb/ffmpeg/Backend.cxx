@@ -475,13 +475,13 @@ namespace KASMVNC_FFMPEG {
         std::unique_ptr<FFmpeg::Encoder> create_encoder(const FFmpeg::EncoderSettings &settings) override {
             switch (settings.device) {
                 case FFmpeg::Device::VAAPI:
-                    return std::make_unique<Encoder<FFmpeg::Device::VAAPI> >(settings);
+                    return std::make_unique<Encoder<FFmpeg::Device::VAAPI>>(settings);
                 case FFmpeg::Device::CUDA:
-                    return std::make_unique<Encoder<FFmpeg::Device::CUDA> >(settings);
+                    return std::make_unique<Encoder<FFmpeg::Device::CUDA>>(settings);
                 case FFmpeg::Device::Software:
                     break;
             }
-            return std::make_unique<Encoder<FFmpeg::Device::Software> >(settings);
+            return std::make_unique<Encoder<FFmpeg::Device::Software>>(settings);
         }
 
         std::unique_ptr<FFmpeg::FrameSource> open_source(const std::string &path) override {

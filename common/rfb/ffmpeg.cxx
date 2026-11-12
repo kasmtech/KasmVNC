@@ -61,10 +61,13 @@ FFmpeg::FFmpeg() {
     // Prefer the newest available family. A diagnostic override selects exactly
     // one family, so a missing requested runtime never silently uses another.
     for (const auto &adapter: adapters) {
-        if (!selected.empty() && selected != adapter.major) continue;
+        if (!selected.empty() && selected != adapter.major)
+            continue;
+
         supported = true;
         backend = adapter.create();
-        if (backend) break;
+        if (backend)
+            break;
     }
     if (!supported) {
         vlog.error("Unsupported KASMVNC_FFMPEG_MAJOR=%s (supported: 58, 59, 60, 61, 62, 63)", selected.c_str());
@@ -73,8 +76,10 @@ FFmpeg::FFmpeg() {
 #else
     backend = make_ffmpeg_legacy();
 #endif
-    if (backend) vlog.info("Selected %s", backend->description().c_str());
-    else vlog.error("No supported FFmpeg runtime is available; video encoders disabled (see -Log ffmpeg:stdout:100)");
+    if (backend)
+        vlog.info("Selected %s", backend->description().c_str());
+    else
+        vlog.error("No supported FFmpeg runtime is available; video encoders disabled (see -Log ffmpeg:stdout:100)");
 }
 
 FFmpeg::~FFmpeg() = default;
@@ -105,6 +110,8 @@ bool FFmpeg::probe_encoder(const EncoderSettings &settings) const {
 }
 
 std::unique_ptr<FFmpeg::FrameSource> FFmpeg::open_source(const std::string &path) const {
-    if (!backend) throw std::runtime_error("FFmpeg is not available");
+    if (!backend)
+        throw std::runtime_error("FFmpeg is not available");
+
     return backend->open_source(path);
 }
