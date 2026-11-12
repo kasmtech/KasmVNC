@@ -376,9 +376,10 @@ Three independent layers:
    `.deb`.
 
 CI is GitLab (`.gitlab-ci.yml`). It builds only portable glibc/musl packages on
-AMD64/ARM64. `BUILD_DISTROS_REGEX=none` skips packaging; other values do not
-filter the runtime matrix. Spec and minimal functional tests consume the portable
-DEB; Standard covers the glibc 2.28 floor and newer userspaces. See `BUILDING.md`.
+AMD64/ARM64, using the same full pipeline with or without a merge request. Spec
+and required minimal functional tests consume the portable DEB. Standard is
+manual and optional; run it successfully on the current commit before requesting
+review. It covers the glibc 2.28 floor and newer userspaces. See `BUILDING.md`.
 
 ## Security review and vulnerability triage (opt-in)
 

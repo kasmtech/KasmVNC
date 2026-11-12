@@ -213,9 +213,9 @@ GCC Toolset 14; C++20 and Xorg 21.1.25 are retained. Musl targets 1.2.5+.
 There are no legacy package producers or legacy package test consumers.
 `BUILD_WORKSPACE_LEGACY` and `BUILD_FULL_LEGACY` have been removed; setting
 those obsolete variables cannot re-enable native distro builds.
-`BUILD_PORTABLE` has also been removed. `BUILD_DISTROS_REGEX=none` disables
-portable packaging; it never falls back to legacy builds. Other regex values
-do not narrow the portable runtime matrix.
+`BUILD_PORTABLE` and `BUILD_DISTROS_REGEX` have also been removed. Every branch
+pipeline builds all four portable profiles and runs the complete runtime matrix;
+obsolete selection variables cannot skip this coverage.
 
 The required matrix covers 39 glibc and eight Alpine cases (47 distro/architecture
 cases, 86 format runs), including Oracle/Rocky/AlmaLinux 8 and Leap 15.6 on both
