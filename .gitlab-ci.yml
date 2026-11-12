@@ -1,13 +1,11 @@
-# MR pipelines use a reduced build matrix with shared functional-test rules.
+# One full branch pipeline, independent of whether an MR exists or is a draft.
 include:
   - local: .ci/build-pipeline.yml
-  - local: .ci/merge-qualification.yml
-    rules:
-      - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
 workflow:
   rules:
     - if: '$CI_COMMIT_TAG'
       when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - when: always
+      when: never
+    - if: '$CI_COMMIT_BRANCH'

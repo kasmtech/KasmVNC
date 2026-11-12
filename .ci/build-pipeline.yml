@@ -9,8 +9,6 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_FORCE_HTTPS: "true"
   GIT_FETCH_EXTRA_FLAGS: --tags --force
-  # Only "none" disables packaging; all other values retain the full portable matrix.
-  BUILD_DISTROS_REGEX: all
   # Portable packages are the only CI producers. Runtime qualification is
   # mandatory for every enabled libc/architecture profile.
   WORKSPACE_IMAGE_TAG: "develop"
@@ -61,8 +59,7 @@ functional_test:
     - put_report_into_ci_pipeline "$exit_code"
     - exit "$exit_code"
   needs:
-    - job: build_portable_amd64
-      optional: true
+    - build_portable_amd64
   artifacts:
     paths:
       - kasmvnc-functional-tests/report/
@@ -71,14 +68,12 @@ functional_test:
     reports:
       junit:
         - kasmvnc-functional-tests/report/*/junit.xml
-  allow_failure: true
+  allow_failure: false
   rules:
-    - if: '$BUILD_DISTROS_REGEX == "none"'
-      when: never
     - when: on_success
 
 
-# Standard qualification is optional in branch and MR pipelines.
+# Run Standard manually before requesting review; it does not gate pipeline success.
 functional_test_standard:
   stage: functional_test
   image: python:3.13-slim-trixie
@@ -89,10 +84,8 @@ functional_test_standard:
     FUNCTIONAL_TEST_TIER: "standard"
   needs:
     - job: build_portable_amd64
-      optional: true
       artifacts: true
     - job: build_portable_musl_amd64
-      optional: true
       artifacts: true
   before_script:
     - . .ci/helpers.sh
@@ -128,11 +121,6 @@ functional_test_standard:
     reports:
       junit: kasmvnc-functional-tests/report/*/*/junit.xml
   rules:
-    - if: '$BUILD_DISTROS_REGEX == "none"'
-      when: never
-    - if: '$RUN_STANDARD == "true"'
-      when: on_success
-      allow_failure: true
     - when: manual
       allow_failure: true
 
@@ -155,7 +143,7 @@ build_www:
     - ls -l ../output
     - tar -zcvf ../output/www/kasm_www.tar.gz www www-supply-chain
   rules:
-    - if: $BUILD_DISTROS_REGEX !~ /^none$/
+    - when: on_success
   artifacts:
     paths:
       - output/
@@ -168,8 +156,6 @@ spec_dependencies:
   needs: []
   resource_group: spec-dependencies-amd64
   rules:
-    - if: '$BUILD_DISTROS_REGEX == "none"'
-      when: never
     - when: on_success
   before_script:
     - *prepare_build
@@ -184,8 +170,6 @@ spec_test:
   tags:
     - kasmvnc-x86
   rules:
-    - if: '$BUILD_DISTROS_REGEX == "none"'
-      when: never
     - when: on_success
       needs: [spec_dependencies, build_portable_amd64]
   before_script:
@@ -264,8 +248,6 @@ upload_build_preview_html:
       cyclonedx: ["output/portable_*/gl-sbom.cdx.json"]
       dependency_scanning: ["output/portable_*/gl-dependency-scanning-report.json"]
   rules:
-    - if: '$BUILD_DISTROS_REGEX == "none"'
-      when: never
     - when: on_success
 
 build_portable_amd64:
@@ -316,8 +298,6 @@ build_portable_musl_arm64:
     when: always
     paths: [output/portable-tests/]
   rules:
-    - if: '$BUILD_DISTROS_REGEX == "none"'
-      when: never
     - when: on_success
 
 test_portable_amd64:

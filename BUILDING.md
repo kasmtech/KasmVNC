@@ -72,7 +72,7 @@ sudo docker exec -it kasmvnc_dev /bin/bash
 
 CI builds four portable targets by default and tests their packages across the
 supported userspace matrix. Use `builder/test-portable --case <case>` locally
-for focused runtime debugging. `BUILD_DISTROS_REGEX=none` skips packaging; it does not enable legacy builds.
+for focused runtime debugging. Every branch pipeline builds all four targets.
 See [the CI scope](#portable-ci) for required functional qualification.
 
 ## Building the KasmVNC Server on Modern Unix/Linux Systems
@@ -484,9 +484,9 @@ GCC Toolset 14; C++20 and Xorg 21.1.25 are retained. Musl targets 1.2.5+.
 There are no legacy package producers or legacy package test consumers.
 `BUILD_WORKSPACE_LEGACY` and `BUILD_FULL_LEGACY` have been removed; setting
 those obsolete variables cannot re-enable native distro builds.
-`BUILD_PORTABLE` has also been removed. `BUILD_DISTROS_REGEX=none` disables
-portable packaging; it never falls back to legacy builds. Other regex values
-do not narrow the portable runtime matrix.
+`BUILD_PORTABLE` and `BUILD_DISTROS_REGEX` have also been removed. Every branch
+pipeline builds all four portable profiles and runs the complete runtime matrix;
+obsolete selection variables cannot skip this coverage.
 
 The required matrix covers 39 glibc and eight Alpine cases (47 distro/architecture
 cases, 86 format runs), including Oracle/Rocky/AlmaLinux 8 and Leap 15.6 on both
@@ -522,12 +522,20 @@ for deliberate security refreshes, provenance and registry cleanup.
 
 ### Functional tests and merge qualification
 
-Branch pipelines retain the full build/test matrix. Merge-request pipelines use
-`.ci/merge-qualification.yml` to build frontend, glibc AMD64 and musl AMD64
-artifacts from the MR commit.
+Every branch uses the same full build/test pipeline, whether it has no merge
+request, a draft merge request, or a ready merge request. Merge-request events
+and tags do not create additional pipelines. Manual and scheduled branch
+pipelines use the same jobs. All four native portable producers, the runtime
+matrix, and unit tests remain enabled.
 
-Both pipeline types run Minimal functional tests automatically and offer Standard
-functional tests as an optional manual job. Both functional jobs are nonblocking
-(`allow_failure: true`). `RUN_STANDARD=true` runs Standard automatically in either
-pipeline type, while keeping it nonblocking. `BUILD_DISTROS_REGEX=none` disables
-both functional jobs; the MR artifact builds remain required.
+Minimal functional tests run automatically and must pass (`allow_failure: false`).
+Standard functional tests are manual and optional (`allow_failure: true`);
+`RUN_STANDARD` no longer starts them automatically. Developers must run Standard
+on the current commit and verify success before requesting review. Reviewers
+must check that job's result: a green pipeline alone does not prove Standard ran
+or passed. A new commit requires a new Standard run.
+
+The four portable resource groups are retained to protect shared dependency-cache
+publication across commits and branches. Different architecture/libc profiles
+run concurrently, but matching profiles in different pipelines serialize for
+the whole job. A push no longer launches duplicate branch/MR package builds.
