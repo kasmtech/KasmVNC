@@ -86,9 +86,9 @@ RUN if [ "$(arch)" = "x86_64" ]; then \
 # scripts via $SCRIPTS_DIR and defaults to its own dir (/src/builder/scripts) when
 # unset — i.e. the live, bind-mounted repo copy. A persistent ENV would pin it to
 # these baked, soon-stale copies.
-RUN --mount=type=bind,source=builder/scripts,target=/opt/kasm-build-scripts,rw \
-    /opt/kasm-build-scripts/install_sccache_from_github && \
-    /opt/kasm-build-scripts/build-deps.sh && \
+COPY builder/scripts /tmp/scripts
+RUN /tmp/scripts/install_sccache_from_github && \
+    /tmp/scripts/build-deps.sh && \
     chown -R 1000:1000 /home/kasm-user/.local && \
     printf '%s\n' "$KASMVNC_DEPENDENCIES_MARKER" > /opt/kasm-dependencies-ready && \
     find /tmp -mindepth 1 -maxdepth 1 -exec rm -rf {} +
