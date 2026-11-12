@@ -50,7 +50,7 @@ static void check_hardware_options(const FFmpeg &ff) {
                                          " quality=" + std::to_string(quality) +
                                          " profile=" + std::to_string(candidate.profile));
             if (result.category != FFmpeg::ProbeCategory::Hardware)
-                throw std::runtime_error(candidate.name + " quality=" + std::to_string(quality) +
+                throw std::runtime_error(std::string(candidate.name) + " quality=" + std::to_string(quality) +
                                          ": expected device failure, got: " + result.message);
             std::cout << "PASS options " << candidate.name << " quality=" << quality << '\n';
         }
