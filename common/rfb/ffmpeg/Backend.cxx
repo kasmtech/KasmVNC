@@ -16,10 +16,7 @@ static_assert(
 #endif
 
 namespace KASMVNC_FFMPEG {
-    static void check(int result, const char *operation) {
-        if (result < 0)
-            throw std::runtime_error(std::string(operation) + ": " + Library::get().get_error_description(result));
-    }
+    static void check(int result, const char *operation, FFmpeg::ProbeCategory category = FFmpeg::ProbeCategory::Error);
 
     struct NoHardware {
     };
@@ -174,7 +171,7 @@ namespace KASMVNC_FFMPEG {
         void create_hardware_frames() {
             constexpr auto type = D == FFmpeg::Device::CUDA ? AV_HWDEVICE_TYPE_CUDA : AV_HWDEVICE_TYPE_VAAPI;
             AVBufferRef *raw_device{};
-            check(lib.av_hwdevice_ctx_create(&raw_device, type, device_path(), nullptr, 0), "create hardware device");
+            check(lib.av_hwdevice_ctx_create(&raw_device, type, device_path(), nullptr, 0), "create hardware device", FFmpeg::ProbeCategory::Hardware);
             hw.device.reset(raw_device);
             hw.pool.reset(lib.av_hwframe_ctx_alloc(hw.device.get()));
             if (!hw.pool)
@@ -185,7 +182,7 @@ namespace KASMVNC_FFMPEG {
             frames->width = settings.width;
             frames->height = settings.height;
             frames->initial_pool_size = 20;
-            check(lib.av_hwframe_ctx_init(hw.pool.get()), "initialize hardware frames");
+            check(lib.av_hwframe_ctx_init(hw.pool.get()), "initialize hardware frames", FFmpeg::ProbeCategory::Hardware);
             context->hw_frames_ctx = lib.av_buffer_ref(hw.pool.get());
             if (!context->hw_frames_ctx)
                 throw std::bad_alloc();
@@ -458,6 +455,8 @@ namespace KASMVNC_FFMPEG {
 
     class Backend final : public FFmpegBackend {
     public:
+        inline static thread_local FFmpeg::ProbeCategory last_error = FFmpeg::ProbeCategory::Ok;
+
         unsigned major() const override {
             return LIBAVCODEC_VERSION_MAJOR;
         }
@@ -473,6 +472,7 @@ namespace KASMVNC_FFMPEG {
         }
 
         std::unique_ptr<FFmpeg::Encoder> create_encoder(const FFmpeg::EncoderSettings &settings) override {
+            last_error = FFmpeg::ProbeCategory::Ok;
             switch (settings.device) {
                 case FFmpeg::Device::VAAPI:
                     return std::make_unique<Encoder<FFmpeg::Device::VAAPI>>(settings);
@@ -484,10 +484,21 @@ namespace KASMVNC_FFMPEG {
             return std::make_unique<Encoder<FFmpeg::Device::Software>>(settings);
         }
 
+        FFmpeg::ProbeCategory get_last_error() const override {
+            return last_error;
+        }
+
         std::unique_ptr<FFmpeg::FrameSource> open_source(const std::string &path) override {
             return std::make_unique<FrameSource>(path);
         }
     };
+
+    static void check(int result, const char *operation, FFmpeg::ProbeCategory category) {
+        if (result < 0) {
+            Backend::last_error = category;
+            throw std::runtime_error(std::string(operation) + ": " + Library::get().get_error_description(result));
+        }
+    }
 } // namespace KASMVNC_FFMPEG
 
 FFmpegBackend *KASMVNC_FFMPEG_FACTORY() {
