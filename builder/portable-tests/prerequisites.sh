@@ -127,8 +127,17 @@ EOF
     '/usr/bin/xdpyinfo' dbus-x11 util-linux shadow-utils binutils tar gzip \
     '/usr/bin/glxinfo' mesa-dri-drivers
   if [[ "$format" = tar ]]; then
+    # Do not upgrade an already satisfied SONAME capability. On the UBI/Oracle
+    # fixture, requesting libdbus explicitly can select a newer UBI dbus-libs
+    # that conflicts with the exact version required by Oracle's dbus-x11.
+    missing_capabilities=()
+    for capability in "${tar_rpm_capabilities[@]}"; do
+      if ! rpm -q --whatprovides "$capability" >/dev/null 2>&1; then
+        missing_capabilities+=("$capability")
+      fi
+    done
     dnf install -y bash tzdata xorg-x11-xauth xkeyboard-config xkbcomp \
-      libglvnd-glx mesa-libgbm hostname "${tar_rpm_capabilities[@]}"
+      libglvnd-glx mesa-libgbm hostname "${missing_capabilities[@]}"
   fi
 fi
 if [[ "$ffmpeg_mode" = adapters ]]; then
@@ -151,7 +160,22 @@ if [[ "$ffmpeg_mode" = adapters ]]; then
     # Bootstrap the repository package over HTTPS; its configuration enables
     # signature verification for the FFmpeg packages installed below.
     dnf install -y --nogpgcheck "$release"
-    dnf install -y --allowerasing ffmpeg
+    if [[ "$ID" = fedora && "$VERSION_ID" = 42 ]]; then
+      # Fedora 42 is archived. Its live RPM Fusion metalink currently advertises
+      # stale repomd checksums; use a mirror listed by RPM Fusion's archive
+      # metalink directly. Retain repository keys and package GPG verification.
+      for repo in /etc/yum.repos.d/rpmfusion-free.repo /etc/yum.repos.d/rpmfusion-free-updates.repo; do
+        sed -i \
+          -e 's|^metalink=|#metalink=|' \
+          -e 's|^#baseurl=http://download1.rpmfusion.org/free/fedora/|baseurl=https://mirror1.hs-esslingen.de/pub/Mirrors/archive.rpmfusion.org/free-archive/fedora/|' \
+          "$repo"
+      done
+      dnf clean metadata
+    fi
+    # Fedora's ffmpeg-free also provides "ffmpeg", but omits libx264/libx265.
+    # Require RPM Fusion's library package as well so a newer restricted
+    # provider cannot silently satisfy the fixture's software-codec dependency.
+    dnf install -y --allowerasing ffmpeg ffmpeg-libs
   fi
 fi
 useradd -m -s /bin/bash kasm_test

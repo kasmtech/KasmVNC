@@ -41,6 +41,13 @@ CPU. Host DSOs and drivers have their own requirements. The
 and [FFmpeg families](../portable/README.md#ffmpeg-runtime-adapters) must also be
 satisfied.
 
+Fedora 42 uses RPM Fusion's archived repositories through an archive mirror
+listed by its metalink service; package GPG checks remain enabled. RPM fixtures
+explicitly install `ffmpeg-libs` to require the software codecs rather than
+accepting Fedora's restricted `ffmpeg-free` provider. Tar fixtures retain
+already-installed SONAME providers, avoiding incompatible cross-vendor D-Bus
+upgrades in the UBI9/Oracle environment.
+
 ## What the evidence establishes
 
 The runtime tests use Docker with `runc` and reject cross-architecture emulation.
