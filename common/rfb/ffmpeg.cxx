@@ -106,7 +106,27 @@ bool FFmpeg::has_encoder(const std::string &name) const {
 }
 
 bool FFmpeg::probe_encoder(const EncoderSettings &settings) const {
-    return create_encoder(settings) != nullptr;
+    return probe(settings).category == ProbeCategory::Ok;
+}
+
+static FFmpeg::ProbeCategory failure_category(FFmpeg::ProbeCategory last_error) {
+    return last_error == FFmpeg::ProbeCategory::Ok ? FFmpeg::ProbeCategory::Error : last_error;
+}
+
+FFmpeg::ProbeResult FFmpeg::probe(const EncoderSettings &settings) const {
+    if (!backend)
+        return {ProbeCategory::Error, "FFmpeg is not available"};
+    try {
+        if (backend->create_encoder(settings))
+            return {};
+        return {ProbeCategory::Error, "no encoder returned"};
+    } catch (const std::exception &e) {
+        vlog.debug("Encoder %s unavailable: %s", settings.name.c_str(), e.what());
+        return {failure_category(backend->get_last_error()), e.what()};
+    } catch (...) {
+        vlog.debug("Encoder %s unavailable: unknown error", settings.name.c_str());
+        return {failure_category(backend->get_last_error()), "unknown error"};
+    }
 }
 
 std::unique_ptr<FFmpeg::FrameSource> FFmpeg::open_source(const std::string &path) const {

@@ -43,11 +43,15 @@ static void check_hardware_options(const FFmpeg &ff) {
                 }
                 throw std::runtime_error(std::string(candidate.name) + " is not available");
             }
-            if (ff.create_encoder(settings))
+            const auto result = ff.probe(settings);
+            if (result.category == FFmpeg::ProbeCategory::Ok)
                 throw std::runtime_error("Unexpectedly created the deliberately invalid hardware device: " +
                                          std::string(candidate.name) + " device=" + settings.device_path +
                                          " quality=" + std::to_string(quality) +
                                          " profile=" + std::to_string(candidate.profile));
+            if (result.category != FFmpeg::ProbeCategory::Hardware)
+                throw std::runtime_error(candidate.name + " quality=" + std::to_string(quality) +
+                                         ": expected device failure, got: " + result.message);
             std::cout << "PASS options " << candidate.name << " quality=" << quality << '\n';
         }
     }

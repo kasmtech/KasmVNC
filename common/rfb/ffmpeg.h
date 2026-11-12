@@ -30,6 +30,12 @@ class FFmpegBackend;
 class FFmpeg final {
 public:
     enum class Device { Software, VAAPI, CUDA };
+    enum class ProbeCategory { Ok, Error, Hardware };
+
+    struct ProbeResult {
+        ProbeCategory category = ProbeCategory::Ok;
+        std::string message;
+    };
 
     struct EncoderSettings {
         std::string name;
@@ -86,6 +92,7 @@ public:
     [[nodiscard]] std::unique_ptr<Encoder> create_encoder(const EncoderSettings &settings) const noexcept;
     [[nodiscard]] bool has_encoder(const std::string &name) const;
     [[nodiscard]] bool probe_encoder(const EncoderSettings &settings) const;
+    [[nodiscard]] ProbeResult probe(const EncoderSettings &settings) const;
 
     std::unique_ptr<FrameSource> open_source(const std::string &path) const;
 
