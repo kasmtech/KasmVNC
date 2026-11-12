@@ -23,7 +23,7 @@
 #include "rfb/LogWriter.h"
 
 namespace KASMVNC_FFMPEG {
-static rfb::LogWriter vlog("ffmpeg");
+static rfb::LogWriter vlog("ffmpeg-library");
 using namespace std::string_literals;
 
 #ifndef KASMVNC_STATIC_FFMPEG
