@@ -230,7 +230,9 @@ EncodeManager::EncodeManager(SConnection *conn_, EncCache *encCache_, const FFmp
         dynamicQualityOff = Server::dynamicQualityMax - Server::dynamicQualityMin;
     }
 
-    const auto num_cores = cpu_info::cores_count;
+    const auto num_cores = (Server::rectThreads > 0)
+        ? Server::rectThreads.getValue()
+        : cpu_info::cores_count;
     arena.initialize(num_cores);
 }
 
