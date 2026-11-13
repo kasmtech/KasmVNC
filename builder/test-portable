@@ -197,7 +197,9 @@ try:
                 raise RuntimeError('Browser keyboard input did not reach desktop terminal')
             logs = run(['docker','exec',container,'bash','-c','cat /home/kasm_test/.vnc/*.log']).stdout
             (out/'xvnc.log').write_text(logs)
-            if 'SoftwareEncoder: Screen id 0, codec 16, frame size:' not in logs:
+            if not re.search(
+                    r'(?:SoftwareEncoder|FFmpegVideoEncoder: Software libx264): '
+                    r'Screen id 0, codec 16, frame size: [1-9][0-9]*\b', logs):
                 raise RuntimeError('Server did not confirm software H.264 frame encoding')
             if ffmpeg_mode == 'adapters':
                 selected = re.search(r'Selected FFmpeg avcodec (\d+) from (.+)', logs)
