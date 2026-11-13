@@ -16,6 +16,7 @@
  * USA.
  */
 #include "FFmpegVideoEncoder.h"
+#include <fmt/format.h>
 #include <stdexcept>
 #include "EncoderConfiguration.h"
 #include "rfb/LogWriter.h"
@@ -50,7 +51,7 @@ namespace rfb {
         if (!params.frame_rate)
             params.frame_rate = Server::frameRate;
         if (!init(params))
-            throw std::runtime_error(std::string("Cannot create ") + KasmVideoEncoders::to_string(encoder));
+            throw std::runtime_error(fmt::format("Cannot create {}", KasmVideoEncoders::to_string(encoder)));
     }
 
     bool FFmpegVideoEncoder::init(VideoEncoderParams params) {

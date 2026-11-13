@@ -28,7 +28,7 @@ using namespace std::string_literals;
 
 #ifndef KASMVNC_STATIC_FFMPEG
 Library::DlHandlerGuard Library::loadLibrary(const char *lib, unsigned major_version) {
-    const auto soname = std::string{lib} + "." + std::to_string(major_version);
+    const auto soname = fmt::format("{}.{}", lib, major_version);
     auto *handle = dlopen(soname.c_str(), RTLD_NOW | RTLD_LOCAL | RTLD_NODELETE);
     if (!handle)
         throw std::runtime_error("Could not open " + soname + ": " + dlerror());

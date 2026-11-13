@@ -30,7 +30,7 @@ class FFmpegBackend;
 class FFmpeg final {
 public:
     enum class Device { Software, VAAPI, CUDA };
-    enum class ProbeCategory { Ok, Error, Hardware };
+    enum class ProbeCategory { Ok, Error, Hardware, Option };
 
     struct ProbeResult {
         ProbeCategory category = ProbeCategory::Ok;

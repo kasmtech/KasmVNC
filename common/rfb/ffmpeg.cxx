@@ -106,7 +106,8 @@ bool FFmpeg::has_encoder(const std::string &name) const {
 }
 
 bool FFmpeg::probe_encoder(const EncoderSettings &settings) const {
-    return probe(settings).category == ProbeCategory::Ok;
+    const auto category = probe(settings).category;
+    return category == ProbeCategory::Ok || category == ProbeCategory::Option;
 }
 
 static FFmpeg::ProbeCategory failure_category(FFmpeg::ProbeCategory last_error) {
@@ -117,8 +118,11 @@ FFmpeg::ProbeResult FFmpeg::probe(const EncoderSettings &settings) const {
     if (!backend)
         return {ProbeCategory::Error, "FFmpeg is not available"};
     try {
-        if (backend->create_encoder(settings))
+        if (backend->create_encoder(settings)) {
+            if (backend->get_last_error() == ProbeCategory::Option)
+                return {ProbeCategory::Option, "encoder rejected an option"};
             return {};
+        }
         return {ProbeCategory::Error, "no encoder returned"};
     } catch (const std::exception &e) {
         vlog.debug("Encoder %s unavailable: %s", settings.name.c_str(), e.what());

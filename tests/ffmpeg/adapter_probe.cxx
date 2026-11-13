@@ -2,6 +2,7 @@
 #include "rfb/ffmpeg.h"
 #include "rfb/LogWriter.h"
 #include "rfb/Logger_stdio.h"
+#include <fmt/format.h>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -41,17 +42,20 @@ static void check_hardware_options(const FFmpeg &ff) {
                     std::cout << "SKIP unavailable on this runtime: " << candidate.name << '\n';
                     break;
                 }
-                throw std::runtime_error(std::string(candidate.name) + " is not available");
+                throw std::runtime_error(fmt::format("{} is not available", candidate.name));
             }
             const auto result = ff.probe(settings);
             if (result.category == FFmpeg::ProbeCategory::Ok)
-                throw std::runtime_error("Unexpectedly created the deliberately invalid hardware device: " +
-                                         std::string(candidate.name) + " device=" + settings.device_path +
-                                         " quality=" + std::to_string(quality) +
-                                         " profile=" + std::to_string(candidate.profile));
+                throw std::runtime_error(fmt::format(
+                    "Unexpectedly created the deliberately invalid hardware device: {} device={} quality={} profile={}",
+                    candidate.name, settings.device_path, quality, candidate.profile));
+            if (result.category == FFmpeg::ProbeCategory::Option)
+                throw std::runtime_error(fmt::format("{} quality={}: encoder rejected an option", candidate.name,
+                                                     quality));
             if (result.category != FFmpeg::ProbeCategory::Hardware)
-                throw std::runtime_error(std::string(candidate.name) + " quality=" + std::to_string(quality) +
-                                         ": expected device failure, got: " + result.message);
+                throw std::runtime_error(
+                    fmt::format("{} quality={}: expected device failure, got: {}", candidate.name, quality,
+                                result.message));
             std::cout << "PASS options " << candidate.name << " quality=" << quality << '\n';
         }
     }
@@ -62,6 +66,7 @@ static void encode(const FFmpeg &ff, const std::string &path, const char *name, 
         name, FFmpeg::Device::Software, "", width, height, 30, 30, 25,
         std::string(name) == "libx264" ? (66 | 1 << 9) : 1, 50
     };
+    require(ff.probe(settings).category != FFmpeg::ProbeCategory::Option, "encoder rejected an option");
     const auto encoder = ff.create_encoder(settings);
     require(bool(encoder), "cannot create encoder");
     std::ofstream output(path, std::ios::binary);

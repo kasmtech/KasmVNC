@@ -2,6 +2,7 @@
 #include "Backend.h"
 #include <algorithm>
 #include <cctype>
+#include <fmt/format.h>
 #include <libyuv.h>
 #include <new>
 #include <stdexcept>
@@ -16,7 +17,43 @@ static_assert(
 #endif
 
 namespace KASMVNC_FFMPEG {
-    static void check(int result, const char *operation, FFmpeg::ProbeCategory category = FFmpeg::ProbeCategory::Error);
+    class Backend final : public FFmpegBackend {
+    public:
+        inline static thread_local FFmpeg::ProbeCategory last_error = FFmpeg::ProbeCategory::Ok;
+
+        static void check(int result, const char *operation,
+                          FFmpeg::ProbeCategory category = FFmpeg::ProbeCategory::Error) {
+            if (result >= 0)
+                return;
+
+            if (last_error == FFmpeg::ProbeCategory::Ok)
+                last_error = category;
+
+            throw std::runtime_error(fmt::format("{}: {}", operation, Library::get().get_error_description(result)));
+        }
+
+        unsigned major() const override {
+            return LIBAVCODEC_VERSION_MAJOR;
+        }
+
+        std::string description() const override {
+            return Library::get().description();
+        }
+
+        bool has_encoder(const std::string &name) const override {
+            const auto &lib = Library::get();
+            const auto *codec = lib.avcodec_find_encoder_by_name(name.c_str());
+            return codec && codec->type == AVMEDIA_TYPE_VIDEO && lib.av_codec_is_encoder(codec);
+        }
+
+        FFmpeg::ProbeCategory get_last_error() const override {
+            return last_error;
+        }
+
+        std::unique_ptr<FFmpeg::Encoder> create_encoder(const FFmpeg::EncoderSettings &settings) override;
+
+        std::unique_ptr<FFmpeg::FrameSource> open_source(const std::string &path) override;
+    };
 
     struct NoHardware {
     };
@@ -49,22 +86,26 @@ namespace KASMVNC_FFMPEG {
 
         void option(const char *name, const char *value) {
             const int result = lib.av_opt_set(context->priv_data, name, value, 0);
-            if (result < 0)
+            if (result < 0) {
+                Backend::last_error = FFmpeg::ProbeCategory::Option;
                 vlog.info("%s: cannot set %s=%s (%s)",
                           settings.name.c_str(),
                           name,
                           value,
                           lib.get_error_description(result).c_str());
+            }
         }
 
         void option(const char *name, int value) {
             const int result = lib.av_opt_set_int(context->priv_data, name, value, 0);
-            if (result < 0)
+            if (result < 0) {
+                Backend::last_error = FFmpeg::ProbeCategory::Option;
                 vlog.info("%s: cannot set %s=%d (%s)",
                           settings.name.c_str(),
                           name,
                           value,
                           lib.get_error_description(result).c_str());
+            }
         }
 
         const AVOption *find_option(const char *name) {
@@ -171,7 +212,9 @@ namespace KASMVNC_FFMPEG {
         void create_hardware_frames() {
             constexpr auto type = D == FFmpeg::Device::CUDA ? AV_HWDEVICE_TYPE_CUDA : AV_HWDEVICE_TYPE_VAAPI;
             AVBufferRef *raw_device{};
-            check(lib.av_hwdevice_ctx_create(&raw_device, type, device_path(), nullptr, 0), "create hardware device", FFmpeg::ProbeCategory::Hardware);
+            Backend::check(lib.av_hwdevice_ctx_create(&raw_device, type, device_path(), nullptr, 0),
+                           "create hardware device",
+                           FFmpeg::ProbeCategory::Hardware);
             hw.device.reset(raw_device);
             hw.pool.reset(lib.av_hwframe_ctx_alloc(hw.device.get()));
             if (!hw.pool)
@@ -182,7 +225,8 @@ namespace KASMVNC_FFMPEG {
             frames->width = settings.width;
             frames->height = settings.height;
             frames->initial_pool_size = 20;
-            check(lib.av_hwframe_ctx_init(hw.pool.get()), "initialize hardware frames", FFmpeg::ProbeCategory::Hardware);
+            Backend::check(lib.av_hwframe_ctx_init(hw.pool.get()), "initialize hardware frames",
+                           FFmpeg::ProbeCategory::Hardware);
             context->hw_frames_ctx = lib.av_buffer_ref(hw.pool.get());
             if (!context->hw_frames_ctx)
                 throw std::bad_alloc();
@@ -198,7 +242,7 @@ namespace KASMVNC_FFMPEG {
                 throw std::invalid_argument("Invalid encoder dimensions or frame timing");
             const auto *codec = lib.avcodec_find_encoder_by_name(settings.name.c_str());
             if (!codec || codec->type != AVMEDIA_TYPE_VIDEO || !lib.av_codec_is_encoder(codec))
-                throw std::runtime_error("Encoder is not available: " + settings.name);
+                throw std::runtime_error(fmt::format("Encoder is not available: {}", settings.name));
             context.reset(lib.avcodec_alloc_context3(codec));
             frame.reset(lib.av_frame_alloc());
             pending.reset(lib.av_packet_alloc());
@@ -226,8 +270,8 @@ namespace KASMVNC_FFMPEG {
             frame->format = frame_format;
             frame->width = settings.width;
             frame->height = settings.height;
-            check(lib.av_frame_get_buffer(frame.get(), 0), "allocate frame buffer");
-            check(lib.avcodec_open2(context.get(), codec, nullptr), "open encoder");
+            Backend::check(lib.av_frame_get_buffer(frame.get(), 0), "allocate frame buffer");
+            Backend::check(lib.avcodec_open2(context.get(), codec, nullptr), "open encoder");
         }
 
         int64_t next_pts() const override { return pts_counter; }
@@ -344,9 +388,9 @@ namespace KASMVNC_FFMPEG {
     public:
         explicit FrameSource(const std::string &path) : input_path(path) {
             AVFormatContext *raw{};
-            check(lib.avformat_open_input(&raw, path.c_str(), nullptr, nullptr), "open benchmark input");
+            Backend::check(lib.avformat_open_input(&raw, path.c_str(), nullptr, nullptr), "open benchmark input");
             format.reset(raw);
-            check(lib.avformat_find_stream_info(format.get(), nullptr), "read stream metadata");
+            Backend::check(lib.avformat_find_stream_info(format.get(), nullptr), "read stream metadata");
             for (unsigned i = 0; i < format->nb_streams; ++i)
                 if (format->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
                     stream = i;
@@ -364,8 +408,8 @@ namespace KASMVNC_FFMPEG {
             packet.reset(lib.av_packet_alloc());
             if (!decoder || !frame || !rgb || !packet)
                 throw std::bad_alloc();
-            check(lib.avcodec_parameters_to_context(decoder.get(), parameters), "configure decoder");
-            check(lib.avcodec_open2(decoder.get(), codec, nullptr), "open decoder");
+            Backend::check(lib.avcodec_parameters_to_context(decoder.get(), parameters), "configure decoder");
+            Backend::check(lib.avcodec_open2(decoder.get(), codec, nullptr), "open decoder");
         }
 
         int width() const override {
@@ -403,17 +447,18 @@ namespace KASMVNC_FFMPEG {
                         rgb->format = AV_PIX_FMT_RGB24;
                         rgb->width = frame->width;
                         rgb->height = frame->height;
-                        check(lib.av_frame_get_buffer(rgb.get(), 0), "allocate benchmark RGB frame");
+                        Backend::check(lib.av_frame_get_buffer(rgb.get(), 0), "allocate benchmark RGB frame");
                     }
-                    check(lib.sws_scale(
-                              scaler.get(), frame->data, frame->linesize, 0, frame->height, rgb->data, rgb->linesize),
-                          "convert benchmark frame");
+                    Backend::check(lib.sws_scale(
+                                       scaler.get(), frame->data, frame->linesize, 0, frame->height, rgb->data,
+                                       rgb->linesize),
+                                   "convert benchmark frame");
                     output = {rgb->data[0], rgb->linesize[0], rgb->width, rgb->height};
                     return true;
                 }
                 if (result == AVERROR_EOF)
                     return false;
-                check(result == AVERROR(EAGAIN) ? 0 : result, "decode benchmark frame");
+                Backend::check(result == AVERROR(EAGAIN) ? 0 : result, "decode benchmark frame");
                 if (draining)
                     throw std::runtime_error("Decoder requested input while draining");
                 do {
@@ -421,12 +466,12 @@ namespace KASMVNC_FFMPEG {
                     result = lib.av_read_frame(format.get(), packet.get());
                 } while (result >= 0 && packet->stream_index != stream);
                 if (result == AVERROR_EOF) {
-                    check(lib.avcodec_send_packet(decoder.get(), nullptr), "drain benchmark decoder");
+                    Backend::check(lib.avcodec_send_packet(decoder.get(), nullptr), "drain benchmark decoder");
                     draining = true;
                 } else {
-                    check(result, "read benchmark packet");
+                    Backend::check(result, "read benchmark packet");
                     // Receive was drained to EAGAIN, so send must now accept input.
-                    check(lib.avcodec_send_packet(decoder.get(), packet.get()), "submit benchmark packet");
+                    Backend::check(lib.avcodec_send_packet(decoder.get(), packet.get()), "submit benchmark packet");
                 }
             }
         }
@@ -453,51 +498,21 @@ namespace KASMVNC_FFMPEG {
         }
     };
 
-    class Backend final : public FFmpegBackend {
-    public:
-        inline static thread_local FFmpeg::ProbeCategory last_error = FFmpeg::ProbeCategory::Ok;
-
-        unsigned major() const override {
-            return LIBAVCODEC_VERSION_MAJOR;
+    std::unique_ptr<FFmpeg::Encoder> Backend::create_encoder(const FFmpeg::EncoderSettings &settings) {
+        last_error = FFmpeg::ProbeCategory::Ok;
+        switch (settings.device) {
+            case FFmpeg::Device::VAAPI:
+                return std::make_unique<Encoder<FFmpeg::Device::VAAPI> >(settings);
+            case FFmpeg::Device::CUDA:
+                return std::make_unique<Encoder<FFmpeg::Device::CUDA> >(settings);
+            case FFmpeg::Device::Software:
+                break;
         }
+        return std::make_unique<Encoder<FFmpeg::Device::Software> >(settings);
+    }
 
-        std::string description() const override {
-            return Library::get().description();
-        }
-
-        bool has_encoder(const std::string &name) const override {
-            const auto &lib = Library::get();
-            const auto *codec = lib.avcodec_find_encoder_by_name(name.c_str());
-            return codec && codec->type == AVMEDIA_TYPE_VIDEO && lib.av_codec_is_encoder(codec);
-        }
-
-        std::unique_ptr<FFmpeg::Encoder> create_encoder(const FFmpeg::EncoderSettings &settings) override {
-            last_error = FFmpeg::ProbeCategory::Ok;
-            switch (settings.device) {
-                case FFmpeg::Device::VAAPI:
-                    return std::make_unique<Encoder<FFmpeg::Device::VAAPI>>(settings);
-                case FFmpeg::Device::CUDA:
-                    return std::make_unique<Encoder<FFmpeg::Device::CUDA>>(settings);
-                case FFmpeg::Device::Software:
-                    break;
-            }
-            return std::make_unique<Encoder<FFmpeg::Device::Software>>(settings);
-        }
-
-        FFmpeg::ProbeCategory get_last_error() const override {
-            return last_error;
-        }
-
-        std::unique_ptr<FFmpeg::FrameSource> open_source(const std::string &path) override {
-            return std::make_unique<FrameSource>(path);
-        }
-    };
-
-    static void check(int result, const char *operation, FFmpeg::ProbeCategory category) {
-        if (result < 0) {
-            Backend::last_error = category;
-            throw std::runtime_error(std::string(operation) + ": " + Library::get().get_error_description(result));
-        }
+    std::unique_ptr<FFmpeg::FrameSource> Backend::open_source(const std::string &path) {
+        return std::make_unique<FrameSource>(path);
     }
 } // namespace KASMVNC_FFMPEG
 
