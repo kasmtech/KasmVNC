@@ -37,7 +37,11 @@
 #include <rdr/TLSOutStream.h>
 #include <gnutls/x509.h>
 
-#define DH_BITS 1024 /* XXX This should be configurable! */
+#if GNUTLS_VERSION_NUMBER < 0x030506
+/* Fallback only: GnuTLS < 3.5.6 lacks *_set_known_dh_params(), so DH params
+   must be generated. Never go below 2048 bits (VNC-512). */
+static constexpr unsigned DH_BITS_MIN = 2048;
+#endif
 
 using namespace rfb;
 
@@ -184,17 +188,29 @@ void SSecurityTLS::setParams(gnutls_session_t session)
     throw AuthFailureException("gnutls_set_priority_direct failed");
   }
 
+#if GNUTLS_VERSION_NUMBER < 0x030506
   if (gnutls_dh_params_init(&dh_params) != GNUTLS_E_SUCCESS)
     throw AuthFailureException("gnutls_dh_params_init failed");
 
-  if (gnutls_dh_params_generate2(dh_params, DH_BITS) != GNUTLS_E_SUCCESS)
+  unsigned int dh_bits = gnutls_sec_param_to_pk_bits(GNUTLS_PK_DH, GNUTLS_SEC_PARAM_MEDIUM);
+  if (dh_bits < DH_BITS_MIN)
+      dh_bits = DH_BITS_MIN;
+
+  if (gnutls_dh_params_generate2(dh_params, dh_bits) != GNUTLS_E_SUCCESS)
     throw AuthFailureException("gnutls_dh_params_generate2 failed");
+#endif
 
   if (anon) {
     if (gnutls_anon_allocate_server_credentials(&anon_cred) != GNUTLS_E_SUCCESS)
       throw AuthFailureException("gnutls_anon_allocate_server_credentials failed");
 
+#if GNUTLS_VERSION_NUMBER >= 0x030506
+    /* RFC 7919 FFDHE group (2048-bit for MEDIUM); no per-session generation. */
+    if (gnutls_anon_set_server_known_dh_params(anon_cred, GNUTLS_SEC_PARAM_MEDIUM) != GNUTLS_E_SUCCESS)
+        throw AuthFailureException("gnutls_anon_set_server_known_dh_params failed");
+#else
     gnutls_anon_set_server_dh_params(anon_cred, dh_params);
+#endif
 
     if (gnutls_credentials_set(session, GNUTLS_CRD_ANON, anon_cred)
         != GNUTLS_E_SUCCESS)
@@ -206,7 +222,12 @@ void SSecurityTLS::setParams(gnutls_session_t session)
     if (gnutls_certificate_allocate_credentials(&cert_cred) != GNUTLS_E_SUCCESS)
       throw AuthFailureException("gnutls_certificate_allocate_credentials failed");
 
+#if GNUTLS_VERSION_NUMBER >= 0x030506
+    if (gnutls_certificate_set_known_dh_params(cert_cred, GNUTLS_SEC_PARAM_MEDIUM) != GNUTLS_E_SUCCESS)
+        throw AuthFailureException("gnutls_certificate_set_known_dh_params failed");
+#else
     gnutls_certificate_set_dh_params(cert_cred, dh_params);
+#endif
 
     switch (gnutls_certificate_set_x509_key_file(cert_cred, certfile, keyfile, GNUTLS_X509_FMT_PEM)) {
     case GNUTLS_E_SUCCESS:
