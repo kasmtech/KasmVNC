@@ -2022,7 +2022,8 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
     if (!settings.disablebasicauth) {
         const char *hdr = strcasestr(handshake, "Authorization: Basic ");
         if (!hdr) {
-            bl_addFailure(ip);
+            // Not a failed login: browsers only send credentials after
+            // being challenged, so every page load starts like this.
             wserr("Authentication attempt failed, BasicAuth required, but client didn't send any\n");
             sprintf(response, "HTTP/1.1 401 Unauthorized\r\n"
                               "WWW-Authenticate: Basic realm=\"Websockify\"\r\n"
@@ -2098,6 +2099,7 @@ ws_ctx_t *do_handshake(int sock, char * const ip) {
             return NULL;
         }
         handler_emsg("BasicAuth matched\n");
+        bl_clearFailures(ip);
     }
 
     //handler_msg("handshake: %s\n", handshake);
