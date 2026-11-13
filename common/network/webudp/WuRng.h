@@ -3,11 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// http://xoroshiro.di.unimi.it/xoroshiro128plus.c
-struct WuRngState {
-  uint64_t s[2];
-};
-
+// Cryptographically secure (OpenSSL RAND_bytes); aborts if the CSPRNG fails.
 uint64_t WuRandomU64();
 uint32_t WuRandomU32();
 
