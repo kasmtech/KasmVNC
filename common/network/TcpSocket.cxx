@@ -656,6 +656,10 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
 
   listen(sock); // sets the internal fd
 
+  // Remember the port we actually bound to; it differs from the requested
+  // one when that was 0. The fd is replaced by the internal socket below.
+  boundPort = getSockPort(sock);
+
   //
   // External TCP socket now created. Create the internal ones
   //
@@ -779,7 +783,7 @@ void WebsocketListener::getMyAddresses(std::list<char*>* result) {
 }
 
 int WebsocketListener::getMyPort() {
-  return getSockPort(getFd());
+  return boundPort;
 }
 
 
