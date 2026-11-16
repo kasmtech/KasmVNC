@@ -15,7 +15,7 @@ build_www_dir() {
 }
 
 www_source_not_changed() {
-  [[ "$src_www" -ot "$built_www" ]]
+  [[ "$src_www" -ot "$built_www" && unix/xserver/hw/vnc/xvnc.c -ot "$built_www" ]]
 }
 
 cd "$(dirname "$0")/.."
