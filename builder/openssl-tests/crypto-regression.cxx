@@ -9,7 +9,7 @@
 #include "network/webudp/Wu.cpp"
 
 namespace {
-enum class Failure { None, Context, KeyInit, Keygen, Certificate, Sign, Digest, DigestLength };
+enum class Failure { None, Context, KeyInit, Keygen, Certificate, SerialAllocation, SerialRandom, SerialAssignment, Sign, Digest, DigestLength };
 Failure failure = Failure::None;
 int failures = 0;
 void check(const char* name, bool passed) {
@@ -40,6 +40,18 @@ X509* __real_X509_new();
 X509* __wrap_X509_new() {
   return failure == Failure::Certificate ? nullptr : __real_X509_new();
 }
+BIGNUM* __real_BN_new();
+BIGNUM* __wrap_BN_new() {
+  return failure == Failure::SerialAllocation ? nullptr : __real_BN_new();
+}
+int __real_BN_rand(BIGNUM*, int, int, int);
+int __wrap_BN_rand(BIGNUM* value, int bits, int top, int bottom) {
+  return failure == Failure::SerialRandom ? 0 : __real_BN_rand(value, bits, top, bottom);
+}
+ASN1_INTEGER* __real_BN_to_ASN1_INTEGER(const BIGNUM*, ASN1_INTEGER*);
+ASN1_INTEGER* __wrap_BN_to_ASN1_INTEGER(const BIGNUM* value, ASN1_INTEGER* result) {
+  return failure == Failure::SerialAssignment ? nullptr : __real_BN_to_ASN1_INTEGER(value, result);
+}
 int __real_X509_sign(X509*, EVP_PKEY*, const EVP_MD*);
 int __wrap_X509_sign(X509* cert, EVP_PKEY* key, const EVP_MD* md) {
   return failure == Failure::Sign ? 0 : __real_X509_sign(cert, key, md);
@@ -65,6 +77,14 @@ static void certificate_test() {
   check("certificate uses SHA256 with RSA",
         X509_get_signature_nid(cert.x509) == NID_sha256WithRSAEncryption);
   check("certificate signature verifies", X509_verify(cert.x509, cert.key) == 1);
+  std::unique_ptr<BIGNUM, decltype(&BN_free)> serial(
+      ASN1_INTEGER_to_BN(X509_get_serialNumber(cert.x509), nullptr), BN_free);
+  check("certificate has a positive 64-bit serial",
+        serial && !BN_is_negative(serial.get()) && BN_num_bits(serial.get()) == 64);
+  WuCert other;
+  check("independent certificates have distinct serials",
+        other.isValid() && ASN1_INTEGER_cmp(X509_get_serialNumber(cert.x509),
+                                           X509_get_serialNumber(other.x509)) != 0);
   unsigned char digest[EVP_MAX_MD_SIZE];
   unsigned int length = 0;
   char expected[96] = {};
@@ -168,6 +188,9 @@ static void failure_tests() {
       {Failure::KeyInit, "key initialization failure"},
       {Failure::Keygen, "key generation failure with partial allocation"},
       {Failure::Certificate, "certificate allocation failure"},
+      {Failure::SerialAllocation, "serial allocation failure"},
+      {Failure::SerialRandom, "serial random generation failure"},
+      {Failure::SerialAssignment, "serial assignment failure"},
       {Failure::Sign, "certificate signing failure"},
       {Failure::Digest, "certificate fingerprint failure"},
       {Failure::DigestLength, "unexpected fingerprint length"}};

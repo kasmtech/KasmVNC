@@ -13,7 +13,7 @@ for source in "$source_dir"/common/network/webudp/*.cpp; do
   case "$source" in */Wu.cpp|*/WuHostEpoll.cpp|*/WuHostNull.cpp|*/WuNetwork.cpp) continue;; esac
   sources+=("$source")
 done
-wrappers=(EVP_PKEY_CTX_new_id EVP_PKEY_keygen_init EVP_PKEY_keygen X509_new X509_sign X509_digest)
+wrappers=(EVP_PKEY_CTX_new_id EVP_PKEY_keygen_init EVP_PKEY_keygen X509_new BN_new BN_rand BN_to_ASN1_INTEGER X509_sign X509_digest)
 for symbol in "${wrappers[@]}"; do ldflags+=("-Wl,--wrap=$symbol"); done
 "${CXX:-c++}" -std=c++20 -I"$source_dir/common" "${cppflags[@]}" "${cxxflags[@]}" \
   "${sources[@]}" "${ldflags[@]}" -lssl -lcrypto -o "$build_dir/crypto-regression"
