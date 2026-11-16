@@ -37,6 +37,10 @@ context_archive=
 assembled_context=
 gcc_image=
 gcc_key=
+signing_directory=
+signing_volume=
+signing_helper=
+source builder/musl/signing-volume.sh
 finish() {
   local result=$?
   trap - EXIT
@@ -46,6 +50,7 @@ finish() {
   if [[ -n "$container" ]]; then
     docker rm -f "$container" >> "$log" 2>&1
   fi
+  cleanup_signing_volume || result=1
   # EXIT runs for failed Docker builds and failed compilation as well as success.
   # Keep the log outside /artifacts so no failed package can be published.
   if ! mkdir -p "output/${profile}_${arch}" || ! cp "$log" "$build_dir/build.log"; then
@@ -167,9 +172,10 @@ printf '%s\n' "$resolved" > "$build_dir/dependency-image.txt"
 run_logged 'create packaging image' docker build -f "$packaging_dockerfile" --build-arg BUILD_JOBS="${BUILD_JOBS:-8}" --build-arg BUILDER_IMAGE="$image_base" --build-arg KASMVNC_FFMPEG_MODE="$ffmpeg_mode" -t "${image}-package" .
 signing_environment=()
 if [[ "$libc" == musl ]]; then
-  # Forward signing secrets only into the disposable runtime container. Never
-  # pass them to Docker build, include them in cache keys, or print their values.
-  signing_environment=(-e KASMVNC_ALPINE_PRIVATE_KEY -e KASMVNC_ALPINE_PUBLIC_KEY -e KASMVNC_APK_ALLOW_TEST_KEY -e CI)
+  builder/musl/test-signing-volume "${image}-package"
+  prepare_signing_volume "${image}-package"
+  signing_environment=(--mount "type=volume,src=$signing_volume,dst=/run/kasm-signing,readonly"
+    -e KASMVNC_APK_KEYS_DIR=/run/kasm-signing)
 fi
 container=$(docker create --entrypoint "$entrypoint" \
   "${signing_environment[@]}" -e KASMVNC_LIBC="$libc" -e KASMVNC_FFMPEG_MODE="$ffmpeg_mode" \

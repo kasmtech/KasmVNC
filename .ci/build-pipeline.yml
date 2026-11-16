@@ -230,7 +230,7 @@ upload_build_preview_html:
   allow_failure: false
   before_script:
     - *prepare_build
-    - apt-get install -y git python3
+    - apt-get install -y git python3 openssl
     - *prepare_www
     - . .ci/helpers.sh
   script:

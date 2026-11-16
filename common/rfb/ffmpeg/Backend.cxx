@@ -21,13 +21,15 @@ namespace KASMVNC_FFMPEG {
     public:
         inline static thread_local FFmpeg::ProbeCategory last_error = FFmpeg::ProbeCategory::Ok;
 
+        inline static thread_local bool option_rejected = false;
+
         static void check(int result, const char *operation,
                           FFmpeg::ProbeCategory category = FFmpeg::ProbeCategory::Error) {
             if (result >= 0)
                 return;
 
-            if (last_error == FFmpeg::ProbeCategory::Ok)
-                last_error = category;
+            // A nonfatal option warning must never hide a fatal operation.
+            last_error = category;
 
             throw std::runtime_error(fmt::format("{}: {}", operation, Library::get().get_error_description(result)));
         }
@@ -49,6 +51,8 @@ namespace KASMVNC_FFMPEG {
         FFmpeg::ProbeCategory get_last_error() const override {
             return last_error;
         }
+
+        bool had_option_warning() const override { return option_rejected; }
 
         std::unique_ptr<FFmpeg::Encoder> create_encoder(const FFmpeg::EncoderSettings &settings) override;
 
@@ -87,6 +91,7 @@ namespace KASMVNC_FFMPEG {
         void option(const char *name, const char *value) {
             const int result = lib.av_opt_set(context->priv_data, name, value, 0);
             if (result < 0) {
+                Backend::option_rejected = true;
                 Backend::last_error = FFmpeg::ProbeCategory::Option;
                 vlog.info("%s: cannot set %s=%s (%s)",
                           settings.name.c_str(),
@@ -99,6 +104,7 @@ namespace KASMVNC_FFMPEG {
         void option(const char *name, int value) {
             const int result = lib.av_opt_set_int(context->priv_data, name, value, 0);
             if (result < 0) {
+                Backend::option_rejected = true;
                 Backend::last_error = FFmpeg::ProbeCategory::Option;
                 vlog.info("%s: cannot set %s=%d (%s)",
                           settings.name.c_str(),
@@ -335,13 +341,12 @@ namespace KASMVNC_FFMPEG {
             keyframe_pending = false;
 
             int received = lib.avcodec_receive_packet(context.get(), pending.get());
-            if (received == AVERROR(EAGAIN) || received == AVERROR_EOF) {
-                lib.avcodec_send_frame(context.get(), input);
-                received = lib.avcodec_receive_packet(context.get(), pending.get());
-                if (received == AVERROR(EAGAIN)) {
-                    vlog.error("%s: encoder buffering frame (EAGAIN)", settings.name.c_str());
-                    return false;
-                }
+            // This interface requires one packet per submitted frame. Once send
+            // succeeds the frame belongs to the codec; resubmitting it duplicates
+            // input. Unexpected buffering falls back to image encoding instead.
+            if (received == AVERROR(EAGAIN)) {
+                vlog.error("%s: encoder buffering frame (EAGAIN)", settings.name.c_str());
+                return false;
             }
 
             if (received == AVERROR_EOF) {
@@ -500,6 +505,7 @@ namespace KASMVNC_FFMPEG {
 
     std::unique_ptr<FFmpeg::Encoder> Backend::create_encoder(const FFmpeg::EncoderSettings &settings) {
         last_error = FFmpeg::ProbeCategory::Ok;
+        option_rejected = false;
         switch (settings.device) {
             case FFmpeg::Device::VAAPI:
                 return std::make_unique<Encoder<FFmpeg::Device::VAAPI> >(settings);

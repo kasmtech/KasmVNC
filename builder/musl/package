@@ -15,10 +15,11 @@ case $(uname -m) in
 esac
 work=$(mktemp -d /tmp/kasm-musl-package.XXXXXX)
 trap 'rm -rf "$work"' EXIT
-# Key material is created only in this ephemeral run, never in a Docker layer.
-python3 builder/musl/signing-keys.py "$work/keys"
-unset KASMVNC_ALPINE_PRIVATE_KEY KASMVNC_ALPINE_PUBLIC_KEY
-export PACKAGER_PRIVKEY=$work/keys/kasmvnc_signing_key.rsa
+# The orchestrator supplies a read-only runtime volume, never key-valued env.
+keys=${KASMVNC_APK_KEYS_DIR:?Signing key directory must be supplied at runtime}
+test -r "$keys/kasmvnc_signing_key.rsa"
+test -r "$keys/kasmvnc_signing_key.rsa.pub"
+export PACKAGER_PRIVKEY=$keys/kasmvnc_signing_key.rsa
 root=$work/root
 doc=$root/usr/share/doc/kasmvncserver
 debugroot=$work/debug
@@ -107,11 +108,11 @@ EOF
   [[ ${#packages[@]} == 1 ]]
   cp "${packages[0]}" "/artifacts/$basename.$suffix"
 done
-install -m644 "$work/keys/kasmvnc_signing_key.rsa.pub" "/artifacts/$basename.rsa.pub"
-if [[ -f $work/keys/TEST-KEY.txt ]]; then
-  cp "$work/keys/TEST-KEY.txt" "/artifacts/$basename.TEST-KEY.txt"
+install -m644 "$keys/kasmvnc_signing_key.rsa.pub" "/artifacts/$basename.rsa.pub"
+if [[ -f $keys/TEST-KEY.txt ]]; then
+  cp "$keys/TEST-KEY.txt" "/artifacts/$basename.TEST-KEY.txt"
 fi
-apk --keys-dir "$work/keys" verify "/artifacts/$basename.apk" "/artifacts/$basename.debug.apk"
+apk --keys-dir "$keys" verify "/artifacts/$basename.apk" "/artifacts/$basename.debug.apk"
 cp "$doc/provenance.json" "/artifacts/$basename.provenance.json"
 cp "$doc/elf-audit.json" "/artifacts/$basename.elf-audit.json"
 cd /artifacts

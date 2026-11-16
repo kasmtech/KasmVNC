@@ -344,6 +344,7 @@ twm
             void parse(int argc, char **argv) {
                 const std::map<std::string, int> options{
                     {"-geometry",          1},
+                    {"-desktop",           1},
                     {"-kill",              1},
                     {"-help",              0},
                     {"-h",                 0},
@@ -656,6 +657,11 @@ twm
                         result.push_back({cli.at(key)});
                         supplied.insert(key);
                     }
+                if (has("-desktop")) {
+                    result.push_back({"-desktop", ArgumentKind::OptionName});
+                    result.push_back({cli.at("-desktop")});
+                    supplied.insert("-desktop");
+                }
                 auto generated = arguments(config, ctx, supplied);
                 result.insert(result.end(), generated.begin(), generated.end());
                 for (const auto &[key, val]: std::map<std::string, std::string>{
@@ -868,7 +874,7 @@ twm
                 Context context{has("-geometry") ? cli.at("-geometry") : "1024x768",
                     fontPath,
                     authority,
-                    host + ":" + std::to_string(display) + " (" + user + ")",
+                    has("-desktop") ? cli.at("-desktop") : host + ":" + std::to_string(display) + " (" + user + ")",
                     display};
                 auto commandArgs = command(context);
                 // Rendering metadata never changes the literal argv passed to exec.

@@ -111,7 +111,10 @@ bool FFmpeg::probe_encoder(const EncoderSettings &settings) const {
 }
 
 static FFmpeg::ProbeCategory failure_category(FFmpeg::ProbeCategory last_error) {
-    return last_error == FFmpeg::ProbeCategory::Ok ? FFmpeg::ProbeCategory::Error : last_error;
+    // Option is usable only when construction actually succeeded. Allocation
+    // failures and other exceptions may bypass the backend's checked calls.
+    return last_error == FFmpeg::ProbeCategory::Ok || last_error == FFmpeg::ProbeCategory::Option
+               ? FFmpeg::ProbeCategory::Error : last_error;
 }
 
 FFmpeg::ProbeResult FFmpeg::probe(const EncoderSettings &settings) const {
@@ -120,16 +123,16 @@ FFmpeg::ProbeResult FFmpeg::probe(const EncoderSettings &settings) const {
     try {
         if (backend->create_encoder(settings)) {
             if (backend->get_last_error() == ProbeCategory::Option)
-                return {ProbeCategory::Option, "encoder rejected an option"};
+                return {ProbeCategory::Option, "encoder rejected an option", true};
             return {};
         }
-        return {ProbeCategory::Error, "no encoder returned"};
+        return {ProbeCategory::Error, "no encoder returned", backend->had_option_warning()};
     } catch (const std::exception &e) {
         vlog.debug("Encoder %s unavailable: %s", settings.name.c_str(), e.what());
-        return {failure_category(backend->get_last_error()), e.what()};
+        return {failure_category(backend->get_last_error()), e.what(), backend->had_option_warning()};
     } catch (...) {
         vlog.debug("Encoder %s unavailable: unknown error", settings.name.c_str());
-        return {failure_category(backend->get_last_error()), "unknown error"};
+        return {failure_category(backend->get_last_error()), "unknown error", backend->had_option_warning()};
     }
 }
 

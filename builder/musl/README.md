@@ -134,3 +134,11 @@ Musl does not version its public symbols like glibc. This is a controlled-build
 and runtime qualification guarantee, not a claim that ELF metadata alone proves
 an arbitrary binary's minimum musl version. Do not audit newer-built binaries in
 a baseline container as a substitute for rebuilding and runtime testing them.
+
+APK signing keys are materialized in a mode-0700 temporary directory (private
+key mode 0600), then copied into a disposable Docker volume. Only that volume's
+path is passed to the packaging container, mounted read-only. This supports
+remote Docker/Docker-in-Docker without storing key contents in `Config.Env`.
+The orchestrator removes the temporary files, helper container and signing
+volume on completion or failure. Docker administrators remain trusted.
+Local build hosts need Python 3 and OpenSSL to validate the key pair.

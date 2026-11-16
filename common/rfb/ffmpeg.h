@@ -35,6 +35,8 @@ public:
     struct ProbeResult {
         ProbeCategory category = ProbeCategory::Ok;
         std::string message;
+        // Preserve option diagnostics even when a later initialization step fails.
+        bool option_rejected = false;
     };
 
     struct EncoderSettings {

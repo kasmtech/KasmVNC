@@ -49,7 +49,7 @@ static void check_hardware_options(const FFmpeg &ff) {
                 throw std::runtime_error(fmt::format(
                     "Unexpectedly created the deliberately invalid hardware device: {} device={} quality={} profile={}",
                     candidate.name, settings.device_path, quality, candidate.profile));
-            if (result.category == FFmpeg::ProbeCategory::Option)
+            if (result.option_rejected)
                 throw std::runtime_error(fmt::format("{} quality={}: encoder rejected an option", candidate.name,
                                                      quality));
             if (result.category != FFmpeg::ProbeCategory::Hardware)
@@ -66,7 +66,7 @@ static void encode(const FFmpeg &ff, const std::string &path, const char *name, 
         name, FFmpeg::Device::Software, "", width, height, 30, 30, 25,
         std::string(name) == "libx264" ? (66 | 1 << 9) : 1, 50
     };
-    require(ff.probe(settings).category != FFmpeg::ProbeCategory::Option, "encoder rejected an option");
+    require(!ff.probe(settings).option_rejected, "encoder rejected an option");
     const auto encoder = ff.create_encoder(settings);
     require(bool(encoder), "cannot create encoder");
     std::ofstream output(path, std::ios::binary);
