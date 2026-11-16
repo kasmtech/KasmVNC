@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -eo pipefail
+source /opt/rh/gcc-toolset-14/enable
+set -u
+[[ $(getconf GNU_LIBC_VERSION) == 'glibc 2.28' ]]
+export KASMVNC_GCC_RUNTIME_PREFIX=/opt/kasm-gcc-runtime
+. /opt/kasm-dependency-recipes/common-environment.sh
+# The parent image supplies the audited private unwind runtime.
+test -s "$KASMVNC_GCC_RUNTIME_PREFIX/lib/libgcc.a"
+test -s "$KASMVNC_GCC_RUNTIME_PREFIX/lib/libgcc_eh.a"
+test -s "$KASMVNC_GCC_RUNTIME_PREFIX/share/gcc-runtime/manifest.json"
+if nm -u "$KASMVNC_GCC_RUNTIME_PREFIX/lib/libgcc_eh.a" | grep _dl_find_object >/dev/null; then
+    echo 'Cached libgcc requires glibc 2.35' >&2; exit 1
+fi
+python3 "$recipes/run-phase.py" xorgproto "$recipes/build-xorgproto"
+. "$recipes/common-phases.sh"
+python3 "$recipes/run-phase.py" rpm-sources python3 "$recipes/cache-rpm-sources.py"
+# Keep source archives/checkouts for SBOM and corresponding-source packaging.
+# Application compilation and /src are deliberately absent from this image.
+test -s /opt/kasm-codecs/lib/libavcodec.a
+test -s "$HOME/.local/lib/libyuv.a"
+rpm -qa --qf '%{NAME} %{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort > /opt/kasm-dependency-rpms.txt
+printf 'kasmvnc-portable-dependencies-v1\n' > /opt/kasm-dependencies-ready
+# Discard the large generated GCC compiler after installing its two runtime
+# archives. Original GCC source/patches remain for notices, sources and DWARF.
+rm -rf /tmp/kasm-gcc-runtime/build

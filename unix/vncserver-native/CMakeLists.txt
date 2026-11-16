@@ -1,0 +1,12 @@
+# Portable packages replace the Perl launcher; traditional builds retain it.
+find_path(KASMVNC_YAML_INCLUDE yaml.h PATHS "${KASMVNC_STATIC_RUNTIME_PREFIX}/include" NO_DEFAULT_PATH)
+find_library(KASMVNC_YAML_ARCHIVE NAMES libyaml.a PATHS "${KASMVNC_STATIC_RUNTIME_PREFIX}/lib" NO_DEFAULT_PATH)
+if(NOT KASMVNC_YAML_INCLUDE OR NOT KASMVNC_YAML_ARCHIVE)
+  message(FATAL_ERROR "The native portable launcher requires static libyaml in KASMVNC_STATIC_RUNTIME_PREFIX")
+endif()
+add_executable(vncserver-native main.cxx config.cxx)
+set_target_properties(vncserver-native PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+target_include_directories(vncserver-native PRIVATE "${KASMVNC_YAML_INCLUDE}")
+target_link_libraries(vncserver-native "${KASMVNC_YAML_ARCHIVE}")
+kasmvnc_static_desktop_target(vncserver-native)
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vncserver-native DESTINATION ${BIN_DIR} RENAME vncserver)

@@ -16,6 +16,7 @@
  * USA.
  */
 #include "EncoderProbe.h"
+#include <algorithm>
 #include <fcntl.h>
 #include <fmt/format.h>
 #include <fstream>
@@ -26,12 +27,8 @@
 #include "KasmVideoConstants.h"
 #include "KasmVideoEncoders.h"
 
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavutil/hwcontext.h>
-#include <libavutil/opt.h>
-}
 #include "rfb/ffmpeg.h"
+#include "EncoderConfiguration.h"
 
 namespace rfb::video_encoders {
     static LogWriter vlog("EncoderProbe");
@@ -68,15 +65,15 @@ namespace rfb::video_encoders {
 
             static std::array<EncoderCandidate, 8> candidates = {
                 {
-                    EncoderCandidate{KasmVideoEncoders::Encoder::h264_nvenc, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_CUDA},
-                    EncoderCandidate{KasmVideoEncoders::Encoder::h265_nvenc, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_CUDA},
-                    EncoderCandidate{KasmVideoEncoders::Encoder::av1_nvenc, AV_CODEC_ID_AV1, AV_HWDEVICE_TYPE_CUDA},
-                    EncoderCandidate{KasmVideoEncoders::Encoder::h264_ffmpeg_vaapi, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_VAAPI},
-                    EncoderCandidate{KasmVideoEncoders::Encoder::h265_ffmpeg_vaapi, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_VAAPI},
-                    EncoderCandidate{KasmVideoEncoders::Encoder::av1_ffmpeg_vaapi, AV_CODEC_ID_AV1, AV_HWDEVICE_TYPE_VAAPI},
-                    EncoderCandidate{KasmVideoEncoders::Encoder::h264_software, AV_CODEC_ID_H264, AV_HWDEVICE_TYPE_NONE},
-                    EncoderCandidate{KasmVideoEncoders::Encoder::h265_software, AV_CODEC_ID_HEVC, AV_HWDEVICE_TYPE_NONE}
-                    // EncoderCandidate{KasmVideoEncoders::Encoder::av1_software, AV_CODEC_ID_AV1, AV_HWDEVICE_TYPE_NONE},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h264_nvenc, FFmpeg::Device::CUDA},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h265_nvenc, FFmpeg::Device::CUDA},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::av1_nvenc, FFmpeg::Device::CUDA},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h264_ffmpeg_vaapi, FFmpeg::Device::VAAPI},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h265_ffmpeg_vaapi, FFmpeg::Device::VAAPI},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::av1_ffmpeg_vaapi, FFmpeg::Device::VAAPI},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h264_software, FFmpeg::Device::Software},
+                    EncoderCandidate{KasmVideoEncoders::Encoder::h265_software, FFmpeg::Device::Software}
+                    // EncoderCandidate{KasmVideoEncoders::Encoder::av1_software, FFmpeg::Device::Software},
                 }
             };
 
@@ -95,7 +92,7 @@ namespace rfb::video_encoders {
             best_encoder = available_encoder_configs.front();
     }
 
-    bool EncoderProbe::dri_node_supports_hwdevice_type(const char *dri_node, int hw_type) {
+    bool EncoderProbe::dri_node_supports_hwdevice_type(const char *dri_node, FFmpeg::Device hw_type) {
         const auto path = fmt::format("/sys/class/drm/{}/device/vendor", dri_node);
 
         std::ifstream file{path};
@@ -107,103 +104,20 @@ namespace rfb::video_encoders {
         uint32_t vendor_id = std::stoul(s, nullptr, 0);
 
         switch (hw_type) {
-            case AV_HWDEVICE_TYPE_CUDA:
+            case FFmpeg::Device::CUDA:
                 return vendor_id == 0x10DE;
-            case AV_HWDEVICE_TYPE_VAAPI:
+            case FFmpeg::Device::VAAPI:
                 return vendor_id == 0x8086 || vendor_id == 0x1002;
             default:
                 return false;
         }
     }
 
-    bool EncoderProbe::try_open_codec(const char *dri_node, const AVCodec *codec, const EncoderCandidate &candidate) const {
-        FFmpeg::BufferGuard hw_ctx_guard;
-        AVBufferRef *hw_ctx{};
-
-        auto err = ffmpeg.av_hwdevice_ctx_create(&hw_ctx, candidate.hw_type, dri_node, nullptr, 0);
-        if (err != 0) {
-            vlog.debug("Failed to create hw device context (%s). Error code: %d",
-                ffmpeg.get_error_description(err).c_str(),
-                err);
-            return false;
-        }
-
-        hw_ctx_guard.reset(hw_ctx);
-
-        FFmpeg::ContextGuard ctx_guard;
-
-        auto *ctx = ffmpeg.avcodec_alloc_context3(codec);
-        if (!ctx)
-            return false;
-
-        auto get_pix_fmt = [](int hw_type) {
-            switch (hw_type) {
-                case AV_HWDEVICE_TYPE_CUDA:
-                    return AV_PIX_FMT_CUDA;
-                case AV_HWDEVICE_TYPE_VAAPI:
-                    return AV_PIX_FMT_VAAPI;
-                default:
-                    return AV_PIX_FMT_VAAPI;
-            }
-        };
-
-        ctx_guard.reset(ctx);
-        ctx->width = 1920;
-        ctx->height = 1080;
-        ctx->time_base = {1, 60};
-        ctx->framerate = {60, 1};
-        ctx->pix_fmt = get_pix_fmt(candidate.hw_type);
-        ctx->hw_device_ctx = ffmpeg.av_buffer_ref(hw_ctx);
-
-        FFmpeg::BufferGuard hw_frames_ref_guard;
-
-        auto *hw_frames_ctx = ffmpeg.av_hwframe_ctx_alloc(hw_ctx_guard.get());
-        if (!hw_frames_ctx) {
-            vlog.debug("Failed to create HW frame context");
-            return false;
-        }
-
-        auto *frames_ctx = reinterpret_cast<AVHWFramesContext *>(hw_frames_ctx->data);
-        frames_ctx->format = ctx->pix_fmt;
-        frames_ctx->sw_format = AV_PIX_FMT_NV12;
-        frames_ctx->width = ctx->width;
-        frames_ctx->height = ctx->height;
-
-        if (err = ffmpeg.av_hwframe_ctx_init(hw_frames_ctx); err < 0) {
-            vlog.debug("Failed to initialize HW frame context (%s). Error code: %d",
-                ffmpeg.get_error_description(err).c_str(),
-                err);
-            return false;
-        }
-
-        hw_frames_ref_guard.reset(hw_frames_ctx);
-
-        FFmpeg::av_buffer_unref(&ctx_guard->hw_frames_ctx);
-
-        ctx_guard->hw_frames_ctx = ffmpeg.av_buffer_ref(hw_frames_ctx);
-        if (!ctx_guard->hw_frames_ctx) {
-            vlog.debug("Failed to create buffer reference");
-            return false;
-        }
-
-        if (err = ffmpeg.avcodec_open2(ctx_guard.get(), codec, nullptr); err < 0) {
-            vlog.debug("Failed to open codec (%s). Error code: %d", ffmpeg.get_error_description(err).c_str(), err);
-            return false;
-        }
-
-        if (candidate.hw_type == AV_HWDEVICE_TYPE_VAAPI) {
-            vlog.debug("DEBUG: Codec: %s\n", codec->name);
-
-            const AVOption *opt{};
-            while (opt = ffmpeg.av_opt_next(ctx_guard->priv_data, opt), opt) {
-                vlog.debug("DEBUG: Option: %s.%s (help: %s)\n",
-                    codec->name,
-                    opt->name,
-                    opt->help ? opt->help : "n/a");
-            }
-        }
-
-        return err == 0;
+    bool EncoderProbe::try_open_codec(const char *device_path, const EncoderCandidate &candidate) const {
+        const auto &config = EncoderConfiguration::get_configuration(candidate.encoder);
+        FFmpeg::EncoderSettings settings{KasmVideoEncoders::to_string(candidate.encoder), candidate.hw_type,
+            device_path ? device_path : "", 1920, 1080, 60, 30, 25, config.profile, config.allowed_quality.max};
+        return ffmpeg.probe_encoder(settings);
     }
 
     KasmVideoEncoders::EncoderConfigs EncoderProbe::probe(
@@ -212,15 +126,21 @@ namespace rfb::video_encoders {
         for (const auto &encoder_candidate: candidates) {
             const auto *name = KasmVideoEncoders::to_string(encoder_candidate.encoder);
             vlog.debug("Probing %s...", name);
-            const AVCodec *codec = ffmpeg.avcodec_find_encoder_by_name(name);
-            if (!codec || codec->type != AVMEDIA_TYPE_VIDEO)
+            if (encoder_candidate.hw_type == FFmpeg::Device::Software) {
+                if (ffmpeg.has_encoder(name))
+                    result.emplace_back(encoder_candidate.encoder);
+                else
+                    vlog.info("Software encoder %s is not provided by this FFmpeg runtime", name);
                 continue;
-
-            if (encoder_candidate.hw_type == AV_HWDEVICE_TYPE_NONE || !ffmpeg.av_codec_is_encoder(codec))
+            }
+            // CUDA selects a device ordinal, not a DRM render-node pathname.
+            if (encoder_candidate.hw_type == FFmpeg::Device::CUDA) {
+                if (try_open_codec(nullptr, encoder_candidate)) result.emplace_back(encoder_candidate.encoder);
                 continue;
+            }
 
             if (dri_node) {
-                if (try_open_codec(dri_node, codec, encoder_candidate)) {
+                if (try_open_codec(dri_node, encoder_candidate)) {
                     result.emplace_back(encoder_candidate.encoder, dri_node);
                 }
             } else {
@@ -234,7 +154,7 @@ namespace rfb::video_encoders {
 
                     const auto dri_device = fmt::format("/dev/dri/{}", dri_node_path);
                     vlog.debug("Trying dri node %s", dri_device.c_str());
-                    if (!try_open_codec(dri_device.c_str(), codec, encoder_candidate))
+                    if (!try_open_codec(dri_device.c_str(), encoder_candidate))
                         continue;
 
                     result.emplace_back(encoder_candidate.encoder, dri_device);
@@ -242,9 +162,15 @@ namespace rfb::video_encoders {
             }
         }
 
-        result.push_back({KasmVideoEncoders::Encoder::h264_software});
-        result.push_back({KasmVideoEncoders::Encoder::h265_software});
         // result.push_back(KasmVideoEncoders::Encoder::av1_software);
+
+        const bool has_software = std::any_of(result.begin(), result.end(), [](const auto &config) {
+            return config.encoder == KasmVideoEncoders::Encoder::h264_software ||
+                   config.encoder == KasmVideoEncoders::Encoder::h265_software;
+        });
+        if (!has_software)
+            vlog.error("No software video encoder (libx264/libx265) in this FFmpeg runtime; "
+                       "hardware encoder failures cannot fall back to software");
 
         return result;
     }

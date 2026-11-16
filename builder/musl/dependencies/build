@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+[[ $(/lib/ld-musl-*.so.1 2>&1 || :) == *'Version 1.2.5'* ]]
+. /opt/kasm-dependency-recipes/common-environment.sh
+. "$recipes/common-phases.sh"
+python3 "$recipes/run-phase.py" apk-sources python3 /opt/kasm-musl-profile/cache-apk-sources.py
+# Sources and build logs are retained for corresponding-source artifacts.
+test -s /opt/kasm-codecs/lib/libavcodec.a
+test -s "$HOME/.local/lib/libyuv.a"
+apk info -v | sort > /opt/kasm-dependency-apks.txt
+cp /lib/apk/db/installed /opt/kasm-apk-installed
+printf 'kasmvnc-portable-musl-dependencies-v1\n' > /opt/kasm-dependencies-ready

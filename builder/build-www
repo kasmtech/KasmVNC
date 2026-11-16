@@ -6,28 +6,26 @@ build_www_dir() {
   select_consistent_output_owner_uid_and_gid
   as_output_owner mkdir -p "$built_www"
 
+  # Archive tracked frontend inputs, not .git, local credentials or node_modules.
+  git -C kasmweb ls-files -z > builder/www-source-files
+  git -C kasmweb rev-parse HEAD > builder/www-source-revision
+  tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -czf builder/www-source.tar.gz -C kasmweb --null -T "$PWD/builder/www-source-files"
+  as_output_owner mkdir -p "$PWD/builder/www-supply-chain"
+
   docker build -t kasmweb/www \
     --build-arg OUTPUT_OWNER_UID="$output_owner_uid" \
     -f builder/dockerfile.www.build .
   docker run --rm -v "$built_www:/build" \
+    -v "$PWD/builder/www-supply-chain:/supply-chain" \
     --user "$output_owner_uid":"$output_owner_gid" \
     kasmweb/www:latest
-}
-
-www_source_not_changed() {
-  [[ "$src_www" -ot "$built_www" ]]
 }
 
 cd "$(dirname "$0")/.."
 . builder/scripts/output_owner.sh
 
-src_www=kasmweb
 built_www=$PWD/builder/www
 
-if www_source_not_changed; then
-  echo "Source for www (kasmweb) did not change, doing nothing."
-  exit
-fi
-
+# Always bind provenance to this build; Docker caches unchanged build inputs.
 echo "Building www..."
 build_www_dir

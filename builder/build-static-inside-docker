@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Portable application profile; normal distro builds are unchanged.
+set -euo pipefail
+case ${KASMVNC_FFMPEG_MODE:-static} in
+    static) export KASMVNC_STATIC_FFMPEG=ON KASMVNC_FFMPEG_ADAPTERS=OFF ;;
+    adapters)
+        export KASMVNC_STATIC_FFMPEG=OFF KASMVNC_FFMPEG_ADAPTERS=ON
+        export KASMVNC_FFMPEG_HEADERS_ROOT=${KASMVNC_FFMPEG_HEADERS_ROOT:-/opt/kasm-ffmpeg-headers}
+        test -s "$KASMVNC_FFMPEG_HEADERS_ROOT/manifest.json"
+        ;;
+    *) echo 'KASMVNC_FFMPEG_MODE must be static or adapters' >&2; exit 2 ;;
+esac
+export KASMVNC_OPENSSL_PREFIX=${KASMVNC_OPENSSL_PREFIX:-/opt/kasm-openssl3}
+if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]] && [[ ! -s "$KASMVNC_OPENSSL_PREFIX/share/kasmvnc/openssl-sdk.json" ]]; then
+    python3 /src/builder/openssl3/prepare-sdk
+fi
+test -s "$KASMVNC_OPENSSL_PREFIX/share/kasmvnc/openssl-sdk.json"
+export KASMVNC_CODEC_PREFIX=${KASMVNC_CODEC_PREFIX:-/opt/kasm-codecs}
+export KASMVNC_STATIC_RUNTIME_PREFIX=${KASMVNC_STATIC_RUNTIME_PREFIX:-/opt/kasm-runtime}
+if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
+/src/builder/scripts/build-static-runtime
+else
+    test "$(cat /opt/kasm-dependencies-ready)" = "${KASMVNC_DEPENDENCIES_MARKER:-kasmvnc-portable-dependencies-v1}"
+fi
+if [[ ${KASMVNC_DYNAMIC_DESKTOP:-OFF} == ON ]]; then
+    # Select a small private SDK even when reusing an older dependency image.
+    # Desktop headers and pkg-config metadata must come from the baseline OS.
+    python3 /src/builder/scripts/prepare-portable-runtime \
+        --source "$KASMVNC_STATIC_RUNTIME_PREFIX" --destination /opt/kasm-portable-runtime
+    export KASMVNC_STATIC_RUNTIME_PREFIX=/opt/kasm-portable-runtime
+    unset KASMVNC_STATIC_DESKTOP_PREFIX KASMVNC_GCC_RUNTIME_PREFIX
+fi
+if [[ -n ${KASMVNC_STATIC_DESKTOP_PREFIX:-} ]]; then
+if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
+    /src/builder/scripts/build-static-desktop
+else
+    test "$(cat /opt/kasm-dependencies-ready)" = "${KASMVNC_DEPENDENCIES_MARKER:-kasmvnc-portable-dependencies-v1}"
+fi
+    export PKG_CONFIG_PATH="$KASMVNC_STATIC_DESKTOP_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+fi
+export PKG_CONFIG_PATH="$KASMVNC_STATIC_RUNTIME_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export CPATH="$KASMVNC_STATIC_RUNTIME_PREFIX/include${CPATH:+:$CPATH}"
+if [[ $KASMVNC_STATIC_FFMPEG == ON ]]; then
+export PKG_CONFIG_PATH="$KASMVNC_CODEC_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
+if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
+/src/builder/scripts/build-static-ffmpeg
+else
+    test "$(cat /opt/kasm-dependencies-ready)" = "${KASMVNC_DEPENDENCIES_MARKER:-kasmvnc-portable-dependencies-v1}"
+fi
+export CPATH="$KASMVNC_CODEC_PREFIX/include:$CPATH"
+fi
+# This prefix must win for both CMake and Xorg configure's feature probes.
+export PKG_CONFIG_PATH="$KASMVNC_OPENSSL_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
+export CPATH="$KASMVNC_OPENSSL_PREFIX/include:$CPATH"
+export CPPFLAGS="-I$KASMVNC_OPENSSL_PREFIX/include ${CPPFLAGS:-}"
+exec /src/builder/build.sh "$@"

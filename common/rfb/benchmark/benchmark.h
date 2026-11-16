@@ -22,9 +22,7 @@
 #include <rfb/CMsgReader.h>
 #include <rfb/LogWriter.h>
 
-extern "C" {
-#include <libavutil/frame.h>
-}
+#include "rfb/ffmpeg.h"
 
 static rfb::LogWriter vlog("Benchmarking");
 
@@ -33,7 +31,7 @@ namespace benchmarking {
 
     class MockTestConnection : public CConnection {
     public:
-        virtual void setNewFrame(const AVFrame *frame) = 0;
+        virtual void setNewFrame(const FFmpeg::RGBFrame *frame) = 0;
     };
 
     static constexpr rdr::S32 default_encodings[] = {

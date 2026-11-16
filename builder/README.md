@@ -114,6 +114,14 @@ just build your deb/rpm with `build-deb` and test with `test-deb`.
 
 `build-rpm` and `test-rpm` are also available.
 
+For incremental builds inside a developer container,
+`builder/build.sh --no-force-autoreconf --no-servertarball` lets Autotools
+regenerate only outputs whose inputs changed. Portable profile entrypoints also
+forward this option; keep using the same profile for those rebuilds.
+The option runs `autoreconf -i`. Cold and package builds keep the default forced
+regeneration (`autoreconf -i -f`) needed by the portable EL8 builder. Omit the
+opt-out when changing the build toolchain or recreating the build environment.
+
 ## Ensuring packages have all dependencies they need.
 
 If you're working on a deb/rpm package, testing that it has all the necessary
@@ -218,3 +226,114 @@ sudo builder/build-package ubuntu focal
 ```
 The resulting deb package can be found under `~/KasmVNC/builder/build/ubuntu_focal`.
 Replace ```focal``` with ```noble``` to build for Ubuntu 24.04LTS.
+
+
+## Portable application packages
+
+This profile is the default release build.
+From a clean checkout on a native x86_64 or ARM64 Docker host with Bash, Git
+and Python 3 installed, first prepare `builder/www` using the existing web build
+workflow, then run:
+
+```sh
+builder/build-portable --ffmpeg-mode adapters
+```
+
+The Oracle Linux 8 builder compiles the application and embedded dependencies,
+then produces `.deb`, `.rpm`, `.tar.gz`, checksums, provenance and an ELF audit
+under `builder/build/portable_amd64/` or `builder/build/portable_arm64/`.
+`KASMVNC_PORTABLE_VERSION` can override the inferred three-part release version;
+`BUILD_JOBS` controls compilation concurrency. Do not reuse an in-source build
+from a different distro or architecture in the Docker context.
+Adapter mode uses host FFmpeg ABI families 58–63 and their encoder libraries.
+Both local and CI builds default to adapter mode. Use `--ffmpeg-mode static`
+only for the separate static-codec experiment. See [the runtime family table](portable/README.md#ffmpeg-runtime-adapters).
+
+CI jobs `build_portable_amd64` and `build_portable_arm64` reuse `build_www`,
+upload to the existing immutable `kasmvnc/<commit>/` S3 prefix, and retain
+GitLab artifacts. Full build logs are retained as
+`output/portable_<arch>/build.log` even when a build fails; they are not
+published to S3. Console output contains bounded progress and failure details.
+`test_portable_amd64` and `test_portable_arm64` install those
+packages and tar archives in the eligible core-image distro matrix. These jobs
+are required in every branch pipeline.
+
+To reproduce one matrix case locally:
+
+```sh
+builder/test-portable builder/build/portable_amd64 --arch amd64 \
+  --case ubuntu-jammy --results /tmp/kasm-portable-jammy
+```
+
+The matrix is recorded in `builder/portable-tests/matrix.json`, including its
+source revision and exclusions. Tests exercise the installed C++20 launcher,
+TLS authentication, browser software H.264, keyboard input and package/config
+lifecycle. Pass `--previous-package /path/to/older.deb` (or `.rpm`) to test an
+actual package upgrade; without it, lifecycle coverage is reinstall/removal,
+not an upgrade from an older release. GPU, hardware diversity and older host
+kernels require separate testing. Containers share the runner kernel.
+
+See [installation and runtime requirements](portable/README.md) before using
+these artifacts, and [implementation details](STATIC_BUILD.md) for the static
+library boundary and security maintenance implications. Release qualification
+uses the package matrix and Standard functional tests, including hardware and
+kernel coverage recorded by those jobs.
+
+## Portable CI
+
+The default pipeline has four native package producers: glibc and musl on
+amd64 and arm64. The glibc build targets glibc 2.28+, using Oracle Linux 8 and
+GCC Toolset 14; C++20 and Xorg 21.1.25 are retained. Musl targets 1.2.5+.
+There are no legacy package producers or legacy package test consumers.
+`BUILD_WORKSPACE_LEGACY` and `BUILD_FULL_LEGACY` have been removed; setting
+those obsolete variables cannot re-enable native distro builds.
+`BUILD_PORTABLE` and `BUILD_DISTROS_REGEX` have also been removed. Every branch
+pipeline builds all four portable profiles and runs the complete runtime matrix;
+obsolete selection variables cannot skip this coverage.
+
+The required matrix covers 39 glibc and eight Alpine cases (47 distro/architecture
+cases, 86 format runs), including Oracle/Rocky/AlmaLinux 8 and Leap 15.6 on both
+architectures. Minimal functional and launcher specification tests consume the
+portable amd64 DEB. Standard functional qualification adds Oracle Linux 8 with
+an asserted glibc 2.28 floor and Kali with glibc 2.43 or newer, each on both kernel
+hosts. Existing userspace and Noble/Oracle 9 GPU configurations remain, giving
+16 Standard configurations. The functional runner fails if a boundary image no
+longer meets its asserted glibc version. Containers still share their host kernel.
+
+Downstream Workspaces installers must use portable asset names and install the
+host dependencies. The former optional Noble image jobs consumed native distro
+packages and have been removed. Local distro recipes remain for development;
+they are not release pipeline products.
+
+Separate build-ID debug symbols are published in DEB, RPM and tar formats, with
+checksums and a `.debug.json` mapping. See `DEBUGGING.md` for exact-build matching
+and the existing crashpad lookup. Portable SBOM, source-bundle and advisory scan
+artifacts are described in `builder/portable/README.md`.
+
+Portable builds reuse content-keyed, precompiled native dependency images. See
+[portable cache maintenance](portable/README.md#reusing-compiled-dependencies)
+for the complete build context, security refresh and registry retention policy.
+
+## Portable musl APKs
+
+Use `builder/build-portable --libc musl --ffmpeg-mode adapters` for the native Alpine profile. It shares
+source recipes and cache orchestration with glibc, but builds separate musl archives.
+See [musl builds, installation, signing and maintenance](musl/README.md).
+
+### Cached launcher spec environment
+
+`spec_dependencies` prepares a registry image in parallel with package builds.
+Its key covers the architecture, `builder/spec-dependencies/` recipes and refresh
+marker, and the root `Pipfile` and `Pipfile.lock`. It caches desktop prerequisites,
+Pipenv, and the locked Python environment; it never contains a KasmVNC package or
+test checkout. Increment the refresh marker to refresh distro packages/base image.
+
+`builder/test-vncserver` resolves that image by immutable digest, installs the
+current build's DEB, and mounts the current checkout for every run. Registry
+errors fail closed; only a missing manifest triggers a build. Local invocation
+uses Docker's local layer cache without publishing. Portable `spec_test` waits
+only for this environment and `build_portable_amd64`. `builder/portable/test-spec-cache.py` exercises
+cache hits, misses, registry errors and recipe-label rejection.
+
+Keep `spec-dependencies` tags matching `^spec-(amd64|arm64)-[0-9a-f]{64}$`
+when configuring registry cleanup; deleting one safely causes a cold rebuild.

@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+recipe_dir=$(cd "$(dirname "$0")" && pwd)
+
+build_and_install() {
+    if [ $older_release -eq 1 ]; then
+        make extra_inc=big_iron.inc work_dir="$PWD"/ tbb_root="$PWD"
+
+        mkdir -p $HOME/.local/lib/pkgconfig
+
+        PC_FILE=$HOME/.local/lib/pkgconfig/tbb.pc
+        echo "prefix=$HOME/.local" > "${PC_FILE}"
+        echo "exec_prefix=\${prefix}" >> "${PC_FILE}"
+        echo "libdir=\${exec_prefix}/lib/" >> "${PC_FILE}"
+        echo "includedir=\${prefix}/include" >> "${PC_FILE}"
+        echo "Name: Threading Building Blocks" >> "${PC_FILE}"
+        echo "Description: Intel's parallelism library for C++" >> "${PC_FILE}"
+        echo "URL: http://www.threadingbuildingblocks.org/" >> "${PC_FILE}"
+        echo "Version: v2020.3.3" >> "${PC_FILE}"
+        echo "Libs: -ltbb -latomic" >> "${PC_FILE}"
+        echo "Cflags: -I\${includedir}" >> "${PC_FILE}"
+
+        cp _release/*.a $HOME/.local/lib/
+        cp -r include/ $HOME/.local/
+    else
+        cmake -B build -DCMAKE_INSTALL_PREFIX="$HOME/.local" \
+            -DCMAKE_CXX_FLAGS="-Wno-stringop-overflow" \
+            -DTBB_TEST=OFF -DBUILD_SHARED_LIBS=OFF -GNinja .
+        ninja -C build install
+    fi
+}
+
+prepare_source() {
+    DIR=tbb
+    cd /tmp
+    [ -d ./${DIR} ] && rm -rf ./${DIR}
+    mkdir ${DIR}
+
+    if [ $older_release -eq 1 ]; then
+        TBB_RELEASE="${TBB_RELEASE:-v2020.3.3}"
+    else
+        TBB_RELEASE="${TBB_RELEASE:-v2023.0.0}"
+    fi
+
+    curl --connect-timeout 30 --max-time 900 -fLsS --retry 3 "https://github.com/uxlfoundation/oneTBB/archive/${TBB_RELEASE}.tar.gz" -o "/tmp/tbb-${TBB_RELEASE}.tar.gz"
+  "$recipe_dir/verify-helper-source" "/tmp/tbb-${TBB_RELEASE}.tar.gz"
+    tar xzvf "/tmp/tbb-${TBB_RELEASE}.tar.gz" -C ${DIR}/ --strip-components=1
+
+    cd ${DIR}
+}
+
+older_release=0
+if grep -q 'Ubuntu 20.04\|Debian GNU/Linux 11' /etc/os-release 2>/dev/null; then
+    older_release=1
+fi
+
+prepare_source
+build_and_install

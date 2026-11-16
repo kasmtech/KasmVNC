@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Dedicated test environment; production conversion uses only Python stdlib.
+set -euo pipefail
+root=$(git rev-parse --show-toplevel)
+docker run --rm -v "$root:/src:ro" -w /src python:3.12-slim sh -ec '
+  pip install --quiet --disable-pip-version-check jsonschema==4.26.0
+  python -c '\''import urllib.request; urllib.request.urlretrieve("https://gitlab.com/gitlab-org/security-products/security-report-schemas/-/raw/v15.2.3/dist/dependency-scanning-report-format.json", "/tmp/schema.json")'\''
+  echo "4228b68f6951f6b0a2c76b85d6f93d822cd8fc7b265c4225f65a1ddfe28d1fb9  /tmp/schema.json" | sha256sum -c -
+  python builder/portable/test-gitlab-dependency-report.py /tmp/schema.json "$@"
+' sh "$@"

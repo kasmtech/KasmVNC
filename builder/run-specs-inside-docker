@@ -13,6 +13,11 @@ fail_on_perl_warnings() {
 }
 
 cd /src
-pipenv install
+if [[ -n "${PIPENV_PIPFILE:-}" ]]; then
+   cmp Pipfile "$PIPENV_PIPFILE"
+   cmp Pipfile.lock "${PIPENV_PIPFILE}.lock"
+else
+   pipenv install
+fi
 ./run-specs 2>&1 | tee "$logfile"
 fail_on_perl_warnings

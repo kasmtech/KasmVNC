@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# Run inside a build container. This prefix must precede distro pkg-config paths.
+set -euo pipefail
+recipe_dir=$(cd "$(dirname "$0")" && pwd)
+prefix=${KASMVNC_CODEC_PREFIX:-/opt/kasm-codecs}
+source_dir=${KASMVNC_CODEC_SOURCES:-/tmp/static-sources}
+jobs=${BUILD_JOBS:-8}
+mkdir -p "$source_dir" "$prefix"
+cd "$source_dir"
+fetch_git() {
+    local name=$1 url=$2 revision=$3
+    if [[ ! -d $name/.git ]]; then
+        git init "$name"
+        git -C "$name" remote add origin "$url"
+        timeout -k 10 180 git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 -C "$name" fetch --depth 1 origin "$revision"
+        git -C "$name" checkout --detach FETCH_HEAD
+    fi
+    test "$(git -C "$name" rev-parse HEAD)" = "$revision"
+}
+# Mirror retains the exact pinned upstream commit; the canonical endpoint can stall/block requests.
+fetch_git x264 https://github.com/mirror/x264.git b35605ace3ddf7c1a5d67a2eb553f034aef41d55
+fetch_git x265 https://github.com/Multicorewareinc/x265.git e9b88125dc21393b3fd8d68e98083bdfb89778a8
+# x265 only generates its pkg-config metadata when its release tag is present.
+# A commit-only shallow checkout does not carry that tag.
+timeout -k 10 180 git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 -C x265 fetch --depth 1 origin tag 4.3
+test "$(git -C x265 rev-parse '4.3^{commit}')" = e9b88125dc21393b3fd8d68e98083bdfb89778a8
+fetch_git svt-av1 https://gitlab.com/AOMediaCodec/SVT-AV1.git 9292ec8e32bce26f781f277ec8739b53426c4300
+# 13.1 requires NVIDIA 610; 13.0 supports drivers >=570, including our 595 test host.
+fetch_git nv-codec-headers https://github.com/FFmpeg/nv-codec-headers.git 88fee5c37318c991a8762d423530f91681e32e3a
+"$recipe_dir/fetch-archive" ffmpeg-9.0.2.tar.xz \
+    8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e \
+    https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz \
+    https://distfiles.alpinelinux.org/distfiles/edge/ffmpeg-9.0.2.tar.xz
+[[ -d ffmpeg-9.0.2 ]] || tar -xf ffmpeg-9.0.2.tar.xz
+# Codecs are static, but libdrm is deliberately supplied by the host. Expose
+# its shared link interface to FFmpeg's otherwise-static pkg-config queries.
+# EL9's libdrm Requires.private includes valgrind, whose static archives are
+# absent; those private dependencies are not needed when linking libdrm.so.
+mkdir -p "$prefix/lib/pkgconfig"
+drm_version=$(env -u PKG_CONFIG_PATH -u PKG_CONFIG_LIBDIR pkg-config --modversion libdrm)
+drm_cflags=$(env -u PKG_CONFIG_PATH -u PKG_CONFIG_LIBDIR pkg-config --cflags libdrm)
+drm_libs=$(env -u PKG_CONFIG_PATH -u PKG_CONFIG_LIBDIR pkg-config --libs libdrm)
+{
+    printf 'Name: libdrm\nDescription: Host shared libdrm interface\n'
+    printf 'Version: %s\n' "$drm_version"
+    printf 'Cflags: %s\n' "$drm_cflags"
+    printf 'Libs: %s\n' "$drm_libs"
+} > "$prefix/lib/pkgconfig/libdrm.pc"
+export PKG_CONFIG_PATH="$prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+(
+    cd x264
+    ./configure --prefix="$prefix" --enable-static --enable-pic --disable-cli --disable-opencl
+    make -j"$jobs"
+    make install
+)
+# x265 strips pthread from its pkg-config private closure, which breaks
+# static consumers on systems where pthread is not merged into libc.
+if ! patch --batch --force --dry-run -R -p1 -d x265 < "$recipe_dir/patches/x265-pthread-pkgconfig.patch" >/dev/null 2>&1; then
+    patch --batch --forward -p1 -d x265 < "$recipe_dir/patches/x265-pthread-pkgconfig.patch"
+fi
+cmake -S x265/source -B x265/build-static -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
+    -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DENABLE_PIC=ON -DNATIVE_BUILD=OFF
+cmake --build x265/build-static -j"$jobs"
+cmake --install x265/build-static
+# Exercise the same C-link boundary FFmpeg uses; pkg-config --exists alone
+# cannot detect a missing transitive pthread dependency on older glibc.
+cat > x265-consumer.c <<'C'
+#include <stdint.h>
+#include <x265.h>
+int main(void) { return x265_api_get(0) == 0; }
+C
+read -r -a x265_flags <<< "$(pkg-config --static --cflags --libs x265)"
+${CC:-cc} x265-consumer.c "${x265_flags[@]}" -o x265-consumer
+./x265-consumer
+cmake -S svt-av1 -B svt-av1/build-static -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_APPS=OFF -DBUILD_TESTING=OFF -DNATIVE=OFF
+cmake --build svt-av1/build-static -j"$jobs"
+cmake --install svt-av1/build-static
+make -C nv-codec-headers PREFIX="$prefix" install
+(
+    cd ffmpeg-9.0.2
+    # Check the source itself: re-extraction may overwrite a previous patch.
+    if ! patch --batch --force --dry-run -R -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107676.patch" >/dev/null 2>&1; then
+        patch --batch --forward -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107676.patch"
+    fi
+    # Check the source itself: re-extraction may overwrite a previous patch.
+    if ! patch --batch --force --dry-run -R -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107678.patch" >/dev/null 2>&1; then
+        patch --batch --forward -p1 < "$recipe_dir/patches/ffmpeg-CVE-2026-107678.patch"
+    fi
+    ./configure --prefix="$prefix" --enable-static --disable-shared --enable-pic \
+        --disable-autodetect --disable-doc --disable-programs --disable-debug \
+        --disable-avdevice --disable-avfilter --disable-network \
+        --enable-gpl --enable-libx264 --enable-libx265 --enable-libsvtav1 \
+        --enable-vaapi --enable-libdrm --enable-ffnvcodec --enable-cuda --enable-nvenc \
+        --pkg-config-flags=--static
+    make -j"$jobs"
+    make install
+)
+pkg-config --modversion libavcodec libavformat libavutil libswscale x264 x265 SvtAv1Enc ffnvcodec

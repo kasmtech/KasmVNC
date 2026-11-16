@@ -14,6 +14,11 @@ struct WuCert {
   WuCert();
   ~WuCert();
 
+  WuCert(const WuCert&) = delete;
+  WuCert& operator=(const WuCert&) = delete;
+
+  bool isValid() const { return key && x509; }
+
   EVP_PKEY* key;
   X509* x509;
   char fingerprint[96];

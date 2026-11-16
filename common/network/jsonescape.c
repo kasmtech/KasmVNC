@@ -102,8 +102,10 @@ struct kasmpasswd_t *parseJsonUsers(const char *data) {
 	if (!json)
 		return NULL;
 
-	if (!(json->type & cJSON_Array))
+	if (!(json->type & cJSON_Array)) {
+		cJSON_Delete(json);
 		return NULL;
+	}
 
 	struct kasmpasswd_t *set = calloc(sizeof(struct kasmpasswd_t), 1);
 	set->num = cJSON_GetArraySize(json);

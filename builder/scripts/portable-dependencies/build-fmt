@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+recipe_dir=$(cd "$(dirname "$0")" && pwd)
+
+build_and_install() {
+    cmake -S . -B build -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=$HOME/.local -GNinja
+    ninja -C build install
+}
+
+prepare_source() {
+    DIR=fmt
+    cd /tmp
+    [ -d ./${DIR} ] && rm -rf ./${DIR}
+    mkdir ${DIR}
+
+    FMT_RELEASE="${FMT_RELEASE:-12.2.0}"
+
+    curl --connect-timeout 30 --max-time 900 -fLsS --retry 3 "https://github.com/fmtlib/fmt/archive/${FMT_RELEASE}.tar.gz" -o "/tmp/fmt-${FMT_RELEASE}.tar.gz"
+  "$recipe_dir/verify-helper-source" "/tmp/fmt-${FMT_RELEASE}.tar.gz"
+    tar xzvf "/tmp/fmt-${FMT_RELEASE}.tar.gz" -C ${DIR}/ --strip-components=1
+    cd ${DIR}
+}
+
+prepare_source
+build_and_install

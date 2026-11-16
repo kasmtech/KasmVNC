@@ -165,7 +165,9 @@ show_file_link_in_ci() {
     return
   fi
 
-  curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" -w '\n' "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=${link_name}&target_url=${file_url}"
+  curl --request POST --header @- -w '\n' "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=success&name=${link_name}&target_url=${file_url}" <<EOF
+PRIVATE-TOKEN:${GITLAB_API_TOKEN}
+EOF
 }
 
 show_package_download_link_in_ci() {
@@ -207,6 +209,38 @@ upload_packages() {
     echo "No dbgsym packages for non-deb distros will be uploaded"
   fi
   upload_regular_packages_for_distro_to_build_dir "$os" "$os_codename"
+}
+
+# Portable filenames already include version, revision and native architecture.
+# Upload packages plus their audits/checksums through the existing S3/index path.
+upload_portable_packages() {
+  prepare_to_run_scripts_and_s3_uploads
+  local package
+  local count=0
+  while IFS= read -r -d '' package; do
+    prepare_package_in_build_dir_s3_path "$package"
+    upload_to_s3 "$package" "$package_in_build_dir_s3_path" "$S3_BUCKET"
+    save_package_s3_path_for_index_html "$package_in_build_dir_s3_path"
+    case "$package" in
+      *.dbgsym.deb|*.debuginfo.rpm|*.debug.apk|*.debug.tar.gz|*.sources.tar.gz) ;;
+      *.deb|*.rpm|*.apk|*.tar.gz)
+        show_file_link_in_ci "$(basename "$package")" "$UPLOADED_FILE_S3_URL" ;;
+    esac
+    count=$((count + 1))
+  done < <(find builder/build -path '*/portable_*/*' -type f -name 'kasmvncserver_portable_*' -print0)
+  check_regular_packages_were_uploaded "$count"
+  local manifest binary_md5 debug_base
+  for manifest in builder/build/portable_*/*.debug.json; do
+    debug_base=${manifest%.debug.json}
+    binary_md5=$(python3 -c 'import json,sys; print(next(r["md5"] for r in json.load(open(sys.argv[1])) if r["binary"] == "/usr/bin/Xkasmvnc"))' "$manifest") || return 1
+    [[ "$binary_md5" =~ ^[a-f0-9]{32}$ ]] || return 1
+    if [[ -f "$debug_base.debug.apk" ]]; then
+      upload_to_s3 "$debug_base.debug.apk" "$s3_crashpad_build_directory/$binary_md5/kasmvncserver-debug.apk" "$S3_BUCKET" || return 1
+    else
+      upload_to_s3 "$debug_base.dbgsym.deb" "$s3_crashpad_build_directory/$binary_md5/kasmvncserver-dbgsym.deb" "$S3_BUCKET" || return 1
+    fi
+    upload_to_s3 "$debug_base.debug.tar.gz" "$s3_crashpad_build_directory/$binary_md5/kasmvncserver-debug.tar.gz" "$S3_BUCKET" || return 1
+  done
 }
 
 detect_alpine_doc_package() {
@@ -270,34 +304,74 @@ upload_directory_to_s3() {
 
 prepare_functional_tests_source_and_cd_into_it() {
   cd kasmvnc-functional-tests
-  mkdir output && chown 1000:1000 output
-  mkdir report && chown 1000:1000 report
+  mkdir -p output report
+  chown 1000:1000 output report
 }
 
 upload_report_to_s3() {
-  s3_tests_directory="kasmvnc/${CI_COMMIT_SHA}/tests"
-  upload_directory_to_s3 report "$s3_tests_directory" "$S3_BUCKET"
+  s3_tests_directory="kasmvnc/${CI_COMMIT_SHA}/tests/${FUNCTIONAL_TEST_TIER:-minimal}"
+  # Keep the report tree intact: screenshots, JSON and logs use relative links.
+  aws s3 cp report/ "s3://${S3_BUCKET}/${s3_tests_directory}/report/" --recursive
 }
 
 put_report_into_ci_pipeline() {
   local functional_tests_exit_code="$1"
-  local report_name="Functional%20test%20report"
   local report_url="https://${S3_BUCKET}.s3.amazonaws.com/${s3_tests_directory}/report/index.html"
-  local state="success"
+  local state="passed"
   if [ "$functional_tests_exit_code" -ne 0 ]; then
     state="failed"
   fi
-  curl --request POST --header "PRIVATE-TOKEN:${GITLAB_API_TOKEN}" -w '\n' "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/statuses/${CI_COMMIT_SHA}?state=${state}&name=${report_name}&target_url=${report_url}"
+  # The real CI job owns its status and allow_failure policy. Posting another
+  # commit status creates a separate failing job and can attach to the other
+  # pipeline when branch and MR qualification run for the same commit.
+  printf '%s functional tests %s: %s\n' "${FUNCTIONAL_TEST_TIER:-minimal}" "$state" "$report_url"
 }
 
-prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages() {
-  cp -r ../output/ubuntu_jammy output/
+
+select_functional_test_package() {
+  local package_dir
+  local -a candidates
+  package_dir=../output/portable_amd64
+  # Do not fall back to a previously published artifact when this pipeline's
+  # package is missing or ambiguous.
+  mapfile -t candidates < <(find "$package_dir" -maxdepth 1 -type f -name '*_amd64.deb' ! -name '*dbgsym*' -print)
+  if [[ ${#candidates[@]} != 1 ]]; then
+    echo "Expected exactly one pipeline AMD64 runtime DEB in $package_dir" >&2
+    return 1
+  fi
+  export FUNCTIONAL_TEST_PACKAGE="$(realpath "${candidates[0]}")"
+}
+
+
+prepare_standard_functional_tests() {
+  detect_release_version
+  export KASMVNC_ARTIFACT_VERSION="$RELEASE_VERSION"
+  export KASMVNC_ARTIFACT_COMMIT="$CI_COMMIT_SHA"
+  export KASMVNC_ARTIFACT_BRANCH="$CI_COMMIT_REF_NAME"
+  export KASMVNC_ARTIFACT_FFMPEG_MODE=adapters
+  unset KASMVNC_CANDIDATE_DIR KASMVNC_CANDIDATE_SHA256
+  local glibc_artifacts musl_artifacts
+  glibc_artifacts=$(realpath -e output/portable_amd64) || return 1
+  musl_artifacts=$(realpath -e output/portable_musl_amd64) || return 1
+  [[ -d "$glibc_artifacts" && -d "$musl_artifacts" ]] || return 1
+  prepare_functional_tests_source_and_cd_into_it
+  # Freeze this pipeline's DEB/RPM/APK, manifests, provenance and pinned APK key
+  # before launching hosts. Another pipeline may overwrite the public S3 names.
+  python3 -m runner.resolve_candidate --output-dir candidate \
+    --local-artifacts "$glibc_artifacts" --local-artifacts "$musl_artifacts" || return 1
+  export KASMVNC_CANDIDATE_DIR
+  KASMVNC_CANDIDATE_DIR=$(realpath -e candidate) || return 1
+  export KASMVNC_CANDIDATE_SHA256
+  KASMVNC_CANDIDATE_SHA256=$(python3 -c 'import hashlib; print(hashlib.sha256(open("candidate/candidate.json", "rb").read()).hexdigest())') || return 1
+  export KASMVNC_ALPINE_KEY_SHA256
+  KASMVNC_ALPINE_KEY_SHA256=$(python3 -c 'import json; print(json.load(open("candidate/candidate.json"))["signing_key"]["sha256"])') || return 1
+  cp candidate/candidate.json report/candidate.json
 }
 
 prepare_to_run_functional_tests() {
   install_packages_needed_for_functional_tests
   prepare_functional_tests_source_and_cd_into_it
-  prepare_kasmvnc_built_packages_to_replace_workspaces_image_packages
+  select_functional_test_package
   heed_debug_variable_and_toggle_debug_in_functional_tests
 }
 
@@ -313,7 +387,7 @@ heed_debug_variable_and_toggle_debug_in_functional_tests() {
 
 install_packages_needed_for_functional_tests() {
   prepare_to_run_scripts_and_s3_uploads
-  apt-get install -y tree docker.io
+  apt-get install -y tree docker.io docker-cli docker-buildx python3 curl ca-certificates
 }
 
 is_build_this_distro() {
@@ -335,7 +409,7 @@ function upload_to_s3() {
   aws s3 cp "$file_to_upload" \
     "s3://${s3_bucket}/${s3_url_for_file}" \
     --metadata-directive REPLACE \
-    --content-type "$(file --mime-type -b \"$file_to_upload\")"
+    --content-type "$(file --mime-type -b -- "$file_to_upload")"
   export UPLOADED_FILE_S3_URL="https://${s3_bucket}.s3.amazonaws.com/${s3_url_for_file}";
 };
 

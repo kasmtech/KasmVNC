@@ -69,7 +69,7 @@ set(RFB_SOURCES
         util.cxx
         xxhash.c
         ffmpeg.cxx
-        encoders/SoftwareEncoder.cxx
+        encoders/FFmpegVideoEncoder.cxx
         benchmark/FfmpegFrameFeeder.cpp
         encoders/ScreenEncoderManager.cxx
         encoders/FFMPEGHWEncoder.cxx
@@ -163,7 +163,8 @@ if (ENABLE_DEBUG_ENCODERS)
     set(RFB_DEFINITIONS ${RFB_DEFINITIONS} DEBUG_ENCODERS)
 endif ()
 
-add_library(rfb STATIC ${RFB_SOURCES})
+include(${CMAKE_SOURCE_DIR}/cmake/FFmpegAdapters.cmake)
+add_library(rfb STATIC ${RFB_SOURCES} ${KASMVNC_FFMPEG_OBJECTS})
 
 target_include_directories(rfb PRIVATE
         ${CMAKE_SOURCE_DIR}/common
@@ -177,10 +178,18 @@ target_include_directories(rfb PRIVATE
         ${LIBYUV_INCLUDE_DIR}
 )
 
-set(RFB_LIBRARIES ${RFB_LIBRARIES} tinyxml2_objs ${TBB_LIBRARIES} ${CPUID_LIBRARIES} ${FMT_LIBRARIES} ${VIDEO_ACCELERATION_LIBRARIES})
+list(APPEND RFB_LIBRARIES tinyxml2_objs ${TBB_LIBRARIES} ${CPUID_LIBRARIES} ${FMT_LIBRARIES} ${VIDEO_ACCELERATION_LIBRARIES})
 
-if (DEBUG_FFMPEG)
-    set(RFB_LIBRARIES ${RFB_LIBRARIES} ${FFMPEG_LIBRARIES})
+if (KASMVNC_FFMPEG_ADAPTERS)
+    list(APPEND RFB_DEFINITIONS KASMVNC_FFMPEG_ADAPTERS)
+endif ()
+
+if (KASMVNC_STATIC_FFMPEG)
+    # The backend owns FFmpeg symbols; rfb's facade only selects a backend.
+    target_compile_definitions(kasmvnc_ffmpeg_legacy PRIVATE KASMVNC_STATIC_FFMPEG)
+    list(APPEND RFB_LIBRARIES ${KASMVNC_FFMPEG_ARCHIVES})
+elseif (DEBUG_FFMPEG AND NOT KASMVNC_FFMPEG_ADAPTERS)
+    list(APPEND RFB_LIBRARIES ${FFMPEG_LIBRARIES})
 endif ()
 
 target_compile_definitions(rfb PRIVATE ${RFB_DEFINITIONS})

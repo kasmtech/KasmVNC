@@ -1,0 +1,182 @@
+#!/usr/bin/env bash
+# Package already-built binaries. This can also validate a local build without
+# recompiling it. Run in the native EL8 builder with dpkg and rpm-build installed.
+set -euo pipefail
+cd /src
+: "${KASMVNC_PORTABLE_VERSION:?}" "${KASMVNC_PORTABLE_BASENAME:?}" "${KASMVNC_COMMIT_ID:?}"
+version=$KASMVNC_PORTABLE_VERSION
+basename=$KASMVNC_PORTABLE_BASENAME
+runtime_description='OpenSSL 3, desktop libraries and compiler runtimes are supplied by the host; selected performance libraries remain embedded.'
+if [[ ${KASMVNC_FFMPEG_MODE:-static} == adapters ]]; then
+  runtime_description+=' Video uses host FFmpeg libavcodec families 58-63 and encoder libraries.'
+fi
+host_dependencies=$(python3 builder/portable/host_libraries.py deb)
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$basename" =~ ^[a-zA-Z0-9_.+-]+$ ]]
+case $(uname -m) in
+  x86_64) arch=amd64; rpmarch=x86_64 ;;
+  aarch64) arch=arm64; rpmarch=aarch64 ;;
+  *) exit 1 ;;
+esac
+work=$(mktemp -d /tmp/kasm-portable-package.XXXXXX)
+trap 'rm -rf "$work"' EXIT
+root=$work/root
+doc=$root/usr/share/doc/kasmvncserver
+mkdir -p "$root/usr/bin" "$root/usr/share/man/man1" "$doc" \
+  "$root/usr/share/kasmvnc" "$root/etc/kasmvnc" \
+  "$root/usr/lib/kasmvncserver" "$root/usr/lib/systemd/user" /artifacts
+install -m755 unix/xserver/hw/vnc/Xvnc "$root/usr/bin/Xkasmvnc"
+install -m755 unix/vncserver-native/vncserver-native "$root/usr/bin/kasmvncserver"
+install -m755 unix/vncconfig/vncconfig "$root/usr/bin/kasmvncconfig"
+install -m755 unix/kasmvncpasswd/kasmvncpasswd unix/kasmxproxy/kasmxproxy "$root/usr/bin/"
+cp -a builder/www "$root/usr/share/kasmvnc/"
+test -s "$root/usr/share/kasmvnc/www/index.html"
+install -m644 unix/kasmvnc_defaults.yaml "$root/usr/share/kasmvnc/"
+sed -e 's/^\([^#]\)/# \1/' unix/kasmvnc_defaults.yaml > "$root/etc/kasmvnc/kasmvnc.yaml"
+install -m755 builder/startup/deb/select-de.sh builder/portable/initialize-tls "$root/usr/lib/kasmvncserver/"
+install -m644 unix/kasmvncserver@.service "$root/usr/lib/systemd/user/"
+install -m644 LICENSE.TXT "$doc/"
+# Keep the project README and portable install instructions separately.
+install -m644 README.md "$doc/README.md"
+install -m644 builder/portable/README.md "$doc/PORTABLE.md"
+for pair in 'unix/xserver/hw/vnc/Xvnc.man Xkasmvnc' 'unix/vncserver.man kasmvncserver' \
+  'unix/vncconfig/vncconfig.man kasmvncconfig' 'unix/vncpasswd/vncpasswd.man kasmvncpasswd' \
+  'unix/kasmxproxy/kasmxproxy.man kasmxproxy'; do
+  read -r source name <<< "$pair"
+  gzip -n -c "$source" > "$root/usr/share/man/man1/$name.1.gz"
+done
+debugroot=$work/debug
+python3 builder/portable/split-debug.py "$root" "$debugroot" "/artifacts/$basename.debug.json"
+find "$debugroot" -type d -exec chmod 755 {} +
+find "$debugroot" -type f -exec chmod 644 {} +
+tar --sort=name --owner=0 --group=0 --numeric-owner -czf "/artifacts/$basename.debug.tar.gz" -C "$debugroot" .
+mkdir -p "$debugroot/DEBIAN"
+cat > "$debugroot/DEBIAN/control" <<EOF
+Package: kasmvncserver-dbgsym
+Version: $version-1+portable
+Architecture: $arch
+Maintainer: Kasm Technologies LLC <info@kasmweb.com>
+Section: debug
+Priority: optional
+Description: Matching build-ID debug symbols for portable KasmVNC
+ Symbols for all five executables. Match the build ID, not just the version.
+EOF
+dpkg-deb --root-owner-group -Zgzip --build "$debugroot" "/artifacts/$basename.dbgsym.deb"
+rm -rf "$debugroot/DEBIAN"
+builder/portable/audit.py "$root" "$arch" "$doc/elf-audit.json"
+builder/portable/provenance.py "$doc" "$arch"
+builder/portable/supply-chain.py "$doc" "$arch" "/artifacts/$basename"
+builder/portable/scan "/artifacts/$basename" "$doc"
+# Source snapshots can come from restrictive developer umasks. Installed code,
+# Native helpers and web assets must be readable by ordinary desktop users.
+find "$root" -type d -exec chmod 755 {} +
+find "$root" -type f -exec chmod 644 {} +
+chmod 755 "$root/usr/bin/"* "$root/usr/lib/kasmvncserver/select-de.sh" \
+  "$root/usr/lib/kasmvncserver/initialize-tls"
+
+# DEB retains its existing alternatives and ssl-cert integration.
+debroot=$work/deb
+cp -a "$root" "$debroot"
+mkdir "$debroot/DEBIAN"
+cat > "$debroot/DEBIAN/control" <<EOF
+Package: kasmvncserver
+Version: $version-1+portable
+Architecture: $arch
+Maintainer: Kasm Technologies LLC <info@kasmweb.com>
+Section: x11
+Priority: optional
+Depends: libc6 (>= 2.28), libssl3 (>= 3.0.0) | libssl3t64 (>= 3.0.0), $host_dependencies, libgl1, libgbm1, bash, tzdata, ssl-cert, xauth, x11-utils, x11-xkb-utils, xkb-data, openssl
+Provides: vnc-server
+Description: KasmVNC browser desktop server (portable application build)
+ $runtime_description
+EOF
+cp debian/postinst debian/prerm "$debroot/DEBIAN/"
+chmod 755 "$debroot/DEBIAN/postinst" "$debroot/DEBIAN/prerm"
+echo /etc/kasmvnc/kasmvnc.yaml > "$debroot/DEBIAN/conffiles"
+dpkg-deb --root-owner-group -Zgzip --build "$debroot" "/artifacts/$basename.deb"
+
+# RPM and tar use the same generic aliases and existing RPM certificate path.
+for pair in 'Xvnc Xkasmvnc' 'vncserver kasmvncserver' 'vncconfig kasmvncconfig' \
+  'vncpasswd kasmvncpasswd' 'xproxy kasmxproxy'; do
+  read -r generic kasm <<< "$pair"
+  ln -s "$kasm" "$root/usr/bin/$generic"
+  ln -s "$kasm.1.gz" "$root/usr/share/man/man1/$generic.1.gz"
+done
+sed -i -e 's!pem_certificate: .*!pem_certificate: /etc/pki/tls/private/kasmvnc.pem!' \
+  -e 's!pem_key: .*!pem_key: /etc/pki/tls/private/kasmvnc.pem!' \
+  "$root/usr/share/kasmvnc/kasmvnc_defaults.yaml"
+tar --sort=name --owner=0 --group=0 --numeric-owner -czf "/artifacts/$basename.tar.gz" -C "$root" .
+mkdir -p "$work/rpm/BUILD" "$work/rpm/RPMS" "$work/rpm/SOURCES" "$work/rpm/SPECS" "$work/rpm/SRPMS"
+# RPM 4.14 resolves -f scriptlets under its build directory, even for
+# absolute filenames. A staged relative input works on EL8 and newer RPM.
+install -m644 builder/portable/rpm-preun "$work/rpm/BUILD/rpm-preun"
+cat > "$work/rpm/SPECS/portable.spec" <<EOF
+%global debug_package %{nil}
+%global __os_install_post %{nil}
+Name: kasmvncserver
+Version: $version
+Release: 1.portable
+Summary: KasmVNC browser desktop server (portable application build)
+License: GPL-2.0-or-later
+URL: https://github.com/kasmtech/KasmVNC
+BuildArch: $rpmarch
+# Use file capabilities across EL, Fedora and openSUSE naming schemes.
+# ELF automatic requirements add exact SONAME/symbol capabilities across
+# distributions, including libcrypt.so.1 (EL9/Fedora libxcrypt-compat).
+Requires: bash, (tzdata or timezone), /usr/bin/xauth, /usr/bin/xkbcomp, /usr/bin/openssl
+Requires: /usr/bin/xdpyinfo
+Requires: glibc >= 2.28
+Requires: /usr/sbin/groupadd, /usr/bin/getent
+# Repository file indexes are not portable for data files (notably SUSE).
+Requires: xkeyboard-config
+Conflicts: tigervnc-server, tigervnc-server-minimal
+Provides: vnc-server
+%description
+Portable KasmVNC application. $runtime_description
+Host desktop and compiler libraries, OpenSSL 3, glibc and GPU drivers remain external.
+Requires glibc 2.28 or newer, the GCC 8 C++ runtime ABI and host OpenSSL 3.
+%install
+mkdir -p %{buildroot}
+cp -a $root/. %{buildroot}/
+%post
+/usr/lib/kasmvncserver/initialize-tls
+%preun -f rpm-preun
+%files
+%config(noreplace) /etc/kasmvnc/kasmvnc.yaml
+/usr/bin/*
+/usr/lib/kasmvncserver
+/usr/lib/systemd/user/kasmvncserver@.service
+/usr/share/kasmvnc
+/usr/share/man/man1/*
+%doc /usr/share/doc/kasmvncserver
+EOF
+rpmbuild --define "_topdir $work/rpm" --define '_build_id_links none' -bb "$work/rpm/SPECS/portable.spec"
+cp "$work/rpm/RPMS/$rpmarch/"*.rpm "/artifacts/$basename.rpm"
+cat > "$work/rpm/SPECS/debug.spec" <<EOF
+%global debug_package %{nil}
+%global __os_install_post %{nil}
+Name: kasmvncserver-debuginfo
+Version: $version
+Release: 1.portable
+Summary: Matching build-ID debug symbols for portable KasmVNC
+License: GPL-2.0-or-later
+BuildArch: $rpmarch
+AutoReqProv: no
+%description
+Symbols for all five executables. Match the build ID, not just the version.
+%install
+mkdir -p %{buildroot}
+cp -a $debugroot/. %{buildroot}/
+%files
+/usr/lib/debug
+EOF
+rpmbuild --define "_topdir $work/rpm" --define '_build_id_links none' -bb "$work/rpm/SPECS/debug.spec"
+cp "$work/rpm/RPMS/$rpmarch/kasmvncserver-debuginfo-"*.rpm "/artifacts/$basename.debuginfo.rpm"
+cp "$doc/provenance.json" "/artifacts/$basename.provenance.json"
+cp "$doc/elf-audit.json" "/artifacts/$basename.elf-audit.json"
+cd /artifacts
+sha256sum "$basename.deb" "$basename.rpm" "$basename.tar.gz" \
+  "$basename.provenance.json" "$basename.elf-audit.json" \
+  "$basename.dbgsym.deb" "$basename.debuginfo.rpm" "$basename.debug.tar.gz" "$basename.debug.json" \
+  "$basename.cdx.json" "$basename.sources.json" "$basename.sources.tar.gz" \
+  "$basename.vulnerabilities.json" "$basename.vex-applied.json" "$basename.grype.raw.json" "$basename.assessments.json" "$basename.openvex.json" \
+  "$basename.vulnerability-summary.json" > "$basename.sha256"

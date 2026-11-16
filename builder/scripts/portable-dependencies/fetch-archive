@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Fetch an exact pinned archive. Mirrors are only a transport fallback.
+set -euo pipefail
+if (( $# < 3 )) || [[ ! $2 =~ ^[[:xdigit:]]{64}$ ]]; then
+    echo 'Usage: fetch-archive DESTINATION SHA256 CANONICAL_URL [MIRROR_URL ...]' >&2
+    exit 2
+fi
+destination=$1
+checksum=$2
+shift 2
+verify() {
+    printf '%s  %s\n' "$checksum" "$1" | sha256sum -c -
+}
+# Never silently replace a corrupt cached source or fall through on bad bytes.
+if [[ -e $destination || -L $destination ]]; then
+    verify "$destination"
+    exit
+fi
+temporary=$(mktemp "$destination.part.XXXXXX")
+trap 'rm -f "$temporary"' EXIT
+for url in "$@"; do
+    echo "Fetching pinned archive from $url" >&2
+    if curl --connect-timeout 10 --max-time 300 --retry 1 --retry-max-time 30 \
+        --proto '=https' --proto-redir '=https' -fL "$url" -o "$temporary"; then
+        verify "$temporary"
+        mv "$temporary" "$destination"
+        exit 0
+    fi
+    echo "Source download failed: $url" >&2
+done
+echo "Unable to download pinned archive: $destination" >&2
+exit 1

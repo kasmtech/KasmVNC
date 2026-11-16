@@ -1,0 +1,34 @@
+#!/bin/sh
+# Match the existing Oracle RPM's user-service shutdown on upgrade/removal.
+# Containers and non-systemd installations have no user services to stop.
+command -v loginctl >/dev/null 2>&1 || exit 0
+command -v systemctl >/dev/null 2>&1 || exit 0
+[ -d /run/systemd/system ] || exit 0
+
+stop_vncserver_systemd_services_for_all_logged_in_users() {
+  for session in $(list_user_sessions); do
+    stop_user_services "$session"
+  done
+}
+
+list_user_sessions() {
+  loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}'
+}
+
+stop_user_services() {
+  for service in $(list_active_services "$1"); do
+    systemctl --user --machine="$(systemd_user_from_session "$1")" stop "$service" || true
+  done
+}
+
+systemd_user_from_session() {
+  printf '%s@\n' "$(loginctl show-session "$1" -p Name --value)"
+}
+
+list_active_services() {
+  systemctl --user --machine="$(systemd_user_from_session "$1")" \
+    list-units --type=service --state=active --plain --no-legend 2>/dev/null | \
+    awk '{ print $1 }' | grep kasmvncserver
+}
+
+stop_vncserver_systemd_services_for_all_logged_in_users || true

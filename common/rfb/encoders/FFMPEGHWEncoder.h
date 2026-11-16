@@ -16,52 +16,8 @@
  * USA.
  */
 #pragma once
-
-#include "KasmVideoConstants.h"
-#include "rdr/OutStream.h"
-#include "rfb/Encoder.h"
-#include "rfb/encoders/VideoEncoder.h"
-#include "rfb/ffmpeg.h"
-
+#include "FFmpegVideoEncoder.h"
 namespace rfb {
-template<AVHWDeviceType HWDeviceType, AVPixelFormat AVPixFmt>
-class FFMPEGHWEncoder final : public VideoEncoder {
-    Screen layout;
-    const FFmpeg &ffmpeg;
-
-    FFmpeg::FrameGuard sw_frame_guard;
-    FFmpeg::FrameGuard hw_frame_guard;
-    FFmpeg::PacketGuard pkt_guard;
-    FFmpeg::ContextGuard ctx_guard;
-    FFmpeg::BufferGuard hw_device_ctx_guard;
-    FFmpeg::BufferGuard hw_frames_ref_guard;
-
-    const AVCodec *codec{};
-
-    KasmVideoEncoders::Encoder encoder;
-    VideoEncoderParams current_params{};
-    uint8_t msg_codec_id;
-    uint8_t msg_codec_type_id;
-
-    int64_t pts{};
-    int bpp{};
-    const char *dri_node{};
-
-    [[nodiscard]] bool init(int width, int height, VideoEncoderParams params);
-
-    template<typename T>
-    friend class EncoderBuilder;
-    FFMPEGHWEncoder(Screen layout, const FFmpeg &ffmpeg, SConnection *conn, KasmVideoEncoders::Encoder encoder,
-        const char *dri_node, VideoEncoderParams params);
-
-public:
-    bool isSupported() const override;
-    void writeRect(const PixelBuffer *pb, const Palette &palette) override;
-    void writeSolidRect(int width, int height, const PixelFormat &pf, const rdr::U8 *colour) override;
-    bool render(const PixelBuffer *pb, bool forceKeyFrame = false) override;
-    void writeSkipRect() override;
-};
-
-    using FFMPEGVAAPIEncoder = FFMPEGHWEncoder<AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI>;
-    using FFMPEGCudaEncoder = FFMPEGHWEncoder<AV_HWDEVICE_TYPE_CUDA, AV_PIX_FMT_CUDA>;
+    using FFMPEGVAAPIEncoder = FFmpegDeviceEncoder<FFmpeg::Device::VAAPI>;
+    using FFMPEGCudaEncoder = FFmpegDeviceEncoder<FFmpeg::Device::CUDA>;
 } // namespace rfb

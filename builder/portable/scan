@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Advisory findings; scanner/assessment generation errors are fatal.
+set -euo pipefail
+basename=${1:?artifact basename required}
+doc=${2:-}
+report_dir=$(dirname "$basename")
+# Never publish stale successful results after a failed rescan/reconciliation.
+rm -f "$report_dir/gl-dependency-scanning-report.json" "$report_dir/gl-sbom.cdx.json" \
+  "$basename.vulnerabilities.json" "$basename.assessments.json" "$basename.openvex.json" \
+  "$basename.vulnerability-summary.json" "$basename.grype.raw.json" "$basename.vex-applied.json"
+export GRYPE_DB_REQUIRE_UPDATE_CHECK=true GRYPE_CHECK_FOR_APP_UPDATE=false
+scan_start=$(date -u +%Y-%m-%dT%H:%M:%S)
+grype "sbom:$basename.cdx.json" --output json --file "$basename.grype.raw.json"
+python3 "$(dirname "$0")/security-assessments.py" "$basename"
+# Exercise the actual pinned Grype consumer against the published scoped PURLs.
+# Freeze the database so this verifies the same observations, not a later update.
+GRYPE_DB_AUTO_UPDATE=false grype "sbom:$basename.cdx.json" --output json \
+  --file "$basename.vex-applied.json" --vex "$basename.openvex.json"
+# All consumers receive the same reconciled assessment, including installed docs.
+python3 "$(dirname "$0")/gitlab-dependency-report.py" \
+  "$basename.vulnerabilities.json" "$report_dir/gl-dependency-scanning-report.json" \
+  --start "$scan_start" --end "$(date -u +%Y-%m-%dT%H:%M:%S)"
+cp "$basename.cdx.json" "$report_dir/gl-sbom.cdx.json"
+if [[ -n "$doc" ]]; then
+  cp "$basename.cdx.json" "$doc/sbom.cdx.json"
+  cp "$basename.assessments.json" "$doc/security-assessments.json"
+  cp "$basename.openvex.json" "$doc/security.openvex.json"
+  cp "$(dirname "$0")/SECURITY-REVIEW.md" "$doc/SECURITY-REVIEW.md"
+fi

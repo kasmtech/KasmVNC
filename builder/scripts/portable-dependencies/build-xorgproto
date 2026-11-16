@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Build-only Xorg protocol headers; never part of the runtime dependency closure.
+set -euo pipefail
+prefix=/opt/kasm-xorgproto
+version=2024.1
+sha=372225fd40815b8423547f5d890c5debc72e88b91088fbfb13158c20495ccb59
+url=https://www.x.org/releases/individual/proto/xorgproto-${version}.tar.xz
+sources=$prefix/share/kasmvnc/sources
+mkdir -p "$sources"
+archive=$sources/xorgproto-${version}.tar.xz
+"$(dirname "$0")/fetch-archive" "$archive" "$sha" "$url" "https://xorg.freedesktop.org/archive/individual/proto/xorgproto-${version}.tar.xz"
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+tar -xf "$archive" -C "$work"
+cd "$work/xorgproto-$version"
+./configure --prefix="$prefix" --enable-legacy
+make -j"${BUILD_JOBS:-8}" install
+python3 - "$prefix" "$version" "$url" "$sha" "$archive" <<'PYTHON'
+import json, pathlib, sys
+prefix, version, url, sha, archive = sys.argv[1:]
+pathlib.Path(prefix, 'share/kasmvnc/xorgproto-sdk.json').write_text(json.dumps({
+    'version': version, 'source_url': url, 'source_sha256': sha,
+    'source_archive': archive, 'purpose': 'build-only protocol headers',
+}, indent=2) + '\n')
+PYTHON

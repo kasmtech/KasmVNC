@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""Select retained private libraries without importing cached desktop headers.
+
+Older dependency images contain a much larger SDK. Copying a strict inventory
+keeps these images usable while ensuring system DSOs use baseline system headers.
+The selected archives are byte-for-byte copies, with provenance hashes recorded.
+"""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import shutil
+
+
+def prepare(source, destination):
+    source, destination = source.resolve(), destination.resolve()
+    if source == destination or source in destination.parents or destination in source.parents:
+        raise ValueError('Runtime SDK source and destination must be separate directories')
+    if destination.exists():
+        shutil.rmtree(destination)
+    (destination / 'include').mkdir(parents=True)
+    (destination / 'lib/pkgconfig').mkdir(parents=True)
+    files = ['include/' + name for name in ('yaml.h', 'zlib.h', 'zconf.h')]
+    files += ['lib/lib' + name + '.a' for name in ('yaml', 'z', 'webp', 'sharpyuv')]
+    for directory in ('webp', 'sharpyuv'):
+        headers = sorted((source / 'include' / directory).glob('*.h'))
+        if not headers and directory == 'webp':
+            raise ValueError('Missing private runtime headers: ' + directory)
+        files += [str(path.relative_to(source)) for path in headers]
+    inventory = []
+    for relative in files:
+        origin, target = source / relative, destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(origin, target)
+        inventory.append({'path': relative, 'source': str(origin),
+                          'sha256': hashlib.sha256(target.read_bytes()).hexdigest()})
+    for name in ('zlib.pc', 'yaml-0.1.pc', 'libwebp.pc', 'libsharpyuv.pc'):
+        origin = source / 'lib/pkgconfig' / name
+        if origin.is_file():
+            (destination / 'lib/pkgconfig' / name).write_text(
+                origin.read_text().replace(str(source), str(destination)))
+    (destination / 'manifest.json').write_text(json.dumps(
+        {'source_prefix': str(source), 'archives_and_headers': inventory}, indent=2) + '\n')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--source', type=Path, required=True)
+    parser.add_argument('--destination', type=Path, required=True)
+    args = parser.parse_args()
+    prepare(args.source, args.destination)

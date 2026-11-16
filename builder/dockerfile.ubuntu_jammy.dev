@@ -5,6 +5,7 @@ ENV KASMVNC_BUILD_OS_CODENAME jammy
 ENV XORG_VER 21.1.3
 ENV XORG_PATCH 21
 ENV DEBIAN_FRONTEND noninteractive
+ENV KASMVNC_DEPENDENCIES_MARKER kasmvnc-dev-dependencies-v1
 
 EXPOSE 6901
 EXPOSE 22
@@ -86,11 +87,11 @@ RUN if [ "$(arch)" = "x86_64" ]; then \
 # unset — i.e. the live, bind-mounted repo copy. A persistent ENV would pin it to
 # these baked, soon-stale copies.
 COPY builder/scripts /tmp/scripts
-RUN /tmp/scripts/install_sccache_from_github
-RUN /tmp/scripts/build-deps.sh
-
-RUN chown -R 1000:1000 /home/kasm-user/.local && \
-    rm -rf /tmp/libjpeg-turbo /tmp/libwebp-* /tmp/tbb /tmp/cpuid /tmp/fmt /tmp/libyuv /tmp/libstatgrab /tmp/sccache*
+RUN /tmp/scripts/install_sccache_from_github && \
+    /tmp/scripts/build-deps.sh && \
+    chown -R 1000:1000 /home/kasm-user/.local && \
+    printf '%s\n' "$KASMVNC_DEPENDENCIES_MARKER" > /opt/kasm-dependencies-ready && \
+    find /tmp -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 
 RUN ssh-keygen -A
 RUN echo "kasm-user:password" | chpasswd

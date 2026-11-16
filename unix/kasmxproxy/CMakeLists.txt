@@ -9,3 +9,5 @@ target_link_libraries(kasmxproxy ${X11_LIBRARIES} ${X11_XTest_LIB} ${X11_Xrandr_
 
 install(TARGETS kasmxproxy DESTINATION ${BIN_DIR})
 install(FILES kasmxproxy.man DESTINATION ${MAN_DIR}/man1 RENAME kasmxproxy.1)
+
+kasmvnc_static_desktop_target(kasmxproxy)

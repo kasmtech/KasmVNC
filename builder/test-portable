@@ -1,0 +1,239 @@
+#!/usr/bin/env python3
+"""Install and exercise published portable packages on core-image base distros.
+
+Uses native Docker architecture, the installed native launcher, authenticated TLS,
+a browser selecting software H.264, keyboard input and package lifecycle checks.
+GPU tests remain a separate hardware validation; CI never fabricates GPU access.
+"""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
+import time
+import uuid
+
+parser = argparse.ArgumentParser()
+parser.add_argument('artifact_directory')
+parser.add_argument('--case', required=True)
+parser.add_argument('--arch', required=True, choices=['amd64', 'arm64'])
+parser.add_argument('--results', required=True)
+parser.add_argument('--formats', nargs='+', choices=['native', 'tar'], default=None)
+parser.add_argument('--previous-package', default=os.getenv('PORTABLE_PREVIOUS_PACKAGE'))
+parser.add_argument('--previous-apk-key', help='Public signing key for an earlier APK signed with a different key')
+args = parser.parse_args()
+repo = Path(__file__).resolve().parent.parent
+tests = repo / 'builder/portable-tests'
+manifest = json.loads((tests/'matrix.json').read_text())
+row = next((r for r in manifest['cases'] if r['name'] == args.case), None)
+if row is None:
+    parser.error('Unknown core-image matrix case')
+formats = args.formats or (['native'] if row['format'] == 'apk' else ['native', 'tar'])
+if row['format'] == 'apk' and 'tar' in formats:
+    parser.error('The musl profile publishes a native APK runtime, not a runtime tar archive')
+results = Path(args.results).resolve()
+results.mkdir(parents=True, exist_ok=True)
+report = {'case': row, 'architecture': args.arch, 'source_matrix': manifest['source'],
+          'source_revision': manifest['source_revision'], 'formats': [], 'pass': False}
+
+def run(command, *, log=None, check=True, timeout=1200):
+    try:
+        completed = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                   text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        # communicate() returns bytes on timeout even with text=True. Keep the
+        # partial build output so CI artifacts explain where a fixture stalled.
+        output = error.stdout or b''
+        if isinstance(output, bytes):
+            output = output.decode('utf-8', errors='replace')
+        if log:
+            Path(log).write_text(output)
+        raise RuntimeError('Command timed out: ' + ' '.join(command) + '\n' + output[-6000:]) from error
+    if log:
+        Path(log).write_text(completed.stdout)
+    if check and completed.returncode:
+        raise RuntimeError('Command failed: ' + ' '.join(command) + '\n' + completed.stdout[-6000:])
+    return completed
+
+if row['exclude_reason'] or args.arch not in row['architectures']:
+    report.update(skipped=True, reason=row['exclude_reason'] or 'Core-image pipeline builds this image only on amd64')
+    (results/'report.json').write_text(json.dumps(report, indent=2)+'\n')
+    print(report['reason'])
+    raise SystemExit(0)
+
+artifact_dir = Path(args.artifact_directory).resolve()
+# Verify any published checksum manifests before installing the artifact.
+for checksum in artifact_dir.glob('*.sha256'):
+    for line in checksum.read_text().splitlines():
+        if not line.strip():
+            continue
+        digest, filename = line.split(maxsplit=1)
+        target = (artifact_dir/filename.lstrip('*')).resolve()
+        # Sources are checksum-published to S3 but deliberately excluded from
+        # GitLab artifacts to avoid 31 redundant large downloads. No runtime,
+        # debug, SBOM or report artifact may be missing.
+        source_archive = checksum.name.removesuffix('.sha256') + '.sources.tar.gz'
+        if filename.lstrip('*') == source_archive and not target.exists():
+            continue
+        if artifact_dir not in target.parents or hashlib.sha256(target.read_bytes()).hexdigest() != digest:
+            raise SystemExit('Published artifact checksum mismatch: '+filename)
+run(['docker', 'info', '--format', '{{.Architecture}}'], log=results/'docker-architecture.txt')
+architecture = (results/'docker-architecture.txt').read_text().strip()
+if architecture not in ({'x86_64', 'amd64'} if args.arch == 'amd64' else {'aarch64', 'arm64'}):
+    raise SystemExit('Portable matrix must run on native architecture, not QEMU')
+unique = uuid.uuid4().hex[:12]
+browser_image = 'kasm-portable-browser:' + unique
+try:
+    run(['docker', 'build', '--platform', 'linux/'+args.arch, '-t', browser_image,
+         '-f', str(tests/'browser.Dockerfile'), str(tests)], log=results/'browser-build.log')
+    for requested_format in formats:
+        fmt = row['format'] if requested_format == 'native' else 'tar'
+        extension = 'tar.gz' if fmt == 'tar' else fmt
+        basename = 'kasmvncserver_portable_musl_*_' if fmt == 'apk' else 'kasmvncserver_portable_*_'
+        files = list(artifact_dir.glob(basename+args.arch+'.'+extension))
+        if len(files) != 1:
+            raise RuntimeError('Expected exactly one published '+extension+' artifact')
+        artifact = files[0]
+        provenance_path = artifact.with_name(artifact.name.removesuffix('.'+extension)+'.provenance.json')
+        provenance = json.loads(provenance_path.read_text()) if provenance_path.exists() else {}
+        ffmpeg_mode = provenance.get('ffmpeg_mode', 'static')
+        host_shared = provenance.get('desktop_mode') == 'host-shared'
+        if ffmpeg_mode not in ('static', 'adapters'):
+            raise RuntimeError('Unknown artifact FFmpeg mode: '+str(ffmpeg_mode))
+        out = results/fmt
+        out.mkdir(exist_ok=True)
+        item = {'format': fmt, 'artifact': artifact.name, 'pass': False, 'ffmpeg_mode': ffmpeg_mode,
+                'lifecycle': 'manual tar extraction/removal, not a package manager' if fmt == 'tar' else 'native package manager',
+                'upgrade': 'not tested: no previous package provided'}
+        report['formats'].append(item)
+        image = 'kasm-portable-test:'+unique+'-'+fmt
+        container = 'kasm-portable-'+unique+'-'+fmt
+        browser = container+'-browser'
+        probe_volume = container+'-probe'
+        try:
+            with tempfile.TemporaryDirectory(prefix='kasm-portable-test-') as temp:
+                context = Path(temp)
+                shutil.copytree(tests, context/'test')
+                (context/'test/host-libraries.json').write_text(
+                    json.dumps(provenance.get('host_libraries', [])))
+                (context/'artifacts').mkdir()
+                shutil.copy2(artifact, context/'artifacts'/artifact.name)
+                if fmt == 'apk':
+                    keys = list(artifact_dir.glob('*.rsa.pub'))
+                    if len(keys) != 1:
+                        raise RuntimeError('Expected exactly one published APK signing public key')
+                    shutil.copy2(keys[0], context/'artifacts'/'kasmvnc_signing_key.rsa.pub')
+                    item['signature'] = 'apk verify with published public key'
+                initial = artifact.name
+                replacement_action = 'reinstall'
+                if args.previous_package and fmt != 'tar':
+                    previous = Path(args.previous_package).resolve()
+                    if previous.suffix != '.'+fmt:
+                        raise RuntimeError('Previous package must match native package format')
+                    initial = 'previous.'+fmt
+                    replacement_action = 'upgrade'
+                    shutil.copy2(previous, context/'artifacts'/initial)
+                    if fmt == 'apk' and args.previous_apk_key:
+                        shutil.copy2(Path(args.previous_apk_key).resolve(),
+                                     context/'artifacts/previous_signing_key.rsa.pub')
+                    item['upgrade'] = 'previous package installed, then candidate replaces it'
+                (context/'Dockerfile').write_text(
+                    'ARG BASE\nFROM ${BASE}\nUSER root\n'
+                    + ('RUN apk add --no-cache bash ca-certificates\n' if fmt == 'apk' else '') +
+                    'COPY test/prerequisites.sh /portable/prerequisites.sh\n'
+                    'RUN bash /portable/prerequisites.sh '+fmt+(' all ' if fmt == 'tar' else ' bootstrap ')+ffmpeg_mode+'\n'
+                    'COPY artifacts /artifacts\nCOPY test/package.sh /portable/package.sh\n'
+                    'RUN bash /portable/package.sh '+('install-previous' if args.previous_package and fmt != 'tar' else 'install')+' '+fmt+' /artifacts/'+initial+'\n'
+                    + ('RUN bash /portable/prerequisites.sh '+fmt+' tools '+ffmpeg_mode+'\n' if fmt != 'tar' else '') +
+                    'RUN bash /portable/package.sh mark '+fmt+'\n'
+                    'RUN bash /portable/package.sh '+replacement_action+' '+fmt+' /artifacts/'+artifact.name+'\n'
+                    'RUN bash /portable/package.sh verify-security '+fmt+'\n'
+                    'COPY test/session.sh /portable/session.sh\n'
+                    'COPY test/openssl-runtime.py /portable/openssl-runtime.py\n'
+                    'COPY test/host-runtime.py /portable/host-runtime.py\n'
+                    'COPY test/host-libraries.json /portable/host-libraries.json\n'
+                    'COPY test/focus.py /portable/focus.py\n'
+                    'RUN mkdir /probe && chmod 1777 /probe\n'
+                    'ENTRYPOINT ["runuser", "-u", "kasm_test", "--", "bash", "/portable/session.sh"]\n')
+                run(['docker','build','--platform','linux/'+args.arch,'--build-arg','BASE='+row['image'],
+                     '-t',image,str(context)], log=out/'install.log')
+            run(['docker','run','-d','--runtime=runc','--name',container,'--shm-size=512m',
+                 '--mount','type=volume,source='+probe_volume+',target=/probe',image], log=out/'launch.log')
+            ready = False
+            for _ in range(60):
+                if run(['docker','exec',container,'test','-f','/home/kasm_test/ready'],check=False,timeout=20).returncode == 0:
+                    ready = True
+                    break
+                if run(['docker','inspect','--format','{{.State.Running}}',container]).stdout.strip() != 'true':
+                    break
+                time.sleep(1)
+            if not ready:
+                raise RuntimeError('Packaged session did not pass launcher/GLX readiness checks')
+            glx = run(['docker','exec',container,'cat','/home/kasm_test/glxinfo.txt']).stdout
+            item['software_glx_renderer'] = next(line for line in glx.splitlines() if line.startswith('OpenGL renderer string:'))
+            openssl_runtime = run(['docker','exec',container,'cat','/home/kasm_test/openssl-runtime.json']).stdout
+            (out/'openssl-runtime.json').write_text(openssl_runtime)
+            item['openssl_runtime'] = json.loads(openssl_runtime)
+            item['tls_protocols'] = ['1.2', '1.3']
+            if host_shared:
+                pid = str(item['openssl_runtime']['pid'])
+                host_runtime = run(['docker', 'exec', container, 'runuser', '-u', 'kasm_test', '--',
+                                    'python3', '/portable/host-runtime.py', pid,
+                                    '/portable/host-libraries.json']).stdout
+                (out/'host-runtime.json').write_text(host_runtime)
+                item['host_runtime'] = json.loads(host_runtime)
+            browser_run = run(['docker','run','--name',browser,'--runtime=runc','--network','container:'+container,
+                              '--shm-size=512m','--mount','type=volume,source='+probe_volume+',target=/probe,readonly',browser_image],check=False,timeout=120)
+            (out/'browser-command.log').write_text(browser_run.stdout)
+            run(['docker','cp',browser+':/results/.',str(out)],check=False)
+            if browser_run.returncode:
+                raise RuntimeError('Browser software H.264 test failed')
+            proof = run(['docker','exec',container,'cat','/home/kasm_test/input-proof']).stdout
+            if proof != 'portable-input-ok':
+                raise RuntimeError('Browser keyboard input did not reach desktop terminal')
+            logs = run(['docker','exec',container,'bash','-c','cat /home/kasm_test/.vnc/*.log']).stdout
+            (out/'xvnc.log').write_text(logs)
+            if not re.search(
+                    r'(?:SoftwareEncoder|FFmpegVideoEncoder: Software libx264): '
+                    r'Screen id 0, codec 16, frame size: [1-9][0-9]*\b', logs):
+                raise RuntimeError('Server did not confirm software H.264 frame encoding')
+            if ffmpeg_mode == 'adapters':
+                selected = re.search(r'Selected FFmpeg avcodec (\d+) from (.+)', logs)
+                if not selected or int(selected[1]) not in range(58, 64):
+                    raise RuntimeError('Server did not confirm a supported system FFmpeg adapter')
+                item['ffmpeg_runtime'] = {'avcodec_major': int(selected[1]), 'path': selected[2].strip()}
+            run(['docker','exec',container,'runuser','-u','kasm_test','--','kasmvncserver','-kill',':1'],log=out/'stop.log')
+            if run(['docker','exec',container,'runuser','-u','kasm_test','--','xdpyinfo','-display',':1'],check=False).returncode == 0:
+                raise RuntimeError('Launcher stop left the X server running')
+            run(['docker','exec',container,'bash','/portable/package.sh','remove',fmt],log=out/'uninstall.log')
+            # Reinstall after removal also exercises residual config handling.
+            run(['docker','exec',container,'bash','/portable/package.sh','install',fmt,'/artifacts/'+artifact.name],log=out/'install-after-remove.log')
+            item['pass'] = True
+            item.update(authentication='401/401/200',
+                        keyboard_input=True, software_h264=True,
+                        reinstall_config_preserved=True, uninstall_config_preserved=True)
+        finally:
+            run(['docker','logs',container],log=out/'container.log',check=False)
+            shutil.rmtree(out/'session-logs', ignore_errors=True)
+            run(['docker','cp',container+':/home/kasm_test/.vnc',str(out/'session-logs')],check=False)
+            # Retain runtime diagnostics, not generated test private keys.
+            for diagnostic in (out/'session-logs').rglob('*'):
+                if diagnostic.is_file() and diagnostic.suffix != '.log':
+                    diagnostic.unlink()
+            run(['docker','cp',container+':/home/kasm_test/glxinfo.txt',str(out/'glxinfo.txt')],check=False)
+            run(['docker','cp',container+':/tmp/portable-ldd.txt',str(out/'ldd.txt')],check=False)
+            run(['docker','rm','-f',browser,container],check=False)
+            run(['docker','image','rm',image],check=False)
+            run(['docker','volume','rm',probe_volume],check=False)
+    report['pass'] = True
+except Exception as error:
+    report['error'] = str(error)
+    print(str(error))
+finally:
+    (results/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+    run(['docker','image','rm',browser_image],check=False)
+raise SystemExit(0 if report['pass'] else 1)

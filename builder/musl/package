@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Runtime-only signed APKv2 packaging in the native Alpine dependency image.
+set -euo pipefail
+cd /src
+: "${KASMVNC_PORTABLE_VERSION:?}" "${KASMVNC_PORTABLE_BASENAME:?}" "${KASMVNC_COMMIT_ID:?}"
+export KASMVNC_LIBC=musl
+version=$KASMVNC_PORTABLE_VERSION
+basename=$KASMVNC_PORTABLE_BASENAME
+host_dependencies=$(python3 builder/portable/host_libraries.py apk)
+[[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && $basename =~ ^[a-zA-Z0-9_.+-]+$ ]]
+case $(uname -m) in
+  x86_64) arch=amd64; apkarch=x86_64 ;;
+  aarch64) arch=arm64; apkarch=aarch64 ;;
+  *) exit 1 ;;
+esac
+work=$(mktemp -d /tmp/kasm-musl-package.XXXXXX)
+trap 'rm -rf "$work"' EXIT
+# The orchestrator supplies a read-only runtime volume, never key-valued env.
+keys=${KASMVNC_APK_KEYS_DIR:?Signing key directory must be supplied at runtime}
+test -r "$keys/kasmvnc_signing_key.rsa"
+test -r "$keys/kasmvnc_signing_key.rsa.pub"
+export PACKAGER_PRIVKEY=$keys/kasmvnc_signing_key.rsa
+root=$work/root
+doc=$root/usr/share/doc/kasmvncserver
+debugroot=$work/debug
+mkdir -p "$root/usr/bin" "$root/usr/share/man/man1" "$doc" \
+  "$root/usr/share/kasmvnc" \
+  "$root/etc/kasmvnc" "$root/usr/lib/kasmvncserver" /artifacts
+install -m755 unix/xserver/hw/vnc/Xvnc "$root/usr/bin/Xkasmvnc"
+install -m755 unix/vncserver-native/vncserver-native "$root/usr/bin/kasmvncserver"
+install -m755 unix/vncconfig/vncconfig "$root/usr/bin/kasmvncconfig"
+install -m755 unix/kasmvncpasswd/kasmvncpasswd unix/kasmxproxy/kasmxproxy "$root/usr/bin/"
+cp -a builder/www "$root/usr/share/kasmvnc/"
+test -s "$root/usr/share/kasmvnc/www/index.html"
+install -m644 unix/kasmvnc_defaults.yaml "$root/usr/share/kasmvnc/"
+sed -i -e 's!pem_certificate: .*!pem_certificate: /etc/ssl/private/kasmvnc.pem!' \
+  -e 's!pem_key: .*!pem_key: /etc/ssl/private/kasmvnc.pem!' \
+  "$root/usr/share/kasmvnc/kasmvnc_defaults.yaml"
+sed -e 's/^\([^#]\)/# \1/' "$root/usr/share/kasmvnc/kasmvnc_defaults.yaml" > "$root/etc/kasmvnc/kasmvnc.yaml"
+install -m755 builder/startup/deb/select-de.sh "$root/usr/lib/kasmvncserver/"
+install -m644 LICENSE.TXT README.md "$doc/"
+install -m644 builder/musl/README.md "$doc/PORTABLE.md"
+for pair in 'unix/xserver/hw/vnc/Xvnc.man Xkasmvnc' 'unix/vncserver.man kasmvncserver' \
+  'unix/vncconfig/vncconfig.man kasmvncconfig' 'unix/vncpasswd/vncpasswd.man kasmvncpasswd' \
+  'unix/kasmxproxy/kasmxproxy.man kasmxproxy'; do
+  read -r source name <<< "$pair"
+  gzip -n -c "$source" > "$root/usr/share/man/man1/$name.1.gz"
+done
+python3 builder/portable/split-debug.py "$root" "$debugroot" "/artifacts/$basename.debug.json"
+python3 builder/musl/audit.py "$root" "$arch" "$doc/elf-audit.json"
+python3 builder/portable/provenance.py "$doc" "$arch"
+python3 builder/portable/supply-chain.py "$doc" "$arch" "/artifacts/$basename"
+builder/portable/scan "/artifacts/$basename" "$doc"
+for pair in 'Xvnc Xkasmvnc' 'vncserver kasmvncserver' 'vncconfig kasmvncconfig' \
+  'vncpasswd kasmvncpasswd' 'xproxy kasmxproxy'; do
+  read -r generic kasm <<< "$pair"
+  ln -s "$kasm" "$root/usr/bin/$generic"
+  ln -s "$kasm.1.gz" "$root/usr/share/man/man1/$generic.1.gz"
+done
+find "$root" "$debugroot" -type d -exec chmod 755 {} +
+find "$root" "$debugroot" -type f -exec chmod 644 {} +
+chmod 755 "$root/usr/bin/"* "$root/usr/lib/kasmvncserver/select-de.sh"
+tar --sort=name --owner=0 --group=0 --numeric-owner -czf "/artifacts/$basename.debug.tar.gz" -C "$debugroot" .
+# Baseline abuild emits APKv2 compatible with Alpine apk2 and apk3. Explicit
+# dependencies replace auto tracing; audit.py already checks every shipped ELF.
+for flavor in runtime debug; do
+  recipe=$work/recipes/$flavor
+  mkdir -p "$recipe"
+  if [[ $flavor == runtime ]]; then
+    pkgname=kasmvncserver
+    stage=$root
+    dependencies="musl>=1.2.5 libssl3>=3.0.0 libcrypto3>=3.0.0 $host_dependencies mesa-gl mesa-gbm xterm setxkbmap bash openssl tzdata xauth xdpyinfo xkbcomp xkeyboard-config busybox"
+    cp alpine/kasmvncserver/kasmvncserver.post-install "$recipe/"
+    cp alpine/kasmvncserver/kasmvncserver.post-deinstall "$recipe/"
+    # The baseline package hook assumes this directory exists; ensure clean
+    # minimal containers work as well as desktop images.
+    sed -i '/local cert_file=/a\  mkdir -p /etc/ssl/private' "$recipe/kasmvncserver.post-install"
+    grep -Fqx "  mkdir -p /etc/ssl/private" "$recipe/kasmvncserver.post-install"
+    cp "$recipe/kasmvncserver.post-install" "$recipe/kasmvncserver.post-upgrade"
+    hooks='kasmvncserver.post-install kasmvncserver.post-upgrade kasmvncserver.post-deinstall'
+    suffix=apk
+  else
+    pkgname=kasmvncserver-dbg
+    stage=$debugroot
+    dependencies=''
+    hooks=''
+    suffix=debug.apk
+  fi
+  cat > "$recipe/APKBUILD" <<EOF
+pkgname=$pkgname
+pkgver=$version
+pkgrel=1
+pkgdesc="Portable musl KasmVNC with matching build-ID symbols"
+url="https://github.com/kasmtech/KasmVNC"
+arch="$apkarch"
+license="GPL-2.0-or-later"
+depends="$dependencies"
+options="!check !strip !tracedeps"
+install="$hooks"
+source=""
+package() {
+  mkdir -p "\$pkgdir"
+  cp -a "$stage/." "\$pkgdir/"
+}
+EOF
+  (cd "$recipe" && abuild -F -d -P "$work/packages" rootpkg)
+  mapfile -t packages < <(find "$work/packages" -name "$pkgname-$version-r1.apk" -type f)
+  [[ ${#packages[@]} == 1 ]]
+  cp "${packages[0]}" "/artifacts/$basename.$suffix"
+done
+install -m644 "$keys/kasmvnc_signing_key.rsa.pub" "/artifacts/$basename.rsa.pub"
+if [[ -f $keys/TEST-KEY.txt ]]; then
+  cp "$keys/TEST-KEY.txt" "/artifacts/$basename.TEST-KEY.txt"
+fi
+apk --keys-dir "$keys" verify "/artifacts/$basename.apk" "/artifacts/$basename.debug.apk"
+cp "$doc/provenance.json" "/artifacts/$basename.provenance.json"
+cp "$doc/elf-audit.json" "/artifacts/$basename.elf-audit.json"
+cd /artifacts
+sha256sum "$basename.apk" "$basename.debug.apk" "$basename.debug.tar.gz" "$basename.debug.json" \
+  "$basename.provenance.json" "$basename.elf-audit.json" "$basename.cdx.json" \
+  "$basename.sources.json" "$basename.sources.tar.gz" "$basename.vulnerabilities.json" \
+  "$basename.vex-applied.json" "$basename.grype.raw.json" "$basename.assessments.json" "$basename.openvex.json" \
+  "$basename.vulnerability-summary.json" "$basename.rsa.pub" > "$basename.sha256"

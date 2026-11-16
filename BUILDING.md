@@ -68,56 +68,12 @@ sudo docker exec -it kasmvnc_dev /bin/bash
 
 ## Building in CI
 
-### Achieve a faster feedback loop in CI
+### Portable CI selection
 
-To achieve a faster feedback loop in CI, you can limit built distros to a few
-distros you're interested in.
-
-#### Best way to debug CI in a fast feedback loop
-
-Specify `BUILD_DISTROS_REGEX: "jammy"`, and build only Ubuntu Jammy. That's
-only 2 distro package build jobs, one for amd64 and one for arm64.
-
-Specify `ALLOW_RUN_TESTS_TO_FAIL: true` to ignore `run_test` job failures and
-debug the upload stage.
-
-#### Build only a few distros
-
-To build only distros you want, specify a regex in `$BUILD_DISTROS_REGEX`
-variable.  For example, build Ubuntu Jammy and Focal with `BUILD_DISTROS_REGEX:
-"jammy|focal"`. Or simply a single distro Ubuntu Jammy with
-`BUILD_DISTROS_REGEX: "jammy"`.<br>
-To build all distros, specify `BUILD_DISTROS_REGEX: all`.<br>
-To build no distros, and no www, specify `BUILD_DISTROS_REGEX: none`.
-
-##### Required distros to build
-
-Functional tests and spec tests use Ubuntu Jammy. If Jammy is not built, those
-stages fail. If you want to debug pipeline stages after `functional_test`,
-building Ubuntu Jammy is required.
-
-Specify `BUILD_DISTROS_REGEX: "jammy|<distro_you're_interested_in>"`.
-
-##### Heed, when writing regex
-
-Regex placed in `$BUILD_DISTROS_REGEX` are [Bash
-regex](https://tldp.org/LDP/Bash-Beginners-Guide/html/sect_04_01.html) and are
-processed by Bash.
-
-Any whitespace in `$BUILD_DISTROS_REGEX` must be escaped. For example,
-`BUILD_DISTROS_REGEX: "\ jammy"`.
-
-#### Debug upload stage, while building only a few distros
-
-`run_test` jobs fail the pipeline, whenever packages for a distro weren't
-built. When building only a few distros, packages for the rest of distros aren't
-built. Not finding the package to test, a `run_test` job fails, pipeline fails,
-and the upload stage doesn't get executed.
-
-To still execute and debug upload stage in a faster feedback loop (building only
-a few distros), specify `ALLOW_RUN_TESTS_TO_FAIL: true`.  Gitlab CI's
-`allow_failure: true` is used to allow the pipeline to ignore failed `run_test`
-jobs and continue to the upload stage.
+CI builds four portable targets by default and tests their packages across the
+supported userspace matrix. Use `builder/test-portable --case <case>` locally
+for focused runtime debugging. Every branch pipeline builds all four targets.
+See [the CI scope](#portable-ci) for required functional qualification.
 
 ## Building the KasmVNC Server on Modern Unix/Linux Systems
 
@@ -218,7 +174,19 @@ build configuration or module dependencies.
 Add `-DCMAKE_BUILD_TYPE=Debug` to the CMake command line.
 
 
-## Portable (semi-static) Build
+## Portable application packages
+
+The glibc 2.28 portable profile produces native x86_64 and ARM64 DEB, RPM and
+filesystem-root tar archives. It uses a C++20 launcher and host desktop/compiler
+libraries, OpenSSL 3 and FFmpeg runtime adapters. Selected application libraries
+remain embedded. A separate [musl 1.2.5 profile](builder/musl/README.md) produces
+signed APKs for Alpine 3.21–3.24 on both architectures.
+
+See [portable build and CI instructions](builder/README.md#portable-application-packages),
+[installation and compatibility](builder/portable/README.md), and
+[static-link implementation details](builder/STATIC_BUILD.md).
+
+## Legacy semi-static Build
 
 KasmVNC can under favourble circumstances be built in a way that allows
 the resulting binaries to run on any system without having to also install
@@ -508,85 +476,66 @@ The debian folder used to create the nightly builds and releases
 can be found in the "contrib/deb/ubuntu-precise" directory of the
 KasmVNC subversion trunk.
 
-### Optional Noble workspace images
+## Portable CI
 
-Branch pipelines offer `build_workspace_noble_amd64` and
-`build_workspace_noble_arm64` as independent manual jobs. Once the matching
-`build_amd64` / `build_arm64` Noble matrix job succeeds, select **Run** on the
-workspace job in GitLab. There is no need to wait for other distro builds,
-tests, the S3 index, or a pipeline in either image repository. Leaving these
-jobs unplayed (or a workspace build failing) does not block the main pipeline.
-These development images do not replace the release test matrix.
+The default pipeline has four native package producers: glibc and musl on
+amd64 and arm64. The glibc build targets glibc 2.28+, using Oracle Linux 8 and
+GCC Toolset 14; C++20 and Xorg 21.1.25 are retained. Musl targets 1.2.5+.
+There are no legacy package producers or legacy package test consumers.
+`BUILD_WORKSPACE_LEGACY` and `BUILD_FULL_LEGACY` have been removed; setting
+those obsolete variables cannot re-enable native distro builds.
+`BUILD_PORTABLE` and `BUILD_DISTROS_REGEX` have also been removed. Every branch
+pipeline builds all four portable profiles and runs the complete runtime matrix;
+obsolete selection variables cannot skip this coverage.
 
-Each job builds Ubuntu 24.04 core and Noble Desktop on its native runner,
-installs the exact same-pipeline KasmVNC `.deb`, checks the installed server
-binary and startup, then publishes to the KasmVNC GitLab Container Registry:
+The required matrix covers 39 glibc and eight Alpine cases (47 distro/architecture
+cases, 86 format runs), including Oracle/Rocky/AlmaLinux 8 and Leap 15.6 on both
+architectures. Minimal functional and launcher specification tests consume the
+portable amd64 DEB. Standard functional qualification adds Oracle Linux 8 with
+an asserted glibc 2.28 floor and Kali with glibc 2.43 or newer, each on both kernel
+hosts. Existing userspace and Noble/Oracle 9 GPU configurations remain, giving
+16 Standard configurations. The functional runner fails if a boundary image no
+longer meets its asserted glibc version. Containers still share their host kernel.
 
-```
-$CI_REGISTRY_IMAGE/ubuntu-noble-desktop:${CI_COMMIT_REF_SLUG}_amd64
-$CI_REGISTRY_IMAGE/ubuntu-noble-desktop:${CI_COMMIT_REF_SLUG}_arm64
-```
+Downstream Workspaces installers must use portable asset names and install the
+host dependencies. The former optional Noble image jobs consumed native distro
+packages and have been removed. Local distro recipes remain for development;
+they are not release pipeline products.
 
-A build also publishes a reproducible tag ending in
-`${CI_COMMIT_REF_SLUG}-${CI_PIPELINE_ID}-${CI_JOB_ID}_amd64` (or `_arm64`). Use
-that reference or the reported digest when sharing a particular build.
-`workspace-image-report/image.json` records the image, digest, package hash,
-package producer job, architecture, and all three source commits. Registry
-digests are recorded after publishing; `--no-push` reports instead identify the
-local image ID and explicitly state that nothing was published. The report
-and startup log are retained for 30 days. Branch aliases are serialized per
-architecture; an older pipeline cannot replace a newer pipeline's alias.
-Sanitized branch-name collisions are rejected rather than overwriting another
-branch's image. Use distinct branch slugs if GitLab's normalization/truncation
-would produce identical names.
+Separate build-ID debug symbols are published in DEB, RPM and tar formats, with
+checksums and a `.debug.json` mapping. See `DEBUGGING.md` for exact-build matching
+and the existing crashpad lookup. Portable SBOM, source-bundle and advisory scan
+artifacts are described in `builder/portable/README.md`.
 
-Both image repositories must allow KasmVNC's `CI_JOB_TOKEN` to read their Git
-repositories, and the user starting the job must have access. Before fetching
-either source, the helper checks effective read access to both repositories
-with the job token and reports actionable allowlist/user-access diagnostics.
-This tests the permissions actually available to the job without requiring
-administrative access to inspect allowlist settings. The job uses the
-KasmVNC project's built-in registry credentials for publishing. A tester's
-Kasm Workspaces deployment needs its own registry credentials (for example, a
-GitLab deploy token with `read_registry`) and an agent matching the image's
-architecture. Configure a Workspace image with the reported reference and
-credentials, then launch a fresh session. Do not share the expiring CI job
-token. ARM64 Desktop has the applications supported by its existing installer;
-x86-only applications such as Chrome are skipped in favor of Chromium.
+Portable builds also publish a CycloneDX SBOM, exact source-input bundle and
+advisory vulnerability reports for each architecture. Generation, source
+verification and scanner execution errors fail CI; vulnerability findings are
+reported without an initial severity gate. See
+[`builder/portable/README.md`](builder/portable/README.md#sbom-source-inputs-and-advisory-vulnerability-reports)
+for scope, host dependencies, source limitations and artifact names.
 
-`WORKSPACE_CORE_REF` and `WORKSPACE_DESKTOP_REF` default to `develop`; they can
-be overridden when starting the manual job with a compatible branch, tag, or
-commit SHA. Resolved SHAs are recorded. No commits or pipelines are created in
-those repositories: their tracked source is exported into temporary contexts.
-The package download line in the core installer is replaced in that temporary
-copy; the existing Dockerfile includes the local package. Runtime startup
-scripts and downstream CI files are not modified. The desktop's existing
-`BASE_IMAGE` / `BASE_TAG` interface selects the locally built core image.
+Portable CI builds reuse a precompiled dependency image per architecture, keyed by
+all files in `builder/scripts/portable-dependencies/`. Ordinary KasmVNC changes
+rebuild the server and Xorg integration, not the toolchain and dependencies.
+See [dependency cache maintenance](builder/portable/README.md#reusing-compiled-dependencies)
+for deliberate security refreshes, provenance and registry cleanup.
 
-If Noble was filtered out by `BUILD_DISTROS_REGEX`, failed, or its artifacts
-expired, build/retry the matching Noble package job first. The workspace job
-requires a successful producer marker for this pipeline and commit; it never
-falls back to a released package. The native runner needs Docker-in-Docker,
-sufficient disk for both large images, and up to three hours. Infrastructure
-failures may retry twice; application build failures remain visible for
-investigation. Third-party package/download failures in the image repositories
-can still occur.
+### Functional tests and merge qualification
 
-For local validation, run the Python unit tests in a Debian container with
-Python 3 and `dpkg-deb`:
+Every branch uses the same full build/test pipeline, whether it has no merge
+request, a draft merge request, or a ready merge request. Merge-request events
+and tags do not create additional pipelines. Manual and scheduled branch
+pipelines use the same jobs. All four native portable producers, the runtime
+matrix, and unit tests remain enabled.
 
-```
-python3 -m unittest discover -s .ci/tests -v
-```
+Minimal functional tests run automatically and must pass (`allow_failure: false`).
+Standard functional tests are manual and optional (`allow_failure: true`);
+`RUN_STANDARD` no longer starts them automatically. Developers must run Standard
+on the current commit and verify success before requesting review. Reviewers
+must check that job's result: a green pipeline alone does not prove Standard ran
+or passed. A new commit requires a new Standard run.
 
-The same build helper supports `--no-push`, `--core-source` and
-`--desktop-source` (local Git checkouts), and `--package-dir`. It still requires
-the package producer's `workspace-package.txt` and matching CI pipeline/commit
-identity, plus `CI_JOB_ID`, `CI_COMMIT_REF_NAME`, and `CI_COMMIT_REF_SLUG`.
-Run it inside a container with the Docker CLI/buildx, Python 3, Git, dpkg tools,
-and access to a native Docker daemon. `--no-push` performs both builds and the
-smoke checks without registry writes. These checks also verify the configured
-Workspaces entrypoint, executable scripts, and unchanged script contents
-relative to the freshly built core image. The shared Docker daemon's images remain
-available for inspection. Full interactive Workspaces testing is a separate
-validation step after publishing.
+The four portable resource groups are retained to protect shared dependency-cache
+publication across commits and branches. Different architecture/libc profiles
+run concurrently, but matching profiles in different pipelines serialize for
+the whole job. A push no longer launches duplicate branch/MR package builds.

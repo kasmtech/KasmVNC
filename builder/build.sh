@@ -11,12 +11,16 @@ fi
 # invoke build.sh with no args — still produce the server tarball and still fail
 # if the web assets (builder/www, from builder/build-www) are missing.
 run_servertarball=1
+force_autoreconf=1
 for arg in "$@"; do
   case "$arg" in
     # Skip the final `make servertarball` packaging step (and the /build copies).
     # For dev/CI smoke builds that only need the Xvnc binary + libraries and don't
     # have builder/www. Do NOT pass this in packaging pipelines.
     --no-servertarball) run_servertarball=0 ;;
+    # Keep dependency-based regeneration for incremental builds, without forcing
+    # every Autotools output to be rewritten. Cold/package builds retain -f.
+    --no-force-autoreconf) force_autoreconf=0 ;;
     *) echo "build.sh: ignoring unknown argument: $arg" >&2 ;;
   esac
 done
@@ -70,11 +74,11 @@ setup_sccache() {
 
 setup_compilers_to_see_libs_in_dot_local() {
   export PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig:$HOME/.local/lib64/pkgconfig:$HOME/.local/share/pkgconfig:${PKG_CONFIG_PATH}"
-  export CPATH="$HOME/.local/include${CPATH:+:CPATH}"
+  export CPATH="$HOME/.local/include${CPATH:+:$CPATH}"
 }
 
 ensure_libturbojpeg_links() {
-  export LDFLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64"
+  export LDFLAGS="${KASMVNC_OPENSSL_PREFIX:+-L$KASMVNC_OPENSSL_PREFIX/lib }${KASMVNC_GCC_RUNTIME_PREFIX:+-L$KASMVNC_GCC_RUNTIME_PREFIX/lib }${KASMVNC_STATIC_RUNTIME_PREFIX:+-L$KASMVNC_STATIC_RUNTIME_PREFIX/lib }-L$HOME/.local/lib -L$HOME/.local/lib64 -Wl,-z,relro,-z,now"
 }
 
 # For build-dep to work, the apt sources need to have the source server
@@ -91,7 +95,11 @@ cd /tmp
 setup_sccache
 setup_compilers_to_see_libs_in_dot_local
 
+if [[ ${KASMVNC_PREBUILT_DEPENDENCIES:-0} != 1 ]]; then
 $SCRIPTS_DIR/build-deps.sh
+else
+    test "$(cat /opt/kasm-dependencies-ready)" = "${KASMVNC_DEPENDENCIES_MARKER:-kasmvnc-portable-dependencies-v1}"
+fi
 
 # default to the version of x in Ubuntu 18.04, otherwise caller will need to specify
 XORG_VER=${XORG_VER:-"1.19.6"}
@@ -118,14 +126,24 @@ ensure_libturbojpeg_links
 
 cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . -DBUILD_VIEWER:BOOL=OFF \
   -DENABLE_GNUTLS:BOOL=OFF \
+  -DKASMVNC_NATIVE_LAUNCHER:BOOL="${KASMVNC_NATIVE_LAUNCHER:-OFF}" \
+  -DKASMVNC_STATIC_FFMPEG:BOOL="${KASMVNC_STATIC_FFMPEG:-OFF}" \
+  -DKASMVNC_FFMPEG_ADAPTERS:BOOL="${KASMVNC_FFMPEG_ADAPTERS:-OFF}" \
+  -DKASMVNC_FFMPEG_HEADERS_ROOT="${KASMVNC_FFMPEG_HEADERS_ROOT:-/opt/kasm-ffmpeg-headers}" \
+  -DKASMVNC_CODEC_PREFIX="${KASMVNC_CODEC_PREFIX:-}" \
+  -DKASMVNC_OPENSSL_PREFIX="${KASMVNC_OPENSSL_PREFIX:-}" \
+  -DKASMVNC_STATIC_RUNTIME_PREFIX="${KASMVNC_STATIC_RUNTIME_PREFIX:-}" \
+  -DKASMVNC_STATIC_DESKTOP_PREFIX="${KASMVNC_STATIC_DESKTOP_PREFIX:-}" \
+  -DKASMVNC_DYNAMIC_DESKTOP:BOOL="${KASMVNC_DYNAMIC_DESKTOP:-OFF}" \
+  -DKASMVNC_OWN_GLIBC_CRT:BOOL="${KASMVNC_OWN_GLIBC_CRT:-OFF}" \
   -DCMAKE_PREFIX_PATH="$HOME/.local" \
   -DCMAKE_LIBRARY_PATH="$HOME/.local/lib;$HOME/.local/lib64" \
   -DCMAKE_INCLUDE_PATH="$HOME/.local/include" \
-  -DCMAKE_EXE_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64" \
-  -DCMAKE_SHARED_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64" \
-  -DCMAKE_MODULE_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64"
+  -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
+  -DCMAKE_SHARED_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64 -Wl,-z,relro,-z,now" \
+  -DCMAKE_MODULE_LINKER_FLAGS="-L$HOME/.local/lib -L$HOME/.local/lib64 -Wl,-z,relro,-z,now"
 
-make -j"$(nproc)"
+make -j"${BUILD_JOBS:-$(nproc)}"
 
 if [ -z "${ATSPI_DEBUG:-}" ] && [ -f CMakeCache.txt ]; then
   case "$(sed -n 's/^ATSPI_DEBUG:BOOL=//p' CMakeCache.txt)" in
@@ -153,7 +171,11 @@ else
   cd unix/xserver
 fi
 
-autoreconf -i
+autoreconf_options=(-i)
+if [[ "$force_autoreconf" == 1 ]]; then
+  autoreconf_options+=(-f)
+fi
+autoreconf "${autoreconf_options[@]}"
 # Configuring Xorg is long and has many distro-specific paths.
 # The distro paths start after prefix and end with the font path,
 # everything after that is based on BUILDING.txt to remove unneeded
@@ -188,11 +210,24 @@ fi
     --with-xkb-output=/var/lib/xkb \
     --with-xkb-path=/usr/share/X11/xkb "${CONFIG_OPTIONS}"
 
+# Xorg configure obtains this from the build distro dri.pc and has no override.
+# Portable packages use upstream colon-separated search and environment overrides.
+if [[ -n "${KASMVNC_PORTABLE_DRIVER_PATH:-}" ]]; then
+  /src/builder/scripts/portable-driver-path --header include/dix-config.h
+fi
+
 # remove array bounds errors for new versions of GCC
 find . -name "Makefile" -exec sed -i 's/-Werror=array-bounds//g' {} \;
 
 
-make -j"$(nproc)"
+# Portable packages ship the standalone Xvnc, never the loadable Xorg module.
+# Linking that module repeats the static codec archives' LTO work and competes
+# with Xvnc for CPU/memory. Keep the traditional build's default targets intact.
+xserver_make_options=()
+if [[ ${KASMVNC_BUILD_XORG_MODULE:-1} == 0 ]]; then
+  xserver_make_options+=(libvnc_la_LTLIBRARIES=)
+fi
+make -j"${BUILD_JOBS:-$(nproc)}" "${xserver_make_options[@]}"
 
 # modifications for the servertarball
 cd /src

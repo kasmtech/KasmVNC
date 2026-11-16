@@ -16,35 +16,95 @@ KasmVNC provides remote web-based access to a Desktop or application. While VNC 
 
 ## Installation
 
-**You must disconnect and reconnect to the server after installation, for the group membership to apply.**
+Choose a package from the [release assets](https://github.com/kasmtech/KasmVNC/releases)
+for your CPU architecture and Linux distribution. Portable packages share one
+build across the tested userspaces below. A libc version alone does not establish compatibility.
 
-### Debian/Ubuntu/Kali
+| Package | Userspace requirements | Release asset name |
+| --- | --- | --- |
+| Portable DEB | Tested Debian/Ubuntu-family userspaces, **glibc 2.28+**, and the required host libraries | `kasmvncserver_portable_…_<arch>.deb` |
+| Portable RPM | Tested Fedora/EL8/EL9/openSUSE userspaces, **glibc 2.28+**, and the required host libraries | `kasmvncserver_portable_…_<arch>.rpm` |
+| Portable APK | Tested **Alpine 3.21–3.24** userspaces, **musl 1.2.5+**, and the required host libraries | `kasmvncserver_portable_musl_…_<arch>.apk` |
+
+Portable builds target **AMD64 (x86_64)** and **ARM64 (aarch64)** separately.
+Both glibc and musl AMD64 target **x86-64**,
+and ARM64 targets **ARMv8-A**. Host libraries and GPU drivers can impose additional
+requirements. Check `uname -m` for your
+architecture and `getconf GNU_LIBC_VERSION` for the glibc version on DEB/RPM
+systems. Alpine uses musl and requires the APK build; the DEB/RPM binaries are
+not interchangeable with it.
+
+The [published validation matrix](builder/portable-tests/README.md) lists the
+exact distro versions, architectures, fixtures and exclusions. These are native
+Docker runtime tests sharing each CI runner's kernel, not separate boots of
+each distro's kernel. They do not establish an oldest supported kernel,
+untested future distro compatibility, NixOS support or GPU qualification.
+Distinct host/kernel and GPU validation remains a public-release requirement.
+
+Portable packages include the native C++ `vncserver` launcher and do not
+require Perl. Desktop libraries, compiler runtimes, OpenSSL 3 and, in adapter
+builds, FFmpeg and its encoders come from the host. Your package manager resolves
+declared dependencies; install a desktop environment and a supported FFmpeg
+runtime with the desired encoders separately. Update host packages and restart
+sessions to apply their security fixes. Retained embedded libraries, including
+WebP, JPEG, private zlib and launcher YAML, require a newer KasmVNC build for fixes.
+Legacy packages retain their distro-specific dependencies and Perl launcher.
+
+Download the runtime package, rather than a debug-symbol package, and verify it
+against the release's checksum manifest. Replace the example filenames below
+with the exact files you downloaded. For upgrades, stop existing VNC sessions
+and back up `/etc/kasmvnc/kasmvnc.yaml` first. The installed package remains
+`kasmvncserver`, and the `vncserver` / `vncpasswd` commands and configuration
+locations remain the same.
+
+### Portable DEB: Debian / Ubuntu / Kali
+
 ```sh
-# Please choose the package for your distro here (under Assets):
-# https://github.com/kasmtech/KasmVNC/releases
-wget <package_url>
-
-sudo apt-get install ./kasmvncserver_*.deb
-
-# Add your user to the ssl-cert group
-sudo adduser $USER ssl-cert
+sudo apt-get install ./<downloaded-package>.deb
+sudo adduser "$USER" ssl-cert
 ```
 
-### Oracle 8
-```sh
-# Please choose the package for your distro here (under Assets):
-# https://github.com/kasmtech/KasmVNC/releases
-wget <package_url>
+### Portable RPM: Fedora / RHEL-compatible systems / openSUSE
 
-# Ensure KasmVNC dependencies are available
+```sh
+sudo dnf install ./<downloaded-package>.rpm
+sudo usermod -a -G kasmvnc-cert "$USER"
+```
+
+On openSUSE, use `sudo zypper install ./<downloaded-package>.rpm` in place of
+`dnf install`.
+
+### Portable APK: Alpine
+
+Obtain the APK and its accompanying public signing key from the same trusted
+release. Run these commands as root, substituting your desktop username:
+
+```sh
+install -m 644 <downloaded-signing-key>.rsa.pub /etc/apk/keys/kasmvnc_signing_key.rsa.pub
+apk verify ./<downloaded-package>.apk
+apk add --no-cache ./<downloaded-package>.apk
+addgroup <desktop-user> kasmvnc-cert
+```
+
+Keep signature verification enabled; `--allow-untrusted` is not needed.
+
+**Log out and log back in after adding your user to the certificate group.**
+This gives new sessions access to the TLS certificate's private key.
+
+### Enterprise Linux 8
+
+Oracle Linux 8 requires its additional dependency repositories:
+
+```sh
 sudo dnf config-manager --set-enabled ol8_codeready_builder
 sudo dnf install oracle-epel-release-el8
-
-sudo dnf localinstall ./kasmvncserver_*.rpm
-
-# Add your user to the kasmvnc-cert group
-sudo usermod -a -G kasmvnc-cert $USER
+sudo dnf install ./<downloaded-portable-package>.rpm
+sudo usermod -a -G kasmvnc-cert "$USER"
 ```
+
+See the [DEB/RPM and tar installation details](builder/portable/README.md) and
+[APK installation details](builder/musl/README.md) for host dependencies,
+manual tar installation, debug symbols and build information.
 
 
 ## Getting Started
@@ -275,3 +335,34 @@ See the [builder/README.md](https://github.com/kasmtech/KasmVNC/blob/master/buil
 See the [LICENSE.TXT](https://github.com/kasmtech/KasmVNC/blob/master/LICENSE.TXT) and [ACKNOWLEDGEMENTS.md](https://github.com/kasmtech/KasmVNC/blob/master/ACKNOWLEDGEMENTS.md)
 
 This project is tested with BrowserStack.
+
+## Developing and running unit tests
+
+Initialize the committed test and frontend revisions, then run the local suites:
+
+```sh
+git submodule update --init kasmweb kasmvnc-unit-tests
+builder/test-unit
+builder/test-unit sanitizers
+```
+
+Docker is the only host dependency. The dedicated container tests C/C++ components
+(including the native launcher) and frontend browser modules without building a
+server package or running Xvnc. JUnit and coverage are saved beneath
+`kasmvnc-unit-tests/reports/` and published by the required `unit_test`,
+`unit_test_frontend`, and `unit_test_sanitizers` GitLab jobs. These jobs run without
+waiting for packaging. The current pipeline uses branch pipelines; it does not
+create separate merge-request-event pipelines.
+
+Run the full local suites before creating an MR. Add tests for new features and
+error/boundary behavior. For bugs, add a regression that fails before the fix and
+passes after whenever a unit test can catch the defect; otherwise explain why and
+add integration/functional coverage. Record any failed or blocked checks.
+
+The [unit-test project](https://gitlab.com/kasm-technologies/internal/kasmvnc-unit-tests)
+also runs independently: `KASMVNC_REF` selects a branch (default `master`), and
+`KASMWEB_COMMIT` optionally overrides the frontend with a full Git commit ID
+(default empty, preserving KasmVNC's gitlink). Reports record all resolved commits.
+See its README for filters, coverage scope and coordinated source/test changes.
+Commit/push tests first, then pin the tested revision in KasmVNC. Runtime specs and
+Minimal/Standard functional tests complement these unit checks.

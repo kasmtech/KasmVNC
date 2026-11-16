@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Run in the build client container with a Docker daemon; only ephemeral test keys.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+image=${1:?Usage: test-signing-volume PACKAGING_IMAGE}
+failure_test=${2:-}
+if [[ -z "$failure_test" ]]; then
+  "$0" "$image" --fail-copy
+fi
+source builder/musl/signing-volume.sh
+signing_directory= signing_volume= signing_helper= consumer=
+log=$(mktemp)
+finish_test() {
+  local result=$?
+  trap - EXIT
+  [[ -z "$consumer" ]] || docker rm -f "$consumer" >> "$log" 2>&1 || result=1
+  cleanup_signing_volume || result=1
+  if [[ "$failure_test" == --fail-copy && $result == 73 ]]; then
+    # The injected failure happens after volume/helper creation. Assert the
+    # production cleanup function removes every partially staged resource.
+    test ! -d "$signing_directory" || result=1
+    if command docker volume inspect "$signing_volume" >/dev/null 2>&1; then result=1; fi
+    if command docker inspect "$signing_helper" >/dev/null 2>&1; then result=1; fi
+    if [[ $result == 73 ]]; then
+      echo 'PASS signing volume: cleanup after injected copy failure'
+      result=0
+    fi
+  fi
+  rm -f "$log"
+  exit "$result"
+}
+trap finish_test EXIT
+unset KASMVNC_ALPINE_PRIVATE_KEY KASMVNC_ALPINE_PUBLIC_KEY CI
+export KASMVNC_APK_ALLOW_TEST_KEY=1
+if [[ "$failure_test" == --fail-copy ]]; then
+  docker() {
+    [[ "$1" != cp ]] || return 73
+    command docker "$@"
+  }
+fi
+prepare_signing_volume "$image"
+test -z "$signing_helper"
+test -z "$signing_directory"
+consumer=$(docker create --entrypoint /bin/sh \
+  --mount "type=volume,src=$signing_volume,dst=/run/kasm-signing,readonly" \
+  -e KASMVNC_APK_KEYS_DIR=/run/kasm-signing "$image" -ec '
+    test "$(stat -c %a /run/kasm-signing/kasmvnc_signing_key.rsa)" = 600
+    openssl pkey -in /run/kasm-signing/kasmvnc_signing_key.rsa -check -noout >/dev/null
+    if touch /run/kasm-signing/unexpected-write 2>/dev/null; then exit 1; fi
+  ')
+docker inspect "$consumer" | python3 -c '
+import json,sys
+c=json.load(sys.stdin)[0]
+assert not any("KASMVNC_ALPINE_PRIVATE_KEY" in e or "KASMVNC_ALPINE_PUBLIC_KEY" in e for e in c["Config"]["Env"])
+assert any(m["Destination"]=="/run/kasm-signing" and not m["RW"] for m in c["Mounts"])
+'
+docker start -a "$consumer"
+test "$(docker inspect -f '{{.State.ExitCode}}' "$consumer")" = 0
+docker rm "$consumer" >/dev/null
+consumer=
+previous_volume=$signing_volume
+cleanup_signing_volume
+signing_volume=
+if docker volume inspect "$previous_volume" >/dev/null 2>&1; then exit 1; fi
+echo 'PASS signing volume: valid restricted key, read-only mount, no key-valued Docker environment, removed resources'

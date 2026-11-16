@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -euo pipefail
+
+sccache_version="v0.16.0"
+
+case "$(uname -m)" in
+  x86_64)
+    sccache_arch=x86_64
+    sccache_sha256=aec995a83ad3dff3d14b6314e08858b7b73d35ca85a5bcf3d3a9ec07dee35588
+    ;;
+  aarch64)
+    sccache_arch=aarch64
+    sccache_sha256=f73a5c39f96bb6ebb89cc7915cf182260d4cbf30765322c5e793d0fe8bd80784
+    ;;
+  *)
+    echo >&2 "Unknown arch: $(uname -m)"
+    exit 1
+    ;;
+esac
+
+sccache_dir="sccache-${sccache_version}-${sccache_arch}-unknown-linux-musl"
+work_dir="$(mktemp -d)"
+trap 'rm -rf "$work_dir"' EXIT
+trap 'exit 1' HUP INT TERM
+
+wget --timeout=60 --tries=3 -O "$work_dir/sccache.tar.gz" \
+  "https://github.com/mozilla/sccache/releases/download/${sccache_version}/${sccache_dir}.tar.gz"
+
+echo "${sccache_sha256}  $work_dir/sccache.tar.gz" | sha256sum -c -
+
+tar -xzf "$work_dir/sccache.tar.gz" -C "$work_dir"
+install -m 0755 "$work_dir/${sccache_dir}/sccache" /usr/local/bin/sccache

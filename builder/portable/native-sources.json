@@ -1,0 +1,424 @@
+[
+  {
+    "name": "openssl",
+    "libraries": [
+      "ssl",
+      "crypto"
+    ],
+    "source": "openssl-*",
+    "cpe": "openssl:openssl",
+    "license": "Apache-2.0"
+  },
+  {
+    "name": "zlib",
+    "libraries": [
+      "z"
+    ],
+    "source": "zlib-1.4",
+    "patches": [],
+    "cpe": "zlib:zlib",
+    "license": "Zlib"
+  },
+  {
+    "name": "libpng",
+    "libraries": [
+      "png16"
+    ],
+    "source": "libpng",
+    "pc": "libpng16",
+    "cpe": "libpng:libpng",
+    "license": "libpng-2.0"
+  },
+  {
+    "name": "libwebp",
+    "libraries": [
+      "webp",
+      "webpdemux",
+      "webpmux",
+      "sharpyuv"
+    ],
+    "source": "libwebp",
+    "pc": "libwebp",
+    "cpe": "webmproject:libwebp",
+    "license": "BSD-3-Clause"
+  },
+  {
+    "name": "ffmpeg",
+    "libraries": [
+      "avcodec",
+      "avformat",
+      "avutil",
+      "swscale",
+      "swresample"
+    ],
+    "source": "ffmpeg-*",
+    "cpe": "ffmpeg:ffmpeg",
+    "license": "GPL-2.0-or-later"
+  },
+  {
+    "name": "x264",
+    "libraries": [
+      "x264"
+    ],
+    "source": "x264",
+    "pc": "x264",
+    "cpe": "videolan:x264",
+    "license": "GPL-2.0-or-later"
+  },
+  {
+    "name": "x265",
+    "libraries": [
+      "x265"
+    ],
+    "source": "x265",
+    "pc": "x265",
+    "cpe": "multicorewareinc:x265",
+    "license": "GPL-2.0-or-later"
+  },
+  {
+    "name": "svt-av1",
+    "libraries": [
+      "SvtAv1Enc"
+    ],
+    "source": "svt-av1",
+    "pc": "SvtAv1Enc",
+    "cpe": "aomedia:svt-av1",
+    "license": "BSD-3-Clause-Clear AND BSD-2-Clause"
+  },
+  {
+    "name": "gcc",
+    "libraries": [
+      "gcc",
+      "gcc_eh"
+    ],
+    "source": "gcc-*",
+    "cpe": "gnu:gcc",
+    "license": "GPL-3.0-or-later WITH GCC-exception-3.1"
+  },
+  {
+    "name": "at-spi2-core",
+    "libraries": [
+      "atspi"
+    ],
+    "source": "at-spi2-core-*"
+  },
+  {
+    "name": "libva",
+    "libraries": [
+      "va",
+      "va-drm"
+    ],
+    "source": "libva-*",
+    "cpe": "intel:libva"
+  },
+  {
+    "name": "util-linux",
+    "libraries": [
+      "mount",
+      "blkid",
+      "uuid"
+    ],
+    "source": "util-linux-*",
+    "cpe": "kernel:util-linux"
+  },
+  {
+    "name": "libunwind",
+    "libraries": [
+      "unwind",
+      "unwind-*"
+    ],
+    "source": "libunwind-*",
+    "cpe": "libunwind_project:libunwind"
+  },
+  {
+    "name": "libffi",
+    "libraries": [
+      "ffi"
+    ],
+    "source": "libffi-*",
+    "cpe": "libffi_project:libffi",
+    "license": "MIT"
+  },
+  {
+    "name": "libcap",
+    "libraries": [
+      "cap"
+    ],
+    "source": "libcap-*",
+    "cpe": "kernel:libcap"
+  },
+  {
+    "name": "libdrm",
+    "libraries": [
+      "drm",
+      "drm_*"
+    ],
+    "source": "libdrm-*"
+  },
+  {
+    "name": "freetype",
+    "libraries": [
+      "freetype"
+    ],
+    "source": "freetype-*",
+    "cpe": "freetype:freetype"
+  },
+  {
+    "name": "dbus",
+    "libraries": [
+      "dbus-1"
+    ],
+    "source": "dbus-*",
+    "cpe": "freedesktop:dbus"
+  },
+  {
+    "name": "systemd",
+    "libraries": [
+      "systemd"
+    ],
+    "source": "systemd-*",
+    "cpe": "systemd_project:systemd"
+  },
+  {
+    "name": "libxcb",
+    "libraries": [
+      "xcb",
+      "xcb-*"
+    ],
+    "source": "libxcb-*",
+    "cpe": "x:libxcb"
+  },
+  {
+    "name": "expat",
+    "libraries": [
+      "expat"
+    ],
+    "source": "expat-*",
+    "cpe": "libexpat:expat"
+  },
+  {
+    "name": "pcre2",
+    "libraries": [
+      "pcre2-*"
+    ],
+    "source": "pcre2-*",
+    "cpe": "pcre:pcre2"
+  },
+  {
+    "name": "brotli",
+    "libraries": [
+      "brotli*"
+    ],
+    "source": "brotli-*",
+    "cpe": "google:brotli"
+  },
+  {
+    "name": "bzip2",
+    "libraries": [
+      "bz2"
+    ],
+    "source": "bzip2-*",
+    "cpe": "bzip:bzip2"
+  },
+  {
+    "name": "xz",
+    "libraries": [
+      "lzma"
+    ],
+    "source": "xz-*",
+    "cpe": "tukaani:xz"
+  },
+  {
+    "name": "pixman",
+    "libraries": [
+      "pixman-1"
+    ],
+    "source": "pixman-*",
+    "cpe": "pixman:pixman"
+  },
+  {
+    "name": "libjpeg-turbo",
+    "libraries": [
+      "jpeg",
+      "turbojpeg"
+    ],
+    "source": "libjpeg-turbo-*",
+    "cpe": "libjpeg-turbo:libjpeg-turbo",
+    "license": "IJG AND BSD-3-Clause AND Zlib"
+  },
+  {
+    "name": "fmt",
+    "libraries": [
+      "fmt",
+      "fmt-c"
+    ],
+    "source": "fmt-*",
+    "cpe": "fmt:fmt",
+    "license": "MIT"
+  },
+  {
+    "name": "onetbb",
+    "libraries": [
+      "tbb",
+      "tbbmalloc"
+    ],
+    "source": "tbb-*",
+    "cpe": "intel:threading_building_blocks",
+    "license": "Apache-2.0"
+  },
+  {
+    "name": "libcpuid",
+    "libraries": [
+      "cpuid"
+    ],
+    "source": "cpuid-*",
+    "cpe": "libcpuid_project:libcpuid",
+    "license": "BSD-2-Clause"
+  },
+  {
+    "name": "libstatgrab",
+    "libraries": [
+      "statgrab"
+    ],
+    "source": "libstatgrab-*",
+    "license": "LGPL-2.1-or-later"
+  },
+  {
+    "name": "libyuv",
+    "libraries": [
+      "yuv"
+    ],
+    "source": "libyuv",
+    "cpe": "google:libyuv",
+    "license": "BSD-3-Clause"
+  },
+  {
+    "name": "libX11",
+    "libraries": [
+      "X11",
+      "X11-xcb"
+    ],
+    "source": "libX11-*",
+    "cpe": "x:libx11"
+  },
+  {
+    "name": "libXau",
+    "libraries": [
+      "Xau"
+    ],
+    "source": "libXau-*",
+    "cpe": "x:libxau"
+  },
+  {
+    "name": "libXdmcp",
+    "libraries": [
+      "Xdmcp"
+    ],
+    "source": "libXdmcp-*",
+    "cpe": "x:libxdmcp"
+  },
+  {
+    "name": "libXext",
+    "libraries": [
+      "Xext"
+    ],
+    "source": "libXext-*",
+    "cpe": "x:libxext"
+  },
+  {
+    "name": "libXi",
+    "libraries": [
+      "Xi"
+    ],
+    "source": "libXi-*",
+    "cpe": "x:libxi"
+  },
+  {
+    "name": "libXtst",
+    "libraries": [
+      "Xtst"
+    ],
+    "source": "libXtst-*",
+    "cpe": "x:libxtst"
+  },
+  {
+    "name": "libXfixes",
+    "libraries": [
+      "Xfixes"
+    ],
+    "source": "libXfixes-*",
+    "cpe": "x:libxfixes"
+  },
+  {
+    "name": "libfontenc",
+    "libraries": [
+      "fontenc"
+    ],
+    "source": "libfontenc-*",
+    "cpe": "x:libfontenc"
+  },
+  {
+    "name": "libXfont2",
+    "libraries": [
+      "Xfont2"
+    ],
+    "source": "libXfont2-*",
+    "cpe": "x:libxfont"
+  },
+  {
+    "name": "libxshmfence",
+    "libraries": [
+      "xshmfence"
+    ],
+    "source": "libxshmfence-*"
+  },
+  {
+    "name": "libSM",
+    "libraries": [
+      "SM"
+    ],
+    "source": "libSM-*"
+  },
+  {
+    "name": "libICE",
+    "libraries": [
+      "ICE"
+    ],
+    "source": "libICE-*",
+    "cpe": "x:libice"
+  },
+  {
+    "name": "libXrandr",
+    "libraries": [
+      "Xrandr"
+    ],
+    "source": "libXrandr-*",
+    "cpe": "x:libxrandr"
+  },
+  {
+    "name": "libXrender",
+    "libraries": [
+      "Xrender"
+    ],
+    "source": "libXrender-*",
+    "cpe": "x:libxrender"
+  },
+  {
+    "name": "libXcursor",
+    "libraries": [
+      "Xcursor"
+    ],
+    "source": "libXcursor-*",
+    "cpe": "x:libxcursor"
+  },
+  {
+    "name": "libyaml",
+    "libraries": [
+      "yaml"
+    ],
+    "source": "yaml-*",
+    "pc": "yaml-0.1",
+    "cpe": "pyyaml:libyaml",
+    "license": "MIT"
+  }
+]

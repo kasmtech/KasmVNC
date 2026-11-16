@@ -1,0 +1,392 @@
+image: docker
+services:
+  - docker:dind
+
+variables:
+  DEBUG: true
+  KASMVNC_COMMIT_ID: $CI_COMMIT_SHA
+  GITLAB_SHARED_DIND_DIR: /builds/$CI_PROJECT_PATH/shared
+  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_FORCE_HTTPS: "true"
+  GIT_FETCH_EXTRA_FLAGS: --tags --force
+  # Portable packages are the only CI producers. Runtime qualification is
+  # mandatory for every enabled libc/architecture profile.
+  WORKSPACE_IMAGE_TAG: "develop"
+  DEBIAN_STABLE_IMAGE: debian:trixie-slim
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_AUTH_CONFIG: ${_DOCKER_AUTH_CONFIG}
+
+stages:
+  - www
+  - build
+  - functional_test
+  - run_test
+  - test
+  - upload_build_preview
+
+.prepare_build: &prepare_build
+  - pwd
+  - mkdir -p "$GITLAB_SHARED_DIND_DIR" && chmod 777 "$GITLAB_SHARED_DIND_DIR"
+  - apt-get update && apt-get install -y docker.io sudo
+  - echo "$DOCKER_HUB_PASSWORD" | docker login --username $DOCKER_HUB_USERNAME --password-stdin
+
+.prepare_www: &prepare_www
+  - tar -zxf output/www/kasm_www.tar.gz -C builder/
+  - touch builder/www
+
+default:
+  retry: 2
+  tags:
+    - oci-fixed-amd
+
+functional_test:
+  stage: functional_test
+  variables:
+    FUNCTIONAL_TEST_TIER: "minimal"
+    DOCKER_BUILDKIT: "1"
+    BUILDKIT_PROGRESS: "plain"
+  image: $DEBIAN_STABLE_IMAGE
+  tags:
+    - oci-fixed-amd
+  before_script:
+    - *prepare_build
+    - . .ci/helpers.sh
+  script:
+    - prepare_to_run_functional_tests
+    - set +e; ./functional-test --tier minimal --package "$FUNCTIONAL_TEST_PACKAGE"; exit_code=$?; set -e
+    - upload_report_to_s3
+    - put_report_into_ci_pipeline "$exit_code"
+    - exit "$exit_code"
+  needs:
+    - build_portable_amd64
+  artifacts:
+    paths:
+      - kasmvnc-functional-tests/report/
+    when: always
+    expire_in: 14 days
+    reports:
+      junit:
+        - kasmvnc-functional-tests/report/*/junit.xml
+  allow_failure: false
+  rules:
+    - when: on_success
+
+
+# Run Standard manually before requesting review; it does not gate pipeline success.
+functional_test_standard:
+  stage: functional_test
+  image: python:3.13-slim-trixie
+  services: []
+  timeout: 90m
+  retry: 0
+  variables:
+    FUNCTIONAL_TEST_TIER: "standard"
+  needs:
+    - job: build_portable_amd64
+      artifacts: true
+    - job: build_portable_musl_amd64
+      artifacts: true
+  before_script:
+    - . .ci/helpers.sh
+    - prepare_to_run_scripts_and_s3_uploads
+    - apt-get install -y --no-install-recommends openssh-client ca-certificates
+    - python -m venv kasmvnc-functional-tests/.vm/venv
+    - kasmvnc-functional-tests/.vm/venv/bin/python -m pip install --no-cache-dir -r kasmvnc-functional-tests/requirements-vm.txt
+  script:
+    - prepare_standard_functional_tests
+    - >-
+      set +e;
+      (export AWS_ACCESS_KEY_ID="${EC2_LAUNCHER_ID:-$AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY="${EC2_LAUNCHER_SECRET:-$AWS_SECRET_ACCESS_KEY}";
+      if [ -n "${EC2_LAUNCHER_ID:-}" ]; then unset AWS_SESSION_TOKEN AWS_SECURITY_TOKEN; fi;
+      .vm/venv/bin/python -m virtualization.matrix --state .vm/state.json --report-dir report);
+      exit_code=$?; set -e
+    - upload_report_to_s3
+    - put_report_into_ci_pipeline "$exit_code"
+    - exit "$exit_code"
+  after_script:
+    - cd "$CI_PROJECT_DIR/kasmvnc-functional-tests"
+    - >-
+      if [ -f .vm/state.json ]; then
+      (export AWS_ACCESS_KEY_ID="${EC2_LAUNCHER_ID:-$AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY="${EC2_LAUNCHER_SECRET:-$AWS_SECRET_ACCESS_KEY}";
+      if [ -n "${EC2_LAUNCHER_ID:-}" ]; then unset AWS_SESSION_TOKEN AWS_SECURITY_TOKEN; fi;
+      .vm/venv/bin/python -m virtualization cleanup --state .vm/state.json --report-dir report);
+      fi
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths: [kasmvnc-functional-tests/report/]
+    reports:
+      junit: kasmvnc-functional-tests/report/*/*/junit.xml
+  rules:
+    - when: manual
+      allow_failure: true
+
+build_www:
+  stage: www
+  allow_failure: false
+  image: $DEBIAN_STABLE_IMAGE
+  tags:
+    - oci-fixed-amd
+  before_script:
+    - *prepare_build
+  script:
+    - apt-get install -y git python3 python3-yaml ruby
+    - python3 -m unittest discover -s .ci/tests -v
+    - builder/build-www
+    - mkdir -p output/www
+    - cd builder
+    - echo $PWD
+    - ls -l
+    - ls -l ../output
+    - tar -zcvf ../output/www/kasm_www.tar.gz www www-supply-chain
+  rules:
+    - when: on_success
+  artifacts:
+    paths:
+      - output/
+
+spec_dependencies:
+  stage: build
+  image: $DEBIAN_STABLE_IMAGE
+  tags:
+    - kasmvnc-x86
+  needs: []
+  resource_group: spec-dependencies-amd64
+  rules:
+    - when: on_success
+  before_script:
+    - *prepare_build
+  script:
+    - apt-get install -y python3
+    - python3 builder/portable/test-spec-cache.py
+    - builder/prepare-spec-image
+
+spec_test:
+  stage: test
+  image: $DEBIAN_STABLE_IMAGE
+  tags:
+    - kasmvnc-x86
+  rules:
+    - when: on_success
+      needs: [spec_dependencies, build_portable_amd64]
+  before_script:
+    - *prepare_build
+  artifacts:
+    reports:
+      junit:
+        - SelfBench.xml
+        - Benchmark.xml
+  script:
+    - apt-get install -y python3
+    - KASMVNC_PACKAGE_DIR=output/portable_amd64 builder/test-vncserver
+
+
+make_build_preview_html:
+  stage: upload_build_preview
+  image: $DEBIAN_STABLE_IMAGE
+  tags:
+    - oci-fixed-amd
+  artifacts:
+    paths:
+      - output/index.html
+  before_script:
+    - . .ci/helpers.sh
+  script:
+    - prepare_to_run_scripts_and_s3_uploads
+    - make_package_index_html > output/index.html
+    - upload_package_index_to_build_dir_for_debugging output/index.html
+
+upload_build_preview_html:
+  stage: upload_build_preview
+  needs: ["make_build_preview_html"]
+  dependencies: ["make_build_preview_html"]
+  image: $DEBIAN_STABLE_IMAGE
+  tags:
+    - oci-fixed-amd
+  before_script:
+    - . .ci/helpers.sh
+  resource_group: upload_build_preview_html
+  only:
+    variables:
+      - $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - prepare_to_run_scripts_and_s3_uploads
+    - preview_builds_dir=kasmvnc/preview-builds
+    - upload_to_s3 "output/index.html" "$preview_builds_dir/index.html" "$S3_BUCKET"
+    - show_file_link_in_ci "index.html" "$UPLOADED_FILE_S3_URL"
+
+# Four portable producers retain required distro/architecture runtime coverage.
+.build_portable:
+  stage: build
+  timeout: 3h
+  retry:
+    max: 2
+    when: [runner_system_failure, api_failure]
+  image: $DEBIAN_STABLE_IMAGE
+  dependencies: [build_www]
+  allow_failure: false
+  before_script:
+    - *prepare_build
+    - apt-get install -y git python3 openssl
+    - *prepare_www
+    - . .ci/helpers.sh
+  script:
+    - builder/build-portable --ffmpeg-mode adapters
+    - builder/portable/test-security-reports
+    - upload_portable_packages
+    - mkdir -p output
+    - cp -r builder/build/portable_* output/
+  artifacts:
+    when: always
+    paths: [output/]
+    # Published to S3 above; avoid redownloading source bundles in every distro test.
+    exclude: ["output/**/*.sources.tar.gz"]
+    reports:
+      cyclonedx: ["output/portable_*/gl-sbom.cdx.json"]
+      dependency_scanning: ["output/portable_*/gl-dependency-scanning-report.json"]
+  rules:
+    - when: on_success
+
+build_portable_amd64:
+  resource_group: portable-deps-amd64
+  extends: .build_portable
+  tags: [oci-fixed-amd]
+
+build_portable_arm64:
+  resource_group: portable-deps-arm64
+  extends: .build_portable
+  tags: [oci-fixed-arm]
+
+# One native musl build per architecture replaces the per-release Alpine builds.
+# Keep a separate cache: glibc-built archives cannot be linked into musl binaries.
+.build_portable_musl:
+  extends: .build_portable
+  script:
+    - builder/build-portable --libc musl --ffmpeg-mode adapters
+    - builder/portable/test-security-reports
+    - upload_portable_packages
+    - mkdir -p output
+    - cp -r builder/build/portable_musl_* output/
+
+build_portable_musl_amd64:
+  extends: .build_portable_musl
+  resource_group: portable-musl-deps-amd64
+  tags: [oci-fixed-amd]
+
+build_portable_musl_arm64:
+  extends: .build_portable_musl
+  resource_group: portable-musl-deps-arm64
+  tags: [oci-fixed-arm]
+
+.test_portable:
+  stage: run_test
+  timeout: 40m
+  retry:
+    max: 2
+    when: [runner_system_failure, api_failure]
+  image: $DEBIAN_STABLE_IMAGE
+  allow_failure: false
+  before_script:
+    - *prepare_build
+    - apt-get install -y python3 curl
+  script:
+    - builder/test-portable "output/portable_${PORTABLE_ARCH}" --case "$PORTABLE_CASE" --arch "$PORTABLE_ARCH" --results "output/portable-tests/${PORTABLE_ARCH}/${PORTABLE_CASE}"
+  artifacts:
+    when: always
+    paths: [output/portable-tests/]
+  rules:
+    - when: on_success
+
+test_portable_amd64:
+  extends: .test_portable
+  tags: [oci-fixed-amd]
+  needs: [build_portable_amd64]
+  variables:
+    PORTABLE_ARCH: amd64
+  parallel:
+    matrix:
+      - PORTABLE_CASE: [kasmos-kasmos, ubuntu-jammy, ubuntu-noble, ubuntu-resolute, debian-bookworm, debian-trixie, kali-rolling, oracle-8, oracle-9, rhel-9, rockylinux-8, rockylinux-9, almalinux-8, almalinux-9, opensuse-15, opensuse-16, fedora-42, fedora-43, parrotos-7, cuda-jammy]
+
+test_portable_arm64:
+  extends: .test_portable
+  tags: [oci-fixed-arm]
+  needs: [build_portable_arm64]
+  variables:
+    PORTABLE_ARCH: arm64
+  parallel:
+    matrix:
+      - PORTABLE_CASE: [kasmos-kasmos, ubuntu-jammy, ubuntu-noble, ubuntu-resolute, debian-bookworm, debian-trixie, kali-rolling, oracle-8, oracle-9, rhel-9, rockylinux-8, rockylinux-9, almalinux-8, almalinux-9, opensuse-15, opensuse-16, fedora-42, fedora-43, parrotos-7]
+
+.test_portable_musl:
+  extends: .test_portable
+  script:
+    - builder/test-portable "output/portable_musl_${PORTABLE_ARCH}" --case "$PORTABLE_CASE" --arch "$PORTABLE_ARCH" --formats native --results "output/portable-tests/${PORTABLE_ARCH}/${PORTABLE_CASE}"
+  parallel:
+    matrix:
+      - PORTABLE_CASE: [alpine-3.21, alpine-3.22, alpine-3.23, alpine-3.24]
+
+test_portable_musl_amd64:
+  extends: .test_portable_musl
+  tags: [oci-fixed-amd]
+  needs: [build_portable_musl_amd64]
+  variables:
+    PORTABLE_ARCH: amd64
+
+test_portable_musl_arm64:
+  extends: .test_portable_musl
+  tags: [oci-fixed-arm]
+  needs: [build_portable_musl_arm64]
+  variables:
+    PORTABLE_ARCH: arm64
+
+# Fast component tests use this checkout, never the standalone source overrides.
+.unit_test:
+  stage: test
+  image: node:22-bookworm@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384
+  services: []
+  needs: []
+  timeout: 20m
+  variables:
+    GIT_SUBMODULE_PATHS: "kasmweb kasmvnc-unit-tests"
+  before_script:
+    - sh kasmvnc-unit-tests/container/install-deps
+  script:
+    - UNIT_INSIDE_CONTAINER=1 kasmvnc-unit-tests/run-unit-tests "$CI_PROJECT_DIR" "$UNIT_SUITE"
+  allow_failure: false
+  retry:
+    max: 2
+    when: [runner_system_failure, api_failure]
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths: [kasmvnc-unit-tests/reports/]
+
+unit_test:
+  extends: .unit_test
+  variables: {UNIT_SUITE: cpp}
+  artifacts:
+    reports:
+      junit: kasmvnc-unit-tests/reports/cpp/cpp.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: kasmvnc-unit-tests/reports/cpp/cpp-coverage.xml
+
+unit_test_frontend:
+  extends: .unit_test
+  variables: {UNIT_SUITE: frontend}
+  artifacts:
+    reports:
+      junit: kasmvnc-unit-tests/reports/frontend/frontend.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: kasmvnc-unit-tests/reports/frontend/cobertura-coverage.xml
+
+unit_test_sanitizers:
+  extends: .unit_test
+  variables: {UNIT_SUITE: sanitizers}
+  artifacts:
+    reports:
+      junit: kasmvnc-unit-tests/reports/sanitizers/cpp.xml

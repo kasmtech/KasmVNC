@@ -106,3 +106,37 @@ Using this script on the above example backtrace produces the following output.
     (EE) Caught signal 11 (Segmentation fault). Server aborting
     (EE)
 
+
+## Portable builds
+
+The glibc portable build publishes `.dbgsym.deb`, `.debuginfo.rpm`, and
+`.debug.tar.gz` artifacts; the musl build publishes `.debug.apk` and
+`.debug.tar.gz` artifacts alongside its runtime APK. They contain the same
+matching symbols for Xkasmvnc, kasmvncconfig, kasmvncpasswd and kasmxproxy.
+Symbols are split before stripping and stored under
+`/usr/lib/debug/.build-id/`; runtime packages remain small. The build verifies
+each ELF build ID and resolves `main` to a source file and line. The adjacent
+`.debug.json` records build IDs and hashes of the final stripped executables.
+
+Use symbols from the **exact commit, architecture and libc profile** of the executable.
+Package version alone is insufficient because branch builds reuse versions.
+Install the matching DEB/RPM/APK debug package, or extract `.debug.tar.gz` at `/`
+on any supported distro. For offline analysis, extract both runtime and debug
+archives into a separate directory and set GDB's `debug-file-directory` to
+that directory's `usr/lib/debug`. GDB discovers symbols by build ID.
+
+The existing commit + Xkasmvnc MD5 crashpad lookup also works for portable
+builds: `kasmvnc/crashpad/COMMIT/MD5/kasmvncserver-dbgsym.deb`. A format-neutral
+`kasmvncserver-debug.tar.gz` is published in the same directory for RPM/tar users.
+For musl builds, the same lookup directory contains `kasmvncserver-debug.apk`
+and `kasmvncserver-debug.tar.gz`.
+The MD5 is a legacy lookup key; use the published SHA256 manifest for integrity.
+The four runtime ELFs are identical across the DEB, RPM and tar distributions.
+
+For PIE executables use GDB with the matching core file so relocation addresses
+are handled correctly. A raw ASLR runtime address is not an ELF address for
+`addr2line`; subtract the executable load bias first. Source paths refer to the
+builder; check out the matching commit and use `set substitute-path /src PATH`.
+Host libc/graphics-driver frames require the host's matching debug symbols.
+Embedded dependencies retain whatever DWARF their build supplies; system static
+archives can lack source lines. The package is not a full debug-source archive.
