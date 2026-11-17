@@ -29,7 +29,8 @@ def replace_once(path, old, new):
 
 
 def select_package(directory, arch, pipeline, commit):
-    packages = list(directory.glob('kasmvncserver_*.deb'))
+    packages = [p for p in directory.glob('kasmvncserver_*.deb')
+                if not p.name.endswith('.dbgsym.deb')]
     if len(packages) != 1:
         raise ValueError('Expected exactly one portable DEB. Build/retry the portable producer; '
                          'check artifact expiry.')

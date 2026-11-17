@@ -56,6 +56,14 @@ class PackageTests(unittest.TestCase):
                 package = self.package(arch)
                 self.assertEqual(image.select_package(self.root, arch, '123', 'commit')[0], package)
 
+    def test_portable_debug_symbols_are_not_runtime_candidates(self):
+        package = self.package()
+        (self.root / 'kasmvncserver_portable_1.0_amd64.dbgsym.deb').write_bytes(package.read_bytes())
+        recorder = Path(__file__).resolve().parents[1] / 'record-workspace-package'
+        env = dict(os.environ, CI_PIPELINE_ID='123', CI_COMMIT_SHA='commit', CI_JOB_ID='456')
+        subprocess.run([str(recorder), str(self.root)], env=env, check=True)
+        self.assertEqual(image.select_package(self.root, 'amd64', '123', 'commit')[0], package)
+
     def test_rejects_wrong_architecture(self):
         self.package()
         with self.assertRaisesRegex(ValueError, 'architecture'):
