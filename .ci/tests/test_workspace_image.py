@@ -113,6 +113,26 @@ class PackageTests(unittest.TestCase):
             image.prepare_core(self.root, next(self.root.glob('*.deb')))
 
 
+class CoreBuildTests(unittest.TestCase):
+    def test_passes_selected_core_release_to_docker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            core = Path(tmp)
+            (core / '.gitlab-ci.yml').write_text('variables: {KASM_RELEASE: "1.20.0"}')
+            with patch.object(image, 'run') as run:
+                self.assertEqual(image.build_core(core, 'core:test', 'amd64', {}), '1.20.0')
+                self.assertIn('KASM_RELEASE=1.20.0', run.call_args.args)
+
+    def test_missing_or_unresolved_release_fails_before_build(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            core = Path(tmp)
+            for value in ('null', '""', '"$RELEASE"'):
+                with self.subTest(value=value), patch.object(image, 'run') as run:
+                    (core / '.gitlab-ci.yml').write_text('variables: {KASM_RELEASE: ' + value + '}')
+                    with self.assertRaisesRegex(ValueError, 'KASM_RELEASE'):
+                        image.build_core(core, 'core:test', 'amd64', {})
+                    run.assert_not_called()
+
+
 class PreflightTests(unittest.TestCase):
     def test_access_failure_has_remediation(self):
         with patch.dict(os.environ, {'CI_JOB_TOKEN': 'test-token'}), \

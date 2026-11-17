@@ -11,6 +11,8 @@ import subprocess
 import tempfile
 import time
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -105,6 +107,19 @@ def prepare_core(core, package):
     if ('COPY ./src/ubuntu/install/kasm_vnc $INST_SCRIPTS/kasm_vnc/' not in dockerfile
             or 'RUN bash $INST_SCRIPTS/kasm_vnc/install_kasm_vnc.sh' not in dockerfile):
         raise ValueError('Core Dockerfile KasmVNC installation interface changed')
+
+
+def build_core(core, core_image, arch, docker_env):
+    # Match the selected core revision's own CI release metadata.
+    config = yaml.safe_load((core / '.gitlab-ci.yml').read_text())
+    release = config.get('variables', {}).get('KASM_RELEASE')
+    if not isinstance(release, str) or not release.strip() or '$' in release:
+        raise ValueError('Core CI must define a non-empty literal KASM_RELEASE')
+    run('docker', 'build', '--pull=false', '--platform', f'linux/{arch}', '-t', core_image,
+        '--build-arg', 'BASE_IMAGE=ubuntu:24.04', '--build-arg', 'DISTRO=ubuntu',
+        '--build-arg', f'KASM_RELEASE={release}',
+        '-f', core / 'dockerfile-kasm-core', core, env=docker_env)
+    return release
 
 
 def verify_entrypoint(image, core_image):
@@ -233,9 +248,7 @@ def main():
         (report_dir / 'image.json').write_text(json.dumps(report, indent=2) + '\n')
         # Force the Docker driver: a docker-container buildx driver cannot see daemon-local FROMs.
         docker_env = dict(os.environ, BUILDX_BUILDER='default', DOCKER_BUILDKIT='1')
-        run('docker', 'build', '--pull=false', '--platform', f'linux/{arch}', '-t', core_image,
-            '--build-arg', 'BASE_IMAGE=ubuntu:24.04', '--build-arg', 'DISTRO=ubuntu',
-            '-f', core / 'dockerfile-kasm-core', core, env=docker_env)
+        report['kasm_release'] = build_core(core, core_image, arch, docker_env)
         if 'FROM kasmweb/$BASE_IMAGE:$BASE_TAG' not in (desktop / 'dockerfile-kasm-ubuntu-noble-desktop').read_text():
             raise ValueError('Desktop Dockerfile base-image interface changed')
         label_args = [arg for key, value in labels.items() for arg in ('--label', f'{key}={value}')]
