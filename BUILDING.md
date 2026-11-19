@@ -539,3 +539,29 @@ The four portable resource groups are retained to protect shared dependency-cach
 publication across commits and branches. Different architecture/libc profiles
 run concurrently, but matching profiles in different pipelines serialize for
 the whole job. A push no longer launches duplicate branch/MR package builds.
+
+### Advisory submodule freshness
+
+`submodule_freshness` runs in `functional_test` without waiting for package
+builds. It compares the committed gitlinks for `kasmvnc-unit-tests`,
+`kasmvnc-functional-tests`, and `kasmweb` with remote branch tips; it never
+updates them. For an MR targeting `master`, each repository's advertised default
+branch is used. For `release/*` targets, the test repositories must match that
+exact branch name. noVNC versions differ, so `kasmweb` may match the tip of any
+remote `release/*` branch (mere ancestry is insufficient).
+
+Branch pipelines look up open MRs using the CI job token. Without an MR, release
+branches check their own name and other branches check the project's default
+branch. Other MR targets are skipped. Conflicting MR targets, missing branches,
+and lookup/authentication failures are reported as failures rather than silently
+falling back to another branch. The job needs the same read access to the private
+test repositories as the existing submodule checkout.
+
+The job is allowed to fail: reviewers should check its individual result, not
+just overall pipeline success. The log lists recorded commits and eligible remote
+tips for all three submodules. A green check is current only when it ran; retry
+it after opening/retargeting an MR or before merging if the test repositories may
+have changed. Updating a gitlink requires a new commit and normal test pipeline.
+For local use with existing Git authentication, run
+`python3 .ci/check-submodule-freshness.py master` (or the release target) inside
+the development container.

@@ -40,6 +40,25 @@ default:
   tags:
     - oci-fixed-amd
 
+# Check committed pointers independently of package builds and submodule checkout.
+submodule_freshness:
+  stage: functional_test
+  image: $DEBIAN_STABLE_IMAGE
+  services: []
+  needs: []
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git python3 ca-certificates
+  script:
+    - python3 .ci/check-submodule-freshness.py
+  allow_failure: true
+  retry: 0
+  timeout: 10m
+  rules:
+    - when: on_success
+
+
 functional_test:
   stage: functional_test
   variables:
