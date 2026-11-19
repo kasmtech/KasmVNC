@@ -30,6 +30,16 @@ class PipelinePolicy(unittest.TestCase):
         self.assertEqual(len(groups), 4)
         self.assertEqual(ci['functional_test']['needs'], ['build_portable_amd64'])
 
+    def test_freshness_is_advisory_and_independent_of_builds(self):
+        ci = yaml.safe_load((ROOT / '.ci/build-pipeline.yml').read_text())
+        job = ci['submodule_freshness']
+        self.assertEqual(job['stage'], 'functional_test')
+        self.assertTrue(job['allow_failure'])
+        self.assertEqual(job['needs'], [])
+        self.assertEqual(job['services'], [])
+        self.assertEqual(job['retry'], 0)
+        self.assertEqual(job['variables']['GIT_SUBMODULE_STRATEGY'], 'none')
+
     def test_standard_requires_manual_action_and_is_nonblocking(self):
         ci = yaml.safe_load((ROOT / '.ci/build-pipeline.yml').read_text())
         self.assertEqual(ci['functional_test_standard']['rules'], [
