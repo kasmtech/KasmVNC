@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Only mark a portable DEB usable after its producer has completed successfully.
 set -euo pipefail
+IFS=$'\n\t'
 directory=${1:?Pass the portable artifact directory}
 shopt -s nullglob
 packages=()
@@ -9,7 +10,8 @@ for package in "$directory"/kasmvncserver_*.deb; do
   packages+=("$package")
 done
 [[ ${#packages[@]} == 1 ]] || { echo 'Expected exactly one portable KasmVNC package' >&2; exit 1; }
+architecture=$(dpkg-deb -f "${packages[0]}" Architecture)
+checksum=$(sha256sum "${packages[0]}" | cut -d ' ' -f 1)
+[[ -n "$architecture" && -n "$checksum" ]] || { echo 'Empty package metadata' >&2; exit 1; }
 printf '%s\n' "$CI_PIPELINE_ID" "$CI_COMMIT_SHA" "$CI_JOB_ID" \
-  "$(dpkg-deb -f "${packages[0]}" Architecture)" \
-  "$(sha256sum "${packages[0]}" | cut -d ' ' -f 1)" \
-  > "$directory/workspace-package.txt"
+  "$architecture" "$checksum" > "$directory/workspace-package.txt"

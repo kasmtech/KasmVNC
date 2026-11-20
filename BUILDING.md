@@ -577,7 +577,7 @@ job-token allowlists must include KasmVNC.
 
 Each job verifies package architecture, pipeline/commit provenance and checksum,
 then checks the installed Xkasmvnc binary, desktop applications, Workspaces
-entrypoint and authenticated HTTPS startup before publishing to
+entrypoint, authenticated HTTPS startup, and a running XFCE session/window manager before publishing to
 `$CI_REGISTRY_IMAGE/ubuntu-noble-desktop`. Tags are
 `<branch-slug>-<pipeline-id>-<job-id>_<arch>` and `<branch-slug>_<arch>`.
 An older pipeline cannot replace a newer branch alias, and branch slug
@@ -589,3 +589,12 @@ For Workspaces, configure registry access with a deploy token that has
 `read_registry`, and choose an agent matching the image architecture. The CI
 job token expires and is unsuitable for later image pulls. If package artifacts
 have expired, retry the matching portable producer before starting the image job.
+
+Image jobs reject registry destination overrides and authenticate only to the
+KasmVNC repository on `registry.gitlab.com`. Reports record build, smoke test,
+immutable publication and alias states, including failures and interruptions.
+The immutable image is pushed first; if alias validation fails, it remains usable
+and the report records that publication succeeded. Aliases with missing or invalid
+ownership/order labels require operator repair rather than being overwritten.
+CI jobs clean up their container, image tags and registry login. Local `--no-push`
+runs retain the desktop image for inspection, but remove the intermediate core tag.
