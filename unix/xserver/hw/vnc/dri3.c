@@ -431,6 +431,29 @@ static CARD32 update_texpixmaps(OsTimerPtr timer, CARD32 time, void *arg)
     return 16; // Reschedule next tick
 }
 
+static DestroyPixmapProcPtr destroy_pixmap;
+
+static Bool
+xvnc_dri3_destroy_pixmap(PixmapPtr pixmap)
+{
+    ScreenPtr screen = pixmap->drawable.pScreen;
+    Bool ret;
+
+    if (pixmap->refcnt == 1) {
+        gbm_pixmap *gp = gbm_pixmap_get(pixmap);
+        if (gp) {
+            gbm_bo_destroy(gp->bo);
+            free(gp);
+        }
+    }
+
+    screen->DestroyPixmap = destroy_pixmap;
+    ret = screen->DestroyPixmap(pixmap);
+    screen->DestroyPixmap = xvnc_dri3_destroy_pixmap;
+
+    return ret;
+}
+
 void xvnc_init_dri3(void)
 {
     memset(&priv, 0, sizeof(priv));
@@ -460,6 +483,9 @@ void xvnc_init_dri3(void)
 
     if (!dri3_screen_init(screenInfo.screens[0], &xvnc_dri3_info))
         FatalError("Couldn't init dri3\n");
+
+    destroy_pixmap = screenInfo.screens[0]->DestroyPixmap;
+    screenInfo.screens[0]->DestroyPixmap = xvnc_dri3_destroy_pixmap;
 }
 
 #endif // DRI3
