@@ -38,16 +38,21 @@
 #include <fb.h>
 #include <gcstruct.h>
 #include <gbm.h>
+#include <unistd.h>
 
 extern const char *driNode;
 
 static struct priv_t {
     struct gbm_device *gbm;
     int fd;
+    DestroyPixmapProcPtr destroy_pixmap;
+    CloseScreenProcPtr close_screen;
 } priv;
 
 struct gbm_pixmap {
     struct gbm_bo *bo;
+    PixmapPtr pixmap;
+    struct xorg_list entry;
 };
 
 typedef struct gbm_pixmap gbm_pixmap;
@@ -61,6 +66,7 @@ struct texpixmap {
 };
 
 static struct xorg_list texpixmaps;
+static struct xorg_list gbm_pixmaps;
 static CARD32 update_texpixmaps(OsTimerPtr timer, CARD32 time, void *arg);
 static OsTimerPtr texpixmaptimer;
 
@@ -141,10 +147,14 @@ create_pixmap_for_bo(ScreenPtr screen, struct gbm_bo *bo, CARD8 depth)
 
     pixmap = screen->CreatePixmap(screen, gbm_bo_get_width(bo), gbm_bo_get_height(bo),
                                   depth, CREATE_PIXMAP_USAGE_SCRATCH);
-    if (!pixmap)
+    if (!pixmap) {
+        free(gp);
         return NULL;
+    }
 
     gp->bo = bo;
+    gp->pixmap = pixmap;
+    xorg_list_append(&gp->entry, &gbm_pixmaps);
     dri3_pixmap_set_private(pixmap, gp);
 
     return pixmap;
@@ -209,9 +219,12 @@ xvnc_fds_from_pixmap(ScreenPtr screen, PixmapPtr pixmap, int *fds,
                                 GBM_BO_USE_RENDERING | GBM_BO_USE_SCANOUT);
         if (!gp->bo) {
             ErrorF("Failed to create bo\n");
+            free(gp);
             return 0;
         }
 
+        gp->pixmap = pixmap;
+        xorg_list_append(&gp->entry, &gbm_pixmaps);
         dri3_pixmap_set_private(pixmap, gp);
     }
 
@@ -356,6 +369,55 @@ void xvnc_sync_dri3_textures(void)
     }
 }
 
+static void release_gbm_pixmap(gbm_pixmap *gp)
+{
+    xorg_list_del(&gp->entry);
+    dri3_pixmap_set_private(gp->pixmap, NULL);
+    gbm_bo_destroy(gp->bo);
+    free(gp);
+}
+
+static Bool destroy_pixmap(PixmapPtr pixmap)
+{
+    ScreenPtr screen = pixmap->drawable.pScreen;
+    Bool result;
+    if (pixmap->refcnt == 1) {
+        gbm_pixmap *gp = gbm_pixmap_get(pixmap);
+        if (gp) release_gbm_pixmap(gp);
+    }
+    screen->DestroyPixmap = priv.destroy_pixmap;
+    result = screen->DestroyPixmap(pixmap);
+    priv.destroy_pixmap = screen->DestroyPixmap;
+    screen->DestroyPixmap = destroy_pixmap;
+    return result;
+}
+
+static Bool close_screen(ScreenPtr screen)
+{
+    struct texpixmap *ptr, *tmp;
+    gbm_pixmap *gp, *next;
+    Bool result;
+    if (texpixmaptimer) TimerFree(texpixmaptimer);
+    texpixmaptimer = NULL;
+    xorg_list_for_each_entry_safe(ptr, tmp, &texpixmaps, entry) {
+        xorg_list_del(&ptr->entry);
+        screen->DestroyPixmap(ptr->pixmap);
+        free(ptr);
+    }
+    /* Other screen resources may still reference a pixmap. Release only our
+     * BO/private ownership, not references owned by those resources, before the
+     * GBM device disappears. Later DestroyPixmap calls see a NULL private.
+     */
+    xorg_list_for_each_entry_safe(gp, next, &gbm_pixmaps, entry)
+        release_gbm_pixmap(gp);
+    screen->CloseScreen = priv.close_screen;
+    result = screen->CloseScreen(screen);
+    screen->DestroyPixmap = priv.destroy_pixmap;
+    gbm_device_destroy(priv.gbm);
+    close(priv.fd);
+    return result;
+}
+
 static CARD32 update_texpixmaps(OsTimerPtr timer, CARD32 time, void *arg)
 {
     xvnc_sync_dri3_textures();
@@ -390,6 +452,11 @@ void xvnc_init_dri3(void)
         FatalError("Failed to create gbm\n");
 
     xorg_list_init(&texpixmaps);
+    xorg_list_init(&gbm_pixmaps);
+    priv.destroy_pixmap = screenInfo.screens[0]->DestroyPixmap;
+    screenInfo.screens[0]->DestroyPixmap = destroy_pixmap;
+    priv.close_screen = screenInfo.screens[0]->CloseScreen;
+    screenInfo.screens[0]->CloseScreen = close_screen;
 
     if (!dri3_screen_init(screenInfo.screens[0], &xvnc_dri3_info))
         FatalError("Couldn't init dri3\n");
