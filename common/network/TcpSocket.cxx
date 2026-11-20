@@ -140,6 +140,13 @@ char* WebSocket::getPeerAddress() {
   return rfb::strDup(addr.sun_path + 1);
 }
 
+// The other end of this socket is the websocket thread, which sends what it
+// reads at once as one frame, so the writes are joined here, not with TCP_CORK.
+bool WebSocket::cork(bool enable) {
+  outStream().cork(enable);
+  return true;
+}
+
 char* WebSocket::getPeerEndpoint() {
   char buf[1024];
   sprintf(buf, "%s::websocket", getPeerAddress());
