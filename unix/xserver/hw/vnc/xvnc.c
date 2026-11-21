@@ -1932,6 +1932,13 @@ InitOutput(ScreenInfo *scrInfo, int argc, char **argv)
     int i;
     int NumFormats = 0;
 
+    /* Do not catch SIGABRT with FatalError; re-entering malloc/stdio
+     * during glibc abort causes futex deadlock on already-held arena mutex. */
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = SIG_DFL;
+    sigaction(SIGABRT, &sa, NULL);
+
     vncPrintBanner();
 
 #if XORG >= 120
