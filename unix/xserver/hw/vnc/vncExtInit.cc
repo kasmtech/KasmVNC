@@ -304,10 +304,17 @@ void vncExtensionInit(void)
             vlog.info("Listening for VNC connections on %s interface(s), port %d",
                     localhostOnly ? "local" : (const char*)interface,
                     port);
-          else
-            vlog.info("Listening for websocket connections on %s interface(s), port %d",
-                    localhostOnly ? "local" : (const char*)interface,
-                    (int) websocketPort);
+          else {
+            // Log the ports the listeners are actually bound to; these
+            // differ from websocketPort when it is 0 (kernel-assigned)
+            std::set<int> ports;
+            for (network::SocketListener *listener : listeners)
+              ports.insert(listener->getMyPort());
+            for (int boundPort : ports)
+              vlog.info("Listening for websocket connections on %s interface(s), port %d",
+                      localhostOnly ? "local" : (const char*)interface,
+                      boundPort);
+          }
         }
 
         CharArray desktopNameStr(desktopName.getData());

@@ -99,6 +99,7 @@ namespace network {
     static void getMyAddresses(std::list<char*>* result);
 
     int internalSocket;
+    int boundPort;
 
     virtual GetAPIMessager *getMessager() { return messager; }
 
