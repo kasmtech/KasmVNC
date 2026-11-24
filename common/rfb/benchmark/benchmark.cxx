@@ -79,7 +79,7 @@ namespace benchmarking {
         MockSConnection() {
             setStreams(nullptr, &out);
 
-            setWriter(new rfb::SMsgWriter(&cp, &out, &udps));
+            setWriter(new rfb::SMsgWriter(&cp, &out));
         }
 
         ~MockSConnection() override = default;
@@ -114,10 +114,6 @@ namespace benchmarking {
             return true;
         }
 
-        void udpUpgrade(const char *resp) override {}
-
-        void udpDowngrade(const bool) override {}
-
         void subscribeUnixRelay(const char *name) override {}
 
         void unixRelay(const char *name, const rdr::U8 *buf, const unsigned len) override {}
@@ -143,13 +139,9 @@ namespace benchmarking {
         [[nodiscard]] auto bytes() {
             return out.length();
         }
-        [[nodiscard]] auto udp_bytes() {
-            return udps.length();
-        }
 
     protected:
         MockStream out{};
-        MockStream udps{};
 
         EncCache cache{};
         EncodeManager manager{this, &cache, FFmpeg::get(), video_encoders::EncoderProbe::get(FFmpeg::get(), {}, nullptr)};
@@ -186,16 +178,10 @@ namespace benchmarking {
             EncodeManager::codecstats_t jpeg_stats;
             EncodeManager::codecstats_t webp_stats;
             uint64_t bytes;
-            uint64_t udp_bytes;
         };
 
         [[nodiscard]] stats_t getStats() {
-            return {
-                sc.getJpegStats(),
-                sc.getWebPStats(),
-                sc.bytes(),
-                sc.udp_bytes()
-            };
+            return {sc.getJpegStats(), sc.getWebPStats(), sc.bytes()};
         }
 
         void setDesktopSize(int w, int h) override {

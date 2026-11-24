@@ -47,21 +47,24 @@ const SConnection::AccessRights SConnection::AccessNoQuery        = 0x0400;
 const SConnection::AccessRights SConnection::AccessFull           = 0xffff;
 
 
-SConnection::SConnection()
-  : readyForSetColourMapEntries(false),
-    is(0), os(0), reader_(0), writer_(0),
-    ssecurity(0), state_(RFBSTATE_UNINITIALISED),
+SConnection::SConnection() :
+    readyForSetColourMapEntries(false),
+    is(0),
+    os(0),
+    imageStream(new network::ImageChannelStream),
+    reader_(0),
+    writer_(0),
+    ssecurity(0),
+    state_(RFBSTATE_UNINITIALISED),
     preferredEncoding(encodingRaw),
-    clientClipboard(NULL), hasLocalClipboard(false)
-{
-  defaultMajorVersion = 3;
-  defaultMinorVersion = 8;
-  if (rfb::Server::protocol3_3)
-    defaultMinorVersion = 3;
+    clientClipboard(NULL),
+    hasLocalClipboard(false) {
+    defaultMajorVersion = 3;
+    defaultMinorVersion = 8;
+    if (rfb::Server::protocol3_3)
+        defaultMinorVersion = 3;
 
-  cp.setVersion(defaultMajorVersion, defaultMinorVersion);
-
-  udps = new network::UdpStream;
+    cp.setVersion(defaultMajorVersion, defaultMinorVersion);
 }
 
 SConnection::~SConnection()
@@ -71,8 +74,8 @@ SConnection::~SConnection()
   reader_ = 0;
   delete writer_;
   writer_ = 0;
+  delete imageStream;
   strFree(clientClipboard);
-  delete udps;
 }
 
 void SConnection::setStreams(rdr::InStream* is_, rdr::OutStream* os_)
@@ -346,7 +349,7 @@ void SConnection::approveConnection(bool accept, const char* reason)
   if (accept) {
     state_ = RFBSTATE_INITIALISATION;
     reader_ = new SMsgReader(this, is);
-    writer_ = new SMsgWriter(&cp, os, udps);
+    writer_ = new SMsgWriter(&cp, os, imageStream);
     authSuccess();
   } else {
     state_ = RFBSTATE_INVALID;

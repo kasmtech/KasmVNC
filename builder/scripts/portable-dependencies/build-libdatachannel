@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+recipe_dir=$(cd "$(dirname "$0")" && pwd)
+
+LIBDATACHANNEL_URL="https://github.com/paullouisageneau/libdatachannel.git"
+LIBDATACHANNEL_RELEASE="v0.24.6"
+LIBDATACHANNEL_COMMIT="6b1e2e620f1e37f0eafeee702eaea0043cb305fd"
+
+declare -A DEP_COMMITS=(
+    [deps/json]="55f93686c01528224f448c19128836e7df245f72"
+    [deps/libjuice]="b89c792e3612faf2f12cf35bcc56857313a06be3"
+    [deps/plog]="94899e0b926ac1b0f4750bfbd495167b4a6ae9ef"
+    [deps/usrsctp]="fec583d54493f879d2ae44a743423bf8a04371ab"
+)
+
+build_and_install() {
+    export PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig:$HOME/.local/lib64/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+    cmake -S . -B build -GNinja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DNO_EXAMPLES=ON \
+        -DNO_TESTS=ON \
+        -DNO_WEBSOCKET=ON \
+        -DNO_MEDIA=OFF \
+        -DUSE_GNUTLS=OFF \
+        -DUSE_MBEDTLS=OFF \
+        -DUSE_NICE=OFF \
+        -DUSE_SYSTEM_SRTP=ON \
+        -DUSE_SYSTEM_JUICE=OFF \
+        -DUSE_SYSTEM_USRSCTP=OFF \
+        -DUSE_SYSTEM_PLOG=OFF \
+        -DUSE_SYSTEM_JSON=OFF \
+        -DCMAKE_PREFIX_PATH="$HOME/.local" \
+        -DCMAKE_INSTALL_PREFIX="$HOME/.local"
+    ninja -C build install
+    install -D -m 0644 deps/libjuice/include/juice/juice.h "$HOME/.local/include/juice/juice.h"
+}
+
+prepare_source() {
+    DIR=libdatachannel
+    cd /tmp
+    [ -d ./${DIR} ] && rm -rf ./${DIR}
+    git clone --quiet "${LIBDATACHANNEL_URL}" ${DIR}
+    cd ${DIR}
+    git checkout --quiet "${LIBDATACHANNEL_COMMIT}"
+    if [ "$(git rev-parse "${LIBDATACHANNEL_RELEASE}^{commit}")" != "${LIBDATACHANNEL_COMMIT}" ]; then
+        echo "libdatachannel: ${LIBDATACHANNEL_RELEASE} does not point at ${LIBDATACHANNEL_COMMIT}" >&2
+        exit 1
+    fi
+    # Full (non-shallow) submodule fetch: the pinned commits are not branch tips.
+    git submodule update --init --no-recommend-shallow -- "${!DEP_COMMITS[@]}"
+    local path
+    for path in "${!DEP_COMMITS[@]}"; do
+        local actual
+        actual="$(git -C "${path}" rev-parse HEAD)"
+        if [ "${actual}" != "${DEP_COMMITS[$path]}" ]; then
+            echo "libdatachannel: ${path} is at ${actual}, expected ${DEP_COMMITS[$path]}" >&2
+            exit 1
+        fi
+    done
+    git -C deps/libjuice apply "${recipe_dir}/patches/libjuice-zero-ice-tiebreaker.patch"
+}
+
+prepare_source
+build_and_install

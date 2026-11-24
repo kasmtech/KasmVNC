@@ -61,6 +61,9 @@ set(RFB_SOURCES
         UpdateTracker.cxx
         VNCSConnectionST.cxx
         VNCServerST.cxx
+        webrtc/WebRTCController.cxx
+        webrtc/TurnCredentials.cxx
+        webrtc/WebRTCPolicy.cxx
         ZRLEEncoder.cxx
         ZRLEDecoder.cxx
         Watermark.cxx
@@ -69,6 +72,7 @@ set(RFB_SOURCES
         util.cxx
         xxhash.c
         ffmpeg.cxx
+        encoders/VideoEncoder.cxx
         encoders/FFmpegVideoEncoder.cxx
         benchmark/FfmpegFrameFeeder.cpp
         encoders/ScreenEncoderManager.cxx
@@ -89,7 +93,7 @@ if (WIN32)
     set(RFB_SOURCES ${RFB_SOURCES} WinPasswdValidator.cxx)
 endif (WIN32)
 
-set(RFB_LIBRARIES ${JPEG_LIBRARIES} ${PNG_LIBRARIES} os rdr Xregion statgrab fmt)
+set(RFB_LIBRARIES ${JPEG_LIBRARIES} ${PNG_LIBRARIES} os rdr Xregion statgrab fmt network)
 
 cmake_host_system_information(RESULT DISTRO QUERY DISTRIB_INFO)
 if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10) OR

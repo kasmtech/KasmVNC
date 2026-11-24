@@ -278,3 +278,68 @@ with description('YAML to CLI') as self:
         cli_option = pick_cli_option('BlacklistThreshold',
                                      completed_process.stdout)
         expect(cli_option).to(equal("-BlacklistThreshold '7'"))
+
+    with context("converts TURN settings"):
+        with it("passes the TURN server list unchanged"):
+            write_config('''
+            network:
+                udp:
+                    turn_server: turn:turn.example.com:3478,turns:turn.example.com:443?transport=tcp
+                    turn_username: kasmturn
+                    turn_credential: secret
+            ''')
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
+            cli_option = pick_cli_option('TurnServer', completed_process.stdout)
+            expect(cli_option).to(equal(
+                "-TurnServer 'turn:turn.example.com:3478,turns:turn.example.com:443?transport=tcp'"))
+            cli_option = pick_cli_option('TurnUsername', completed_process.stdout)
+            expect(cli_option).to(equal("-TurnUsername 'kasmturn'"))
+
+        with it("passes the credential as a file, never as a value"):
+            write_config('''
+            network:
+                udp:
+                    turn_server: 192.0.2.10
+                    turn_username: kasmturn
+                    turn_credential: secret
+            ''')
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
+            cli_option = pick_cli_option('TurnCredentialFile', completed_process.stdout)
+            expect(cli_option).to(match(r"^-TurnCredentialFile '.*/\.vnc/[^']+:1\.turn-credential'$"))
+            expect(completed_process.stdout).not_to(contain('secret'))
+            expect(pick_cli_option('TurnCredential', completed_process.stdout)).to(equal(None))
+
+        with it("omits TURN when the server is auto"):
+            write_config('''
+            network:
+                udp:
+                    turn_server: auto
+            ''')
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
+            expect(pick_cli_option('TurnServer', completed_process.stdout)).to(equal(None))
+
+        with it("omits TURN when no keys are given"):
+            write_config('''
+            ''')
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
+            expect(pick_cli_option('TurnServer', completed_process.stdout)).to(equal(None))
+            expect(pick_cli_option('TurnCredentialFile', completed_process.stdout)).to(equal(None))
+            expect(pick_cli_option('TurnCredentialUrl', completed_process.stdout)).to(equal(None))
+
+        with it("passes dynamic credential settings"):
+            write_config('''
+            network:
+                udp:
+                    turn_credential_url: https://api.example.com/api/turn
+                    turn_credential_ca_file: /etc/ssl/certs/example-ca.pem
+                    turn_credential_skip_verify: true
+                    force_turn: true
+            ''')
+            completed_process = run_vncserver_to_print_xvnc_cli_options()
+            expect(pick_cli_option('TurnCredentialUrl', completed_process.stdout)).to(
+                equal("-TurnCredentialUrl 'https://api.example.com/api/turn'"))
+            expect(pick_cli_option('TurnCredentialCaFile', completed_process.stdout)).to(
+                equal("-TurnCredentialCaFile '/etc/ssl/certs/example-ca.pem'"))
+            expect(pick_cli_option('TurnCredentialSkipVerify', completed_process.stdout)).to(
+                equal("-TurnCredentialSkipVerify '1'"))
+            expect(pick_cli_option('ForceTurn', completed_process.stdout)).to(equal("-ForceTurn '1'"))

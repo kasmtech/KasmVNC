@@ -42,6 +42,7 @@ watermarkInfo_t watermarkInfo;
 uint8_t *watermarkData, *watermarkUnpacked, *watermarkTmp;
 uint32_t watermarkDataLen;
 static uint16_t rw, rh;
+static ScreenSet watermarkLayout;
 static time_t lastUpdate;
 
 static FT_Library ft = NULL;
@@ -472,11 +473,69 @@ static void packWatermark() {
 	watermarkDataLen = destLen;
 }
 
+// Positions are relative to the area, so each monitor gets its own watermark
+// instead of one centered on the whole framebuffer, on the seams between monitors
+static void drawWatermarkInArea(const Rect &area) {
+	const int area_w = area.width();
+	const int area_h = area.height();
+	const int max_x = watermarkInfo.w < area_w ? area_w - watermarkInfo.w : 0;
+	const int max_y = watermarkInfo.h < area_h ? area_h - watermarkInfo.h : 0;
+	int draw_x = watermarkInfo.x;
+	int draw_y = watermarkInfo.y;
+
+	if (!draw_x)
+		draw_x = max_x / 2;
+	else if (draw_x < 0)
+		draw_x += area_w - watermarkInfo.w;
+
+	if (!draw_y)
+		draw_y = max_y / 2;
+	else if (draw_y < 0)
+		draw_y += area_h - watermarkInfo.h;
+
+	if (draw_x < 0)
+		draw_x = 0;
+	else if (draw_x > max_x)
+		draw_x = max_x;
+
+	if (draw_y < 0)
+		draw_y = 0;
+	else if (draw_y > max_y)
+		draw_y = max_y;
+
+	const int draw_width = watermarkInfo.w < area_w ? watermarkInfo.w : area_w;
+	const int draw_height = watermarkInfo.h < area_h ? watermarkInfo.h : area_h;
+	// A screen in the layout can extend past the framebuffer
+	for (int y = 0; y < draw_height; y++) {
+		const int dst_y = area.tl.y + draw_y + y;
+		if (dst_y < 0 || dst_y >= rh)
+			continue;
+
+		int dst_x = area.tl.x + draw_x;
+		int src_x = 0;
+		int width = draw_width;
+		if (dst_x < 0) {
+			src_x = -dst_x;
+			width += dst_x;
+			dst_x = 0;
+		}
+		if (dst_x + width > rw)
+			width = rw - dst_x;
+		if (width <= 0)
+			continue;
+
+		memcpy(&watermarkUnpacked[dst_y * rw + dst_x],
+			&watermarkInfo.src[y * watermarkInfo.w + src_x],
+			width);
+	}
+}
+
 // update the screen-size rendered watermark whenever the screen is resized
-// or if using text, every frame
+// or the screen layout changes, or if using text, every frame
 void VNCServerST::updateWatermark() {
 	if (rw == pb->width() &&
-		rh == pb->height()) {
+		rh == pb->height() &&
+		watermarkLayout == screenLayout) {
 
 		if (Server::DLP_WatermarkImage[0])
 			return;
@@ -492,6 +551,7 @@ void VNCServerST::updateWatermark() {
 
 	rw = pb->width();
 	rh = pb->height();
+	watermarkLayout = screenLayout;
 
 	memset(watermarkUnpacked, 0, rw * rh);
 
@@ -519,38 +579,11 @@ void VNCServerST::updateWatermark() {
 			}
 		}
 	} else {
-		const int max_x = watermarkInfo.w < rw ? rw - watermarkInfo.w : 0;
-		const int max_y = watermarkInfo.h < rh ? rh - watermarkInfo.h : 0;
-		int draw_x = watermarkInfo.x;
-		int draw_y = watermarkInfo.y;
+		if (screenLayout.num_screens() == 0)
+			drawWatermarkInArea(Rect(0, 0, rw, rh));
 
-		if (!draw_x)
-			draw_x = max_x / 2;
-		else if (draw_x < 0)
-			draw_x += rw - watermarkInfo.w;
-
-		if (!draw_y)
-			draw_y = max_y / 2;
-		else if (draw_y < 0)
-			draw_y += rh - watermarkInfo.h;
-
-		if (draw_x < 0)
-			draw_x = 0;
-		else if (draw_x > max_x)
-			draw_x = max_x;
-
-		if (draw_y < 0)
-			draw_y = 0;
-		else if (draw_y > max_y)
-			draw_y = max_y;
-
-		const uint16_t draw_width = watermarkInfo.w < rw ? watermarkInfo.w : rw;
-		const uint16_t draw_height = watermarkInfo.h < rh ? watermarkInfo.h : rh;
-		for (y = 0; y < draw_height; y++) {
-			memcpy(&watermarkUnpacked[(draw_y + y) * rw + draw_x],
-				&watermarkInfo.src[y * watermarkInfo.w],
-				draw_width);
-		}
+		for (const auto &screen : screenLayout)
+			drawWatermarkInArea(screen.dimensions);
 	}
 
 	packWatermark();

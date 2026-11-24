@@ -20,138 +20,42 @@
 #include <config.h>
 #endif
 
-#include <arpa/inet.h>
-#include <errno.h>
-#include <limits.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <poll.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <time.h>
-#include <unistd.h>
+#include <atomic>
 
+#include <stdlib.h>
+
+#include <network/StunServer.h>
 #include <network/iceip.h>
 #include <rfb/LogWriter.h>
 #include <rfb/ServerCore.h>
 
 static rfb::LogWriter vlog("ICE");
 
-// Default port 3478
-static const char * const servers[] = {
-	"stun.l.google.com:19302",
-	"stun1.l.google.com:19302",
-	"stun2.l.google.com:19302",
-	"stun3.l.google.com:19302",
-	"stun4.l.google.com:19302",
-	"stun.voipbuster.com",
-	"stun.voipstunt.com",
-};
+// Index of the built-in server that answered discovery; ICE skips the ones before it.
+static std::atomic<size_t> reachableDefaultServer{0};
 
-static bool tryserver(const char * const srv, const int sock) {
+std::vector<std::string> iceStunUrls() {
+	const std::string configured = static_cast<const char *>(rfb::Server::stunServer);
+	if (network::usesDefaultStunServers(configured))
+		return network::defaultIceStunUrls(reachableDefaultServer);
+	if (const auto server = network::parseStunServer(configured))
+		return {server->iceUrl()};
 
-	unsigned port = 3478;
-	char addr[PATH_MAX];
-	char buf[PATH_MAX];
+	vlog.error("Invalid StunServer '%s': WebRTC ICE will use no STUN servers", configured.c_str());
+	return {};
+}
 
-	const char *colon = strchr(srv, ':');
-	if (colon) {
-		memcpy(addr, srv, colon - srv);
-		addr[colon - srv] = '\0';
+static bool tryserver(const network::StunServer &server) {
+	vlog.debug("Trying '%s', port %u", server.host.c_str(), server.port);
 
-		colon++;
-		port = atoi(colon);
-	} else {
-		strcpy(addr, srv);
-	}
-
-	vlog.debug("Trying '%s', port %u", addr, port);
-
-	struct hostent *ent = gethostbyname2(addr, AF_INET);
-	if (!ent)
+	// Standard says to wait up to 10s for a reply.
+	const auto ip = network::queryStunMappedAddress(server, 10 * 1000);
+	if (!ip)
 		return false;
 
-	struct sockaddr_in dst;
-	dst.sin_family = AF_INET;
-	dst.sin_port = htons(port);
-	memcpy(&dst.sin_addr, ent->h_addr, 4);
-	//vlog.info("Got %s, addr %s", ent->h_name, inet_ntoa(in));
-
-	// Build up a binding request packet
-	buf[0] = 0;
-	buf[1] = 1; // type
-	buf[2] = buf[3] = 0; // length
-
-	uint32_t tid[4]; // transaction id, 128 bits
-	tid[0] = rand();
-	tid[1] = rand();
-	tid[2] = rand();
-	tid[3] = rand();
-
-	memcpy(&buf[4], &tid[0], 4);
-	memcpy(&buf[8], &tid[1], 4);
-	memcpy(&buf[12], &tid[2], 4);
-	memcpy(&buf[16], &tid[3], 4);
-
-	if (sendto(sock, buf, 20, 0, (const struct sockaddr *) &dst,
-		sizeof(struct sockaddr_in)) != 20)
-		return false;
-
-	// Wait up to 10s for a reply, standard says that's the wait
-	struct pollfd pfd;
-	pfd.fd = sock;
-	pfd.events = POLLIN;
-	if (poll(&pfd, 1, 10 * 1000) <= 0)
-		return false;
-
-	struct sockaddr_in from;
-	socklen_t socklen = sizeof(struct sockaddr_in);
-	int len = recvfrom(sock, buf, PATH_MAX, 0, (struct sockaddr *) &from,
-				&socklen);
-	if (len < 20)
-		return false;
-	if (memcmp(&from.sin_addr, &dst.sin_addr, sizeof(struct in_addr)))
-		return false;
-
-	int i;
-/*	vlog.info("Got %u bytes", len);
-	for (i = 0; i < len; i++)
-		vlog.info("0x%02x,", buf[i]);*/
-
-	if (buf[0] != 1 || buf[1] != 1)
-		return false; // type not binding response
-
-	// Parse attrs
-	for (i = 20; i < len;) {
-		uint16_t type, attrlen;
-		memcpy(&type, &buf[i], 2);
-		i += 2;
-		memcpy(&attrlen, &buf[i], 2);
-		i += 2;
-
-		type = ntohs(type);
-		attrlen = ntohs(attrlen);
-		if (type != 1) {
-			// Not mapped-address
-			i += attrlen;
-			continue;
-		}
-
-		// Yay, we got a response
-		i += 4;
-		struct in_addr in;
-		memcpy(&in.s_addr, &buf[i], 4);
-
-		rfb::Server::publicIP.setParam(inet_ntoa(in));
-
-		vlog.info("My public IP is %s", (const char *) rfb::Server::publicIP);
-
-		return true;
-	}
-
-	return false;
+	rfb::Server::publicIP.setParam(ip->c_str());
+	vlog.info("My public IP is %s", (const char *) rfb::Server::publicIP);
+	return true;
 }
 
 void getPublicIP() {
@@ -161,27 +65,31 @@ void getPublicIP() {
 		return;
 	}
 
-	srand(time(NULL));
-
-	vlog.info("Querying public IP...");
-
-	const int sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if (sock < 0)
-		abort();
-
-	unsigned i;
-	if (rfb::Server::stunServer[0]) {
-		if (strlen(rfb::Server::stunServer) < PATH_MAX)
-			tryserver(rfb::Server::stunServer, sock);
-	} else {
-		for (i = 0; i < sizeof(servers) / sizeof(servers[0]); i++) {
-			if (tryserver(servers[i], sock))
-				break;
-			vlog.info("STUN server %u didn't work, trying next...", i);
+	const std::string configured = static_cast<const char *>(rfb::Server::stunServer);
+	std::optional<network::StunServer> custom;
+	if (!network::usesDefaultStunServers(configured)) {
+		custom = network::parseStunServer(configured);
+		if (!custom) {
+			vlog.error("Invalid StunServer '%s': expected hostname[:port] or stun:hostname[:port]",
+				configured.c_str());
+			exit(1);
 		}
 	}
 
-	close(sock);
+	vlog.info("Querying public IP...");
+
+	if (custom) {
+		tryserver(*custom);
+	} else {
+		const auto &servers = network::defaultStunServers();
+		for (size_t i = 0; i < servers.size(); i++) {
+			if (tryserver(servers[i])) {
+				reachableDefaultServer = i;
+				break;
+			}
+			vlog.info("STUN server %zu didn't work, trying next...", i);
+		}
+	}
 
 	if (!rfb::Server::publicIP[0]) {
 		vlog.error("Failed to get public IP, please specify it with -publicIP");

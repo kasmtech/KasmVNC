@@ -16,6 +16,8 @@
  * USA.
  */
 #pragma once
+#include <array>
+#include <chrono>
 #include <tbb/task_arena.h>
 #include <vector>
 #include "KasmVideoConstants.h"
@@ -35,10 +37,20 @@ namespace rfb {
             Screen layout{};
             VideoEncoder *encoder{};
             bool dirty{};
+            std::chrono::steady_clock::time_point last_encode{};
         };
+
+        static constexpr std::chrono::milliseconds idleKeyframeThreshold{500};
+
+        // A keyframe is only worth forcing when a WebRTC peer can have missed the last one.
+        [[nodiscard]] static bool idleKeyframeDue(std::chrono::steady_clock::time_point last_encode,
+            std::chrono::steady_clock::time_point now, bool routed) {
+            return routed && last_encode.time_since_epoch().count() != 0 && (now - last_encode) > idleKeyframeThreshold;
+        }
 
         uint8_t count{};
         mask_t mask{};
+        mask_t force_keyframe_mask{};
         std::vector<uint8_t> screens_to_refresh;
 
         std::array<screen_t, T> screens{};
@@ -48,6 +60,8 @@ namespace rfb {
 
         KasmVideoEncoders::EncoderConfig base_video_encoder;
         KasmVideoEncoders::EncoderConfigs available_encoders;
+
+        std::array<int, T> max_bitrate{};
 
         [[nodiscard]] VideoEncoder *add_encoder(const Screen &layout) const;
         bool add_screen(uint8_t index, const Screen &layout);
@@ -98,6 +112,19 @@ namespace rfb {
         bool sync_layout(const ScreenSet &layout, const Region &region);
         [[nodiscard]] KasmVideoEncoders::EncoderConfig get_encoder_config() const {
             return base_video_encoder;
+        }
+
+        void force_keyframe(uint8_t index) {
+            if (index < T)
+                force_keyframe_mask |= mask_t{1} << index;
+        }
+
+        void set_max_bitrate(uint8_t index, int bps) {
+            if (index >= T)
+                return;
+            max_bitrate[index] = bps;
+            if (screens[index].encoder)
+                screens[index].encoder->setMaxBitrate(bps);
         }
 
         // Encoder

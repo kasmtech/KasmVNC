@@ -33,7 +33,7 @@ namespace launcher {
     struct Key {
         enum class Rule {
             None, IpAddress, OptionKeys, ExcludesWatermarkImage,
-            FontSize, TextAngle, TimezoneName, NeedsVerticalScroll
+            FontSize, TextAngle, TimezoneName, NeedsVerticalScroll, BracketedIpv6
         };
         std::string name, type, pattern, error;
         std::vector<std::string> allowed;
@@ -53,11 +53,13 @@ namespace launcher {
         void set(const std::string &path, Node value);
         void load(const std::vector<std::string> &files, const std::string &optionalFile);
         void environment(bool debug, bool validationOutput);
-        void validate(bool validationOutput, bool includeUnknown = true) const;
+        void validate(bool validationOutput, bool includeUnknown = true,
+            const std::map<std::string, std::string> &cliParams = {}) const;
     };
     struct Context {
         std::string geometry, fontPath, authority, desktop;
         int display = 1;
+        std::string turnCredentialFile;
     };
     enum class ArgumentKind { OptionName, Value, PassThrough };
     struct Argument {
@@ -65,6 +67,7 @@ namespace launcher {
         ArgumentKind kind = ArgumentKind::Value;
     };
     std::vector<Argument> arguments(const Config &, Context &, const std::set<std::string> &supplied);
+    std::map<std::string, std::string> cliParameters(const std::vector<std::string> &pass);
     int timezoneOffset(const std::string &name);
     struct Exit {
         int status;

@@ -28,23 +28,30 @@
 #include <rfb/fenceTypes.h>
 #include <rfb/ledStates.h>
 #include <rfb/msgTypes.h>
+#include <rfb/webrtc/webrtcTypes.h>
 #include <rfb/touchTypes.h>
 
 using namespace rfb;
 
 static LogWriter vlog("SMsgWriter");
 
-SMsgWriter::SMsgWriter(ConnParams* cp_, rdr::OutStream* os_, rdr::OutStream* udps_)
-  : cp(cp_), os(os_), udps(udps_),
-    nRectsInUpdate(0), dataRectsInUpdate(0), nRectsInHeader(0),
-    needSetDesktopSize(false), needExtendedDesktopSize(false),
-    needSetDesktopName(false), needSetCursor(false),
-    needSetXCursor(false), needSetCursorWithAlpha(false),
+SMsgWriter::SMsgWriter(ConnParams *cp_, rdr::OutStream *os_, rdr::OutStream *imageOs_) :
+    cp(cp_),
+    os(os_),
+    imageOs(imageOs_),
+    nRectsInUpdate(0),
+    dataRectsInUpdate(0),
+    nRectsInHeader(0),
+    needSetDesktopSize(false),
+    needExtendedDesktopSize(false),
+    needSetDesktopName(false),
+    needSetCursor(false),
+    needSetXCursor(false),
+    needSetCursorWithAlpha(false),
     needSetVMWareCursor(false),
     needCursorPos(false),
-    needLEDState(false), needQEMUKeyEvent(false)
-{
-}
+    needLEDState(false),
+    needQEMUKeyEvent(false) {}
 
 void SMsgWriter::writeServerInit()
 {
@@ -83,7 +90,7 @@ void SMsgWriter::writeBinaryClipboard(const std::vector<SConnection::binaryClipb
   startMsg(msgTypeBinaryClipboard);
 
   os->writeU8(b.size());
-  rdr::U8 i;
+  size_t i;
   for (i = 0; i < b.size(); i++) {
     const rdr::U32 id = b[i].id;
     os->writeU32(id);
@@ -358,14 +365,13 @@ void SMsgWriter::writeFramebufferUpdateEnd()
     os->writeU16(0);
     os->writeU32(pseudoEncodingLastRect);
 
-    // Send an UDP flip marker, if needed
-    if (cp->supportsUdp) {
-      udps->writeS16(dataRectsInUpdate);
-      udps->writeS16(0);
-      udps->writeU16(0);
-      udps->writeU16(0);
-      udps->writeU32(pseudoEncodingLastRect);
-      udps->flush();
+    if (cp->supportsImageChannel && imageOs) {
+        imageOs->writeS16(dataRectsInUpdate);
+        imageOs->writeS16(0);
+        imageOs->writeU16(0);
+        imageOs->writeU16(0);
+        imageOs->writeU32(pseudoEncodingLastRect);
+        imageOs->flush();
     }
   }
 
@@ -375,13 +381,8 @@ void SMsgWriter::writeFramebufferUpdateEnd()
 void SMsgWriter::writeCopyRect(const Rect& r, int srcX, int srcY)
 {
   startRect(r,encodingCopyRect);
-  if (cp->supportsUdp) {
-    udps->writeU16(srcX);
-    udps->writeU16(srcY);
-  } else {
-    os->writeU16(srcX);
-    os->writeU16(srcY);
-  }
+  rectOs()->writeU16(srcX);
+  rectOs()->writeU16(srcY);
   endRect();
 }
 
@@ -391,27 +392,17 @@ void SMsgWriter::startRect(const Rect& r, int encoding)
     throw Exception("SMsgWriter::startRect: nRects out of sync");
   ++dataRectsInUpdate;
 
-  if (cp->supportsUdp) {
-    udps->writeS16(r.tl.x);
-    udps->writeS16(r.tl.y);
-    udps->writeU16(r.width());
-    udps->writeU16(r.height());
-    udps->writeU32(encoding);
-  } else {
-    os->writeS16(r.tl.x);
-    os->writeS16(r.tl.y);
-    os->writeU16(r.width());
-    os->writeU16(r.height());
-    os->writeU32(encoding);
-  }
+  rdr::OutStream *const out = rectOs();
+  out->writeS16(r.tl.x);
+  out->writeS16(r.tl.y);
+  out->writeU16(r.width());
+  out->writeU16(r.height());
+  out->writeU32(encoding);
 }
 
 void SMsgWriter::endRect()
 {
-  if (cp->supportsUdp)
-    udps->flush();
-  else
-    os->flush();
+    rectOs()->flush();
 }
 
 void SMsgWriter::startMsg(int type)
@@ -610,8 +601,8 @@ void SMsgWriter::writeSetCursorRect(int width, int height,
   os->writeU16(width);
   os->writeU16(height);
   os->writeU32(pseudoEncodingCursor);
-  os->writeBytes(data, width * height * (cp->pf().bpp/8));
-  os->writeBytes(mask, (width+7)/8 * height);
+  os->writeBytes(data, static_cast<size_t>(width) * height * (cp->pf().bpp / 8));
+  os->writeBytes(mask, static_cast<size_t>((width + 7) / 8) * height);
 }
 
 void SMsgWriter::writeSetXCursorRect(int width, int height,
@@ -635,8 +626,8 @@ void SMsgWriter::writeSetXCursorRect(int width, int height,
     os->writeU8(0);
     os->writeU8(0);
     os->writeU8(0);
-    os->writeBytes(data, (width+7)/8 * height);
-    os->writeBytes(mask, (width+7)/8 * height);
+    os->writeBytes(data, static_cast<size_t>((width + 7) / 8) * height);
+    os->writeBytes(mask, static_cast<size_t>((width + 7) / 8) * height);
   }
 }
 
@@ -687,7 +678,7 @@ void SMsgWriter::writeSetVMwareCursorRect(int width, int height,
   os->pad(1);
 
   // FIXME: Should alpha be premultiplied?
-  os->writeBytes(data, width*height*4);
+  os->writeBytes(data, static_cast<size_t>(width) * height * 4);
 }
 
 void SMsgWriter::writeSetVMwareCursorPositionRect(int hotspotX, int hotspotY)
@@ -735,15 +726,42 @@ void SMsgWriter::writeQEMUKeyEventRect()
   os->writeU32(pseudoEncodingQEMUKeyEvent);
 }
 
-void SMsgWriter::writeUdpUpgrade(const char *resp)
-{
-  startMsg(msgTypeUpgradeToUdp);
+void SMsgWriter::writeWebRTCSignal(rdr::U8 kind, rdr::U8 screenId, const char *payload, size_t len) {
+    if (len > MAX_WEBRTC_SIGNAL_BYTES) {
+        vlog.error("Dropping WebRTC signal kind=%u screen=%u: payload %zu bytes "
+                   "exceeds %zu-byte cap",
+            kind,
+            screenId,
+            len,
+            MAX_WEBRTC_SIGNAL_BYTES);
+        return;
+    }
 
-  rdr::U16 len = strlen(resp);
-  os->writeU16(len);
-  os->writeBytes(resp, len);
+    startMsg(msgTypeWebRTCSignal);
+    os->writeU8(kind);
+    os->writeU8(screenId);
 
-  endMsg();
+    os->writeU16(static_cast<rdr::U16>(len));
+    if (len)
+        os->writeBytes(payload, len);
+    endMsg();
+    os->flush();
+}
+
+void SMsgWriter::writeWebRTCIceServers(const char *urls, size_t len) {
+    writeWebRTCSignal(static_cast<rdr::U8>(WebRTCSignalKind::IceServers), WEBRTC_SESSION_SCREEN, urls, len);
+}
+void SMsgWriter::writeWebRTCOffer(rdr::U8 screenId, const char *sdp, size_t len) {
+    writeWebRTCSignal(static_cast<rdr::U8>(WebRTCSignalKind::SdpOffer), screenId, sdp, len);
+}
+void SMsgWriter::writeWebRTCIceCandidate(rdr::U8 screenId, const char *jsonCandidate, size_t len) {
+    writeWebRTCSignal(static_cast<rdr::U8>(WebRTCSignalKind::IceCandidate), screenId, jsonCandidate, len);
+}
+void SMsgWriter::writeWebRTCFallback(rdr::U8 screenId, const char *reason, size_t len) {
+    writeWebRTCSignal(static_cast<rdr::U8>(WebRTCSignalKind::Fallback), screenId, reason, len);
+}
+void SMsgWriter::writeWebRTCClose(rdr::U8 screenId, const char *reason, size_t len) {
+    writeWebRTCSignal(static_cast<rdr::U8>(WebRTCSignalKind::Close), screenId, reason, len);
 }
 
 void SMsgWriter::writeSubscribeUnixRelay(const bool success, const char *msg)

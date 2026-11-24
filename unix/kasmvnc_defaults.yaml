@@ -17,9 +17,14 @@ network:
   use_ipv6: true
   udp:
     public_ip: 127.0.0.1
-    port: auto
-    payload_size: auto
     stun_server: auto
+    # turn_server: turn:turn.example.com:3478,turns:turn.example.com:443?transport=tcp
+    # turn_username:
+    # turn_credential:
+    turn_credential_url: ""
+    turn_credential_ca_file: ""
+    turn_credential_skip_verify: false
+    force_turn: false
   ssl:
     pem_certificate: /etc/ssl/certs/ssl-cert-snakeoil.pem
     pem_key: /etc/ssl/private/ssl-cert-snakeoil.key
@@ -112,7 +117,7 @@ data_loss_prevention:
 
 encoding:
   max_frame_rate: 60
-  full_frame_updates: none
+  full_frame_updates: 300
   rect_encoding_mode:
     min_quality: 7
     max_quality: 8

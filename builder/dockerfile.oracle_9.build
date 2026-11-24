@@ -52,6 +52,8 @@ RUN dnf install -y \
   libXrandr-devel \
   libXtst-devel \
   libXcursor-devel \
+  libxcvt-devel \
+  libbsd-devel \
   libSM-devel \
   at-spi2-core-devel \
   dbus-devel \

@@ -18,6 +18,12 @@
 #ifndef __ICEIP_H__
 #define __ICEIP_H__
 
+#include <string>
+#include <vector>
+
 void getPublicIP();
+
+// The WebRTC ICE STUN URLs for the StunServer setting, normalized to stun:host:port.
+std::vector<std::string> iceStunUrls();
 
 #endif

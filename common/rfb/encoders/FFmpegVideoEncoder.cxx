@@ -67,7 +67,9 @@ namespace rfb {
             params.quality,
             config.profile,
             config.allowed_quality.max,
-            backend ? backend->next_pts() : 0
+            backend ? backend->next_pts() : 0,
+            params.max_bitrate,
+            MAX_VBV_BITS
         };
         auto next = ffmpeg.create_encoder(settings);
         if (!next) {
@@ -98,7 +100,8 @@ namespace rfb {
             rect.height() & ~1,
             static_cast<uint8_t>(Server::frameRate),
             static_cast<uint8_t>(Server::groupOfPicture),
-            static_cast<uint8_t>(Server::videoQualityCRFCQP)
+            static_cast<uint8_t>(Server::videoQualityCRFCQP),
+            maxBitrate()
         };
         const bool reinit = params != current_params;
         if (reinit || !bpp) {
@@ -132,21 +135,13 @@ namespace rfb {
             writeSkipRect();
             return;
         }
-        auto *os = conn->getOutStream(conn->cp.supportsUdp);
-        os->writeU8(layout.id);
-        os->writeU8(msg_codec_id);
-        os->writeU8(msg_codec_type_id);
-        os->writeU8(packet.keyframe);
-        encoders::write_compact(os, packet.size);
-        os->writeBytes(packet.data, packet.size);
+        routeEncodedRect(layout.id, packet.data, packet.size, packet.keyframe, msg_codec_id, msg_codec_type_id);
         DEBUG_LOG(vlog, "%s %s: Screen id %d, codec %d, frame size: %d", kind(device),
                   KasmVideoEncoders::to_string(encoder), layout.id, msg_codec_id, int(packet.size));
         backend->pop_packet();
     }
 
     void FFmpegVideoEncoder::writeSkipRect() {
-        auto *os = conn->getOutStream(conn->cp.supportsUdp);
-        os->writeU8(layout.id);
-        os->writeU8(kasmVideoSkip);
+        writeVideoSkipRect(layout.id);
     }
 } // namespace rfb

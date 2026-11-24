@@ -229,6 +229,7 @@ class Inventory:
         self.bundle, self.doc, self.arch = bundle, doc, arch
         self.components, self.sources, self.records = {}, {}, []
         self.limitations = []
+        self.embedded = set()
         self.catalog = json.loads((SRC / 'builder/portable/native-sources.json').read_text())
         self.bases = list(dict.fromkeys(Path(os.environ.get(env, default)) for env, default in [
             ('KASMVNC_RUNTIME_SOURCES', '/tmp/static-sources'),
@@ -281,6 +282,14 @@ class Inventory:
             record = {'file': dest, 'sha256': sha(self.bundle / dest), 'repository': origin, 'revision': revision}
             self.sources[dest] = record
             version = revision
+            if entry.get('git_tag_version'):
+                # Only an exact release tag names the version; an untagged
+                # commit keeps its revision rather than claim a nearby release.
+                tag = subprocess.run(['git', '-C', str(directory), 'describe', '--tags', '--exact-match', revision],
+                                     capture_output=True, text=True).stdout.strip()
+                match = re.fullmatch(r'v?(\d+(?:\.\d+)+)', tag)
+                if match:
+                    version = match[1]
             if entry.get('pc'):
                 pcs = sorted({p.resolve() for base in [os.environ.get('KASMVNC_STATIC_RUNTIME_PREFIX', '/opt/kasm-runtime'),
                                                     os.environ.get('KASMVNC_CODEC_PREFIX', '/opt/kasm-codecs'),
@@ -445,6 +454,10 @@ class Inventory:
             if len(entries) != 1:
                 raise RuntimeError(f'Uncatalogued static archive {path}')
             c = self.upstream(entries[0])
+            # Header-only dependencies compiled into this archive have no
+            # archive of their own; inventory them with their embedding library.
+            for embedded in entries[0].get('embeds', []):
+                self.embedded.add(self.upstream(embedded)['bom-ref'])
         kinds = {r['kind'] for r in self.records if r['component'] == c['bom-ref']}
         kind = 'startup-object' if path.suffix == '.o' else 'static-archive'
         kinds.add(kind)
@@ -487,6 +500,7 @@ def main():
             for suffix in ['.static-link.json', '.link-map']:
                 if Path(str(binary) + suffix).exists():
                     shutil.copy2(str(binary) + suffix, bundle / 'evidence' / (binary.name + suffix))
+        deps |= inv.embedded
         xorg = inv.upstream({'name': 'xorg-server', 'source': 'xorg-server-*', 'cpe': 'x.org:x_server'})
         deps.add(xorg['bom-ref'])
         # Header inputs/generators are supplied for rebuilding, but aren't
@@ -558,9 +572,7 @@ def main():
                             ('d3des', ['common/rfb/d3des.c', 'common/rfb/d3des.h']),
                             ('x11-vendored', ['common/rfb/keysymdef.h', 'unix/xserver/hw/vnc/xvnc.c'] +
                              sorted(str(p.relative_to(SRC)) for p in (SRC / 'common/Xregion').iterdir()
-                                    if p.is_file() and p.suffix in ['.c', '.h'])),
-                            ('webudp', sorted(str(p.relative_to(SRC)) for p in (SRC / 'common/network/webudp').iterdir()
-                                              if p.is_file() and p.suffix in ['.cpp', '.h', '.hpp']))]:
+                                    if p.is_file() and p.suffix in ['.c', '.h']))]:
             version = 'git-' + os.environ['KASMVNC_COMMIT_ID']
             text = (SRC / files[0]).read_text()
             if name == 'xxhash':
@@ -577,7 +589,7 @@ def main():
             c = component(name, version, properties=[prop('delivery', 'vendored-source'),
                 prop('file-sha256', json.dumps({p: sha(SRC / p) for p in files}, sort_keys=True))],
                 licenses=[{'expression': {'qoi': 'MIT', 'xxhash': 'BSD-2-Clause', 'tinyxml2': 'Zlib',
-                                         'websocket': 'LGPL-3.0-only', 'webudp': 'MIT', 'cjson': 'MIT',
+                                         'websocket': 'LGPL-3.0-only', 'cjson': 'MIT',
                                          'd3des': 'LicenseRef-D3DES-VNC', 'x11-vendored': 'LicenseRef-X11-Vendored'}[name]}])
             if name in ['d3des', 'x11-vendored']:
                 c['licenses'] = [{'license': {'name': {'d3des': 'Public-domain D3DES with VNC modification notices',

@@ -35,8 +35,11 @@ namespace launcher {
             result.push_back(name.substr(begin));
             return result;
         }
+        // Accepted for older configurations but ignored, as in unix/vncserver.
+        const std::set<std::string> deprecatedKeys{"network.udp.port", "network.udp.payload_size"};
         std::set<std::string> knownKeys() {
             std::set<std::string> result{envGate, "command_line.prompt"};
+            result.insert(deprecatedKeys.begin(), deprecatedKeys.end());
             for (const auto &option: options())
                 for (const auto &key: option.keys)
                     result.insert(key.name);
@@ -241,6 +244,17 @@ namespace launcher {
                     return k.error;
                 break;
             }
+            case Key::Rule::BracketedIpv6: {
+                // Matches Xvnc's StunServer parser: a bracketed host is an IPv6 literal, no scope id.
+                const auto open = value.find('[');
+                const auto close = value.find(']');
+                unsigned char address[16];
+                if (open != std::string::npos &&
+                    (close == std::string::npos ||
+                        inet_pton(AF_INET6, value.substr(open + 1, close - open - 1).c_str(), address) != 1))
+                    return k.error;
+                break;
+            }
             case Key::Rule::OptionKeys: {
                 bool found = false;
                 for (const auto &option: options())
@@ -287,6 +301,41 @@ namespace launcher {
                 break;
             }
             return {};
+        }
+        bool hasValue(const Config &c, const std::string &key) {
+            return !scalar(c, key).empty();
+        }
+        bool truthy(const std::string &v) {
+            std::string l = v;
+            std::transform(l.begin(), l.end(), l.begin(), [](unsigned char ch) { return std::tolower(ch); });
+            return l == "1" || l == "true" || l == "on" || l == "yes";
+        }
+        // Same rules as unix/vncserver's TURN ConfigSettings.
+        std::vector<std::string> turnErrors(const Config &c, const std::map<std::string, std::string> &cli) {
+            std::vector<std::string> errors;
+            const auto effective = [&](const char *param, const char *key) -> std::string {
+                if (auto it = cli.find(param); it != cli.end())
+                    return it->second;
+                return scalar(c, key);
+            };
+            const std::string server = effective("turnserver", "network.udp.turn_server");
+            const bool staticTurn = !server.empty() && server != "auto";
+            const bool dynamicTurn = !effective("turncredentialurl", "network.udp.turn_credential_url").empty();
+            const bool haveUser = !effective("turnusername", "network.udp.turn_username").empty();
+            const bool haveCredential = !effective("turncredential", "network.udp.turn_credential").empty() ||
+                                        !(cli.contains("turncredentialfile") ? cli.at("turncredentialfile")
+                                                                              : std::string{})
+                                             .empty();
+            if (staticTurn && !dynamicTurn && (!haveUser || !haveCredential))
+                errors.push_back("network.udp.turn_server '" + server +
+                                 "': requires network.udp.turn_username and network.udp.turn_credential unless "
+                                 "network.udp.turn_credential_url is set");
+            const bool forceTurn = cli.contains("forceturn") ? truthy(cli.at("forceturn"))
+                                                             : scalar(c, "network.udp.force_turn") == "true";
+            if (forceTurn && !staticTurn && !dynamicTurn)
+                errors.push_back("network.udp.force_turn 'true': requires network.udp.turn_server or "
+                                 "network.udp.turn_credential_url when enabled");
+            return errors;
         }
     } // namespace
 
@@ -415,7 +464,33 @@ namespace launcher {
         }
         interpolateAll();
     }
-    void Config::validate(bool output, bool includeUnknown) const {
+    std::map<std::string, std::string> cliParameters(const std::vector<std::string> &pass) {
+        static const std::set<std::string> booleans{"forceturn", "turncredentialskipverify"};
+        std::map<std::string, std::string> result;
+        for (size_t i = 0; i < pass.size(); ++i) {
+            const auto &arg = pass[i];
+            if (!arg.starts_with('-'))
+                continue;
+            std::string name = arg.substr(arg.starts_with("--") ? 2 : 1);
+            std::string value;
+            const auto eq = name.find('=');
+            const bool inlineValue = eq != std::string::npos;
+            if (inlineValue) {
+                value = name.substr(eq + 1);
+                name.resize(eq);
+            }
+            std::transform(name.begin(), name.end(), name.begin(), [](unsigned char ch) { return std::tolower(ch); });
+            if (!inlineValue) {
+                if (booleans.contains(name))
+                    value = "1";
+                else if (i + 1 < pass.size())
+                    value = pass[++i];
+            }
+            result[name] = value;
+        }
+        return result;
+    }
+    void Config::validate(bool output, bool includeUnknown, const std::map<std::string, std::string> &cliParams) const {
         auto definitions = options();
         definitions.push_back({"prompt", {{"command_line.prompt", "BOOLEAN", "", "", {}}}});
         definitions.push_back({"environment", {{envGate, "BOOLEAN", "", "", {}}}});
@@ -471,14 +546,22 @@ namespace launcher {
                 throw Exit{1};
             }
         }
+        if (auto errors = turnErrors(*this, cliParams); !errors.empty()) {
+            if (output)
+                std::cerr << "config errors:\n" << join(errors, "\n") << "\n\n";
+            throw Exit{1};
+        }
         if (!includeUnknown)
             return;
         auto known = knownKeys();
         std::vector<std::string> all, unknown;
         leafKeys(root, "", all);
-        for (const auto &key: all)
-            if (!known.contains(key))
+        for (const auto &key: all) {
+            if (deprecatedKeys.contains(key))
+                std::cerr << "Config key " << key << " is deprecated and has no effect; remove it from your kasmvnc.yaml\n";
+            else if (!known.contains(key))
                 unknown.push_back(key);
+        }
         if (!unknown.empty()) {
             if (output)
                 std::cerr << "Unsupported config keys found:\n" << join(unknown, "\n") << "\n\n";
@@ -562,10 +645,20 @@ namespace launcher {
                 continue;
             if (name == "NeverShared" && v != "exclusive")
                 continue;
-            if ((name == "ZlibLevel" || name == "PublicIP" || name == "udpPort" || name == "udpSize" ||
-                    name == "StunServer" || name == "DLP_WatermarkFont") &&
+            if ((name == "ZlibLevel" || name == "PublicIP" || name == "StunServer" || name == "DLP_WatermarkFont") &&
                 (v == "auto" || !firstDefined))
                 continue;
+            if ((name == "TurnServer" || name == "TurnUsername" || name == "TurnCredential" ||
+                    name == "TurnCredentialUrl" || name == "TurnCredentialCaFile") &&
+                (v.empty() || (name == "TurnServer" && v == "auto")))
+                continue;
+            if (name == "TurnCredential") {
+                if (supplied.contains("-TurnCredentialFile"))
+                    continue;
+                out.push_back({"-TurnCredentialFile", ArgumentKind::OptionName});
+                out.push_back({context.turnCredentialFile});
+                continue;
+            }
             if ((name == "DetectScrolling" || name == "DetectHorizontal" || name == "hw3d" ||
                     name == "AllowOverride") &&
                 v != "true")

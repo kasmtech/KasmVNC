@@ -4,31 +4,40 @@ const fs = require('fs');
   const browser = await chromium.launch({executablePath: '/usr/bin/chromium', args: ['--no-sandbox']});
   const page = await browser.newPage({viewport: {width: 1280, height: 900}, ignoreHTTPSErrors: true,
     httpCredentials: {username: 'kasm_test', password: 'portableTest42'}});
-  // Observe the browser's real DTLS/data-channel connection without reading
-  // private noVNC state or replacing its transport implementation.
+  // Observe the browser's real WebRTC media path (ICE/DTLS-SRTP video track)
+  // without reading private noVNC state or replacing its transport.
   await page.addInitScript(() => {
     const OriginalPeer = window.RTCPeerConnection;
-    window.portableRTC = {states: [], messages: 0, bytes: 0, channels: []};
+    window.portableRTC = {states: [], tracks: [], peers: []};
     window.RTCPeerConnection = class extends OriginalPeer {
       constructor(...args) {
         super(...args);
+        window.portableRTC.peers.push(this);
         this.addEventListener('connectionstatechange', () => {
           window.portableRTC.states.push(this.connectionState);
         });
-      }
-      createDataChannel(...args) {
-        const channel = super.createDataChannel(...args);
-        const record = {label: channel.label, state: channel.readyState};
-        window.portableRTC.channels.push(record);
-        channel.addEventListener('open', () => {record.state = channel.readyState;});
-        channel.addEventListener('close', () => {record.state = channel.readyState;});
-        channel.addEventListener('message', event => {
-          window.portableRTC.messages++;
-          window.portableRTC.bytes += event.data.byteLength ?? event.data.size ?? event.data.length;
+        this.addEventListener('track', event => {
+          window.portableRTC.tracks.push({kind: event.track.kind, state: event.track.readyState});
         });
-        return channel;
       }
     };
+  });
+  // Summarize inbound RTP video across peers; peer objects are not serializable.
+  const rtcSummary = () => page.evaluate(async () => {
+    const rtc = window.portableRTC;
+    let bytesReceived = 0, framesDecoded = 0, packetsReceived = 0;
+    for (const pc of rtc.peers) {
+      try {
+        (await pc.getStats()).forEach(r => {
+          if (r.type === 'inbound-rtp' && r.kind === 'video') {
+            bytesReceived += r.bytesReceived || 0;
+            framesDecoded += r.framesDecoded || 0;
+            packetsReceived += r.packetsReceived || 0;
+          }
+        });
+      } catch (_) {}
+    }
+    return {states: rtc.states, tracks: rtc.tracks, bytesReceived, framesDecoded, packetsReceived};
   });
   const messages = [];
   let frames = 0, bytes = 0;
@@ -66,9 +75,7 @@ const fs = require('fs');
     await page.keyboard.type('printf portable-input-ok > /home/kasm_test/input-proof', {delay: 20});
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
-    const imageCodec = labels.find(s => s.includes('JPEG/WEBP'));
-    if (!imageCodec) throw new Error('Image mode unavailable for the UDP transport check');
-    await page.locator('#noVNC_setting_stream_mode').selectOption({label: imageCodec}, {force: true});
+    // WebRTC carries only video codecs (RTP); keep SW H.264 selected.
     // The standalone client exposes this through Settings. Workspaces' parent
     // message listener is only registered when the client is inside an iframe.
     if (!(await page.locator('#noVNC_control_bar.noVNC_open').count())) {
@@ -79,10 +86,15 @@ const fs = require('fs');
     if (!(await page.locator('#noVNC_setting_enable_webrtc').isChecked())) {
       throw new Error('WebRTC setting did not enable');
     }
-    await page.waitForFunction(() => window.portableRTC.states.includes('connected') &&
-      window.portableRTC.channels.some(c => c.label === 'webudp' && c.state === 'open') &&
-      window.portableRTC.messages >= 3 && window.portableRTC.bytes > 1000, null, {timeout: 30000});
-    const udp = await page.evaluate(() => window.portableRTC);
+    let udp;
+    const rtcDeadline = Date.now() + 30000;
+    for (;;) {
+      udp = await rtcSummary();
+      if (udp.states.includes('connected') && udp.tracks.some(t => t.kind === 'video') &&
+          udp.framesDecoded >= 3 && udp.bytesReceived > 1000) break;
+      if (Date.now() > rtcDeadline) throw new Error('WebRTC video did not flow: ' + JSON.stringify(udp));
+      await page.waitForTimeout(500);
+    }
     fs.writeFileSync('/results/udp.json', JSON.stringify(udp, null, 2));
     await page.locator('html.noVNC_connected').waitFor({timeout: 5000});
     await page.screenshot({path: '/results/browser.png'});
@@ -92,7 +104,7 @@ const fs = require('fs');
     await page.screenshot({path: '/results/browser-failed.png'}).catch(() => {});
     process.exitCode = 1;
   } finally {
-    const udp = await page.evaluate(() => window.portableRTC).catch(() => null);
+    const udp = await rtcSummary().catch(() => null);
     fs.writeFileSync('/results/udp.json', JSON.stringify(udp, null, 2));
     fs.writeFileSync('/results/browser.log', messages.join('\n'));
     await browser.close();

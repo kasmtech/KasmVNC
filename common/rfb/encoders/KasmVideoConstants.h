@@ -17,8 +17,13 @@
  */
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cassert>
+#include <cctype>
+#include <cstdint>
+#include <string_view>
+#include <utility>
 
 namespace rfb {
     // NOTE: SupportedEncoderCount represents the number of actively supported codec families (H264, H265, AV1)
@@ -31,6 +36,41 @@ namespace rfb {
     static constexpr unsigned int kasmVideoVP8 = 0x04 << 4; // VP8 encoding (not yet supported)
     static constexpr unsigned int kasmVideoVP9 = 0x05 << 4; // VP9 encoding (not yet supported)
     static constexpr unsigned int kasmVideoSkip = 0x00 << 4; // Skip frame
+
+    using KasmVideoCodecId = uint8_t;
+    static constexpr KasmVideoCodecId kasmVideoUnknownCodec = 0;
+
+    // Maps a codec token from the client (ClientCapabilities) to its ID. Matching ignores case.
+    inline KasmVideoCodecId kasmVideoCodecFromToken(std::string_view token) {
+        static constexpr auto table = std::to_array<std::pair<std::string_view, KasmVideoCodecId>>({
+            {"h264", kasmVideoH264},
+            {"h265", kasmVideoH265},
+            {"av1",  kasmVideoAV1 },
+        });
+        const auto equalIgnoreCase = [](char a, char b) {
+            return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
+        };
+        for (const auto &[name, id]: table) {
+            if (std::ranges::equal(name, token, equalIgnoreCase))
+                return id;
+        }
+        return kasmVideoUnknownCodec;
+    }
+
+    inline const char *kasmVideoCodecName(KasmVideoCodecId id) {
+        switch (id) {
+            case kasmVideoH264:
+                return "H264";
+            case kasmVideoH265:
+                return "H265";
+            case kasmVideoAV1:
+                return "AV1";
+            default:
+                return "unknown";
+        }
+    }
+
+    static constexpr int MAX_VBV_BITS = 15'000'000;
 
     static constexpr auto dri_node_paths = std::to_array<const char *>({
         "renderD128",

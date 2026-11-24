@@ -78,6 +78,10 @@ namespace rfb {
                               const RenderedCursor* renderedCursor,
                               size_t maxUpdateSize);
 
+    void forceVideoScreenKeyframe(uint8_t screenId);
+
+    void setVideoScreenMaxBitrate(uint8_t screenId, int bps);
+
     void clearEncodingTime() {
         encodingTime = 0;
     };

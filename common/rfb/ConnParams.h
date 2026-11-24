@@ -92,6 +92,10 @@ namespace rfb {
 
     void setEncodings(int nEncodings, const rdr::S32* encodings);
 
+    // Derives useCopyRect from the client's encodings and the settings that rule CopyRect out
+    // (QOI, the image DataChannel, a watermark). Call after any of those change.
+    void recomputeCopyRect();
+
     unsigned int ledState() const { return ledState_; }
     void setLEDState(unsigned int state);
 
@@ -122,7 +126,13 @@ namespace rfb {
     bool supportsDirectMouse;
     bool supportsTouchEvents{false};
 
-    bool supportsUdp;
+    bool supportsWebRTCMedia;
+
+    bool supportsImageChannel;
+
+    [[nodiscard]] bool qoiUsable() const noexcept {
+        return supportsQOI && !supportsImageChannel;
+    }
 
     int compressLevel;
     int qualityLevel;
@@ -148,6 +158,9 @@ namespace rfb {
     bool kasmPassed[KASM_NUM_SETTINGS];
       KasmVideoEncoders::EncoderConfig encoder_config{KasmVideoEncoders::Encoder::unavailable};
       KasmVideoEncoders::EncoderConfigs available_encoders;
+
+      bool deferEncoderConfig{false};
+      KasmVideoEncoders::EncoderConfig pendingEncoderConfig{KasmVideoEncoders::Encoder::unavailable};
 
   private:
 

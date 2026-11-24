@@ -146,6 +146,21 @@ namespace KASMVNC_FFMPEG {
             has_packet = false;
         }
 
+        bool capped() const {
+            return settings.max_bitrate > 0;
+        }
+
+        void set_bitrate_cap(bool hardware) {
+            if (!capped())
+                return;
+            context->rc_max_rate = settings.max_bitrate;
+            context->rc_buffer_size = settings.vbv_buffer_bits > 0
+                ? std::min(settings.max_bitrate, settings.vbv_buffer_bits)
+                : settings.max_bitrate;
+            if (hardware)
+                context->global_quality = settings.quality;
+        }
+
         void set_software_options() {
             if (settings.name == "libsvtav1") {
                 option("preset", "12");
@@ -188,6 +203,12 @@ namespace KASMVNC_FFMPEG {
 #else
             option("async_depth", "1");
 #endif
+            if (capped()) {
+                // Quality-defined VBR bounded by the WebRTC bitrate cap.
+                option("rc_mode", "QVBR");
+                context->bit_rate = settings.max_bitrate;
+                return;
+            }
             option("rc_mode", "CQP");
             if (codec->id == AV_CODEC_ID_AV1) {
                 // AV1 VAAPI has no private qp option. CQP reads this value
@@ -262,6 +283,7 @@ namespace KASMVNC_FFMPEG {
             context->height = settings.height;
             context->profile = settings.profile;
             context->pix_fmt = codec_format;
+            set_bitrate_cap(D != FFmpeg::Device::Software);
             if constexpr (D == FFmpeg::Device::Software) {
                 set_software_options();
             } else {

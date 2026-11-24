@@ -15,17 +15,18 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
  * USA.
  */
+#include <rdr/Exception.h>
 #include <rdr/OutStream.h>
-#include <rfb/encodings.h>
 #include <rfb/LogWriter.h>
+#include <rfb/PixelBuffer.h>
 #include <rfb/SConnection.h>
 #include <rfb/ServerCore.h>
-#include <rfb/PixelBuffer.h>
-#include <rfb/TightQOIEncoder.h>
 #include <rfb/TightConstants.h>
+#include <rfb/TightQOIEncoder.h>
+#include <rfb/encodings.h>
 #include <rfb/util.h>
-#include <sys/time.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 #define QOI_IMPLEMENTATION
 #define QOI_NO_STDIO
@@ -161,8 +162,8 @@ bool TightQOIEncoder::isSupported() const
   if (!conn->cp.supportsEncoding(encodingTight))
     return false;
 
-  if (conn->cp.supportsQOI)
-    return true;
+  if (conn->cp.qoiUsable())
+      return true;
 
   // Tight support, but not QOI
   return false;
@@ -188,6 +189,8 @@ void TightQOIEncoder::compressOnly(const PixelBuffer* pb, const uint8_t qualityI
   if (!encoded) {
     // Error
     vlog.error("QOI error");
+    out.clear();
+    return;
   }
 
   out.resize(len);
@@ -205,7 +208,7 @@ void TightQOIEncoder::writeOnly(const std::vector<uint8_t> &out) const
   os->writeU8(tightQoi << 4);
 
   writeCompact(out.size(), os);
-  os->writeBytes(&out[0], out.size());
+  os->writeBytes(out.data(), out.size());
 }
 
 void TightQOIEncoder::writeRect(const PixelBuffer* pb, const Palette& palette)
@@ -228,6 +231,7 @@ void TightQOIEncoder::writeRect(const PixelBuffer* pb, const Palette& palette)
   if (!encoded) {
     // Error
     vlog.error("QOI error");
+    throw rdr::Exception("TightQOIEncoder::writeRect: QOI encoding failed");
   }
 
   os = conn->getOutStream();

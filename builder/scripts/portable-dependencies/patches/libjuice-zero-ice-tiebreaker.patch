@@ -1,0 +1,131 @@
+From cb523763255f241442da1fbdd72c498f33a54b35 Mon Sep 17 00:00:00 2001
+From: Paul-Louis Ageneau <paul-louis@ageneau.org>
+Date: Tue, 6 Oct 2026 10:14:37 +0200
+Subject: [PATCH] Fix STUN 400 errors for zero ICE tiebreakers
+
+libjuice treated a zero ICE tiebreaker as a missing role attribute and
+rejected valid Binding requests with 400 Bad Request. Track the presence
+of ICE-CONTROLLING and ICE-CONTROLLED separately from their values when
+parsing, serializing and processing Binding requests, and compare the
+ICE-CONTROLLED value when both agents are controlled.
+
+Author: Saai Arora (fix commit 470a0a7a945ae531ecdf07078f0d4f7c9bc59c60)
+Upstream: https://github.com/paullouisageneau/libjuice/pull/356
+Fixes: https://github.com/paullouisageneau/libjuice/issues/355
+Backport: src/ changes of merge cb52376 onto v1.7.4 (b89c792); upstream
+test changes are omitted because libdatachannel does not build them.
+---
+ src/agent.c | 19 ++++++++++++-------
+ src/stun.c  |  6 ++++--
+ src/stun.h  |  2 ++
+ 3 files changed, 18 insertions(+), 9 deletions(-)
+
+diff --git a/src/agent.c b/src/agent.c
+index 6d1dcf2..036f7cf 100644
+--- a/src/agent.c
++++ b/src/agent.c
+@@ -1437,7 +1437,7 @@ int agent_process_stun_binding(juice_agent_t *agent, const stun_message_t *msg,
+ 			return -1;
+ 
+ 		ice_candidate_pair_t *pair = entry->pair;
+-		if (msg->ice_controlling == msg->ice_controlled) {
++		if (msg->has_ice_controlling == msg->has_ice_controlled) {
+ 			JLOG_WARN("Controlling and controlled attributes mismatch in request");
+ 			agent_send_stun_binding(agent, entry, STUN_CLASS_RESP_ERROR, 400, msg->transaction_id,
+ 			                        NULL);
+@@ -1451,7 +1451,7 @@ int agent_process_stun_binding(juice_agent_t *agent, const stun_message_t *msg,
+ 		//  ERROR-CODE attribute with a value of 487 (Role Conflict) but retains its role.
+ 		//  * If the agent's tiebreaker value is less than the contents of the ICE-CONTROLLING
+ 		//  attribute, the agent switches to the controlled role.
+-		if (agent->mode == AGENT_MODE_CONTROLLING && msg->ice_controlling) {
++		if (agent->mode == AGENT_MODE_CONTROLLING && msg->has_ice_controlling) {
+ 			JLOG_WARN("ICE role conflict (both controlling)");
+ 			if (agent->ice_tiebreaker >= msg->ice_controlling) {
+ 				JLOG_DEBUG("Asking remote peer to switch roles");
+@@ -1471,9 +1471,9 @@ int agent_process_stun_binding(juice_agent_t *agent, const stun_message_t *msg,
+ 		//  * If the agent's tiebreaker value is less than the contents of the ICE-CONTROLLED
+ 		//  attribute, the agent generates a Binding error response and includes an ERROR-CODE
+ 		//  attribute with a value of 487 (Role Conflict) but retains its role.
+-		if (agent->mode == AGENT_MODE_CONTROLLED && msg->ice_controlled) {
++		if (agent->mode == AGENT_MODE_CONTROLLED && msg->has_ice_controlled) {
+ 			JLOG_WARN("ICE role conflict (both controlled)");
+-			if (agent->ice_tiebreaker >= msg->ice_controlling) {
++			if (agent->ice_tiebreaker >= msg->ice_controlled) {
+ 				JLOG_DEBUG("Switching to controlling role");
+ 				agent->mode = AGENT_MODE_CONTROLLING;
+ 				agent_update_candidate_pairs(agent);
+@@ -1485,7 +1485,7 @@ int agent_process_stun_binding(juice_agent_t *agent, const stun_message_t *msg,
+ 			break;
+ 		}
+ 		if (msg->use_candidate) {
+-			if (!msg->ice_controlling) {
++			if (!msg->has_ice_controlling) {
+ 				JLOG_WARN("STUN message use_candidate missing ice_controlling attribute");
+ 				agent_send_stun_binding(agent, entry, STUN_CLASS_RESP_ERROR, 400,
+ 				                        msg->transaction_id, NULL);
+@@ -1713,8 +1713,13 @@ int agent_send_stun_binding(juice_agent_t *agent, agent_stun_entry_t *entry, stu
+ 			snprintf(msg.credentials.username, STUN_MAX_USERNAME_LEN, "%s:%s",
+ 			         agent->remote.ice_ufrag, agent->local.ice_ufrag);
+ 			password = agent->remote.ice_pwd;
+-			msg.ice_controlling = agent->mode == AGENT_MODE_CONTROLLING ? agent->ice_tiebreaker : 0;
+-			msg.ice_controlled = agent->mode == AGENT_MODE_CONTROLLED ? agent->ice_tiebreaker : 0;
++			if (agent->mode == AGENT_MODE_CONTROLLING) {
++			    msg.has_ice_controlling = true;
++			    msg.ice_controlling = agent->ice_tiebreaker;
++			} else if (agent->mode == AGENT_MODE_CONTROLLED) {
++			    msg.has_ice_controlled = true;
++			    msg.ice_controlled = agent->ice_tiebreaker;
++			}
+ 
+ 			// RFC 8445 7.1.1. PRIORITY
+ 			// The PRIORITY attribute MUST be included in a Binding request and be set to the value
+diff --git a/src/stun.c b/src/stun.c
+index e6d46d0..9c61b50 100644
+--- a/src/stun.c
++++ b/src/stun.c
+@@ -157,14 +157,14 @@ int stun_write(void *buf, size_t size, const stun_message_t *msg, const char *pa
+ 			goto overflow;
+ 		pos += len;
+ 	}
+-	if (msg->ice_controlling) {
++	if (msg->has_ice_controlling) {
+ 		uint64_t ice_controlling = htonll(msg->ice_controlling);
+ 		len = stun_write_attr(pos, end - pos, STUN_ATTR_ICE_CONTROLLING, &ice_controlling, 8);
+ 		if (len <= 0)
+ 			goto overflow;
+ 		pos += len;
+ 	}
+-	if (msg->ice_controlled) {
++	if (msg->has_ice_controlled) {
+ 		uint64_t ice_controlled = htonll(msg->ice_controlled);
+ 		len = stun_write_attr(pos, end - pos, STUN_ATTR_ICE_CONTROLLED, &ice_controlled, 8);
+ 		if (len <= 0)
+@@ -916,6 +916,7 @@ int stun_read_attr(const void *data, size_t size, stun_message_t *msg, uint8_t *
+ 		}
+ 		uint32_t *value32 = (uint32_t *)attr->value;
+ 		msg->ice_controlling = ((uint64_t)ntohl(value32[0]) << 32) | ntohl(value32[1]);
++		msg->has_ice_controlling = true;
+ 		break;
+ 	}
+ 	case STUN_ATTR_ICE_CONTROLLED: {
+@@ -926,6 +927,7 @@ int stun_read_attr(const void *data, size_t size, stun_message_t *msg, uint8_t *
+ 		}
+ 		uint32_t *value32 = (uint32_t *)attr->value;
+ 		msg->ice_controlled = ((uint64_t)ntohl(value32[0]) << 32) | ntohl(value32[1]);
++		msg->has_ice_controlled = true;
+ 		break;
+ 	}
+ 	case STUN_ATTR_CHANNEL_NUMBER: {
+diff --git a/src/stun.h b/src/stun.h
+index 398bfb0..61f4246 100644
+--- a/src/stun.h
++++ b/src/stun.h
+@@ -319,6 +319,8 @@ typedef struct stun_message {
+ 	uint32_t priority;
+ 	uint64_t ice_controlling;
+ 	uint64_t ice_controlled;
++	bool has_ice_controlling;
++	bool has_ice_controlled;
+ 	bool use_candidate;
+ 	addr_record_t mapped;
+ 

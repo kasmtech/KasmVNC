@@ -46,6 +46,9 @@ public:
         int width{}, height{}, frame_rate{60}, gop{30}, quality{25};
         int profile{}, maximum_quality{50};
         int64_t first_pts{};
+        // Bitrate cap in bits/s (0 = uncapped, quality-only rate control) and
+        // the VBV buffer size to pair with it. Set by WebRTC congestion control.
+        int max_bitrate{}, vbv_buffer_bits{};
     };
 
     struct Packet {

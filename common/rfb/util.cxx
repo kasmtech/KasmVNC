@@ -23,6 +23,7 @@
 
 #include <cstdarg>
 #include <cstdio>
+#include <ctime>
 #include <sys/time.h>
 
 #include <rfb/util.h>
@@ -709,6 +710,20 @@ namespace rfb {
     usersList += "]";
     usersList = "{\"users\": " + usersList + "} ";
     return usersList;
+  }
+
+  int64_t monotonicNowNs() noexcept
+  {
+      timespec now;
+      clock_gettime(CLOCK_MONOTONIC, &now);
+      return now.tv_sec * 1000000000LL + now.tv_nsec;
+  }
+
+  bool iceFailedFor(int64_t failedSinceNs, int64_t nowNs, int64_t graceNs) noexcept
+  {
+      if (failedSinceNs == 0)
+          return false;
+      return (nowNs - failedSinceNs) > graceNs;
   }
 
     template unsigned msBetween<timeval>(const timeval *first, const timeval *second);

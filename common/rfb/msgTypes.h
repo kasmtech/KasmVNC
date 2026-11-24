@@ -18,6 +18,8 @@
 #ifndef __RFB_MSGTYPES_H__
 #define __RFB_MSGTYPES_H__
 
+#include <rdr/types.h>
+
 namespace rfb {
   // server to client
 
@@ -32,7 +34,7 @@ namespace rfb {
   constexpr int msgTypeStats = 178;
   constexpr int msgTypeRequestFrameStats = 179;
   constexpr int msgTypeBinaryClipboard = 180;
-  constexpr int msgTypeUpgradeToUdp = 181;
+  constexpr int msgTypeLegacyUpgradeToUdp = 181;
   constexpr int msgTypeSubscribeUnixRelay = 182;
   constexpr int msgTypeUnixRelay = 183;
   constexpr int msgTypeVideoEncoders = 184;
@@ -45,6 +47,9 @@ namespace rfb {
   constexpr int msgTypeTouchEventsSupported = 192;
   constexpr int msgTypeTextInputFocus = 194;
   constexpr int msgTypeTextInputFields = 195;
+
+  // WebRTC signaling message; its payload types live in rfb/webrtc/webrtcTypes.h.
+  constexpr int msgTypeWebRTCSignal = 196;
 
   constexpr int msgTypeServerFence = 248;
   constexpr int msgTypeUserAddedToSession = 253;
@@ -66,15 +71,17 @@ namespace rfb {
   constexpr int msgTypeRequestStats = 178;
   constexpr int msgTypeFrameStats = 179;
   // same as the other direction
-  //constexpr int msgTypeBinaryClipboard = 180;
-  //constexpr int msgTypeUpgradeToUdp = 181;
-  //constexpr int msgTypeSubscribeUnixRelay = 182;
-  //constexpr int msgTypeUnixRelay = 183;
-  //constexpr int msgTypeVideoEncoders = 184;
-  //constexpr int msgTypeKeepAlive = 185;
-  //constexpr int msgTypeServerDisconnect = 186;
+  // constexpr int msgTypeBinaryClipboard = 180;
+  // constexpr int msgTypeSubscribeUnixRelay = 182;
+  // constexpr int msgTypeUnixRelay = 183;
+  // constexpr int msgTypeVideoEncoders = 184;
+  // constexpr int msgTypeKeepAlive = 185;
+  // constexpr int msgTypeServerDisconnect = 186;
+  // constexpr int msgTypeForceGameMode = 187;
 
   constexpr int msgTypeDirectMouseEvent = 188;
+
+  // constexpr int msgTypeLatencyMeasurement = 189;
   //constexpr int msgTypeNetworkStats = 190;
   // constexpr int msgTypeSystemStats = 191;
   // constexpr int msgTypeTouchEventsSupported = 192;

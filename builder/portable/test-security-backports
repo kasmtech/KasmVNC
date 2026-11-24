@@ -8,3 +8,7 @@ cc "$(dirname "$0")/test-security-backports.c" \
   $(pkg-config --cflags --libs --static libavutil) -o "$test_dir/regression"
 "$test_dir/regression"
 "$test_dir/regression" encryption
+juice_lib=$(find "$HOME/.local/lib" "$HOME/.local/lib64" -name libjuice.a -print -quit 2>/dev/null)
+cc "$(dirname "$0")/test-libjuice-backports.c" -DJUICE_STATIC -I"$HOME/.local/include" \
+  "$juice_lib" -lpthread -o "$test_dir/libjuice-regression"
+"$test_dir/libjuice-regression"

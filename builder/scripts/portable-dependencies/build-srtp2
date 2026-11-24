@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+recipe_dir=$(cd "$(dirname "$0")" && pwd)
+
+SRTP_VERSION="2.8.0"
+
+build_and_install() {
+    cmake -S . -B build -GNinja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DENABLE_OPENSSL=ON \
+        -DLIBSRTP_TEST_APPS=OFF \
+        -DCMAKE_INSTALL_PREFIX="$HOME/.local"
+    ninja -C build install
+    install_pkgconfig
+}
+
+install_pkgconfig() {
+    local pcdir="$HOME/.local/lib/pkgconfig"
+    mkdir -p "$pcdir"
+    cat > "$pcdir/libsrtp2.pc" <<EOF
+prefix=$HOME/.local
+exec_prefix=\${prefix}
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+
+Name: libsrtp2
+Description: Library for SRTP (Secure Realtime Transport Protocol)
+Version: ${SRTP_VERSION}
+Libs: -L\${libdir} -lsrtp2
+Libs.private: -lcrypto
+Cflags: -I\${includedir}
+EOF
+}
+
+prepare_source() {
+    DIR=libsrtp
+    cd /tmp
+    [ -d ./${DIR} ] && rm -rf ./${DIR}
+    mkdir ${DIR}
+    # Keep the versioned archive in /tmp: the portable SBOM preserves it as
+    # corresponding source. Its hash is pinned in helper-sources.sha256.
+    local archive="/tmp/libsrtp-${SRTP_VERSION}.tar.gz"
+    curl --connect-timeout 30 --max-time 900 -fLsS --retry 3 \
+        "https://github.com/cisco/libsrtp/archive/v${SRTP_VERSION}.tar.gz" -o "${archive}"
+    "$recipe_dir/verify-helper-source" "${archive}"
+    tar xzf "${archive}" -C ${DIR}/ --strip-components=1
+    cd ${DIR}
+}
+
+prepare_source
+build_and_install

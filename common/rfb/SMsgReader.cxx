@@ -1,27 +1,27 @@
 /* Copyright (C) 2002-2005 RealVNC Ltd.  All Rights Reserved.
  * Copyright 2009-2014 Pierre Ossman for Cendio AB
- * 
+ *
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This software is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this software; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
  * USA.
  */
-#include <stdio.h>
-#include <network/Udp.h>
 #include <rdr/InStream.h>
 #include <rdr/ZlibInStream.h>
+#include <stdio.h>
 
 #include <rfb/msgTypes.h>
+#include <rfb/webrtc/webrtcTypes.h>
 #include <rfb/qemuTypes.h>
 #include <rfb/clipboardTypes.h>
 #include <rfb/Exception.h>
@@ -99,8 +99,11 @@ void SMsgReader::readMsg()
   case msgTypeQEMUClientMessage:
     readQEMUMessage();
     break;
-  case msgTypeUpgradeToUdp:
-    readUpgradeToUdp();
+  case msgTypeWebRTCSignal:
+      readWebRTCSignal();
+      break;
+  case msgTypeLegacyUpgradeToUdp:
+    readLegacyUpgradeToUdp();
     break;
   case msgTypeSubscribeUnixRelay:
     readSubscribeUnixRelay();
@@ -382,28 +385,34 @@ void SMsgReader::readQEMUKeyEvent()
   handler->keyEvent(keysym, keycode, down);
 }
 
-void SMsgReader::readUpgradeToUdp()
+void SMsgReader::readWebRTCSignal() {
+    rdr::U8 kind = is->readU8();
+    rdr::U8 screenId = is->readU8();
+    rdr::U16 len = is->readU16();
+
+    if (len > MAX_WEBRTC_SIGNAL_BYTES) {
+        vlog.error("WebRTC signal length %u exceeds %zu-byte cap", (unsigned) len, MAX_WEBRTC_SIGNAL_BYTES);
+        throw rdr::Exception("WebRTC signal too large");
+    }
+
+    std::vector<char> buf(len);
+    if (len)
+        is->readBytes(buf.data(), len);
+    const char *payload = len ? buf.data() : "";
+    handler->webrtcSignal(kind, screenId, payload, len);
+}
+
+void SMsgReader::readLegacyUpgradeToUdp()
 {
-  char buf[4096], resp[4096];
-  rdr::U16 len = is->readU16();
+  const rdr::U16 len = is->readU16();
+  is->skip(len);
 
-  if (len >= sizeof(buf)) {
-    vlog.error("Ignoring udp upgrade with too large payload");
-    is->skip(len);
-    return;
+  static bool warned = false;
+  if (!warned) {
+    warned = true;
+    vlog.info("Ignoring legacy WebUDP upgrade request from client: "
+              "WebUDP has been removed (use WebRTC)");
   }
-
-  if (!len) {
-    handler->udpDowngrade(false);
-    return;
-  }
-
-  is->readBytes(buf, len);
-  buf[len] = '\0';
-
-  wuGotHttp(buf, len, resp);
-
-  handler->udpUpgrade(resp);
 }
 
 void SMsgReader::readSubscribeUnixRelay()

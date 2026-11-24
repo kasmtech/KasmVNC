@@ -66,19 +66,18 @@ namespace network {
     void netGetFrameStats(char *buf, uint32_t len);
     void netResetFrameStatsCall();
     uint8_t netServerFrameStatsReady();
-    void netUdpUpgrade(void *client, uint32_t ip);
     void netClearClipboard();
     void netUpdateSystemStats();
     void netGetSystemStats(const char **ptr, uint32_t *len);
 
-    enum USER_ACTION {
-      NONE,
-      WANT_FRAME_STATS_SERVERONLY,
-      WANT_FRAME_STATS_ALL,
-      WANT_FRAME_STATS_OWNER,
-      WANT_FRAME_STATS_SPECIFIC,
-      UDP_UPGRADE,
-      CLEAR_CLIPBOARD,
+    enum USER_ACTION
+    {
+        NONE,
+        WANT_FRAME_STATS_SERVERONLY,
+        WANT_FRAME_STATS_ALL,
+        WANT_FRAME_STATS_OWNER,
+        WANT_FRAME_STATS_SPECIFIC,
+        CLEAR_CLIPBOARD,
     };
 
     uint8_t netRequestFrameStats(USER_ACTION what, const char *client);
@@ -89,11 +88,7 @@ namespace network {
     struct action_data {
       enum USER_ACTION action;
       union {
-        kasmpasswd_entry_t data;
-        struct {
-          void *client;
-          uint32_t ip;
-        } udp;
+          kasmpasswd_entry_t data;
       };
     };
 

@@ -52,7 +52,6 @@
 #include <cstdlib>
 
 #include <network/GetAPI.h>
-#include <network/Udp.h>
 
 #include <rfb/cpuid.h>
 #include <rfb/ComparingUpdateTracker.h>
@@ -61,6 +60,7 @@
 #include <rfb/Security.h>
 #include <rfb/ServerCore.h>
 #include <rfb/VNCServerST.h>
+#include <rfb/webrtc/TurnCredentials.h>
 #include <rfb/VNCSConnectionST.h>
 #include <rfb/Watermark.h>
 #include <rfb/util.h>
@@ -172,6 +172,8 @@ VNCServerST::VNCServerST(const char* name_, SDesktop* desktop_, const video_enco
         available_accelerators.empty() ? "none" : available_accelerators.c_str());
 
   DLPRegion.enabled = DLPRegion.percents = false;
+
+  turn::CredentialSource::instance().start();
 
   if (Server::DLP_Region[0]) {
     unsigned len = strlen(Server::DLP_Region);
@@ -899,40 +901,6 @@ int VNCServerST::msToNextUpdate()
     return frameTimer.getRemainingMs();
 }
 
-static void upgradeClientToUdp(const network::GetAPIMessager::action_data &act,
-                               std::list<VNCSConnectionST*> &clients)
-{
-  std::list<VNCSConnectionST*>::iterator ci, ci_next;
-
-  for (ci = clients.begin(); ci != clients.end(); ci = ci_next) {
-    ci_next = ci; ci_next++;
-
-    if (!(*ci)->upgradingToUdp)
-      continue;
-
-    char buf[32];
-    inet_ntop(AF_INET, &act.udp.ip, buf, 32);
-
-    const char * const who = (*ci)->getPeerEndpoint();
-    const char *start = strrchr(who, '@');
-    if (!start)
-      continue;
-    start++;
-
-    // Slightly inaccurate, if several clients on the same IP try to upgrade at the same time
-    if (strncmp(start, buf, strlen(buf)))
-      continue;
-
-    (*ci)->upgradingToUdp = false;
-    (*ci)->cp.useCopyRect = false;
-    ((network::UdpStream *)(*ci)->getOutStream(true))->setClient((WuClient *) act.udp.client);
-    (*ci)->cp.supportsUdp = true;
-
-    slog.info("%s upgraded to UDP", who);
-    return;
-  }
-}
-
 void VNCServerST::checkAPIMessages(network::GetAPIMessager *apimessager,
                              rdr::U8 &trackingFrameStats, char trackingClient[])
 {
@@ -962,10 +930,7 @@ void VNCServerST::checkAPIMessages(network::GetAPIMessager *apimessager,
       case network::GetAPIMessager::WANT_FRAME_STATS_SPECIFIC:
         trackingFrameStats = act.action;
         memcpy(trackingClient, act.data.password, 128);
-      break;
-      case network::GetAPIMessager::UDP_UPGRADE:
-        upgradeClientToUdp(act, clients);
-      break;
+        break;
       case network::GetAPIMessager::CLEAR_CLIPBOARD:
         clearBinaryClipboardData();
         clipboardClient = NULL;
@@ -1172,6 +1137,13 @@ void VNCServerST::writeUpdate()
   if (watermarkData)
       updateWatermark();
 
+  // Each connection keeps the request until it has written a watermark rect
+  if (sendWatermark) {
+    for (auto client : clients)
+      client->requestWatermark();
+    sendWatermark = false;
+  }
+
   for (auto client : clients) {
     if (permcheck)
       client->recheckPerms();
@@ -1194,11 +1166,6 @@ void VNCServerST::writeUpdate()
     client->add_changed(ui.changed);
     client->writeFramebufferUpdateOrClose();
 
-    if (((network::UdpStream *)client->getOutStream(true))->isFailed()) {
-      ((network::UdpStream *)client->getOutStream(true))->clearFailed();
-      client->udpDowngrade(true);
-    }
-
     if (apimessager) {
       client->sendStats(false);
       const EncodeManager::codecstats_t subjpeg = client->getJpegStats();
@@ -1216,8 +1183,6 @@ void VNCServerST::writeUpdate()
       scaletime += client->getScalingTime();
     }
   }
-
-  sendWatermark = false; // the client now caches it, only send once
 
   if (trackingFrameStats) {
     if (enctime) {

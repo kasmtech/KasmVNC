@@ -66,8 +66,9 @@ namespace rfb {
     void readQEMUMessage();
     void readQEMUKeyEvent();
 
-    void readUpgradeToUdp();
+    void readWebRTCSignal();
 
+    void readLegacyUpgradeToUdp();
     void readSubscribeUnixRelay();
     void readUnixRelay();
     void readVideoEncodersRequest() const;

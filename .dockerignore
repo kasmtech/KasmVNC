@@ -18,3 +18,11 @@ cmake_install.cmake
 CTestTestfile.cmake
 **/CTestTestfile.cmake
 xorg.build/
+
+# Generated autotools output from a prior in-tree xorg build. A stale
+# Makefile.in/configure is copied into the image and silently ignores later
+# Makefile.am changes (build.sh only runs autoreconf when these are missing).
+unix/xserver/configure
+unix/xserver/**/Makefile.in
+unix/xserver/**/Makefile
+unix/xserver/config.status

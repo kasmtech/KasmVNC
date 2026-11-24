@@ -95,11 +95,12 @@ namespace launcher {
             if (fstat(fd.get(), &status) < 0 || !S_ISREG(status.st_mode) || status.st_uid != geteuid() ||
                 status.st_nlink != 1)
                 throw std::runtime_error("Unsafe file: " + path.string());
+            // Before writing: an existing file may have looser permissions.
+            if (setMode && fchmod(fd.get(), mode) < 0)
+                throw std::runtime_error("Cannot set permissions on " + path.string());
             if (ftruncate(fd.get(), 0) < 0)
                 throw std::runtime_error("Cannot truncate " + path.string());
             writeAll(fd.get(), data);
-            if (setMode && fchmod(fd.get(), mode) < 0)
-                throw std::runtime_error("Cannot set permissions on " + path.string());
         }
         int number(const std::string &text, int max = std::numeric_limits<int>::max()) {
             int value = 0;
@@ -269,7 +270,7 @@ twm
 )STARTUP";
         class Session {
             std::string program, home, host, user, bin, selectDe, fontPath, safeFontPath, authority, desktop, log,
-                pidFile, startup, passwd;
+                pidFile, turnCredentialFile, startup, passwd;
             int display = 1;
             bool dry = false, debug = false, prompting = false;
             std::map<std::string, std::string> cli;
@@ -481,6 +482,7 @@ twm
                     }
                 }
                 fs::remove(file);
+                fs::remove(directory / (host + target + ".turn-credential"));
             }
             void xauthority() {
                 std::array<unsigned char, 16> random{};
@@ -841,6 +843,7 @@ twm
                     throw std::runtime_error("Unsafe session directory");
                 log = (directory / (host + ":" + std::to_string(display) + ".log")).string();
                 pidFile = (directory / (host + ":" + std::to_string(display) + ".pid")).string();
+                turnCredentialFile = (directory / (host + ":" + std::to_string(display) + ".turn-credential")).string();
                 auto userConfig = (directory / "kasmvnc.yaml").string();
                 if (!fs::exists(userConfig)) {
                     std::cerr << "Creating default config " << userConfig << "\n";
@@ -863,7 +866,7 @@ twm
                             std::cerr << "Loading config " << file << "\n";
                 config.load(files, userConfig);
                 config.environment(debug, topic("validation"));
-                config.validate(topic("validation"));
+                config.validate(topic("validation"), true, cliParameters(pass));
                 auto promptValue = has("-prompt") ? cli.at("-prompt") : boolean(value("command_line.prompt"));
                 prompting = !promptValue.empty() && promptValue != "0";
                 // Preserve the historical disabled VNC password bytes without base64(1).
@@ -875,7 +878,8 @@ twm
                     fontPath,
                     authority,
                     has("-desktop") ? cli.at("-desktop") : host + ":" + std::to_string(display) + " (" + user + ")",
-                    display};
+                    display,
+                    turnCredentialFile};
                 auto commandArgs = command(context);
                 // Rendering metadata never changes the literal argv passed to exec.
                 std::vector<std::string> args;
@@ -891,6 +895,8 @@ twm
                 if (!has("-interface") && value("network.interface").empty())
                     throw std::runtime_error("-interface has no default value and wasn't passed by user");
                 fs::remove(log);
+                if (auto credential = value("network.udp.turn_credential"); !credential.empty())
+                    writeFile(turnCredentialFile, credential, 0600);
                 auto child = start(args);
                 if (!alive(child) && fontPath != safeFontPath) {
                     if (has("-fp"))
@@ -916,6 +922,7 @@ twm
                 if (!alive(child)) {
                     std::cerr << "Could not start Xvnc.\n\n";
                     fs::remove(pidFile);
+                    fs::remove(turnCredentialFile);
                     std::cout << readFile(log);
                     std::cerr << "\n";
                     throw Exit{255};

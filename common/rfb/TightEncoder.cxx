@@ -100,7 +100,7 @@ void TightEncoder::writeSolidRect(int width, int height,
 {
   rdr::OutStream* os;
 
-  os = conn->getOutStream(conn->cp.supportsUdp);
+  os = conn->getRectOutStream();
 
   os->writeU8(tightFill << 4);
   writePixels(colour, pf, 1, os);
@@ -161,9 +161,9 @@ void TightEncoder::writeFullColourRect(const PixelBuffer* pb, const Palette& pal
   const rdr::U8* buffer;
   int stride, h;
 
-  os = conn->getOutStream(conn->cp.supportsUdp);
-  if (conn->cp.supportsUdp || zlibNeedsReset)
-    os->writeU8((streamId << 4) | (1 << streamId));
+  os = conn->getRectOutStream();
+  if (conn->cp.supportsImageChannel || zlibNeedsReset)
+      os->writeU8((streamId << 4) | (1 << streamId));
   else
     os->writeU8(streamId << 4);
 
@@ -206,7 +206,7 @@ void TightEncoder::writePixels(const rdr::U8* buffer, const PixelFormat& pf,
       iter_count = count;
 
     pf.rgbFromBuffer(rgb, buffer, iter_count);
-    os->writeBytes(rgb, iter_count * 3);
+    os->writeBytes(rgb, static_cast<size_t>(iter_count) * 3);
 
     buffer += iter_count * pf.bpp/8;
     count -= iter_count;
@@ -236,15 +236,15 @@ rdr::OutStream* TightEncoder::getZlibOutStream(int streamId, int level, size_t l
   // Minimum amount of data to be compressed. This value should not be
   // changed, doing so will break compatibility with existing clients.
   if (length < 12)
-    return conn->getOutStream(conn->cp.supportsUdp);
+      return conn->getRectOutStream();
 
   assert(streamId >= 0);
   assert(streamId < 4);
 
   zlibStreams[streamId].setUnderlying(&memStream);
   zlibStreams[streamId].setCompressionLevel(level);
-  if (conn->cp.supportsUdp || zlibNeedsReset)
-    zlibStreams[streamId].resetDeflate();
+  if (conn->cp.supportsImageChannel || zlibNeedsReset)
+      zlibStreams[streamId].resetDeflate();
 
   return &zlibStreams[streamId];
 }
@@ -261,7 +261,7 @@ void TightEncoder::flushZlibOutStream(rdr::OutStream* os_)
   zos->flush();
   zos->setUnderlying(NULL);
 
-  os = conn->getOutStream(conn->cp.supportsUdp);
+  os = conn->getRectOutStream();
 
   writeCompact(os, memStream.length());
   os->writeBytes(memStream.data(), memStream.length());
@@ -281,7 +281,7 @@ void TightEncoder::writeWatermarkRect(const rdr::U8 *data, const unsigned len,
 {
   rdr::OutStream* os;
 
-  os = conn->getOutStream(conn->cp.supportsUdp);
+  os = conn->getRectOutStream();
 
   os->writeU8(tightIT << 4);
 

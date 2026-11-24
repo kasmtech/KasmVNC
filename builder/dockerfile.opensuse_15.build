@@ -23,6 +23,7 @@ RUN zypper install -ny \
   git \
   gzip \
   lbzip2 \
+  libbsd-devel \
   libbz2-devel \
   libgbm-devel \
   libGLw-devel \
@@ -33,6 +34,7 @@ RUN zypper install -ny \
   png++-devel \
   libtiff-devel \
   libXfont2-devel \
+  libxcvt-devel \
   libxkbcommon-x11-devel \
   libxshmfence-devel \
   make \

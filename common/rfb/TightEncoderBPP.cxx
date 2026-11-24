@@ -38,10 +38,10 @@ void TightEncoder::writeMonoRect(int width, int height,
 
   assert(palette.size() == 2);
 
-  os = conn->getOutStream(conn->cp.supportsUdp);
+  os = conn->getRectOutStream();
 
-  if (conn->cp.supportsUdp || zlibNeedsReset)
-    os->writeU8(((streamId | tightExplicitFilter) << 4) | (1 << streamId));
+  if (conn->cp.supportsImageChannel || zlibNeedsReset)
+      os->writeU8(((streamId | tightExplicitFilter) << 4) | (1 << streamId));
   else
     os->writeU8((streamId | tightExplicitFilter) << 4);
   os->writeU8(tightFilterPalette);
@@ -128,10 +128,10 @@ void TightEncoder::writeIndexedRect(int width, int height,
   assert(palette.size() > 0);
   assert(palette.size() <= 256);
 
-  os = conn->getOutStream(conn->cp.supportsUdp);
+  os = conn->getRectOutStream();
 
-  if (conn->cp.supportsUdp || zlibNeedsReset)
-    os->writeU8(((streamId | tightExplicitFilter) << 4) | (1 << streamId));
+  if (conn->cp.supportsImageChannel || zlibNeedsReset)
+      os->writeU8(((streamId | tightExplicitFilter) << 4) | (1 << streamId));
   else
     os->writeU8((streamId | tightExplicitFilter) << 4);
   os->writeU8(tightFilterPalette);
