@@ -133,22 +133,66 @@ Default \fI~/.kasmpasswd\fP.
 .
 .TP
 .B \-PublicIP \fImy-ip\fP
-The server's public IP, for UDP negotiation. If not set, will be queried via the internet.
+The server's public IP. WebRTC advertises each host ICE candidate with this
+address as well (NAT 1:1), so a server behind a port-forwarding NAT is reachable
+without STUN. A loopback address disables this. If not set, will be queried via
+the internet.
 Default unset.
 .
 .TP
 .B \-StunServer \fIsrv\fP
-Use this STUN server for querying the server's public IP. If not set, a hardcoded list of
-STUN servers is used.
+Use this STUN server for querying the server's public IP and as the STUN server given to
+WebRTC peer connections (server and browser). \fIsrv\fP is
+\fIhostname\fP[:\fIport\fP] or stun:\fIhostname\fP[:\fIport\fP] (port 3478 when
+omitted); stuns:, turn: and turns: are rejected. If not set or \fBauto\fP, a
+hardcoded list of STUN servers is used.
 Default unset.
 .
 .TP
 .B \-udpFullFrameFrequency \fIframes\fP
-Send a full frame every N frames for clients using UDP. 0 to disable. Default \fI0\fP.
+Resend the whole framebuffer every N updates while image rects ride the WebRTC DataChannel, so lost rects heal. 0 to disable. Default \fI0\fP.
 .
 .TP
-.B \-udpPort \fIport\fP
-Which port to use for UDP. Default same as websocket.
+.B \-TurnServer \fIurl\fP[,\fIurl\fP...]
+TURN relays offered to WebRTC peers when direct (host/srflx) ICE candidates
+cannot pair. Each entry is a \fIturn:\fP or \fIturns:\fP URL or a bare host, with an
+optional port and \fI?transport=udp\fP or \fI?transport=tcp\fP, e.g.
+\fIturn:turn.example.com:3478,turns:turn.example.com:443?transport=tcp\fP.
+Browsers use every entry; the server's own ICE agent uses UDP relays only.
+Requires \fB\-TurnUsername\fP and \fB\-TurnCredentialFile\fP. Default unset.
+.
+.TP
+.B \-TurnUsername \fIname\fP
+Username for the \fB\-TurnServer\fP relays.
+.
+.TP
+.B \-TurnCredentialFile \fIpath\fP
+File holding the \fB\-TurnServer\fP credential. It must be a regular file with no
+group or other permissions; trailing newlines are ignored. The credential is
+never accepted on the command line, where \fBps\fP would expose it.
+\fBvncserver\fP writes this file from \fInetwork.udp.turn_credential\fP.
+.
+.TP
+.B \-TurnCredentialUrl \fIhttps-url\fP
+Fetch short-lived TURN credentials from this HTTPS endpoint, authorized with the
+JWT in the \fBKASM_API_JWT\fP environment variable. The response supplies the
+relay URLs, username, credential and expiry. Credentials are refreshed at half
+their remaining lifetime; a failed refresh keeps unexpired credentials and
+retries after 30 seconds, and expired credentials fall back to direct/STUN
+connectivity. Overrides the static TURN settings. Default unset.
+.
+.TP
+.B \-TurnCredentialCaFile \fIpath\fP
+CA bundle used to verify \fB\-TurnCredentialUrl\fP instead of the system trust store.
+.
+.TP
+.B \-TurnCredentialSkipVerify
+Disable TLS certificate verification for \fB\-TurnCredentialUrl\fP. Default off.
+.
+.TP
+.B \-ForceTurn
+Restrict browsers to TURN relay candidates while TURN credentials are available,
+for testing relay connectivity. Default off.
 .
 .TP
 .B \-AcceptCutText

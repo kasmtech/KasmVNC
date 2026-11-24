@@ -27,13 +27,19 @@
 #ifndef __RFB_VNCSCONNECTIONST_H__
 #define __RFB_VNCSCONNECTIONST_H__
 
+#include <cstdint>
 #include <map>
 #include <set>
+#include <string>
+#include <vector>
 
+#include <rfb/webrtc/WebRTCController.h>
+#include <network/Socket.h>
 #include <rfb/Congestion.h>
 #include <rfb/EncodeManager.h>
 #include <rfb/SConnection.h>
 #include <rfb/Timer.h>
+#include <rfb/msgTypes.h>
 #include <rfb/unixRelayLimits.h>
 
 #include <rfb/encoders/EncoderProbe.h>
@@ -43,7 +49,8 @@ namespace rfb {
   class VNCServerST;
 
   class VNCSConnectionST : public SConnection,
-                           public Timer::Callback {
+                           public Timer::Callback,
+                           private WebRTCHost {
   public:
     VNCSConnectionST(VNCServerST* server_, network::Socket* s, const video_encoders::EncoderProbe &encoder_probe, bool reverse);
     virtual ~VNCSConnectionST();
@@ -123,9 +130,12 @@ namespace rfb {
         needsPermCheck = true;
     }
 
+    // Applies a pending permission recheck. Returns false if the connection was closed.
+    bool applyPendingPermCheck();
+
     network::Socket* getSock() { return sock; }
     void add_changed(const Region& region) { updates.add_changed(region); }
-    void add_changed_all() { updates.add_changed(server->pb->getRect()); }
+    void add_changed_all();
     void add_copied(const Region& dest, const Point& delta) {
       updates.add_copied(dest, delta);
     }
@@ -207,10 +217,6 @@ namespace rfb {
       return encodeManager.getScalingTime();
     }
 
-    virtual void udpDowngrade(const bool byServer);
-
-    bool upgradingToUdp;
-
     bool isSubscribedToUnixRelay(const char *name) const {
       unsigned i;
       for (i = 0; i < MAX_UNIX_RELAYS; i++) {
@@ -223,9 +229,9 @@ namespace rfb {
     virtual void sendUnixRelayData(const char name[], const unsigned char *buf,
                                    const unsigned len);
 
-    bool sendWatermark() const {
-        return server->sendWatermark;
-    }
+    bool sendWatermark() const;
+    void watermarkWritten() override { pendingWatermark = false; }
+    void requestWatermark() override { pendingWatermark = true; }
 
     const std::string& getUsername() const { return clientUsername; }
     void setUsername(const std::string& username) {
@@ -238,6 +244,24 @@ namespace rfb {
     // Returns access rights
     AccessRights getAccessRights() const { return accessRights; }
   private:
+    ConnParams &connParams() override;
+    SMsgWriter *msgWriter() override;
+    SConnection::stateEnum connState() override;
+    const char *peerAddress() override;
+    void disconnect(const char *reason) override;
+    const ScreenSet &layout() override;
+    Rect fullFrameRect() override;
+    void markChanged(const Region &region) override;
+    void sendFramebufferUpdate() override;
+    void forceScreenKeyframe(uint8_t screenId) override;
+    void setScreenMaxBitrate(uint8_t screenId, int bps) override;
+    void resetEncoderZlib() override;
+    network::ImageChannelStream *imageStream() override;
+    void attachWrtcTransport(uint8_t screenId, network::WebRTCMediaTransport *t) override;
+    bool hasWrtcTransport() const override { return anyWrtcTransport(); }
+    uint8_t takeCodecMismatch() override { return takeWrtcCodecMismatch(); }
+    bool takeEncoderFailed() override { return takeWrtcEncoderFailed(); }
+
     // SConnection callbacks
 
     // These methods are invoked as callbacks from processMsg().  Note that
@@ -265,7 +289,7 @@ namespace rfb {
                                          int x, int y, int w, int h);
     virtual void handleClipboardAnnounce(bool available);
     virtual void handleClipboardAnnounceBinary(const unsigned num, const char mimes[][32]);
-    virtual void udpUpgrade(const char *resp);
+    virtual void webrtcSignal(rdr::U8 kind, rdr::U8 screenId, const char *payload, size_t len) override;
     virtual void subscribeUnixRelay(const char *name);
     virtual void unixRelay(const char *name, const rdr::U8 *buf, const unsigned len);
       void videoEncodersRequest(std::vector<int32_t> const &encoders) override;
@@ -376,13 +400,18 @@ namespace rfb {
     std::vector<CopyPassRect> copypassed;
 
     bool frameTracking;
-    uint32_t udpFramesSinceFull;
 
     char unixRelaySubscriptions[MAX_UNIX_RELAYS][MAX_UNIX_RELAY_NAME_LEN] = {};
     bool complainedAboutNoViewRights;
     std::string clientUsername;
+
     bool pendingClientRefresh{false};
+    bool pendingWatermark{false};
     uint32_t pendingLatencyMeasurementId{0};
+
+    // Declared last so it is destroyed first; the dtor calls shutdown() while
+    // the other members are still alive.
+    WebRTCController webrtc;
   };
 }
 #endif

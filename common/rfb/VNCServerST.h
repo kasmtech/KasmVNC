@@ -220,6 +220,7 @@ namespace rfb {
   protected:
 
     friend class VNCSConnectionST;
+    friend class WebRTCController;
 
     // Timer callbacks
     bool handleTimeout(Timer* t) override;

@@ -24,26 +24,29 @@
 #include <rfb/Encoder.h>
 #include <rfb/KeyRemapper.h>
 #include <rfb/LogWriter.h>
+#include <rfb/SMsgWriter.h>
 #include <rfb/Security.h>
 #include <rfb/ServerCore.h>
-#include <rfb/SMsgWriter.h>
-#include <rfb/VNCServerST.h>
 #include <rfb/VNCSConnectionST.h>
-#include <rfb/screenTypes.h>
+#include <rfb/VNCServerST.h>
 #include <rfb/fenceTypes.h>
 #include <rfb/ledStates.h>
+#include <rfb/touchTypes.h>
+#include <rfb/msgTypes.h>
+#include <rfb/screenTypes.h>
 #include <rfb/touchTypes.h>
 #define XK_LATIN1
 #define XK_MISCELLANY
 #define XK_XKB_KEYS
-#include <rfb/keysymdef.h>
 #include <cctype>
-#include <cstdlib>
 #include <cstdint>
-#include <wordexp.h>
+#include <cstdlib>
 #include <fmt/format.h>
+#include <rfb/keysymdef.h>
+#include <wordexp.h>
 
 #include "encoders/EncoderProbe.h"
+#include "encoders/ScreenEncoderManager.h"
 #include "kasmpasswd.h"
 #include "msgTypes.h"
 
@@ -61,70 +64,83 @@ extern rfb::BoolParameter disablebasicauth;
 
 extern "C" char unixrelaynames[MAX_UNIX_RELAYS][MAX_UNIX_RELAY_NAME_LEN];
 
-VNCSConnectionST::VNCSConnectionST(VNCServerST* server_, network::Socket *s, const video_encoders::EncoderProbe &encoder_probe,
-                                   bool reverse)
-  : upgradingToUdp(false), sock(s), reverseConnection(reverse),
+VNCSConnectionST::VNCSConnectionST(
+    VNCServerST *server_, network::Socket *s, const video_encoders::EncoderProbe &encoder_probe, bool reverse) :
+    sock(s),
+    reverseConnection(reverse),
     inProcessMessages(false),
-    pendingSyncFence(false), syncFence(false), fenceFlags(0),
-    fenceDataLen(0), fenceData(nullptr), congestionTimer(this),
-    losslessTimer(this), kbdLogTimer(this), binclipTimer(this),
-    server(server_), updates(false),
-    updateRenderedCursor(false), removeRenderedCursor(false),
-    continuousUpdates(false), encodeManager(this, &VNCServerST::encCache, FFmpeg::get(), encoder_probe),
-    needsPermCheck(false), pointerEventTime(0),
+    pendingSyncFence(false),
+    syncFence(false),
+    fenceFlags(0),
+    fenceDataLen(0),
+    fenceData(nullptr),
+    congestionTimer(this),
+    losslessTimer(this),
+    kbdLogTimer(this),
+    binclipTimer(this),
+    server(server_),
+    updates(false),
+    updateRenderedCursor(false),
+    removeRenderedCursor(false),
+    continuousUpdates(false),
+    encodeManager(this, &VNCServerST::encCache, FFmpeg::get(), encoder_probe),
+    needsPermCheck(false),
+    pointerEventTime(0),
     clientHasCursor(false),
-    accessRights(AccessDefault), startTime(time(nullptr)), frameTracking(false),
-    udpFramesSinceFull(0), complainedAboutNoViewRights(false),
-    clientUsername("username_unavailable")
-{
-  setStreams(&sock->inStream(), &sock->outStream());
-  peerEndpoint.buf = sock->getPeerEndpoint();
-  VNCServerST::connectionsLog.write(1,"accepted: %s", peerEndpoint.buf);
+    accessRights(AccessDefault),
+    startTime(time(nullptr)),
+    frameTracking(false),
+    complainedAboutNoViewRights(false),
+    clientUsername("username_unavailable"),
+    webrtc(*this) {
+    setStreams(&sock->inStream(), &sock->outStream());
+    peerEndpoint.buf = sock->getPeerEndpoint();
+    VNCServerST::connectionsLog.write(1, "accepted: %s", peerEndpoint.buf);
 
-  memset(bstats_total, 0, sizeof(bstats_total));
-  gettimeofday(&connStart, nullptr);
+    memset(bstats_total, 0, sizeof(bstats_total));
+    gettimeofday(&connStart, nullptr);
 
-  // Check their permissions, if applicable
-  kasmpasswdpath[0] = '\0';
-  wordexp_t wexp;
-  if (!wordexp(rfb::Server::kasmPasswordFile, &wexp, WRDE_NOCMD))
-    strncpy(kasmpasswdpath, wexp.we_wordv[0], 4096);
-  kasmpasswdpath[4095] = '\0';
-  wordfree(&wexp);
+    // Check their permissions, if applicable
+    kasmpasswdpath[0] = '\0';
+    wordexp_t wexp;
+    if (!wordexp(rfb::Server::kasmPasswordFile, &wexp, WRDE_NOCMD))
+        strncpy(kasmpasswdpath, wexp.we_wordv[0], 4096);
+    kasmpasswdpath[4095] = '\0';
+    wordfree(&wexp);
 
-  user[0] = '\0';
-  const char *at = strrchr(peerEndpoint.buf, '@');
+    user[0] = '\0';
+    const char *at = strrchr(peerEndpoint.buf, '@');
 
-  const auto offset = at - peerEndpoint.buf;
-  if (at && offset > 1 && static_cast<size_t>(offset) < USERNAME_LEN) {
-    memcpy(user, peerEndpoint.buf, offset);
-    user[offset] = '\0';
-  }
+    const auto offset = at - peerEndpoint.buf;
+    if (at && offset > 1 && static_cast<size_t>(offset) < USERNAME_LEN) {
+        memcpy(user, peerEndpoint.buf, offset);
+        user[offset] = '\0';
+    }
 
-  bool read, write, owner;
-  if (!getPerms(read, write, owner)) {
-    accessRights &= ~(WRITER_PERMS | AccessView);
-  }
-  if (!write) {
-    accessRights &= ~WRITER_PERMS;
-  }
-  if (!read) {
-    accessRights &= ~AccessView;
-  }
+    bool read, write, owner;
+    if (!getPerms(read, write, owner)) {
+        accessRights &= ~(WRITER_PERMS | AccessView);
+    }
+    if (!write) {
+        accessRights &= ~WRITER_PERMS;
+    }
+    if (!read) {
+        accessRights &= ~AccessView;
+    }
 
-  // Configure the socket
-  setSocketTimeouts();
-  lastEventTime = time(nullptr);
-  gettimeofday(&lastRealUpdate, nullptr);
-  gettimeofday(&lastClipboardOp, nullptr);
-  gettimeofday(&lastKeyEvent, nullptr);
+    // Configure the socket
+    setSocketTimeouts();
+    lastEventTime = time(nullptr);
+    gettimeofday(&lastRealUpdate, nullptr);
+    gettimeofday(&lastClipboardOp, nullptr);
+    gettimeofday(&lastKeyEvent, nullptr);
 
-  cp.available_encoders = encoder_probe.get_available_encoders();
+    cp.available_encoders = encoder_probe.get_available_encoders();
 
-  server->clients.push_front(this);
+    server->clients.push_front(this);
 
-  if (server->apimessager)
-    server->apimessager->mainUpdateUserInfo(checkOwnerConn(), server->clients.size());
+    if (server->apimessager)
+        server->apimessager->mainUpdateUserInfo(checkOwnerConn(), server->clients.size());
 }
 
 
@@ -134,6 +150,8 @@ VNCSConnectionST::~VNCSConnectionST()
   VNCServerST::connectionsLog.write(1,"closed: %s (%s)",
                                     peerEndpoint.buf,
                                     (closeReason.buf) ? closeReason.buf : "");
+
+  webrtc.shutdown();
 
   // Release any keys the client still had pressed
   while (!pressedKeys.empty()) {
@@ -664,6 +682,16 @@ void VNCSConnectionST::cursorPositionChange()
 // second).  [ Ideally we should do finer-grained timing here and make the time
 // configurable, but I don't think it's that important. ]
 
+void VNCSConnectionST::add_changed_all()
+{
+  updates.add_changed(server->pb->getRect());
+}
+
+bool VNCSConnectionST::sendWatermark() const
+{
+  return pendingWatermark;
+}
+
 bool VNCSConnectionST::needRenderedCursor()
 {
   if (state() != RFBSTATE_NORMAL)
@@ -1116,6 +1144,9 @@ void VNCSConnectionST::framebufferUpdateRequest(const Rect& r,bool incremental)
     // Non-incremental update - treat as if area requested has changed
     updates.add_changed(reqRgn);
 
+    // A full refresh repairs a watermark lost on the unreliable image channel
+    pendingWatermark = true;
+
     pendingClientRefresh = true;
 
     // And send the screen layout to the client (which, unlike the
@@ -1400,8 +1431,15 @@ bool VNCSConnectionST::isCongested()
   if (sock->outStream().bufferUsage() > 0)
     return true;
 
-  if (!cp.supportsFence || cp.supportsUdp)
-    return false;
+  if (cp.supportsImageChannel) {
+      if (!getImageStream()->congested())
+          return false;
+      congestionTimer.start(1000 / rfb::Server::frameRate);
+      return true;
+  }
+
+  if (!cp.supportsFence || webrtc.allScreensRoutedOverRtp())
+      return false;
 
   congestion.updatePosition(sock->outStream().length());
   if (!congestion.isCongested())
@@ -1422,9 +1460,10 @@ bool VNCSConnectionST::isCongested()
   return true;
 }
 
-
 void VNCSConnectionST::writeFramebufferUpdate()
 {
+    webrtc.tickBeforeUpdate();
+
   congestion.updatePosition(sock->outStream().length());
   encodeManager.clearEncodingTime();
 
@@ -1450,29 +1489,8 @@ void VNCSConnectionST::writeFramebufferUpdate()
   if (isCongested())
     return;
 
-  // Check for permission changes?
-  if (needsPermCheck) {
-    needsPermCheck = false;
-
-    bool read, write, owner, ret;
-    ret = getPerms(read, write, owner);
-    if (!ret) {
-      close("User was deleted");
-      return;
-    }
-
-    if (!write) {
-      accessRights &= ~WRITER_PERMS;
-    } else {
-      accessRights |= WRITER_PERMS;
-    }
-
-    if (!read) {
-      accessRights &= ~AccessView;
-    } else {
-      accessRights |= AccessView;
-    }
-  }
+  if (!applyPendingPermCheck())
+    return;
 
   if (!(accessRights & AccessView)) {
     if (!complainedAboutNoViewRights) {
@@ -1642,13 +1660,7 @@ void VNCSConnectionST::writeDataUpdate()
   if (!pending.is_empty())
     ui.copypassed.clear();
 
-  // Do we need to send a full frame?
-  if (Server::udpFullFrameFrequency && cp.supportsUdp) {
-    if (udpFramesSinceFull >= (unsigned) Server::udpFullFrameFrequency) {
-      udpFramesSinceFull = 0;
-      ui.changed.assign_union(Region(Rect(0, 0, cp.width, cp.height)));
-    }
-  }
+  webrtc.addImageFullFrameIfDue(ui.changed);
 
   // Return if there is nothing to send the client.
   const unsigned losslessThreshold = 80 + 2 * 1000 / Server::frameRate;
@@ -1676,6 +1688,8 @@ void VNCSConnectionST::writeDataUpdate()
     copypassed.clear();
     gettimeofday(&lastRealUpdate, nullptr);
     losslessTimer.start(losslessThreshold);
+
+    webrtc.onFramebufferUpdated(ui.changed, ui.copied);
 
     const unsigned ms = encodeManager.getEncodingTime();
     const unsigned limit = 1000 / rfb::Server::frameRate;
@@ -1710,8 +1724,7 @@ void VNCSConnectionST::writeDataUpdate()
 
   requested.clear();
 
-  if (Server::udpFullFrameFrequency && cp.supportsUdp)
-    udpFramesSinceFull++;
+  webrtc.noteImageFrameSent();
 }
 
 void VNCSConnectionST::writeBinaryClipboard()
@@ -1739,6 +1752,8 @@ void VNCSConnectionST::screenLayoutChange(rdr::U16 reason)
 
   writer()->writeExtendedDesktopSize(reason, 0, cp.width, cp.height,
                                      cp.screenLayout);
+
+  webrtc.reconcileScreens();
 }
 
 static const unsigned recentSecs = 10;
@@ -1943,6 +1958,7 @@ void VNCSConnectionST::setStatus(int status)
     break;
   case 2:
     accessRights = accessRights & ~(AccessPtrEvents | AccessKeyEvents | AccessView);
+    webrtc.revokeAccess();
     break;
   }
   framebufferUpdateRequest(server->pb->getRect(), false);
@@ -1971,28 +1987,61 @@ bool VNCSConnectionST::checkOwnerConn() const
   return false;
 }
 
-void VNCSConnectionST::udpUpgrade(const char *resp)
-{
-  if (resp[0] == 'H') {
-    vlog.info("Client %s requested upgrade to udp, but WebUdp refused", sock->getPeerAddress());
-  } else {
-    vlog.info("Client %s requesting upgrade to udp", sock->getPeerAddress());
-    upgradingToUdp = true;
-  }
-  writer()->writeUdpUpgrade(resp);
+ConnParams &VNCSConnectionST::connParams() { return cp; }
+SMsgWriter *VNCSConnectionST::msgWriter() { return writer(); }
+SConnection::stateEnum VNCSConnectionST::connState() { return state(); }
+const char *VNCSConnectionST::peerAddress() { return sock->getPeerAddress(); }
+void VNCSConnectionST::disconnect(const char *reason) { close(reason); }
+const ScreenSet &VNCSConnectionST::layout() { return server->screenLayout; }
+Rect VNCSConnectionST::fullFrameRect() { return server->pb->getRect(); }
+void VNCSConnectionST::markChanged(const Region &region) { updates.add_changed(region); }
+void VNCSConnectionST::sendFramebufferUpdate() { writeFramebufferUpdate(); }
+void VNCSConnectionST::forceScreenKeyframe(uint8_t screenId) { encodeManager.forceVideoScreenKeyframe(screenId); }
+void VNCSConnectionST::setScreenMaxBitrate(uint8_t screenId, int bps) {
+    encodeManager.setVideoScreenMaxBitrate(screenId, bps);
+}
+void VNCSConnectionST::resetEncoderZlib() { encodeManager.resetZlib(); }
+network::ImageChannelStream *VNCSConnectionST::imageStream() { return getImageStream(); }
+void VNCSConnectionST::attachWrtcTransport(uint8_t screenId, network::WebRTCMediaTransport *t) {
+    setWrtcTransport(screenId, t);
 }
 
-void VNCSConnectionST::udpDowngrade(const bool byServer)
+bool VNCSConnectionST::applyPendingPermCheck()
 {
-  cp.supportsUdp = false;
-  cp.useCopyRect = true;
-  encodeManager.resetZlib();
+  if (!needsPermCheck)
+    return true;
+  needsPermCheck = false;
 
-  if (Server::DLP_WatermarkImage[0])
-    cp.useCopyRect = false;
+  bool read, write, owner;
+  if (!getPerms(read, write, owner)) {
+    close("User was deleted");
+    return false;
+  }
 
-  vlog.info("Client %s downgrading from udp by %s", sock->getPeerAddress(),
-            byServer ? "the server" : "its own request");
+  if (!write) {
+    accessRights &= ~WRITER_PERMS;
+  } else {
+    accessRights |= WRITER_PERMS;
+  }
+
+  if (!read) {
+    accessRights &= ~AccessView;
+    // WebRTC transports carry the screen and the ICE list carries TURN credentials; both need view rights.
+    webrtc.revokeAccess();
+  } else {
+    accessRights |= AccessView;
+  }
+  return true;
+}
+
+void VNCSConnectionST::webrtcSignal(rdr::U8 kind, rdr::U8 screenId, const char *payload, size_t len) {
+    if (!applyPendingPermCheck())
+        return;
+    if (!(accessRights & AccessView)) {
+        vlog.debug("Dropping WebRTC signal kind=%u from %s: no view rights", kind, sock->getPeerAddress());
+        return;
+    }
+    webrtc.handleSignal(kind, screenId, payload, len);
 }
 
 void VNCSConnectionST::subscribeUnixRelay(const char *name)
@@ -2020,13 +2069,26 @@ void VNCSConnectionST::subscribeUnixRelay(const char *name)
     return;
   }
 
-  writer()->writeSubscribeUnixRelay(true, "Ok");
+  if (isSubscribedToUnixRelay(name)) {
+      writer()->writeSubscribeUnixRelay(true, "Ok");
+      return;
+  }
+
+  bool stored = false;
   for (i = 0; i < MAX_UNIX_RELAYS; i++) {
     if (!unixRelaySubscriptions[i][0]) {
       strcpy(unixRelaySubscriptions[i], name);
+      stored = true;
       break;
     }
   }
+  if (!stored) {
+      writer()->writeSubscribeUnixRelay(false, "Subscription table full");
+      vlog.info("Client tried to subscribe to %s but subscription table is full", name);
+      return;
+  }
+
+  writer()->writeSubscribeUnixRelay(true, "Ok");
 }
 
 void VNCSConnectionST::unixRelay(const char *name, const rdr::U8 *buf, const unsigned len)

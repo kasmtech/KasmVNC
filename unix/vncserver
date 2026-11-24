@@ -35,6 +35,7 @@ use if DEVENV, Devel::StackTrace;
 use Time::HiRes qw (sleep);
 use Switch;
 use File::Basename;
+use Fcntl qw(O_WRONLY O_CREAT O_EXCL O_NOFOLLOW);
 use List::Util qw(first);
 use List::MoreUtils qw(any uniq);
 use Data::Dumper;
@@ -398,6 +399,8 @@ sub Kill
   }
 
   unlink $pidFile;
+  (my $turnCredentialFile = $pidFile) =~ s/\.pid$/.turn-credential/;
+  unlink $turnCredentialFile if -e $turnCredentialFile;
   exit;
 }
 
@@ -2423,6 +2426,24 @@ sub DefineConfigToCLIConversion {
         }
     }),
     KasmVNC::CliOption->new({
+        name => 'StunServer',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "network.udp.stun_server",
+            validator => KasmVNC::PatternValidator->new({
+              pattern => qr/^(auto|(?!(?:stuns|turns?):)(?:stun:)?(?:\[(?![^\]]*%)(?:$ipv6_regexp)\]|[A-Za-z0-9._-]+)(?::(?:6553[0-5]|655[0-2]\d|65[0-4]\d{2}|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}))?)$/,
+              errorMessage => "must be 'auto' or a STUN server as hostname[:port] or stun:hostname[:port]"
+            }),
+          })
+        ],
+        isActiveSub => sub {
+          $self = shift;
+
+          my $value = $self->configValue();
+          isPresent($value) && $value ne 'auto';
+        }
+    }),
+    KasmVNC::CliOption->new({
         name => 'udpFullFrameFrequency',
         configKeys => [
           KasmVNC::ConfigKey->new({
@@ -2444,58 +2465,96 @@ sub DefineConfigToCLIConversion {
         }
     }),
     KasmVNC::CliOption->new({
-        name => 'udpSize',
+        name => 'TurnServer',
         configKeys => [
           KasmVNC::ConfigKey->new({
-            name => "network.udp.payload_size",
+            name => "network.udp.turn_server",
             validator => KasmVNC::PatternValidator->new({
-              pattern => qr/^(auto|\d+)$/,
-              errorMessage => "must be 'auto' or an integer"
+              pattern => qr/^(auto|(?:turns?:)?[^,\s?]+(?::\d+)?(?:\?transport=(?:udp|tcp))?(?:,(?:turns?:)?[^,\s?]+(?::\d+)?(?:\?transport=(?:udp|tcp))?)*)$/,
+              errorMessage => "must be 'auto' or comma-separated TURN URLs/hosts"
             }),
           })
         ],
         isActiveSub => sub {
-          $self = shift;
-
-          my $value = $self->configValue();
-          isPresent($value) && $value ne 'auto';
+          IsStaticTurnConfigured();
         }
     }),
     KasmVNC::CliOption->new({
-        name => 'udpPort',
+        name => 'TurnUsername',
         configKeys => [
           KasmVNC::ConfigKey->new({
-            name => "network.udp.port",
-            validator => KasmVNC::PatternValidator->new({
-              pattern => qr/^(auto|\d+)$/,
-              errorMessage => "must be 'auto' or an integer"
-            }),
+            name => "network.udp.turn_username",
+            type => KasmVNC::ConfigKey::STRING
           })
         ],
         isActiveSub => sub {
-          $self = shift;
-
-          my $value = $self->configValue();
-          isPresent($value) && $value ne 'auto';
+          HasConfigValue("network.udp.turn_username");
         }
     }),
     KasmVNC::CliOption->new({
-        name => 'StunServer',
+        name => 'TurnCredential',
         configKeys => [
           KasmVNC::ConfigKey->new({
-            name => "network.udp.stun_server",
+            name => "network.udp.turn_credential",
+            type => KasmVNC::ConfigKey::STRING
+          })
+        ],
+        isActiveSub => sub {
+          HasConfigValue("network.udp.turn_credential") &&
+            !WasOptionSpecifiedViaCli("-TurnCredentialFile");
+        },
+        toStringSub => sub {
+          $self = shift;
+
+          $turnCredentialFile = "$vncUserDir/$host:$displayNumber.turn-credential";
+          WritePrivateFile($turnCredentialFile, $self->configValue()) unless IsDryRun();
+          "-TurnCredentialFile '$turnCredentialFile'";
+        }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'TurnCredentialUrl',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "network.udp.turn_credential_url",
             validator => KasmVNC::PatternValidator->new({
-              pattern => qr/^(auto|\S+)$/,
-              errorMessage => "must be 'auto' or an IP address/hostname"
+              pattern => qr/^(https:\/\/\S+)?$/,
+              errorMessage => "must be an https:// URL"
             }),
           })
         ],
         isActiveSub => sub {
-          $self = shift;
-
-          my $value = $self->configValue();
-          isPresent($value) && $value ne 'auto';
+          IsDynamicTurnConfigured();
         }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'TurnCredentialCaFile',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "network.udp.turn_credential_ca_file",
+            type => KasmVNC::ConfigKey::STRING
+          })
+        ],
+        isActiveSub => sub {
+          HasConfigValue("network.udp.turn_credential_ca_file");
+        }
+    }),
+    KasmVNC::CliOption->new({
+        name => 'TurnCredentialSkipVerify',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "network.udp.turn_credential_skip_verify",
+            type => KasmVNC::ConfigKey::BOOLEAN
+          })
+        ]
+    }),
+    KasmVNC::CliOption->new({
+        name => 'ForceTurn',
+        configKeys => [
+          KasmVNC::ConfigKey->new({
+            name => "network.udp.force_turn",
+            type => KasmVNC::ConfigKey::BOOLEAN
+          })
+        ]
     }),
     KasmVNC::CliOption->new({
         name => 'hw3d',
@@ -2764,6 +2823,10 @@ sub ShouldPrintTopic {
   $topic eq $testOutputTopic;
 }
 
+sub DeprecatedAbsoluteKeys {
+  ("network.udp.port", "network.udp.payload_size");
+}
+
 sub SupportedAbsoluteKeys {
   my @supportedAbsoluteKeys =
     map { $_->configKeyNames() } (@allCliOptions, @configSettings);
@@ -2807,6 +2870,14 @@ sub StartXvncOrExit {
 
   unless (IsXvncRunning()) {
     WarnUserXvncNotStartedAndExit();
+  }
+  $xvncStarted = 1;
+}
+
+# Xvnc reads the TURN credential file once at startup and -kill removes it.
+END {
+  if (defined($turnCredentialFile) && !$xvncStarted && -e $turnCredentialFile) {
+    unlink $turnCredentialFile;
   }
 }
 
@@ -2992,8 +3063,15 @@ sub ConfigAbsoluteKeys {
 sub CheckForUnsupportedConfigKeys {
   my %supportedAbsoluteKeys = %{ SupportedAbsoluteKeys() };
   my @configAbsoluteKeys = ConfigToAbsoluteKeyList("", $mergedConfig->{data});
+  my %deprecated = map { $_ => 1 } DeprecatedAbsoluteKeys();
   my @unsupportedAbsoluteKeys =
-    grep(!defined($supportedAbsoluteKeys{$_}), @configAbsoluteKeys);
+    grep(!defined($supportedAbsoluteKeys{$_}) && !$deprecated{$_},
+      @configAbsoluteKeys);
+
+  foreach my $key (grep { $deprecated{$_} } @configAbsoluteKeys) {
+    $logger->warn("Config key $key is deprecated and has no effect; " .
+      "remove it from your kasmvnc.yaml");
+  }
 
   return if (scalar @unsupportedAbsoluteKeys == 0);
 
@@ -3118,7 +3196,93 @@ sub  DefineConfigSettings {
           type => KasmVNC::ConfigKey::BOOLEAN
         })
     }),
+    KasmVNC::ConfigSetting->new({
+        configKey => KasmVNC::ConfigKey->new({
+          name => "network.udp.turn_server",
+          validator => KasmVNC::CallbackValidator->new({
+            isValidCallback => sub {
+              return 1 unless IsEffectiveStaticTurn() && !IsEffectiveDynamicTurn();
+              EffectiveTurnValue("TurnUsername", "network.udp.turn_username") ne '' &&
+                (EffectiveTurnValue("TurnCredential", "network.udp.turn_credential") ne '' ||
+                  (CliXvncParams()->{lc "TurnCredentialFile"} // '') ne '');
+            },
+            errorMessage => "requires network.udp.turn_username and network.udp.turn_credential unless network.udp.turn_credential_url is set"
+          })
+        })
+    }),
+    KasmVNC::ConfigSetting->new({
+        configKey => KasmVNC::ConfigKey->new({
+          name => "network.udp.force_turn",
+          validator => KasmVNC::CallbackValidator->new({
+            isValidCallback => sub {
+              my $forceTurn = shift;
+              my $cli = CliXvncParams();
+              if (exists $cli->{forceturn}) {
+                return 1 unless $cli->{forceturn} =~ /^(1|true|on|yes)$/i;
+              } else {
+                return 1 unless $forceTurn eq 'true';
+              }
+              IsEffectiveStaticTurn() || IsEffectiveDynamicTurn();
+            },
+            errorMessage => "requires network.udp.turn_server or network.udp.turn_credential_url when enabled"
+          })
+        })
+    }),
   );
+}
+
+sub HasConfigValue {
+  my $value = ConfigValue(shift);
+  isPresent($value) && $value ne '';
+}
+
+sub CliXvncParams {
+  my %booleans = map { $_ => 1 } qw(forceturn turncredentialskipverify);
+  my %params;
+  my @args = @ARGV;
+  while (defined(my $arg = shift @args)) {
+    next unless $arg =~ /^--?([^=]+)(?:=(.*))?$/s;
+    my ($name, $value) = (lc $1, $2);
+    if (!defined $value) {
+      $value = $booleans{$name} ? '1' : (@args ? shift @args : '');
+    }
+    $params{$name} = $value;
+  }
+  \%params;
+}
+
+sub EffectiveTurnValue {
+  my ($param, $key) = @_;
+  my $cli = CliXvncParams();
+  return $cli->{lc $param} if exists $cli->{lc $param};
+  HasConfigValue($key) ? ConfigValue($key) : '';
+}
+
+sub IsEffectiveStaticTurn {
+  my $server = EffectiveTurnValue("TurnServer", "network.udp.turn_server");
+  $server ne '' && $server ne 'auto';
+}
+
+sub IsEffectiveDynamicTurn {
+  EffectiveTurnValue("TurnCredentialUrl", "network.udp.turn_credential_url") ne '';
+}
+
+sub IsStaticTurnConfigured {
+  HasConfigValue("network.udp.turn_server") && ConfigValue("network.udp.turn_server") ne 'auto';
+}
+
+sub IsDynamicTurnConfigured {
+  HasConfigValue("network.udp.turn_credential_url");
+}
+
+sub WritePrivateFile {
+  my ($path, $value) = @_;
+  # An existing file may have looser permissions or be a symlink.
+  unlink $path or $!{ENOENT} or die "Cannot remove $path: $!\n";
+  sysopen(my $handle, $path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600)
+    or die "Cannot write $path: $!\n";
+  print $handle $value or die "Cannot write $path: $!\n";
+  close($handle) or die "Cannot close $path: $!\n";
 }
 
 sub InterpolateEnvVarsIntoConfigValues {

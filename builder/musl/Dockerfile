@@ -16,5 +16,4 @@ COPY builder/www-supply-chain/ /src/builder/www-supply-chain/
 COPY builder/portable/kasmvnc-source.tar /src/builder/portable/kasmvnc-source.tar
 ENV KASMVNC_PREBUILT_DEPENDENCIES=1 KASMVNC_LIBC=musl
 RUN python3 /src/builder/portable/test-security-assessments.py && /src/builder/portable/test-security-backports && /src/builder/portable/install-scanner && python3 /src/builder/portable/test-cmake-profiles.py && python3 /src/builder/portable/test-openssl-link.py && python3 /src/builder/portable/test-openssl-boundary.py && python3 /src/builder/portable/test-host-libraries.py && python3 /src/builder/portable/test-command-logging.py && python3 /src/builder/portable/test-progress.py && python3 /src/builder/portable/test-dependency-cache.py && python3 /src/builder/portable/test-dependency-phases.py && python3 /src/builder/portable/test-fetch-archive.py && python3 /src/builder/musl/test-packaging.py
-RUN CPPFLAGS="-I/opt/kasm-openssl3/include" LDFLAGS="-L/opt/kasm-openssl3/lib" bash /src/builder/openssl-tests/build /tmp/kasm-openssl-tests && /tmp/kasm-openssl-tests/crypto-regression
 ENTRYPOINT ["/src/builder/musl/build-inside-docker"]

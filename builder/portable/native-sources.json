@@ -420,5 +420,56 @@
     "pc": "yaml-0.1",
     "cpe": "pyyaml:libyaml",
     "license": "MIT"
+  },
+  {
+    "name": "libsrtp",
+    "libraries": [
+      "srtp2"
+    ],
+    "source": "libsrtp-*",
+    "cpe": "cisco:libsrtp",
+    "license": "BSD-3-Clause"
+  },
+  {
+    "name": "libdatachannel",
+    "libraries": [
+      "datachannel"
+    ],
+    "source": "libdatachannel",
+    "git_tag_version": true,
+    "license": "MPL-2.0",
+    "embeds": [
+      {
+        "name": "plog",
+        "source": "libdatachannel/deps/plog",
+        "git_tag_version": true,
+        "license": "MIT"
+      },
+      {
+        "name": "nlohmann-json",
+        "source": "libdatachannel/deps/json",
+        "git_tag_version": true,
+        "cpe": "json-for-modern-cpp_project:json-for-modern-cpp",
+        "license": "MIT"
+      }
+    ]
+  },
+  {
+    "name": "libjuice",
+    "libraries": [
+      "juice"
+    ],
+    "source": "libdatachannel/deps/libjuice",
+    "git_tag_version": true,
+    "license": "MPL-2.0"
+  },
+  {
+    "name": "usrsctp",
+    "libraries": [
+      "usrsctp"
+    ],
+    "source": "libdatachannel/deps/usrsctp",
+    "git_tag_version": true,
+    "license": "BSD-3-Clause"
   }
 ]

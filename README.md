@@ -173,8 +173,11 @@ network:
   use_ipv6: true
   udp:
     public_ip: auto
-    port: auto
     stun_server: auto
+    turn_credential_url: ""
+    turn_credential_ca_file: ""
+    turn_credential_skip_verify: false
+    force_turn: false
   ssl:
     pem_certificate: /etc/ssl/certs/ssl-cert-snakeoil.pem
     pem_key: /etc/ssl/private/ssl-cert-snakeoil.key
@@ -243,7 +246,6 @@ data_loss_prevention:
 
 encoding:
   max_frame_rate: 60
-  full_frame_updates: none
   rect_encoding_mode:
     min_quality: 7
     max_quality: 8
@@ -294,6 +296,33 @@ command_line:
   prompt: true
 ```
 
+### WebRTC TURN relay
+
+When a browser cannot reach the server directly over UDP (symmetric NAT, restrictive firewalls), WebRTC can route through a TURN relay. Configure either static credentials:
+
+```yaml
+network:
+  udp:
+    turn_server: turn:turn.example.com:3478,turns:turn.example.com:443?transport=tcp
+    turn_username: kasmturn
+    turn_credential: example-secret
+```
+
+or short-lived credentials issued by an HTTPS endpoint:
+
+```yaml
+network:
+  udp:
+    turn_credential_url: https://api.example.com/api/turn
+    turn_credential_ca_file: /etc/ssl/certs/example-ca.pem   # optional; system trust store by default
+```
+
+- `turn_server` takes comma-separated `turn:`/`turns:` URLs or bare hosts, each with an optional port and `?transport=udp|tcp`. It requires `turn_username` and `turn_credential` unless `turn_credential_url` is set.
+- The static credential is written to a private file for the server and never passed on its command line. It is still delivered to every connecting browser, so production deployments should prefer `turn_credential_url`.
+- `turn_credential_url` is called with `POST` and `Authorization: Bearer <JWT>`, the JWT taken from the `KASM_API_JWT` environment variable. It must answer `application/json` with `username`, `credential`, 1 to 8 `turn:`/`turns:` `urls`, and an integer `expires_at` (Unix seconds, at most one day ahead). Credentials are refreshed at half their remaining lifetime; a failed refresh keeps unexpired credentials and retries after 30 seconds, and expired credentials fall back to direct/STUN connectivity.
+- `force_turn: true` restricts browsers to relay candidates, for testing relay connectivity. It requires `turn_server` or `turn_credential_url`.
+- Browsers use every relay transport. The server's own ICE agent relays over UDP only.
+
 
 # New Features!
 
@@ -303,6 +332,7 @@ command_line:
   - Multi-threaded image encoding for smoother frame rate for servers with more cores
   - WebCodecs video streaming with H.264, H.265, and AV1 support
   - WebRTC UDP Transit
+  - TURN relay support for WebRTC, with static or short-lived credentials
   - Lossless QOI Image format for Local LAN
   - [Full screen video detection](https://github.com/kasmtech/KasmVNC/wiki/Video-Rendering-Options#video-mode), goes into configurable video mode for better full screen video playback performance.
   - [Dynamic jpeg/webp image coompression](https://github.com/kasmtech/KasmVNC/wiki/Video-Rendering-Options#dynamic-image-quality) quality settings based on screen change rates

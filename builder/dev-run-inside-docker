@@ -19,8 +19,9 @@ set -euo pipefail
 
 XVNC=/src/xorg.build/bin/Xvnc          # the freshly-built binary (NOT /usr/bin/Xvnc)
 HTTPD=/src/kasmweb/dist                # the freshly-built frontend
-DISPLAY_NUM=:1
-PORT=6901
+DISPLAY_NUM="${DISPLAY_NUM:-:1}"       # override with -e DISPLAY_NUM=:N
+PORT="${PORT:-6901}"                   # override with -e PORT=...
+XVNC_EXTRA_ARGS="${XVNC_EXTRA_ARGS:-}" # e.g. -e XVNC_EXTRA_ARGS="-videoCodec h264"
 LOGIN_USER=kasm_user
 LOGIN_PASS=kasmRulez
 CERT="$HOME/.vnc/self.pem"
@@ -53,13 +54,15 @@ export QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1
 
 # 3. Start the just-built server over HTTPS. BasicAuth stays on (no -disableBasicAuth);
 #    SecurityTypes None means the web login is the only gate.
+#    To test DLP regions, add via XVNC_EXTRA_ARGS (a commented line inside the
+#    continuation below would end the command early):
+#      -DLP_Region 0%,0%,0%,10% -DLP_RegionAllowClick 1 -DLP_RegionAllowRelease 0
 "$XVNC" -interface 0.0.0.0 -PublicIP 127.0.0.1 \
   -RectThreads 0 -Log '*:stdout:30,VNCSConnST:stdout:100' \
   -videoCodec h264 \
-#  -DLP_Region 0%,0%,0%,10% -DLP_RegionAllowClick 1 -DLP_RegionAllowRelease 0 \
   -httpd "$HTTPD" -sslOnly 1 -SecurityTypes None \
   -websocketPort "$PORT" -FreeKeyMappings \
-  -cert "$CERT" -key "$CERT" "$DISPLAY_NUM" &
+  -cert "$CERT" -key "$CERT" ${XVNC_EXTRA_ARGS} "$DISPLAY_NUM" &
 
 # 3b. Convenience alias: `chrome` launches Google Chrome with the accessibility
 #     (AT-SPI) stack enabled, so KasmVNC's text-field detection (vncAtSpi.c) can

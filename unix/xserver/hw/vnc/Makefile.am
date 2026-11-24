@@ -12,7 +12,7 @@ OS_LIB=$(KASMVNC_BUILDDIR)/common/os/libos.la
 NETWORK_LIB=$(KASMVNC_BUILDDIR)/common/network/libnetwork.la
 XREGION_LIB=$(KASMVNC_BUILDDIR)/common/Xregion/libXregion.la
 UNIXCOMMON_LIB=$(KASMVNC_BUILDDIR)/unix/common/libunixcommon.la
-COMMON_LIBS=$(NETWORK_LIB) $(RFB_LIB) $(RDR_LIB) $(XREGION_LIB) $(OS_LIB) $(UNIXCOMMON_LIB)
+COMMON_LIBS=$(NETWORK_LIB) $(RFB_LIB) $(RDR_LIB) $(XREGION_LIB) $(OS_LIB) $(UNIXCOMMON_LIB) $(NETWORK_LIB) $(OS_LIB)
 
 noinst_LTLIBRARIES = libvnccommon.la
 
@@ -61,7 +61,7 @@ Xvnc_CPPFLAGS = $(XVNC_CPPFLAGS) -DKASMVNC -DNO_MODULE_EXTS \
 
 Xvnc_LDADD = $(XVNC_LIBS) libvnccommon.la $(COMMON_LIBS) \
 	$(XSERVER_LIBS) $(XSERVER_SYS_LIBS) $(XVNC_SYS_LIBS) -lX11 $(KASMVNC_WEBP_LIBS) $(KASMVNC_TLS_LIBS) -lcrypt \
-	-lfreetype -latspi -ldbus-1 -lgobject-2.0 -lglib-2.0 -lpthread
+	-lfreetype -lstatgrab -latspi -ldbus-1 -lgobject-2.0 -lglib-2.0 -lpthread
 
 Xvnc_LDFLAGS = $(LD_EXPORT_SYMBOLS_FLAG) -fopenmp $(KASMVNC_RUNTIME_LDFLAGS)
 

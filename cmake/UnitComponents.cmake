@@ -4,7 +4,8 @@ set(KASMVNC_UNIT_COMMON_SOURCES
   common/rdr/InStream.cxx common/rdr/Exception.cxx
   common/rfb/PixelFormat.cxx common/rfb/Region.cxx common/Xregion/Region.c
   common/rfb/encoders/EncoderConfiguration.cpp common/rfb/encoders/utils.cpp
-  common/network/jsonescape.c common/network/cJSON.c)
+  common/network/jsonescape.c common/network/cJSON.c
+  common/network/StunServer.cxx)
 function(kasmvnc_unit_components root)
   list(TRANSFORM KASMVNC_UNIT_COMMON_SOURCES PREPEND "${root}/")
   add_library(kasmvnc_unit_common STATIC ${KASMVNC_UNIT_COMMON_SOURCES})

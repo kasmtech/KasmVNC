@@ -38,111 +38,113 @@ namespace rfb {
 
   class SMsgWriter {
   public:
-    SMsgWriter(ConnParams* cp, rdr::OutStream* os, rdr::OutStream *udps);
-    virtual ~SMsgWriter() = default;
+      SMsgWriter(ConnParams *cp, rdr::OutStream *os, rdr::OutStream *imageOs = nullptr);
+      virtual ~SMsgWriter() = default;
 
-    // writeServerInit() must only be called at the appropriate time in the
-    // protocol initialisation.
-    void writeServerInit();
+      // writeServerInit() must only be called at the appropriate time in the
+      // protocol initialisation.
+      void writeServerInit();
 
-    // Methods to write normal protocol messages
+      // Methods to write normal protocol messages
 
-    // writeSetColourMapEntries() writes a setColourMapEntries message, using
-    // the given colour entries.
-    void writeSetColourMapEntries(int firstColour, int nColours,
-                                  const rdr::U16 red[],
-                                  const rdr::U16 green[],
-                                  const rdr::U16 blue[]);
+      // writeSetColourMapEntries() writes a setColourMapEntries message, using
+      // the given colour entries.
+      void writeSetColourMapEntries(
+          int firstColour, int nColours, const rdr::U16 red[], const rdr::U16 green[], const rdr::U16 blue[]);
 
-    // writeBell() and writeServerCutText() do the obvious thing.
-    void writeBell();
+      // writeBell() and writeServerCutText() do the obvious thing.
+      void writeBell();
 
-    void writeBinaryClipboard(const std::vector<SConnection::binaryClipboard_t> &b);
+      void writeBinaryClipboard(const std::vector<SConnection::binaryClipboard_t> &b);
 
-    void writeStats(int msg_type, const char* str, size_t len);
+      void writeStats(int msg_type, const char *str, size_t len);
 
-    void writeRequestFrameStats();
+      void writeRequestFrameStats();
 
-    // writeFence() sends a new fence request or response to the client.
-    void writeFence(rdr::U32 flags, unsigned len, const char data[]);
+      // writeFence() sends a new fence request or response to the client.
+      void writeFence(rdr::U32 flags, unsigned len, const char data[]);
 
-    // writeEndOfContinuousUpdates() indicates that we have left continuous
-    // updates mode.
-    void writeEndOfContinuousUpdates();
+      // writeEndOfContinuousUpdates() indicates that we have left continuous
+      // updates mode.
+      void writeEndOfContinuousUpdates();
 
-    // writeSetDesktopSize() won't actually write immediately, but will
-    // write the relevant pseudo-rectangle as part of the next update.
-    bool writeSetDesktopSize();
-    // Same thing for the extended version. The first version queues up a
-    // generic update of the current server state, but the second queues a
-    // specific message.
-    bool writeExtendedDesktopSize();
-    bool writeExtendedDesktopSize(rdr::U16 reason, rdr::U16 result,
-                                  int fb_width, int fb_height,
-                                  const ScreenSet& layout);
+      // writeSetDesktopSize() won't actually write immediately, but will
+      // write the relevant pseudo-rectangle as part of the next update.
+      bool writeSetDesktopSize();
+      // Same thing for the extended version. The first version queues up a
+      // generic update of the current server state, but the second queues a
+      // specific message.
+      bool writeExtendedDesktopSize();
+      bool writeExtendedDesktopSize(
+          rdr::U16 reason, rdr::U16 result, int fb_width, int fb_height, const ScreenSet &layout);
 
-    bool writeSetDesktopName();
+      bool writeSetDesktopName();
 
-    // Like setDesktopSize, we can't just write out a cursor message
-    // immediately. 
-    bool writeSetCursor();
-    bool writeSetXCursor();
-    bool writeSetCursorWithAlpha();
-    bool writeSetVMwareCursor();
+      // Like setDesktopSize, we can't just write out a cursor message
+      // immediately.
+      bool writeSetCursor();
+      bool writeSetXCursor();
+      bool writeSetCursorWithAlpha();
+      bool writeSetVMwareCursor();
 
-    // Notifies the client that the cursor pointer was moved by the server.
-    void writeCursorPos();
+      // Notifies the client that the cursor pointer was moved by the server.
+      void writeCursorPos();
 
-    // Same for LED state message
-    bool writeLEDState();
+      // Same for LED state message
+      bool writeLEDState();
 
-    // And QEMU keyboard event handshake
-    bool writeQEMUKeyEvent();
+      // And QEMU keyboard event handshake
+      bool writeQEMUKeyEvent();
 
-    // needFakeUpdate() returns true when an immediate update is needed in
-    // order to flush out pseudo-rectangles to the client.
-    bool needFakeUpdate();
+      // needFakeUpdate() returns true when an immediate update is needed in
+      // order to flush out pseudo-rectangles to the client.
+      bool needFakeUpdate();
 
-    // needNoDataUpdate() returns true when an update without any
-    // framebuffer changes need to be sent (using writeNoDataUpdate()).
-    // Commonly this is an update that modifies the size of the framebuffer
-    // or the screen layout.
-    bool needNoDataUpdate();
+      // needNoDataUpdate() returns true when an update without any
+      // framebuffer changes need to be sent (using writeNoDataUpdate()).
+      // Commonly this is an update that modifies the size of the framebuffer
+      // or the screen layout.
+      bool needNoDataUpdate();
 
-    // writeNoDataUpdate() write a framebuffer update containing only
-    // pseudo-rectangles.
-    void writeNoDataUpdate();
+      // writeNoDataUpdate() write a framebuffer update containing only
+      // pseudo-rectangles.
+      void writeNoDataUpdate();
 
-    // writeFramebufferUpdateStart() initiates an update which you can fill
-    // in using writeCopyRect() and encoders. Finishing the update by calling
-    // writeFramebufferUpdateEnd().
-    void writeFramebufferUpdateStart(int nRects);
-    void writeFramebufferUpdateEnd();
+      // writeFramebufferUpdateStart() initiates an update which you can fill
+      // in using writeCopyRect() and encoders. Finishing the update by calling
+      // writeFramebufferUpdateEnd().
+      void writeFramebufferUpdateStart(int nRects);
+      void writeFramebufferUpdateEnd();
 
-    // There is no explicit encoder for CopyRect rects.
-    void writeCopyRect(const Rect& r, int srcX, int srcY);
+      // There is no explicit encoder for CopyRect rects.
+      void writeCopyRect(const Rect &r, int srcX, int srcY);
 
-    // Encoders should call these to mark the start and stop of individual
-    // rects.
-    void startRect(const Rect& r, int enc);
-    void endRect();
+      // Encoders should call these to mark the start and stop of individual
+      // rects.
+      void startRect(const Rect &r, int enc);
+      void endRect();
 
-    void writeUdpUpgrade(const char *resp);
+      void writeWebRTCSignal(rdr::U8 kind, rdr::U8 screenId, const char *payload, size_t len);
+      void writeWebRTCIceServers(const char *urls, size_t len);
+      void writeWebRTCOffer(rdr::U8 screenId, const char *sdp, size_t len);
+      void writeWebRTCIceCandidate(rdr::U8 screenId, const char *jsonCandidate, size_t len);
+      void writeWebRTCFallback(rdr::U8 screenId, const char *reason, size_t len);
+      void writeWebRTCClose(rdr::U8 screenId, const char *reason, size_t len);
 
-    void writeSubscribeUnixRelay(const bool success, const char *msg);
-    void writeUnixRelay(const char *name, const rdr::U8 *buf, const unsigned len);
-    void writeVideoEncoders(const std::vector<int32_t> &encoders);
+      void writeSubscribeUnixRelay(const bool success, const char *msg);
+      void writeUnixRelay(const char *name, const rdr::U8 *buf, const unsigned len);
+      void writeVideoEncoders(const std::vector<int32_t> &encoders);
 
-    void writeUserJoinedSession(const std::string& username);
-    void writeUserLeftSession(const std::string& username);
-    void writeDisconnectNotify(bool graceful, const char *reason);
-    void writeForceGameMode();
-    void writeLatencyMeasurementResponse(uint32_t measurementId);
-    void writeTouchEventsSupported();
+      void writeUserJoinedSession(const std::string &username);
+      void writeUserLeftSession(const std::string &username);
+      void writeDisconnectNotify(bool graceful, const char *reason);
+      void writeForceGameMode();
+      void writeLatencyMeasurementResponse(uint32_t measurementId);
+      void writeTouchEventsSupported();
 
-    void writeTextInputFocus(bool focused, bool tapped, uint32_t touchId, const Rect &caret, const Rect &field);
+      void writeTextInputFocus(bool focused, bool tapped, uint32_t touchId, const Rect &caret, const Rect &field);
 
-    void writeTextInputFields(const std::vector<Rect> &fields);
+      void writeTextInputFields(const std::vector<Rect> &fields);
 
   protected:
     void startMsg(int type);
@@ -174,7 +176,10 @@ namespace rfb {
 
     ConnParams* cp;
     rdr::OutStream* os;
-    rdr::OutStream* udps;
+    rdr::OutStream *imageOs;
+    rdr::OutStream *rectOs() const {
+        return (cp->supportsImageChannel && imageOs) ? imageOs : os;
+    }
 
     int nRectsInUpdate;
     int dataRectsInUpdate;

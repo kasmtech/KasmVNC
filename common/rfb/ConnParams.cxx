@@ -48,34 +48,49 @@ static void clientparlog(const char name[], int val, const bool applied) {
              applied ? "applied" : "ignored due to -IgnoreClientSettingsKasm/lacking perms");
 }
 
-ConnParams::ConnParams()
-  : majorVersion(0), minorVersion(0),
-    width(0), height(0), useCopyRect(false),
-    supportsLocalCursor(false), supportsLocalXCursor(false),
+ConnParams::ConnParams() :
+    majorVersion(0),
+    minorVersion(0),
+    width(0),
+    height(0),
+    useCopyRect(false),
+    supportsLocalCursor(false),
+    supportsLocalXCursor(false),
     supportsLocalCursorWithAlpha(false),
     supportsVMWareCursor(false),
     supportsCursorPosition(false),
-    supportsDesktopResize(false), supportsExtendedDesktopSize(false),
-    supportsDesktopRename(false), supportsLastRect(false),
-    supportsLEDState(false), supportsQEMUKeyEvent(false),
-    supportsWEBP(false), supportsQOI(false),
-    supportsSetDesktopSize(false), supportsFence(false),
-    supportsContinuousUpdates(false), supportsExtendedClipboard(false),
+    supportsDesktopResize(false),
+    supportsExtendedDesktopSize(false),
+    supportsDesktopRename(false),
+    supportsLastRect(false),
+    supportsLEDState(false),
+    supportsQEMUKeyEvent(false),
+    supportsWEBP(false),
+    supportsQOI(false),
+    supportsSetDesktopSize(false),
+    supportsFence(false),
+    supportsContinuousUpdates(false),
+    supportsExtendedClipboard(false),
     supportsDisconnectNotify(false),
     supportsDirectMouse(false),
-    supportsUdp(false),
-    compressLevel(2), qualityLevel(-1), fineQualityLevel(-1),
-    subsampling(subsampleUndefined), name_(0), cursorPos_(0, 0), verStrPos(0),
-    ledState_(ledUnknown), shandler(NULL)
-{
-  memset(kasmPassed, 0, KASM_NUM_SETTINGS);
-  setName("");
-  cursor_ = new Cursor(0, 0, Point(), NULL);
+    supportsWebRTCMedia(false),
+    supportsImageChannel(false),
+    compressLevel(2),
+    qualityLevel(-1),
+    fineQualityLevel(-1),
+    subsampling(subsampleUndefined),
+    name_(0),
+    cursorPos_(0, 0),
+    verStrPos(0),
+    ledState_(ledUnknown),
+    shandler(NULL) {
+    memset(kasmPassed, 0, KASM_NUM_SETTINGS);
+    setName("");
+    cursor_ = new Cursor(0, 0, Point(), NULL);
 
-  clipFlags = clipboardUTF8 | clipboardRTF | clipboardHTML |
-              clipboardRequest | clipboardNotify | clipboardProvide;
-  memset(clipSizes, 0, sizeof(clipSizes));
-  clipSizes[0] = 20 * 1024 * 1024;
+    clipFlags = clipboardUTF8 | clipboardRTF | clipboardHTML | clipboardRequest | clipboardNotify | clipboardProvide;
+    memset(clipSizes, 0, sizeof(clipSizes));
+    clipSizes[0] = 20 * 1024 * 1024;
 }
 
 ConnParams::~ConnParams()
@@ -383,10 +398,11 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
             auto iter = std::find_if(available_encoders.begin(),
                 available_encoders.end(),
                 [encoder](const KasmVideoEncoders::EncoderConfig &config) { return config.encoder == encoder; });
-            if (iter != available_encoders.end())
-                encoder_config = *iter;
+            const auto cfg = (iter != available_encoders.end()) ? *iter : KasmVideoEncoders::EncoderConfig{encoder};
+            if (deferEncoderConfig)
+                pendingEncoderConfig = cfg;
             else
-                encoder_config = KasmVideoEncoders::EncoderConfig{encoder};
+                encoder_config = cfg;
         }
         clientparlog("Encoder", encodings[i], can_apply);
     }
@@ -395,11 +411,13 @@ void ConnParams::setEncodings(int nEncodings, const rdr::S32* encodings)
       encodings_.insert(encodings[i]);
   }
 
-  // QOI-specific overrides
-  if (supportsQOI)
-    useCopyRect = false;
-  if (Server::DLP_WatermarkImage[0])
-    useCopyRect = false;
+  recomputeCopyRect();
+}
+
+void ConnParams::recomputeCopyRect()
+{
+  useCopyRect = supportsEncoding(encodingCopyRect) && !supportsQOI && !supportsImageChannel &&
+                !Server::DLP_WatermarkImage[0];
 }
 
 void ConnParams::setLEDState(unsigned int state)

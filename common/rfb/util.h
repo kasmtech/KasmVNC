@@ -164,6 +164,12 @@ namespace rfb {
    */
   uint64_t elapsedMs(std::chrono::high_resolution_clock::time_point start);
 
+  // CLOCK_MONOTONIC, so deadlines are unaffected by wall-clock changes.
+  int64_t monotonicNowNs() noexcept;
+
+  // failedSinceNs of 0 means not failing.
+  bool iceFailedFor(int64_t failedSinceNs, int64_t nowNs, int64_t graceNs) noexcept;
+
   // Returns true if first happened before seconds
   bool isBefore(const struct timeval *first,
                 const struct timeval *second);

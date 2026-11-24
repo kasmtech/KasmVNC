@@ -108,8 +108,7 @@ namespace rfb {
     virtual void supportsDirectMouse();
     virtual void supportsTouchEvents();
 
-    virtual void udpUpgrade(const char *resp) = 0;
-    virtual void udpDowngrade(const bool) = 0;
+    virtual void webrtcSignal(rdr::U8 kind, rdr::U8 screenId, const char *payload, size_t len) {}
 
     virtual void subscribeUnixRelay(const char *name) = 0;
     virtual void unixRelay(const char *name, const rdr::U8 *buf, const unsigned len) = 0;

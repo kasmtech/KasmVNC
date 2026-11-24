@@ -24,6 +24,36 @@
 #include <string.h>
 #include <rfb/util.h>
 #include <rfb/ServerCore.h>
+#include <rfb/LogWriter.h>
+
+namespace {
+  rfb::LogWriter deprecatedLog("Config");
+
+  // Accepts and ignores a removed parameter so existing command lines that
+  // still pass it (images, templates, `vncserver` pass-through args) keep
+  // starting instead of Xorg aborting on an unknown flag. Mirrors the
+  // deprecation warning vncserver gives for the matching YAML keys.
+  class DeprecatedParameter : public rfb::VoidParameter {
+  public:
+    DeprecatedParameter(const char* name_, const char* reason_)
+      : rfb::VoidParameter(name_, reason_), reason(reason_) {}
+    bool setParam(const char* /*value*/) override {
+      deprecatedLog.error("Parameter %s is deprecated and has no effect: %s",
+                          getName(), reason);
+      return true;
+    }
+    char* getDefaultStr() const override { return nullptr; }
+    char* getValueStr() const override { return rfb::strDup(""); }
+  private:
+    const char* reason;
+  };
+
+  // Removed with the legacy WebUDP transport (VNC-368).
+  DeprecatedParameter udpPortDeprecated("udpPort",
+      "legacy WebUDP transport was removed; WebRTC uses ICE-negotiated ports");
+  DeprecatedParameter udpSizeDeprecated("udpSize",
+      "legacy WebUDP transport was removed");
+}
 
 rfb::IntParameter rfb::Server::idleTimeout
 ("IdleTimeout",
@@ -280,6 +310,24 @@ rfb::IntParameter rfb::Server::videoQualityCRFCQP
 ("VideoQualityCRFCQP",
  "The CRF/CPQ value to use when encoding video",
  17, 0, 63);
+rfb::IntParameter rfb::Server::webRTCMaxBitrate("WebRTCMaxBitrate",
+    "Upper bound (bits/sec) for WebRTC video: the fixed cap. "
+    "Because the encoder runs constant-quality bounded by this cap, the stream is "
+    "effectively cap-bound, so the per-frame budget is roughly this / frameRate — "
+    "a too-low cap softens every frame (15Mbps/60fps was only ~31KB/frame, blurry "
+    "at >=1080p). Default sized for a crisp single 1080p screen; raise for 4K / "
+    "multi-monitor, lower for bandwidth-constrained deployments.",
+    40000000, 100000, 200000000);
+rfb::IntParameter rfb::Server::webRTCPortRangeBegin("WebRTCPortRangeBegin",
+    "First local UDP port the WebRTC ICE agent may bind (with WebRTCPortRangeEnd). "
+    "0 (default) lets the OS pick ephemeral ports; set both to a fixed range to "
+    "open only that range in a firewall or publish it from a container.",
+    0, 0, 65535);
+rfb::IntParameter rfb::Server::webRTCPortRangeEnd("WebRTCPortRangeEnd",
+    "Last local UDP port of the WebRTC ICE port range; see WebRTCPortRangeBegin. "
+    "Each screen's PeerConnection uses at least one port, so size the range for "
+    "clients x screens (x2 while a codec switch is in flight).",
+    0, 0, 65535);
 rfb::IntParameter rfb::Server::groupOfPicture
 ("GroupOfPicture",
  "The number of frames to group together for encoding",
@@ -293,24 +341,65 @@ rfb::StringParameter rfb::Server::kasmPasswordFile
  "Password file for BasicAuth, created with the kasmvncpasswd utility.",
  "~/.kasmpasswd");
 
-rfb::StringParameter rfb::Server::publicIP
-("publicIP",
- "The server's public IP, for UDP negotiation. If not set, will be queried via the internet.",
- "");
-rfb::StringParameter rfb::Server::stunServer
-("stunServer",
- "Use this STUN server for querying the server's public IP. If not set, a hardcoded list is used.",
- "");
+rfb::StringParameter rfb::Server::publicIP("publicIP",
+    "The server's public IP. WebRTC advertises each host ICE candidate with this "
+    "address as well (NAT 1:1), so a server behind a port-forwarding NAT is "
+    "reachable without STUN. Loopback disables it. If not set, will be queried "
+    "via the internet.",
+    "");
+rfb::StringParameter rfb::Server::stunServer("stunServer",
+    "Use this STUN server, as hostname[:port] or stun:hostname[:port], for querying the server's "
+    "public IP and as the WebRTC ICE STUN server. If not set or 'auto', a hardcoded list is used.", "");
+rfb::IntParameter rfb::Server::udpFullFrameFrequency("udpFullFrameFrequency",
+    "While image rects ride the unreliable WebRTC DataChannel, resend the whole "
+    "framebuffer every N updates so lost rects heal even on an idle screen. "
+    "0 to disable.",
+    300, 0, 1000);
 
-rfb::IntParameter rfb::Server::udpFullFrameFrequency
-("udpFullFrameFrequency",
- "Send a full frame every N frames for clients using UDP. 0 to disable",
- 0, 0, 1000);
+rfb::StringParameter rfb::Server::turnServer("TurnServer",
+    "Comma-separated TURN servers for WebRTC (turn:/turns: URLs or bare hosts, "
+    "optionally ?transport=udp|tcp). Requires TurnUsername and TurnCredentialFile.",
+    "");
 
-rfb::IntParameter rfb::Server::udpPort
-("udpPort",
- "Which port to use for UDP. Default same as websocket",
- 0, 0, 65535);
+rfb::StringParameter rfb::Server::turnUsername("TurnUsername",
+    "Username for the TurnServer relays.",
+    "");
+
+rfb::StringParameter rfb::Server::turnCredentialFile("TurnCredentialFile",
+    "File holding the TurnServer credential. It must be a regular file with no "
+    "group or other permissions; the credential is never accepted on the command line.",
+    "");
+
+rfb::StringParameter rfb::Server::turnCredentialUrl("TurnCredentialUrl",
+    "HTTPS endpoint issuing short-lived TURN credentials, authorized with the JWT "
+    "in the KASM_API_JWT environment variable. Overrides the static TURN settings.",
+    "");
+
+rfb::StringParameter rfb::Server::turnCredentialCaFile("TurnCredentialCaFile",
+    "CA bundle used to verify TurnCredentialUrl instead of the system trust store.",
+    "");
+
+rfb::BoolParameter rfb::Server::turnCredentialSkipVerify("TurnCredentialSkipVerify",
+    "Disable TLS certificate verification for TurnCredentialUrl.",
+    false);
+
+rfb::BoolParameter rfb::Server::forceTurn("ForceTurn",
+    "Restrict browsers to TURN relay candidates while TURN credentials are available.",
+    false);
+
+rfb::IntParameter rfb::Server::webrtcOfferToAnswerTimeoutMs("WebRTCOfferToAnswerTimeoutMs",
+    "How long (ms) the server waits for an SDP answer after sending a "
+    "per-screen WebRTC offer before declaring the handshake stuck. If "
+    "exceeded, the screen's handshake is considered stuck and the per-policy "
+    "fallback fires (see WebRTCCoordinatedFallback). 0 disables the timeout.",
+    10000, 0, 600000);
+
+rfb::IntParameter rfb::Server::webrtcAnswerToConnectTimeoutMs("WebRTCAnswerToConnectTimeoutMs",
+    "How long (ms) the server waits after a successful SDP answer for ICE "
+    "to reach Connected before declaring the transport stuck. Covers stuck "
+    "New/Checking states that the post-Connected IceFailureGrace path does "
+    "not detect. 0 disables the timeout.",
+    15000, 0, 600000);
 
 rfb::StringParameter rfb::Server::videoCodec
 ("videoCodec",

@@ -24,12 +24,18 @@
 #ifndef __RFB_SCONNECTION_H__
 #define __RFB_SCONNECTION_H__
 
-#include <network/Udp.h>
+#include <rfb/webrtc/ImageChannelStream.h>
 #include <rdr/InStream.h>
 #include <rdr/OutStream.h>
 #include <rfb/SMsgHandler.h>
 #include <rfb/SecurityServer.h>
+#include <rfb/webrtc/webrtcTypes.h>
+#include <cstdint>
 #include <vector>
+
+namespace network {
+    class WebRTCMediaTransport;
+}
 
 namespace rfb {
 
@@ -174,7 +180,48 @@ namespace rfb {
     SMsgWriter* writer() { return writer_; }
 
     rdr::InStream* getInStream() { return is; }
-    rdr::OutStream* getOutStream(const bool udp = false) { return udp ? udps : os; }
+    rdr::OutStream *getOutStream() {
+        return os;
+    }
+
+    rdr::OutStream *getRectOutStream() {
+        return cp.supportsImageChannel ? static_cast<rdr::OutStream *>(imageStream) : os;
+    }
+    network::ImageChannelStream *getImageStream() {
+        return imageStream;
+    }
+
+    network::WebRTCMediaTransport *wrtcTransport(uint8_t screenId) {
+        return screenId < MAX_WEBRTC_SCREENS ? wrtcScreens[screenId] : nullptr;
+    }
+    void setWrtcTransport(uint8_t screenId, network::WebRTCMediaTransport *t) {
+        if (screenId < MAX_WEBRTC_SCREENS)
+            wrtcScreens[screenId] = t;
+    }
+    bool anyWrtcTransport() const {
+        for (const auto wrtcScreen : wrtcScreens)
+            if (wrtcScreen)
+                return true;
+
+        return false;
+    }
+    void markWrtcCodecMismatch(uint8_t screenId) {
+        if (screenId < MAX_WEBRTC_SCREENS)
+            wrtcCodecMismatch |= 1u << screenId;
+    }
+    uint8_t takeWrtcCodecMismatch() {
+        const uint8_t m = wrtcCodecMismatch;
+        wrtcCodecMismatch = 0;
+        return m;
+    }
+    // Video encoding failed and the connection dropped to the image encoders: the WebRTC media session,
+    // if any, has nothing left to carry and must be torn down.
+    void markWrtcEncoderFailed() { wrtcEncoderFailed = true; }
+    bool takeWrtcEncoderFailed() {
+        const bool failed = wrtcEncoderFailed;
+        wrtcEncoderFailed = false;
+        return failed;
+    }
 
     enum stateEnum {
       RFBSTATE_UNINITIALISED,
@@ -190,7 +237,7 @@ namespace rfb {
 
     stateEnum state() { return state_; }
 
-    rdr::S32 getPreferredEncoding() { return preferredEncoding; }
+    rdr::S32 getPreferredEncoding() const { return preferredEncoding; }
 
     struct binaryClipboard_t {
         char mime[32];
@@ -201,6 +248,8 @@ namespace rfb {
     virtual bool sendWatermark() const {
         return false;
     }
+
+    virtual void watermarkWritten() {}
 
   protected:
     void setState(stateEnum s) { state_ = s; }
@@ -224,7 +273,10 @@ namespace rfb {
     int defaultMajorVersion, defaultMinorVersion;
     rdr::InStream* is;
     rdr::OutStream* os;
-    network::UdpStream *udps;
+    network::ImageChannelStream *imageStream;
+    network::WebRTCMediaTransport *wrtcScreens[MAX_WEBRTC_SCREENS] = {};
+    uint8_t wrtcCodecMismatch = 0;
+    bool wrtcEncoderFailed = false;
     SMsgReader* reader_;
     SMsgWriter* writer_;
     SecurityServer security;

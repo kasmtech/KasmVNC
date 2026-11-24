@@ -152,6 +152,9 @@ void XserverDesktop::setFramebuffer(int w, int h, void* fbptr, int stride_)
 
 void XserverDesktop::refreshScreenLayout()
 {
+    if (resizing) {
+        return;
+    }
   vncSetGlueContext(screenIndex);
   server->setScreenLayout(::computeScreenLayout(&outputIdMap));
 }
@@ -632,6 +635,7 @@ unsigned int XserverDesktop::setScreenLayout(int fb_width, int fb_height,
   vncSetGlueContext(screenIndex);
   const unsigned int ret = ::setScreenLayout(fb_width, fb_height, layout, &outputIdMap);
   resizing = false;
+  refreshScreenLayout();
   return ret;
 }
 

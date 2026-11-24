@@ -28,3 +28,7 @@ echo ">> Building libyuv..."
 "${source_dir}"/build-libyuv
 echo ">> Building libstatgrab..."
 "${source_dir}"/build-libstatgrab
+echo ">> Building static libsrtp2..."
+"${source_dir}"/build-srtp2
+echo ">> Building libdatachannel..."
+"${source_dir}"/build-libdatachannel

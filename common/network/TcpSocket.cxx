@@ -49,9 +49,8 @@
 
 #include <network/GetAPI.h>
 #include <network/TcpSocket.h>
-#include <network/Udp.h>
-#include <rfb/LogWriter.h>
 #include <rfb/Configuration.h>
+#include <rfb/LogWriter.h>
 #include <rfb/ServerCore.h>
 
 #ifdef WIN32
@@ -723,13 +722,6 @@ WebsocketListener::WebsocketListener(const struct sockaddr *listenaddr,
 
   pthread_t tid;
   pthread_create(&tid, NULL, start_server, NULL);
-
-  uint16_t *nport = (uint16_t *) calloc(1, sizeof(uint16_t));
-  if (rfb::Server::udpPort)
-    *nport = rfb::Server::udpPort;
-  else
-    *nport = ntohs(sa.u.sin.sin_port);
-  pthread_create(&tid, NULL, udpserver, nport);
 }
 
 Socket* WebsocketListener::createSocket(int fd) {
@@ -1238,8 +1230,10 @@ char* TcpFilter::patternToStr(const TcpFilter::Pattern& p) {
                 buffer + 1, sizeof (buffer) - 2, NULL, 0, NI_NUMERICHOST);
     strcat(buffer, "]");
     addr.buf = rfb::strDup(buffer);
-  } else if (p.address.u.sa.sa_family == AF_UNSPEC)
-    addr.buf = rfb::strDup("");
+  } else {
+      // AF_UNSPEC or any family we can't print
+      addr.buf = rfb::strDup("");
+  }
 
   char action;
   switch (p.action) {

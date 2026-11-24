@@ -22,6 +22,7 @@ install_manifest.txt
 
 builder/build/
 builder/www/
+builder/.www-stamp*
 spec/tmp
 
 Benchmark.xml

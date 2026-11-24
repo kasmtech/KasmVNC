@@ -17,11 +17,14 @@
  */
 #include "ScreenEncoderManager.h"
 #include <cassert>
+#include <rfb/webrtc/WebRTCMediaTransport.h>
 #include <rfb/LogWriter.h>
 #include <rfb/Region.h>
+#include <rfb/SConnection.h>
 #include <rfb/SMsgWriter.h>
 #include <rfb/encodings.h>
 #include <sys/stat.h>
+#include <atomic>
 #include <tbb/parallel_for_each.h>
 #include "VideoEncoder.h"
 #include "VideoEncoderFactory.h"
@@ -95,6 +98,8 @@ namespace rfb {
             return false;
         }
 
+        screens[index].encoder->setMaxBitrate(max_bitrate[index]);
+
         mask |= 1ULL << index;
 
         ++count;
@@ -150,32 +155,48 @@ namespace rfb {
 
     template<uint8_t T>
     bool ScreenEncoderManager<T>::sync_layout(const ScreenSet &layout, const Region &region) {
-        const auto bounds = region.get_bounding_rect();
-
         const auto old_mask = mask;
         mask_t new_mask = 0;
+        unsigned overflow = 0;
 
-        for (uint8_t i = 0; i < static_cast<uint8_t>(layout.num_screens()); ++i) {
-            const auto &screen = layout.screens[i];
-            auto id = screen.id;
-            if (id >= T) {
-                vlog.debug("Wrong layout id");
-                id = 0;
-            }
+        const unsigned n = static_cast<unsigned>(layout.num_screens());
+        const unsigned tcap = static_cast<unsigned>(T);
+        const uint8_t n_capped = static_cast<uint8_t>(n > tcap ? tcap : n);
 
-            new_mask |= 1ULL << id;
+        for (uint8_t slot = 0; slot < n_capped; ++slot) {
+            const auto &screen = layout.screens[slot];
 
-            if (!screens[id].layout.dimensions.equals(screen.dimensions)) {
-                remove_screen(id);
-                if (!add_screen(id, screen))
+            const bool was_present = (old_mask & (mask_t{1} << slot)) != 0;
+            const bool geom_changed = !screens[slot].layout.dimensions.equals(screen.dimensions);
+
+            new_mask |= mask_t{1} << slot;
+
+            if (!was_present || geom_changed) {
+                if (was_present)
+                    remove_screen(slot);
+                if (!add_screen(slot, screen)) {
                     return false;
-            } else if (screen.dimensions.overlaps(bounds)) {
-                screens[id].dirty = true;
+                }
+            } else if (!region.intersect(Region(screen.dimensions)).is_empty()) {
+                screens[slot].dirty = true;
             }
         }
 
+        if (n > tcap) {
+            overflow = n - tcap;
+            vlog.error("%u screen(s) exceed T=%u — ignored (max %u monitors)",
+                overflow,
+                static_cast<unsigned>(T),
+                static_cast<unsigned>(T));
+        }
+
         if (const auto stale_screens = old_mask & ~new_mask; stale_screens) {
-            clear_screens(stale_screens);
+            mask_t rem = stale_screens;
+            while (rem) {
+                const uint8_t s = static_cast<uint8_t>(__builtin_ctzll(rem));
+                remove_screen(s);
+                rem &= rem - 1;
+            }
         }
 
         //if (old_mask != mask || (mask > 0 && screens_to_refresh.empty()))
@@ -199,14 +220,17 @@ namespace rfb {
             return true;
 
         const auto bpp = conn->cp.pf().bpp >> 3;
-        auto *out_conn = conn->getOutStream(conn->cp.supportsUdp);
+        auto *out_conn = conn->getOutStream();
 
         if (!out_conn) {
             vlog.error("writeRect: getOutStream returned NULL");
             return false;
         }
 
-        const auto send_frame = [this, &bpp, out_conn, pb, &palette](screen_t &screen) {
+        const auto send_frame = [this, &bpp, out_conn, pb, &palette](uint8_t index, screen_t &screen) {
+            // Cleared before writing, so the bit only ever covers the frame being sent.
+            force_keyframe_mask &= ~(mask_t{1} << index);
+
             ++stats.rects;
             const auto &rect = screen.layout.dimensions;
             const auto area = rect.area();
@@ -228,40 +252,60 @@ namespace rfb {
             stats.bytes += after - before;
         };
 
-        if (screens_to_refresh.size() > 1) {
-            tbb::task_group_context ctx;
+        // Snapshot only; a screen's bit is cleared when its frame is sent, so a failed render keeps the request.
+        const mask_t kf_mask = force_keyframe_mask;
+        const auto now = std::chrono::steady_clock::now();
+        const auto wants_keyframe = [&](uint8_t index) {
+            const auto &screen = screens[index];
+            const bool routed = screen.encoder->snapshotRouting(index);
+            return forceKeyFrame || (kf_mask & (mask_t{1} << index)) || idleKeyframeDue(screen.last_encode, now, routed);
+        };
 
+        // Nothing from a previous tick may survive into this one.
+        for (auto index: screens_to_refresh)
+            screens[index].dirty = false;
+
+        if (screens_to_refresh.size() > 1) {
+            std::atomic<bool> failed{false};
             arena.execute([&] {
                 tbb::parallel_for_each(screens_to_refresh.begin(),
                     screens_to_refresh.end(),
-                    [this, pb, &ctx, forceKeyFrame](uint8_t index) {
-                        if (ctx.is_group_execution_cancelled())
-                            return;
-
+                    [this, pb, now, &wants_keyframe, &failed](uint8_t index) {
                         auto &screen = screens[index];
                         if (auto *encoder = screen.encoder; encoder) {
-                            screen.dirty = encoder->render(pb, forceKeyFrame);
-                            if (!screen.dirty)
-                                ctx.cancel_group_execution();
+                            screen.dirty = encoder->render(pb, wants_keyframe(index));
+                            if (screen.dirty)
+                                screen.last_encode = now;
+                            else
+                                failed.store(true, std::memory_order_relaxed);
                         }
                     });
             });
 
-            if (ctx.is_group_execution_cancelled())
+            if (failed.load(std::memory_order_relaxed)) {
+                for (auto index: screens_to_refresh)
+                    screens[index].dirty = false;
                 return false;
+            }
 
+            bool any_sent = false;
             for (auto index: screens_to_refresh) {
                 auto &screen = screens[index];
-                if (screen.dirty) {
-                    send_frame(screen);
+                if (screen.encoder && screen.dirty) {
+                    send_frame(index, screen);
+                    any_sent = true;
                 }
             }
+            if (!any_sent)
+                return false;
         } else {
             const auto index = screens_to_refresh[0];
             if (auto encoder = screens[index].encoder; encoder) {
-                if (encoder->render(pb, forceKeyFrame))
-                    send_frame(screens[index]);
-                else
+                if (encoder->render(pb, wants_keyframe(index))) {
+                    screens[index].last_encode = now;
+                    screens[index].dirty = true;
+                    send_frame(index, screens[index]);
+                } else
                     return false;
             }
         }
