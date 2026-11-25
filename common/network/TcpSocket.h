@@ -71,7 +71,7 @@ namespace network {
     virtual char* getPeerAddress();
     virtual char* getPeerEndpoint();
 
-    virtual bool cork(bool enable) { return true; }
+    virtual bool cork(bool enable);
   };
 
   class TcpListener : public SocketListener {
