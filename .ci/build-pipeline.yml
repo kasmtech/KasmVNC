@@ -24,6 +24,7 @@ stages:
   - run_test
   - test
   - upload_build_preview
+  - workspace_image
 
 .prepare_build: &prepare_build
   - pwd
@@ -258,6 +259,7 @@ upload_build_preview_html:
     - upload_portable_packages
     - mkdir -p output
     - cp -r builder/build/portable_* output/
+    - .ci/record-workspace-package output/portable_$(dpkg --print-architecture)
   artifacts:
     when: always
     paths: [output/]
@@ -409,3 +411,48 @@ unit_test_sanitizers:
   artifacts:
     reports:
       junit: kasmvnc-unit-tests/reports/sanitizers/cpp.xml
+
+# Optional images consume only this pipeline's native glibc package.
+.workspace_image:
+  stage: workspace_image
+  image: $DEBIAN_STABLE_IMAGE
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+    WORKSPACE_CORE_REF: develop
+    WORKSPACE_DESKTOP_REF: develop
+  allow_failure: true
+  timeout: 3h
+  retry:
+    max: 2
+    when: [runner_system_failure, api_failure]
+  rules:
+    - when: manual
+  resource_group: "workspace-$CI_COMMIT_REF_SLUG-$WORKSPACE_ARCH"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends docker-cli docker-buildx git python3 python3-yaml ca-certificates
+    - docker --version && docker buildx version
+    - echo "$DOCKER_HUB_PASSWORD" | docker login --username "$DOCKER_HUB_USERNAME" --password-stdin
+  script:
+    - python3 .ci/build-workspace-image.py --arch "$WORKSPACE_ARCH"
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths: [workspace-image-report/]
+
+build_workspace_noble_amd64:
+  extends: .workspace_image
+  tags: [oci-fixed-amd]
+  variables:
+    WORKSPACE_ARCH: amd64
+  needs:
+    - job: build_portable_amd64
+      artifacts: true
+
+build_workspace_noble_arm64:
+  extends: .workspace_image
+  tags: [oci-fixed-arm]
+  variables:
+    WORKSPACE_ARCH: arm64
+  needs:
+    - job: build_portable_arm64
+      artifacts: true

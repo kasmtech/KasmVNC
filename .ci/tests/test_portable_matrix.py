@@ -13,7 +13,7 @@ class PortableMatrix(unittest.TestCase):
         pipeline = yaml.safe_load((ROOT / '.ci/build-pipeline.yml').read_text())
         expected = {'build_portable_amd64', 'build_portable_arm64',
                     'build_portable_musl_amd64', 'build_portable_musl_arm64'}
-        producers = {name for name in pipeline if name.startswith('build_') and name != 'build_www'}
+        producers = {name for name in pipeline if name.startswith('build_') and name != 'build_www' and not name.startswith('build_workspace_')}
         self.assertEqual(producers, expected)
         self.assertFalse(any(name.startswith('run_test_') for name in pipeline))
         for switch in ('BUILD_WORKSPACE_LEGACY', 'BUILD_FULL_LEGACY', 'BUILD_PORTABLE'):
