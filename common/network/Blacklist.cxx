@@ -61,7 +61,8 @@ unsigned char bl_isBlacklisted(const char *addr) {
 		pthread_mutex_unlock(&hitmutex);
 		return 0;
 	} else {
-		blacklist[addr] = now;
+		// Don't extend the block on attempts made while blocked, or a
+		// client that keeps retrying would never be let back in.
 		pthread_mutex_unlock(&blmutex);
 		return 1;
 	}
@@ -82,4 +83,11 @@ void bl_addFailure(const char *addr) {
 		blacklist[addr] = time(NULL);
 		pthread_mutex_unlock(&blmutex);
 	}
+}
+
+void bl_clearFailures(const char *addr) {
+	if (pthread_mutex_lock(&hitmutex))
+		abort();
+	hits.erase(addr);
+	pthread_mutex_unlock(&hitmutex);
 }

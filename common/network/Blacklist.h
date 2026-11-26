@@ -25,6 +25,7 @@ extern "C" {
 
 unsigned char bl_isBlacklisted(const char *);
 void bl_addFailure(const char *);
+void bl_clearFailures(const char *);
 
 #ifdef __cplusplus
 } // extern C
